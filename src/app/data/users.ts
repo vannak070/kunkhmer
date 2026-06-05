@@ -1,0 +1,452 @@
+// User Management Data Structure - Updated with 2-Role System
+
+export type UserRole = 'kkf_super_admin' | 'kkf_officer' | 'organizer' | 'kkf_manager' | 'club';
+
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  password: string; // In production, this would be hashed
+  fullName: string;
+  role: UserRole;
+  avatar?: string;
+  phone?: string;
+  organization?: string; // Broadcast station, KKF chapter, Gym/Club name, etc.
+  status: 'active' | 'inactive' | 'suspended';
+  createdAt: string;
+  lastLogin?: string;
+  permissions: string[];
+}
+
+export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+  // 👑 1. KKF Super Admin - Full system control & approvals
+  kkf_super_admin: [
+    // Users
+    'users.view',
+    'users.create',
+    'users.edit',
+    'users.delete',
+    'users.manage_roles',
+    
+    // Events
+    'events.view',
+    'events.create',
+    'events.edit',
+    'events.delete',
+    'events.submit',
+    'events.approve',
+    'events.reject',
+    'events.override_approval',
+    'events.start',
+    'events.close',
+    
+    // Fighters
+    'fighters.view',
+    'fighters.create',
+    'fighters.edit',
+    'fighters.delete',
+    'fighters.verify_kyc',
+    'fighters.verify_medical',
+    'fighters.check_eligibility',
+    'fighters.approve',
+    'fighters.reject',
+    'fighters.register_kkf',
+    'fighters.register_foreign',
+    
+    // Matches
+    'matches.view',
+    'matches.create',
+    'matches.edit',
+    'matches.delete',
+    'matches.approve',
+    'matches.reject',
+    'matches.override_approval',
+    'matches.assign_to_event',
+    
+    // Federation Operations
+    'federation.view',
+    'federation.approve',
+    'federation.approve_event',
+    'federation.reject_event',
+    'federation.approve_match',
+    'federation.reject_match',
+    'federation.approve_club',
+    'federation.reject_club',
+    'federation.approve_fighter',
+    'federation.reject_fighter',
+    'federation.assign_officials',
+    'federation.assign_judges',
+    'federation.assign_referees',
+    'federation.conduct_weighin',
+    'federation.start_match',
+    'federation.enter_results',
+    'federation.complete_match',
+    'federation.override_results',
+    
+    // Sponsors & Broadcast
+    'sponsors.view',
+    'sponsors.create',
+    'sponsors.edit',
+    'sponsors.delete',
+    'sponsors.approve',
+    'sponsors.reject',
+    'broadcast.view',
+    'broadcast.create',
+    'broadcast.edit',
+    'broadcast.delete',
+    'broadcast.approve',
+    'broadcast.reject',
+    
+    // Clubs
+    'clubs.view',
+    'clubs.create',
+    'clubs.edit',
+    'clubs.delete',
+    'clubs.approve',
+    'clubs.reject',
+    
+    // System
+    'system.configure_rules',
+    'system.access_audit_logs',
+    'system.manage_permissions',
+    'system.override_all',
+  ],
+
+  // ⚙️ 2. KKF Officer - Execution & Operations (All day-to-day tasks)
+  kkf_officer: [
+    // Users (View only)
+    'users.view',
+    
+    // Events (Full CRUD, no approval)
+    'events.view',
+    'events.create',
+    'events.edit',
+    'events.delete',
+    'events.submit', // Submit for Super Admin approval
+    'events.start', // Can start approved events
+    'events.close', // Can close completed events
+    'events.manage_details',
+    'events.manage_schedule',
+    
+    // Fighters (Full CRUD, no approval)
+    'fighters.view',
+    'fighters.create',
+    'fighters.edit',
+    'fighters.delete',
+    'fighters.register_kkf',
+    'fighters.register_foreign',
+    'fighters.verify_kyc',
+    'fighters.verify_medical',
+    'fighters.check_eligibility',
+    'fighters.update_profile',
+    'fighters.upload_documents',
+    'fighters.manage_kyc',
+    'fighters.manage_medical',
+    'fighters.view_fight_history',
+    'fighters.update_status',
+    'fighters.check_availability',
+    'fighters.verify_fitness',
+    'fighters.validate_medical',
+    'fighters.check_rest_period',
+    'fighters.view_schedule',
+    'fighters.track_upcoming_fights',
+    'fighters.track_rest_period',
+    'fighters.track_injuries',
+    'fighters.mark_unavailable',
+    'fighters.set_status',
+    
+    // Matches (Full CRUD, no approval)
+    'matches.view',
+    'matches.create',
+    'matches.edit',
+    'matches.delete',
+    'matches.submit', // Submit for Super Admin approval
+    'matches.assign_to_event',
+    'matches.view_details',
+    'matches.manage_card',
+    'matches.build_fight_card',
+    
+    // Federation Operations (Full execution)
+    'federation.view',
+    'federation.assign_officials',
+    'federation.assign_judges',
+    'federation.assign_referees',
+    'federation.conduct_weighin',
+    'federation.start_match',
+    'federation.enter_results',
+    'federation.complete_match',
+    'federation.manage_operations',
+    
+    // Sponsors & Broadcast (Full CRUD, no approval)
+    'sponsors.view',
+    'sponsors.create',
+    'sponsors.edit',
+    'sponsors.delete',
+    'sponsors.manage',
+    'broadcast.view',
+    'broadcast.create',
+    'broadcast.edit',
+    'broadcast.delete',
+    'broadcast.manage',
+    
+    // Clubs (Full CRUD, no approval)
+    'clubs.view',
+    'clubs.create',
+    'clubs.edit',
+    'clubs.delete',
+    'clubs.manage',
+    'clubs.view_fighters',
+    'clubs.manage_details',
+    
+    // Championships
+    'championships.view',
+    'championships.create',
+    'championships.edit',
+    'championships.delete',
+    'championships.manage',
+    'championships.assign_to_event',
+    
+    // Notifications
+    'notifications.view',
+    'notifications.manage',
+    
+    // RESTRICTIONS (What KKF Officer CANNOT do)
+    // ❌ Cannot approve/reject events (only Super Admin)
+    // ❌ Cannot approve/reject matches (only Super Admin)
+    // ❌ Cannot approve/reject clubs (only Super Admin)
+    // ❌ Cannot approve/reject fighters (only Super Admin)
+    // ❌ Cannot manage users (only Super Admin)
+    // ❌ Cannot override approvals (only Super Admin)
+    // ❌ Cannot access system configuration (only Super Admin)
+    
+    // WORKFLOW:
+    // 1. KKF Officer creates content (events, fighters, matches, etc.)
+    // 2. KKF Officer submits for approval
+    // 3. KKF Super Admin approves/rejects
+    // 4. KKF Officer executes approved items (assign officials, weigh-ins, results)
+  ],
+
+  // 📝 3. Organizer - Creates matches and events, requests approval
+  organizer: [
+    'events.view',
+    'events.create',
+    'events.edit',
+    'events.submit',
+    'matches.view',
+    'matches.create',
+    'matches.edit',
+    'matches.submit',
+    'fighters.view',
+    'sponsors.view',
+    'broadcast.view',
+    'clubs.view',
+  ],
+
+  // 👔 4. KKF Manager - Approves matches and events
+  kkf_manager: [
+    'events.view',
+    'events.approve',
+    'events.reject',
+    'matches.view',
+    'matches.approve',
+    'matches.reject',
+    'fighters.view',
+    'users.view',
+    'federation.view',
+    'federation.approve_match',
+    'federation.reject_match',
+  ],
+  
+  // 🥊 5. Club - Views and accepts matches
+  club: [
+    'events.view',
+    'matches.view',
+    'matches.accept',
+    'matches.reject',
+    'fighters.view',
+    'clubs.view',
+  ],
+};
+
+export const ROLE_LABELS: Record<UserRole, { label: string; color: string; description: string }> = {
+  kkf_super_admin: {
+    label: 'KKF Super Admin',
+    color: 'bg-purple-100 text-purple-700 border-purple-300',
+    description: '👑 Full system control - Approves/rejects all submissions, manages users, overrides decisions, configures system',
+  },
+  kkf_officer: {
+    label: 'KKF Officer',
+    color: 'bg-red-100 text-[#C8102E] border-red-300',
+    description: '⚙️ Executes all operations - Create/manage events, fighters, matches, clubs, sponsors, broadcasts, assign officials, weigh-ins, enter results',
+  },
+  organizer: {
+    label: 'Event Organizer',
+    color: 'bg-blue-100 text-[#0A3D91] border-blue-300',
+    description: '📝 Creates events and matches, submits them for KKF Manager approval.',
+  },
+  kkf_manager: {
+    label: 'KKF Manager',
+    color: 'bg-amber-100 text-amber-700 border-amber-300',
+    description: '👔 Reviews and approves events and matches submitted by Organizers.',
+  },
+  club: {
+    label: 'Club / Gym',
+    color: 'bg-emerald-100 text-emerald-700 border-emerald-300',
+    description: '🥊 Manages fighters, reviews and accepts/rejects match proposals.',
+  },
+};
+
+// Mock Users Database - Updated with new roles
+export const MOCK_USERS: User[] = [
+  // KKF Super Admin
+  {
+    id: 'u1',
+    username: 'superadmin',
+    email: 'superadmin@kkf.gov.kh',
+    password: 'admin123',
+    fullName: 'System Administrator',
+    role: 'kkf_super_admin',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150',
+    phone: '+855 12 345 678',
+    organization: 'Kun Khmer Federation HQ',
+    status: 'active',
+    createdAt: '2024-01-01',
+    lastLogin: '2026-03-20T09:30:00',
+    permissions: ROLE_PERMISSIONS.kkf_super_admin,
+  },
+  
+  // KKF Officer (Execution)
+  {
+    id: 'u3',
+    username: 'officer1',
+    email: 'officer@kkf.gov.kh',
+    password: 'officer123',
+    fullName: 'Sreymom Keo',
+    role: 'kkf_officer',
+    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=150',
+    phone: '+855 16 789 123',
+    organization: 'KKF Operations Division',
+    status: 'active',
+    createdAt: '2024-02-28',
+    lastLogin: '2026-03-19T17:00:00',
+    permissions: ROLE_PERMISSIONS.kkf_officer,
+  },
+  
+  // Event Organizer
+  {
+    id: 'u4',
+    username: 'organizer',
+    email: 'events@townfullhdtv.com',
+    password: 'org123',
+    fullName: 'Town Full HDTV',
+    role: 'organizer',
+    avatar: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&q=80&w=150',
+    phone: '+855 12 111 222',
+    organization: 'Town Full HDTV',
+    status: 'active',
+    createdAt: '2024-03-01',
+    lastLogin: '2026-03-20T08:00:00',
+    permissions: ROLE_PERMISSIONS.organizer,
+  },
+  
+  // KKF Manager
+  {
+    id: 'u5',
+    username: 'manager',
+    email: 'manager@kkf.gov.kh',
+    password: 'man123',
+    fullName: 'Chey Rithy',
+    role: 'kkf_manager',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150',
+    phone: '+855 12 333 444',
+    organization: 'KKF Approvals',
+    status: 'active',
+    createdAt: '2024-01-15',
+    lastLogin: '2026-03-20T09:00:00',
+    permissions: ROLE_PERMISSIONS.kkf_manager,
+  },
+  
+  // Club User
+  {
+    id: 'u6',
+    username: 'club_kiry',
+    email: 'kiry@gym.com',
+    password: 'club123',
+    fullName: 'Kiry Sak',
+    role: 'club',
+    avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=150',
+    phone: '+855 12 555 666',
+    organization: 'Kiry Sokun',
+    status: 'active',
+    createdAt: '2024-01-20',
+    lastLogin: '2026-03-20T10:00:00',
+    permissions: ROLE_PERMISSIONS.club,
+  },
+];
+
+// Current logged-in user (mock authentication)
+export let CURRENT_USER: User | null = MOCK_USERS[0]; // Default: superadmin
+
+export const loginUser = (username: string, password: string): User | null => {
+  const user = MOCK_USERS.find(u => u.username === username && u.password === password && u.status === 'active');
+  if (user) {
+    CURRENT_USER = user;
+    user.lastLogin = new Date().toISOString();
+    return user;
+  }
+  return null;
+};
+
+export const logoutUser = () => {
+  CURRENT_USER = null;
+};
+
+export const getCurrentUser = (): User | null => {
+  return CURRENT_USER;
+};
+
+export const hasPermission = (permission: string): boolean => {
+  if (!CURRENT_USER) return false;
+  return CURRENT_USER.permissions.includes(permission);
+};
+
+export const canAccessRoute = (route: string): boolean => {
+  if (!CURRENT_USER) return false;
+  
+  const routePermissionMap: Record<string, string> = {
+    '/fighters': 'fighters.view',
+    '/fighters/kunkhmer/new': 'fighters.create',
+    '/fighters/foreigner/new': 'fighters.create',
+    '/events': 'events.view',
+    '/events/new': 'events.create',
+    '/matches': 'matches.view',
+    '/matches/new': 'matches.create',
+    '/federation': 'federation.view',
+    '/users': 'users.view',
+    '/sponsors': 'sponsors.view',
+    '/broadcast': 'broadcast.view',
+    '/clubs': 'clubs.view',
+  };
+  
+  const requiredPermission = routePermissionMap[route];
+  if (!requiredPermission) return true; // Public route
+  
+  return hasPermission(requiredPermission);
+};
+
+// Helper: Get role capabilities summary
+export function getRoleCapabilities(role: UserRole): {
+  canApprove: boolean;
+  canExecute: boolean;
+  canCreate: boolean;
+  canManageAll: boolean;
+  isOperational: boolean;
+} {
+  return {
+    canApprove: role === 'kkf_super_admin' || role === 'kkf_manager',
+    canExecute: role !== 'club', 
+    canCreate: role === 'kkf_super_admin' || role === 'kkf_officer' || role === 'organizer',
+    canManageAll: role === 'kkf_super_admin',
+    isOperational: role === 'kkf_officer' || role === 'organizer',
+  };
+}
