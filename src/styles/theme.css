@@ -214,3 +214,90 @@
     line-height: 1.5;
   }
 }
+
+/* Slim minimalist custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Premium SaaS Component Classes */
+.btn-primary {
+  @apply bg-gradient-to-br from-primary to-[#082E6E] text-primary-foreground hover:from-[#082E6E] hover:to-[#051E4A] active:scale-[0.98] hover:-translate-y-[1px] active:translate-y-0 transition-all duration-200 px-4 py-2 rounded-lg font-medium text-sm shadow-sm hover:shadow-md hover:shadow-primary/10 flex items-center justify-center gap-2 outline-none focus:ring-4 focus:ring-primary/15;
+}
+
+.btn-secondary {
+  @apply bg-gradient-to-br from-secondary to-[#A00D24] text-secondary-foreground hover:from-[#A00D24] hover:to-[#7E0A1B] active:scale-[0.98] hover:-translate-y-[1px] active:translate-y-0 transition-all duration-200 px-4 py-2 rounded-lg font-medium text-sm shadow-sm hover:shadow-md hover:shadow-secondary/15 flex items-center justify-center gap-2 outline-none focus:ring-4 focus:ring-secondary/15;
+}
+
+.btn-outline {
+  @apply border border-border bg-white text-foreground hover:bg-muted/80 active:scale-[0.98] hover:border-slate-300 hover:-translate-y-[1px] active:translate-y-0 transition-all duration-200 px-4 py-2 rounded-lg font-medium text-sm shadow-sm flex items-center justify-center gap-2 outline-none focus:ring-4 focus:ring-primary/5;
+}
+
+.btn-ghost {
+  @apply text-muted-foreground hover:text-foreground hover:bg-muted/60 active:scale-[0.98] transition-all duration-200 px-3 py-1.5 rounded-lg text-sm flex items-center justify-center gap-1.5 outline-none;
+}
+
+.card-premium {
+  @apply bg-white border border-border rounded-xl p-5 shadow-sm hover:shadow-md hover:border-slate-300/80 transition-all duration-300;
+}
+
+.input-premium {
+  @apply w-full px-3 py-2 bg-muted/30 border border-border/40 rounded-lg text-sm transition-all duration-200 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/5 placeholder:text-muted-foreground;
+}
+
+.badge-premium {
+  @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border transition-colors duration-200;
+}
+
+.badge-blue {
+  @apply bg-blue-50/80 text-[#0A3D91] border-blue-200/50;
+}
+
+.badge-emerald {
+  @apply bg-emerald-50/80 text-emerald-700 border-emerald-200/50;
+}
+
+.badge-amber {
+  @apply bg-amber-50/80 text-amber-700 border-amber-200/50;
+}
+
+.badge-red {
+  @apply bg-red-50/80 text-[#C8102E] border-red-200/50;
+}
+
+.badge-dot {
+  @apply w-1.5 h-1.5 rounded-full shrink-0;
+}
+
+/* Micro hover transition for list items */
+.hover-item-premium {
+  @apply hover:bg-muted/30 hover:translate-x-0.5 transition-all duration-200;
+}
+
+/* Premium standard table styling */
+.table-premium {
+  @apply w-full text-sm text-left border-collapse;
+}
+
+.table-premium th {
+  @apply px-5 py-3.5 bg-muted/40 text-muted-foreground text-xs uppercase font-semibold border-b border-border tracking-wider;
+}
+
+.table-premium td {
+  @apply px-5 py-4 border-b border-border text-foreground align-middle;
+}
+
+.table-premium tr {
+  @apply hover:bg-muted/20 transition-all duration-150;
+}

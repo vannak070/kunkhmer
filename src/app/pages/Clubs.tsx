@@ -12,17 +12,17 @@ export function Clubs() {
   );
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 flex flex-col h-full">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-4xl font-black tracking-tight uppercase text-[#0A3D91]">Clubs Directory</h1>
-          <p className="text-[#707070] mt-2 font-medium text-lg">Manage Kun Khmer training camps and gyms</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Clubs Directory</h1>
+          <p className="text-sm text-muted-foreground mt-1 font-medium">Manage Kun Khmer training camps and gyms</p>
         </div>
         <Link 
           to="/home/clubs/new" 
-          className="inline-flex items-center gap-2 bg-gradient-to-r from-[#C8102E] to-[#A00D24] hover:from-[#A00D24] hover:to-[#8A0B20] text-white px-6 py-3.5 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:scale-[1.02]"
+          className="btn-secondary py-2.5 px-5"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4" />
           Add Club
         </Link>
       </header>
@@ -30,17 +30,17 @@ export function Clubs() {
       {/* Search & Filter Bar */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1 group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#B0B0B0] group-focus-within:text-[#0A3D91] transition-colors" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <input
             type="text"
             placeholder="Search clubs by name or location..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-white border-2 border-[#E0E0E0] rounded-xl pl-12 pr-4 py-4 text-[#1A1A24] font-semibold placeholder:text-[#B0B0B0] focus:outline-none focus:ring-2 focus:ring-[#0A3D91] focus:border-[#0A3D91] shadow-sm transition-all"
+            className="w-full bg-white border border-border/80 rounded-xl pl-11 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all"
           />
         </div>
         <div className="flex gap-3">
-          <select className="px-4 py-3 bg-white border-2 border-[#E0E0E0] rounded-xl font-semibold text-[#1A1A24] focus:outline-none focus:ring-2 focus:ring-[#0A3D91] focus:border-[#0A3D91] shadow-sm appearance-none min-w-[140px]">
+          <select className="px-4 py-2.5 bg-white border border-border/80 rounded-xl text-sm font-medium text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm hover:border-slate-300 transition-all cursor-pointer min-w-[140px]">
             <option value="all">All Status</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
@@ -51,63 +51,79 @@ export function Clubs() {
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredClubs.map((club) => (
-          <div key={club.id} className="bg-[#FFFFFF] rounded-2xl border border-[#B0B0B0]/20 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group">
-            <div className="h-40 relative overflow-hidden bg-[#E8E8ED]">
+          <div 
+            key={club.id} 
+            className="bg-white rounded-2xl border border-border/75 overflow-hidden shadow-sm hover:shadow-xl hover:border-primary/20 hover:-translate-y-1.5 transition-all duration-300 group flex flex-col"
+          >
+            {/* Image Banner Section */}
+            <div className="h-44 relative overflow-hidden bg-muted">
               <img 
                 src={club.image} 
                 alt={club.name} 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0A3D91]/80 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+              
+              {/* Badge Overlays */}
               <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
-                <div className="flex items-center gap-1.5 bg-[#FFFFFF]/20 backdrop-blur-md px-2.5 py-1 rounded-lg border border-[#FFFFFF]/30">
-                  <Star className="w-3.5 h-3.5 text-[#F2C94C] fill-[#F2C94C]" />
-                  <span className="text-sm font-bold text-[#FFFFFF]">{club.rating}</span>
+                {/* Gold Rating badge */}
+                <div className="flex items-center gap-1 bg-[#FFFDF5] border border-amber-200/80 text-amber-700 px-2.5 py-0.5 rounded-full text-xs font-semibold shadow-sm">
+                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                  <span>{club.rating}</span>
                 </div>
-                <div className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider backdrop-blur-md ${
+                
+                {/* Active/Inactive Badge */}
+                <div className={`badge-premium ${
                   club.status === 'active' 
-                    ? 'bg-[#0A3D91]/80 text-[#FFFFFF] border border-[#FFFFFF]/30' 
-                    : 'bg-[#C8102E]/80 text-[#FFFFFF] border border-[#FFFFFF]/30'
+                    ? 'badge-emerald' 
+                    : 'badge-red'
                 }`}>
+                  <span className={`badge-dot ${club.status === 'active' ? 'bg-emerald-500' : 'bg-red-500'}`} />
                   {club.status}
                 </div>
               </div>
-              <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                <button className="p-2 bg-[#FFFFFF]/90 hover:bg-[#FFFFFF] text-[#0A3D91] rounded-lg shadow-sm backdrop-blur-md transition-colors">
+              
+              {/* Action Overlays on Hover */}
+              <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-200 flex gap-2 translate-y-[-5px] group-hover:translate-y-0">
+                <button className="p-2 bg-white/95 hover:bg-white text-primary border border-border/40 rounded-xl shadow-md backdrop-blur-md transition-all duration-150 hover:scale-105 active:scale-95">
                   <Edit2 className="w-4 h-4" />
                 </button>
-                <button className="p-2 bg-[#C8102E]/90 hover:bg-[#C8102E] text-[#FFFFFF] rounded-lg shadow-sm backdrop-blur-md transition-colors">
+                <button className="p-2 bg-red-50/95 hover:bg-red-500 hover:text-white text-secondary border border-red-100 rounded-xl shadow-md backdrop-blur-md transition-all duration-150 hover:scale-105 active:scale-95">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
             
-            <div className="p-5">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-lg font-black text-[#0A3D91] uppercase tracking-tight leading-tight mb-1 line-clamp-1">{club.name}</h3>
-                  <div className="flex items-center gap-1.5 text-[#B0B0B0]">
-                    <MapPin className="w-4 h-4" />
-                    <span className="text-sm font-medium">{club.location}</span>
+            {/* Card Content Section */}
+            <div className="p-5 flex-1 flex flex-col justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors duration-200 tracking-tight leading-tight line-clamp-1 mb-1">
+                  {club.name}
+                </h3>
+                <div className="flex items-center gap-1.5 text-muted-foreground mb-4">
+                  <MapPin className="w-3.5 h-3.5 text-secondary shrink-0" />
+                  <span className="text-xs font-medium">{club.location}</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mb-5">
+                  <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px]">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Head Coach</div>
+                    <div className="text-sm font-semibold text-slate-800 line-clamp-1">{club.headCoach}</div>
+                  </div>
+                  <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px]">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Fighters</div>
+                    <div className="flex items-center gap-1 text-primary">
+                      <Dumbbell className="w-3.5 h-3.5 shrink-0" />
+                      <span className="text-sm font-bold">{club.activeFighters} Active</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 mb-5">
-                <div className="bg-[#F5F5F7] p-3 rounded-xl border border-[#B0B0B0]/10">
-                  <div className="text-xs font-bold text-[#B0B0B0] uppercase tracking-wider mb-1">Head Coach</div>
-                  <div className="text-sm font-bold text-[#333333] line-clamp-1">{club.headCoach}</div>
-                </div>
-                <div className="bg-[#F5F5F7] p-3 rounded-xl border border-[#B0B0B0]/10">
-                  <div className="text-xs font-bold text-[#B0B0B0] uppercase tracking-wider mb-1">Fighters</div>
-                  <div className="flex items-center gap-1.5 text-[#0A3D91]">
-                    <Dumbbell className="w-4 h-4" />
-                    <span className="text-sm font-black">{club.activeFighters} Active</span>
-                  </div>
-                </div>
-              </div>
-
-              <Link to={`/home/clubs/${club.id}`} className="block w-full text-center bg-[#FFFFFF] border-2 border-[#0A3D91] text-[#0A3D91] hover:bg-[#0A3D91] hover:text-[#FFFFFF] py-2.5 rounded-xl font-bold transition-colors">
+              <Link 
+                to={`/home/clubs/${club.id}`} 
+                className="btn-outline w-full py-2"
+              >
                 View Details
               </Link>
             </div>
@@ -116,13 +132,13 @@ export function Clubs() {
       </div>
 
       {filteredClubs.length === 0 && (
-        <div className="text-center py-16 bg-[#FFFFFF] rounded-2xl border border-[#B0B0B0]/20 shadow-sm">
-          <div className="w-16 h-16 bg-[#F5F5F7] rounded-full flex items-center justify-center mx-auto mb-4">
-            <Dumbbell className="w-8 h-8 text-[#B0B0B0]" />
+        <div className="text-center py-16 bg-white rounded-2xl border border-border/60 shadow-sm">
+          <div className="w-16 h-16 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Dumbbell className="w-8 h-8 text-muted-foreground" />
           </div>
-          <h3 className="text-xl font-black text-[#0A3D91] uppercase tracking-tight mb-2">No Clubs Found</h3>
-          <p className="text-[#B0B0B0] font-medium max-w-md mx-auto">
-            We couldn't find any clubs matching your search. Try adjusting your filters or add a new club.
+          <h3 className="text-lg font-bold text-foreground tracking-tight mb-1">No Clubs Found</h3>
+          <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+            We couldn't find any clubs matching your search. Try adjusting your filters or search term.
           </p>
         </div>
       )}

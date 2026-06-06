@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { clsx } from "clsx";
 import html2canvas from "html2canvas";
 import { ShareFightCard } from "../components/ShareFightCard";
-import kkfLogo from "figma:asset/a66d0715b1669c88badc1b57f275bd3b2182d59e.png";
+import kkfLogo from "../../assets/modern_logo.png";
 
 export function BatchDetail() {
   const { batchId } = useParams();

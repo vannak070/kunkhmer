@@ -184,7 +184,7 @@ export function AddFighter() {
       if (index !== -1) {
         MOCK_FIGHTERS[index] = fighterData;
       }
-      navigate(`/fighters/${existingFighter.id}`);
+      navigate(`/home/fighters/${existingFighter.id}`);
     } else {
       MOCK_FIGHTERS.push(fighterData);
       navigate("/home/fighters");

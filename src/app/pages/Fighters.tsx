@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router";
-import { Search, Plus, MapPin, Calendar, Users, Weight, Activity, Clock, ChevronDown } from "lucide-react";
+import { Search, Plus, MapPin, Calendar, Users, Weight, Activity, Clock, ChevronDown, Edit2, Trash2, Star } from "lucide-react";
 import { MOCK_FIGHTERS, MOCK_MATCHES } from "../data/mock";
 import { usePermissions } from "../hooks/usePermissions";
 import { FighterStatusBadge } from "../components/FighterStatusBadge";
@@ -82,32 +82,50 @@ export function Fighters() {
   const getAddFighterRoute = () => {
     // Club users can only register Kun Khmer fighters
     if (permissions.isClub()) {
-      return '/fighters/kunkhmer/new';
+      return '/home/fighters/kunkhmer/new';
     }
     
-    if (isKunKhmer) return '/fighters/kunkhmer/new';
-    if (isForeigner) return '/fighters/foreigner/new';
-    return '/fighters/kunkhmer/new'; // Default to Kun Khmer
+    if (isKunKhmer) return '/home/fighters/kunkhmer/new';
+    if (isForeigner) return '/home/fighters/foreigner/new';
+    return '/home/fighters/kunkhmer/new'; // Default to Kun Khmer
   };
 
   // Active filter count
   const activeFilterCount = [filterStatus, filterAvailability].filter(f => f !== 'all').length;
 
+  const getAvailabilityBadgeVariant = (label: string) => {
+    switch (label) {
+      case 'Available': return 'badge-emerald';
+      case 'Scheduled': return 'badge-blue';
+      case 'Resting': return 'badge-amber';
+      default: return 'badge-red';
+    }
+  };
+
+  const getAvailabilityDotColor = (label: string) => {
+    switch (label) {
+      case 'Available': return 'bg-emerald-500';
+      case 'Scheduled': return 'bg-blue-500';
+      case 'Resting': return 'bg-amber-500';
+      default: return 'bg-red-500';
+    }
+  };
+
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 flex flex-col h-full">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-4xl font-black tracking-tight uppercase text-primary">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             {isKunKhmer ? 'Kun Khmer Fighters' : isForeigner ? 'Foreigner Fighters' : 'Fighters List'}
           </h1>
-          <p className="text-muted-foreground mt-2 font-medium text-lg">{filteredFighters.length} fighters registered</p>
+          <p className="text-sm text-muted-foreground mt-1 font-medium">{filteredFighters.length} fighters registered</p>
         </div>
         {permissions.canCreate('fighters') && (
           <Link 
             to={getAddFighterRoute()}
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-secondary to-secondary/80 text-secondary-foreground px-6 py-3.5 rounded-xl font-bold transition-all shadow-md hover:shadow-lg hover:scale-[1.02]"
+            className="btn-primary py-2.5 px-5"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4" />
             Register Fighter
           </Link>
         )}
@@ -117,21 +135,21 @@ export function Fighters() {
       <div className="flex flex-col gap-4 relative z-10">
         {/* Search Bar */}
         <div className="relative flex-1 group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <input
             type="text"
             placeholder="Search fighters by name, alias, or gym..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-card border border-border rounded-xl pl-12 pr-4 py-4 text-foreground font-semibold placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary shadow-sm transition-all"
+            className="w-full bg-white border border-border/80 rounded-xl pl-11 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all"
           />
         </div>
 
         {/* Dropdown Filters Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Fighter Status Filter */}
           <div className="relative">
-            <label className="block text-xs font-black text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+            <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
               <Activity className="w-3.5 h-3.5 text-primary" />
               Fighter Status
             </label>
@@ -139,20 +157,20 @@ export function Fighters() {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full bg-card border border-border rounded-xl px-4 py-3 text-foreground font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary shadow-sm transition-all cursor-pointer hover:border-primary"
+                className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm text-foreground font-medium appearance-none focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm cursor-pointer hover:border-slate-300 transition-all"
               >
                 <option value="all">All Status</option>
                 <option value="Active">Active</option>
                 <option value="Injured">Injured</option>
                 <option value="Suspended">Suspended</option>
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             </div>
           </div>
 
           {/* Availability Filter */}
           <div className="relative">
-            <label className="block text-xs font-black text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+            <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-accent" />
               Availability
             </label>
@@ -160,7 +178,7 @@ export function Fighters() {
               <select
                 value={filterAvailability}
                 onChange={(e) => setFilterAvailability(e.target.value)}
-                className="w-full bg-card border border-border rounded-xl px-4 py-3 text-foreground font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent shadow-sm transition-all cursor-pointer hover:border-accent"
+                className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm text-foreground font-medium appearance-none focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm cursor-pointer hover:border-slate-300 transition-all"
               >
                 <option value="all">All</option>
                 <option value="Available">Available</option>
@@ -168,26 +186,26 @@ export function Fighters() {
                 <option value="Resting">Resting</option>
                 <option value="Not Eligible">Not Eligible</option>
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             </div>
           </div>
         </div>
 
         {/* Active Filters Indicator */}
         {activeFilterCount > 0 && (
-          <div className="flex items-center gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-xl">
+          <div className="flex items-center gap-3 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-xl">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-                <span className="text-primary-foreground text-xs font-black">{activeFilterCount}</span>
+              <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                <span className="text-primary-foreground text-[10px] font-bold">{activeFilterCount}</span>
               </div>
-              <span className="text-sm font-bold text-primary">Active filters applied</span>
+              <span className="text-sm font-semibold text-primary">Active filters applied</span>
             </div>
             <button
               onClick={() => {
                 setFilterStatus('all');
                 setFilterAvailability('all');
               }}
-              className="ml-auto text-sm font-bold text-secondary hover:underline"
+              className="ml-auto text-xs font-bold text-secondary hover:underline"
             >
               Clear All Filters
             </button>
@@ -196,16 +214,16 @@ export function Fighters() {
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
         {filteredFighters.length === 0 && (
-          <div className="col-span-full py-12 text-center bg-card rounded-3xl border border-border border-dashed">
-            <p className="text-muted-foreground font-medium">No fighters match your current filters.</p>
+          <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-border/60 border-dashed">
+            <p className="text-muted-foreground text-sm font-medium">No fighters match your current filters.</p>
             <button
               onClick={() => {
                 setFilterStatus('all');
                 setFilterAvailability('all');
               }}
-              className="mt-4 text-primary font-bold hover:underline"
+              className="mt-3 text-sm text-primary font-bold hover:underline"
             >
               Clear Filters
             </button>
@@ -216,49 +234,98 @@ export function Fighters() {
           const availability = getFighterStatus(fighter);
 
           return (
-          <div
-            key={fighter.id}
-            onClick={() => navigate(`/fighters/${fighter.id}`)}
-            className="group cursor-pointer bg-card rounded-2xl overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col relative border border-border"
-          >
-            <div className="relative h-56 overflow-hidden bg-gradient-to-br from-primary to-primary/80">
-              <img
-                src={unknownFighterImg}
-                alt={fighter.name}
-                className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
-              />
+            <div
+              key={fighter.id}
+              className="bg-white rounded-2xl border border-border/75 overflow-hidden shadow-sm hover:shadow-xl hover:border-primary/20 hover:-translate-y-1.5 transition-all duration-300 group flex flex-col"
+            >
+              {/* Image Banner Section */}
+              <div className="h-44 relative overflow-hidden bg-muted">
+                <img
+                  src={fighter.image || unknownFighterImg}
+                  alt={fighter.name}
+                  className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+
+                {/* Badge Overlays */}
+                <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
+                  {/* Grade Badge */}
+                  <div className="flex items-center gap-1 bg-[#FFFDF5] border border-amber-200/80 text-amber-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm">
+                    <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                    <span>Grade {fighter.grade || 'A'}</span>
+                  </div>
+
+                  {/* Availability Badge */}
+                  <div className={`badge-premium ${getAvailabilityBadgeVariant(availability.label)} shadow-sm`}>
+                    <span className={`badge-dot ${getAvailabilityDotColor(availability.label)}`} />
+                    <span>{availability.label}</span>
+                    {availability.daysLeft !== undefined && <span>({availability.daysLeft}d)</span>}
+                  </div>
+                </div>
+
+                {/* Action Overlays on Hover */}
+                {permissions.canEdit('fighters') && (
+                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-200 flex gap-2 translate-y-[-5px] group-hover:translate-y-0 z-10">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/home/fighters/${fighter.id}/edit`);
+                      }}
+                      className="p-2 bg-white/95 hover:bg-white text-primary border border-border/40 rounded-xl shadow-md backdrop-blur-md transition-all duration-150 hover:scale-105 active:scale-95"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    {permissions.canDelete('fighters') && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`Are you sure you want to delete ${fighter.name}?`)) {
+                            alert(`${fighter.name} has been deleted.`);
+                          }
+                        }}
+                        className="p-2 bg-red-50/95 hover:bg-red-500 hover:text-white text-secondary border border-red-100 rounded-xl shadow-md backdrop-blur-md transition-all duration-150 hover:scale-105 active:scale-95"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Card Content Section */}
+              <div className="p-5 flex-1 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors duration-200 tracking-tight leading-tight line-clamp-1 mb-0.5">
+                    {fighter.name}
+                  </h3>
+                  <div className="flex items-center gap-1.5 text-muted-foreground mb-4">
+                    <MapPin className="w-3.5 h-3.5 text-secondary shrink-0" />
+                    <span className="text-xs font-semibold">{fighter.gym}</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mb-5">
+                    <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px]">
+                      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Weight Class</div>
+                      <div className="text-sm font-semibold text-slate-800 line-clamp-1">{fighter.weight} kg</div>
+                    </div>
+                    <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px]">
+                      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Record</div>
+                      <div className="flex items-center gap-1 text-primary">
+                        <Activity className="w-3.5 h-3.5 shrink-0" />
+                        <span className="text-sm font-bold">{fighter.record}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Link
+                  to={`/home/fighters/${fighter.id}`}
+                  className="btn-outline w-full py-2 text-center"
+                >
+                  View Profile
+                </Link>
+              </div>
             </div>
-
-            <div className="p-5 flex-1 flex flex-col gap-3">
-              <div>
-                <h3 className="text-lg font-black text-foreground leading-tight mb-1 group-hover:text-primary transition-colors">{fighter.name}</h3>
-                <p className="text-sm text-muted-foreground font-bold italic">&quot;{fighter.alias}&quot;</p>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <MapPin className="w-4 h-4 shrink-0 text-secondary" />
-                  <span className="text-xs font-semibold">{fighter.gym}</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Weight className="w-4 h-4 shrink-0 text-emerald-600" />
-                  <span className="text-xs font-semibold">{fighter.weight} kg</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Activity className="w-4 h-4 shrink-0 text-primary" />
-                  <span className="text-xs font-semibold">Record: {fighter.record}</span>
-                </div>
-              </div>
-
-              <div className="mt-auto pt-3 border-t border-border">
-                <div className={`inline-flex items-center gap-2 px-3 py-1.5 ${availability.style} rounded-lg border-2 text-xs font-bold`}>
-                  <Clock className="w-3.5 h-3.5" />
-                  {availability.label}
-                  {availability.daysLeft !== undefined && <span>({availability.daysLeft}d)</span>}
-                </div>
-              </div>
-            </div>
-          </div>
           );
         })}
       </div>

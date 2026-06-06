@@ -3,9 +3,10 @@ import { useParams, Link } from "react-router";
 import { MOCK_FIGHTERS, MOCK_MATCHES, MOCK_CLUBS } from "../data/mock";
 import { MOCK_AWARDS } from "../data/awards";
 import { AwardCard } from "../components/AwardCard";
-import { ArrowLeft, User, HeartPulse, Activity, History, Edit, MapPin, Zap, CheckCircle, Calendar, Trophy, Users, ArrowRight, TrendingDown, ClipboardList } from "lucide-react";
+import { ArrowLeft, User, HeartPulse, Activity, History, Edit, MapPin, Zap, CheckCircle, Calendar, Trophy, Users, ArrowRight, TrendingDown, ClipboardList, Dumbbell, Star } from "lucide-react";
 import { clsx } from "clsx";
 import unknownFighterImg from "figma:asset/b9f2c3f9c8bd58ed74f9c92de40fb83809a138b3.png";
+import { usePermissions } from "../hooks/usePermissions";
 
 const tabs = [
   { id: "overview", label: "Overview", icon: User },
@@ -19,6 +20,7 @@ export function FighterDetail() {
   const { id } = useParams();
   const fighter = MOCK_FIGHTERS.find((f) => f.id === id) || MOCK_FIGHTERS[0];
   const [activeTab, setActiveTab] = useState("overview");
+  const permissions = usePermissions();
 
   // Get club information
   const club = MOCK_CLUBS.find(c => c.id === fighter.clubId);
@@ -48,86 +50,91 @@ export function FighterDetail() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F4F5F8]">
-      {/* Hero Header - New Design */}
-      <div className="relative w-full bg-gradient-to-br from-[#0A3D91] via-[#0847A8] to-[#0A3D91]">
-        {/* Back and Edit buttons */}
-        <div className="absolute top-6 left-6 z-20">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn">
+      {/* Header */}
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-4">
           <Link 
-            to="/home/fighters"
-            className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-xl transition-all border border-white/20 hover:scale-105"
+            to="/home/fighters" 
+            className="p-2.5 bg-white hover:bg-muted text-primary border border-border/80 rounded-xl transition-all active:scale-95 shadow-sm"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" />
           </Link>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{fighter.name}</h1>
+            <p className="text-sm text-muted-foreground mt-0.5 font-medium flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-secondary shrink-0" />
+              <span>{fighter.gym}</span>
+            </p>
+          </div>
         </div>
-        
-        <Link 
-          to={`/fighters/${fighter.id}/edit`}
-          className="absolute top-6 right-6 z-20 px-6 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl flex items-center gap-2 text-white font-bold backdrop-blur-xl transition-all border border-white/20 hover:scale-105"
-        >
-          <Edit className="w-4 h-4" />
-          Edit
-        </Link>
+        {permissions.canEdit('fighters') && (
+          <Link 
+            to={`/home/fighters/${fighter.id}/edit`}
+            className="btn-outline py-2.5 px-5 shadow-sm"
+          >
+            Edit Profile
+          </Link>
+        )}
+      </header>
 
-        {/* Fighter Info */}
-        <div className="max-w-7xl mx-auto px-8 py-12">
-          <div className="flex flex-col md:flex-row gap-8 items-start">
-            {/* Fighter Photo */}
-            <div className="relative">
-              <div className="w-48 h-64 rounded-3xl overflow-hidden border-4 border-white/20 shadow-2xl bg-gradient-to-br from-[#1A1A24] to-[#333333]">
-                <img
-                  src={fighter.image || unknownFighterImg}
-                  className="w-full h-full object-cover"
-                  alt={fighter.name}
-                />
+      {/* Hero Section */}
+      <div className="relative min-h-[300px] md:h-80 rounded-2xl overflow-hidden border border-border/60 shadow-lg bg-gradient-to-br from-[#0A3D91] via-[#0847A8] to-slate-950 flex flex-col justify-end p-6 md:p-8">
+        {/* Background decorative overlay / gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-transparent pointer-events-none" />
+        
+        {/* Fighter Info Row */}
+        <div className="relative z-10 flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-end h-full">
+          {/* Fighter Photo */}
+          <div className="relative shrink-0 z-20">
+            <div className="w-36 h-48 md:w-44 md:h-56 rounded-2xl overflow-hidden border-4 border-white shadow-xl bg-slate-800">
+              <img
+                src={fighter.image || unknownFighterImg}
+                className="w-full h-full object-cover"
+                alt={fighter.name}
+              />
+            </div>
+          </div>
+
+          {/* Fighter Details */}
+          <div className="flex-1 text-center md:text-left pb-2">
+            {/* Status Badges */}
+            <div className="flex flex-wrap justify-center md:justify-start gap-2 mb-3">
+              <div className={`badge-premium ${fighter.status === 'Active' ? 'badge-emerald' : 'badge-amber'}`}>
+                <span className={`badge-dot ${fighter.status === 'Active' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                <span className="font-bold text-xs uppercase">{fighter.status}</span>
+              </div>
+              <div className="badge-premium bg-white/10 text-white border-white/20">
+                <span className="font-bold text-xs uppercase">{fighter.origin || 'Local'}</span>
+              </div>
+              <div className="badge-premium bg-white/10 text-white border-white/20">
+                <span className="font-bold text-xs uppercase">{fighter.type}</span>
               </div>
             </div>
 
-            {/* Fighter Details */}
-            <div className="flex-1">
-              {/* Status Badges */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                <span className={`px-3 py-1.5 text-xs font-black uppercase tracking-widest rounded-lg ${
-                  fighter.status === 'Active' ? 'bg-emerald-500' : 'bg-amber-500'
-                } text-white`}>
-                  {fighter.status}
-                </span>
-                <span className={`px-3 py-1.5 text-xs font-black uppercase tracking-widest rounded-lg ${
-                  fighter.origin === 'Local' ? 'bg-white text-[#0A3D91]' : 'bg-white/20 text-white border border-white/40'
-                }`}>
-                  {fighter.origin || 'Local'}
-                </span>
-                <span className={`px-3 py-1.5 text-xs font-black uppercase tracking-widest rounded-lg ${
-                  fighter.type === 'Professional' ? 'bg-[#C8102E]' : 'bg-gray-700'
-                } text-white`}>
-                  {fighter.type}
-                </span>
+            {/* Fighter Name */}
+            <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight drop-shadow-md mb-1 leading-tight">
+              {fighter.name}
+            </h2>
+
+            {/* Alias */}
+            <p className="text-lg md:text-xl font-bold text-amber-300 italic mb-4">
+              &quot;{fighter.alias || 'The Warrior'}&quot;
+            </p>
+
+            {/* Stats Subgrid */}
+            <div className="flex flex-wrap justify-center md:justify-start items-center gap-3 text-white text-xs md:text-sm">
+              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 font-semibold shadow-sm">
+                <span>⚖️</span>
+                <span className="font-bold">{fighter.weight} kg</span>
               </div>
-
-              {/* Fighter Name */}
-              <h1 className="text-6xl font-black text-white mb-3 tracking-tight leading-none">
-                {fighter.name}
-              </h1>
-
-              {/* Alias */}
-              <p className="text-3xl font-black text-[#F2C94C] mb-6 italic">
-                "{fighter.alias || 'The Warrior'}"
-              </p>
-
-              {/* Stats */}
-              <div className="flex flex-wrap items-center gap-6 text-white">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">⚖️</span>
-                  <span className="text-xl font-bold">{fighter.weight} kg</span>
-                </div>
-                <span className="w-1 h-1 rounded-full bg-white/50" />
-                <div className="font-mono text-2xl font-black">
-                  {fighter.record}
-                </div>
-                <span className="w-1 h-1 rounded-full bg-white/50" />
-                <div className="px-4 py-2 bg-white/10 rounded-lg backdrop-blur-sm border border-white/20 font-bold">
-                  {fighter.style}
-                </div>
+              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 font-semibold shadow-sm font-mono">
+                <span>Record:</span>
+                <span className="font-extrabold text-[#FFFDF5]">{fighter.record}</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 font-semibold shadow-sm">
+                <span>Style:</span>
+                <span className="font-bold text-[#FFFDF5]">{fighter.style}</span>
               </div>
             </div>
           </div>
@@ -135,22 +142,22 @@ export function FighterDetail() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto w-full px-8 py-8">
+      <div className="w-full space-y-6">
         
         {/* Training Camp Card */}
         {club && (
-          <div className="mb-8 bg-white rounded-3xl shadow-lg border border-[#E0E0E0] overflow-hidden">
+          <div className="card-premium flex flex-col p-0 overflow-hidden">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
               {/* Gym Photo */}
-              <div className="relative h-80 md:h-auto">
+              <div className="relative h-64 md:h-auto">
                 <img 
                   src={club.image} 
                   alt={club.name} 
                   className="w-full h-full object-cover" 
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
                 <Link 
-                  to={`/clubs/${club.id}`}
+                  to={`/home/clubs/${club.id}`}
                   className="absolute bottom-6 left-6 right-6 px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-xl rounded-xl text-white font-bold text-center transition-all border border-white/30 flex items-center justify-center gap-2 group"
                 >
                   View Club Profile
@@ -159,61 +166,39 @@ export function FighterDetail() {
               </div>
 
               {/* Club Info */}
-              <div className="p-8">
-                <div className="mb-6">
-                  <p className="text-xs font-black text-[#707070] uppercase tracking-[0.15em] mb-2">Training Camp</p>
-                  <h2 className="text-3xl font-black text-[#1A1A24] mb-2">{club.name}</h2>
-                  <p className="text-[#707070] font-medium flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-[#0A3D91]" />
-                    {club.location}
-                  </p>
-                </div>
-
-                {/* Rating */}
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="flex items-center gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <span 
-                        key={i} 
-                        className={`text-xl ${i < Math.floor(club.rating) ? 'text-[#F2C94C]' : 'text-gray-300'}`}
-                      >
-                        ★
-                      </span>
-                    ))}
+              <div className="p-6 md:p-8 flex flex-col justify-between">
+                <div>
+                  <div className="mb-4">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Training Camp</p>
+                    <h2 className="text-2xl font-bold text-foreground mb-1.5">{club.name}</h2>
+                    <p className="text-muted-foreground text-sm font-medium flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-secondary" />
+                      {club.location}
+                    </p>
                   </div>
-                  <span className="text-sm font-bold text-[#707070]">{club.rating} Rating</span>
+
+                  {/* Rating */}
+                  <div className="flex items-center gap-2 mb-5">
+                    <div className="flex items-center gap-1 bg-[#FFFDF5] border border-amber-200/80 text-amber-700 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">
+                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                      <span>{club.rating} Rating</span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Info Cards */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-5 bg-[#0A3D91] rounded-2xl">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                        <Users className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-white/70 uppercase tracking-wider">Head Coach</p>
-                        <p className="text-lg font-black text-white">{club.headCoach}</p>
-                      </div>
-                    </div>
-                    <p className="text-xs text-white/60">
-                      Certified Kun Khmer instructor with 15+ years of experience
-                    </p>
+                  <div className="bg-muted/15 p-4 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[75px]">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Head Coach</div>
+                    <div className="text-sm font-semibold text-slate-800 line-clamp-1">{club.headCoach}</div>
                   </div>
 
-                  <div className="p-5 bg-blue-500 rounded-2xl">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                        <Users className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-white/70 uppercase tracking-wider">Active Fighters</p>
-                        <p className="text-lg font-black text-white">{club.activeFighters}</p>
-                      </div>
+                  <div className="bg-muted/15 p-4 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[75px]">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Active Fighters</div>
+                    <div className="flex items-center gap-1 text-primary">
+                      <Dumbbell className="w-3.5 h-3.5 shrink-0" />
+                      <span className="text-sm font-bold">{club.activeFighters} Active</span>
                     </div>
-                    <p className="text-xs text-white/60">
-                      Professional training facility with modern equipment
-                    </p>
                   </div>
                 </div>
               </div>
@@ -221,25 +206,40 @@ export function FighterDetail() {
           </div>
         )}
 
-        {/* Tab Navigation */}
-        <div className="mb-8">
-          <div className="flex overflow-x-auto no-scrollbar bg-white rounded-2xl shadow-md border border-[#E0E0E0] p-2 gap-2">
-            {tabs.map((tab) => (
+        {/* Tab Navigation - Aligned with ClubDetail */}
+        <div className="border-b border-border bg-white rounded-2xl p-1 gap-1 shadow-sm sticky top-0 z-20 flex overflow-x-auto no-scrollbar">
+          {tabs.map((tab) => {
+            // Determine badge count and color variant for each tab if applicable
+            let badgeCount = 0;
+            let badgeVariant = "badge-blue";
+            if (tab.id === "matches") {
+              badgeCount = fights.length;
+              badgeVariant = "badge-red";
+            } else if (tab.id === "awards") {
+              badgeCount = MOCK_AWARDS.filter(award => award.winnerId === fighter.id).length;
+              badgeVariant = "badge-amber";
+            }
+
+            return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={clsx(
-                  "flex items-center gap-2 px-6 py-3 text-sm font-bold uppercase tracking-wider transition-all rounded-xl whitespace-nowrap",
+                className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 py-3.5 text-sm font-semibold uppercase tracking-wider transition-all rounded-xl relative ${
                   activeTab === tab.id
-                    ? "bg-[#0A3D91] text-white shadow-md"
-                    : "text-[#707070] hover:text-[#1A1A24] hover:bg-[#F4F5F8]"
-                )}
+                    ? 'text-primary bg-primary/5 font-bold'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/45'
+                }`}
               >
-                <tab.icon className="w-5 h-5" />
-                {tab.label}
+                <tab.icon className="w-4 h-4 shrink-0" />
+                <span>{tab.label}</span>
+                {badgeCount > 0 && (
+                  <span className={`badge-premium ${badgeVariant} px-2 py-0.5 ml-1 text-[10px]`}>
+                    {badgeCount}
+                  </span>
+                )}
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
 
         {/* Tab Content */}
@@ -418,7 +418,7 @@ export function FighterDetail() {
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
                                 <img src={opponent.image || unknownFighterImg} className="w-10 h-10 rounded-lg object-cover border border-[#E0E0E0]" alt="" />
-                                <Link to={`/fighters/${opponent.id}`} className="font-bold text-[#0A3D91] hover:text-[#C8102E] hover:underline">
+                                <Link to={`/home/fighters/${opponent.id}`} className="font-bold text-primary hover:text-secondary hover:underline">
                                   {opponent.name}
                                 </Link>
                               </div>

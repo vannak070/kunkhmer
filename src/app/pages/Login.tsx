@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { LogIn, Shield, AlertCircle, Crown, Search, Settings, Tv, Dumbbell, Gavel } from "lucide-react";
 import { loginUser, MOCK_USERS } from "../data/users";
-import logoImg from "figma:asset/a66d0715b1669c88badc1b57f275bd3b2182d59e.png";
+import logoImg from "../../assets/modern_logo.png";
 
 export function Login() {
   const navigate = useNavigate();
@@ -49,13 +49,13 @@ export function Login() {
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border-4 border-white/20">
             {/* Header */}
             <div className="bg-gradient-to-r from-[#C8102E] to-[#A00D24] px-8 py-10 text-center">
-              <div className="w-24 h-24 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <img src={logoImg} alt="KUN KHMER" className="w-20 h-20 object-contain" />
+              <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg overflow-hidden p-1.5">
+                <img src={logoImg} alt="DIGITAL KUNKHMER" className="w-full h-full object-contain" />
               </div>
               <h1 className="text-3xl font-black text-white uppercase tracking-tight mb-2">
-                KUN KHMER
+                DIGITAL KUNKHMER
               </h1>
-              <p className="text-white/80 font-bold text-sm">Digital Platform v3.0</p>
+              <p className="text-white/80 font-bold text-sm">Management System</p>
             </div>
 
             {/* Login Form */}

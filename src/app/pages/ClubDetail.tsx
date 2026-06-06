@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router";
-import { ArrowLeft, MapPin, Dumbbell, Star, Phone, Mail, Trophy, Users, ShieldAlert, Weight, Activity, Clock, Calendar, TrendingUp, Shield } from "lucide-react";
-import { MOCK_FIGHTERS, MOCK_MATCHES } from "../data/mock";
+import { ArrowLeft, MapPin, Dumbbell, Star, Phone, Mail, Trophy, Users, ShieldAlert, Weight, Activity, Clock, Calendar, TrendingUp, Shield, ChevronDown } from "lucide-react";
+import { MOCK_FIGHTERS, MOCK_MATCHES, MOCK_CLUBS } from "../data/mock";
 import { FighterApprovalBadge } from "../components/FighterApprovalBadge";
 import type { FighterApprovalStatus } from "../data/fighterApproval";
 import unknownFighterImg from "figma:asset/b9f2c3f9c8bd58ed74f9c92de40fb83809a138b3.png";
@@ -8,10 +8,10 @@ import { useState } from "react";
 
 // Helper function to derive advanced fighter status based on matches and mock rules
 const getFighterStatus = (fighter: any) => {
-  if (fighter.status === 'Injured') return { label: 'Not Eligible', style: 'bg-red-100 text-[#C8102E] border-red-200', upcoming: null };
+  if (fighter.status === 'Injured') return { label: 'Not Eligible', style: 'badge-red', dot: 'bg-red-500', upcoming: null };
   
   // Find matches for this fighter
-  const fighterMatches = MOCK_MATCHES.filter(m => m.fighterA.id === fighter.id || m.fighterB.id === fighter.id);
+  const fighterMatches = MOCK_MATCHES.filter(m => m && m.fighterA && m.fighterB && (m.fighterA.id === fighter.id || m.fighterB.id === fighter.id));
   
   // Check for upcoming scheduled fights
   const upcomingFight = fighterMatches.find(m => m.status === 'Scheduled');
@@ -19,7 +19,8 @@ const getFighterStatus = (fighter: any) => {
     const opponent = upcomingFight.fighterA.id === fighter.id ? upcomingFight.fighterB : upcomingFight.fighterA;
     return { 
       label: 'Scheduled', 
-      style: 'bg-blue-100 text-[#0A3D91] border-blue-200',
+      style: 'badge-blue',
+      dot: 'bg-blue-500',
       upcoming: { date: upcomingFight.date, opponent: opponent.name, eventId: upcomingFight.eventId } 
     };
   }
@@ -32,11 +33,11 @@ const getFighterStatus = (fighter: any) => {
     const daysSince = Math.floor((today.getTime() - lastFightDate.getTime()) / (1000 * 60 * 60 * 24));
     
     if (daysSince < 10 && daysSince >= 0) {
-      return { label: 'Resting', style: 'bg-amber-100 text-amber-700 border-amber-200', upcoming: null, daysLeft: 10 - daysSince };
+      return { label: 'Resting', style: 'badge-amber', dot: 'bg-amber-500', upcoming: null, daysLeft: 10 - daysSince };
     }
   }
 
-  return { label: 'Available', style: 'bg-emerald-100 text-emerald-700 border-emerald-200', upcoming: null };
+  return { label: 'Available', style: 'badge-emerald', dot: 'bg-emerald-500', upcoming: null };
 };
 
 // Mock Data for Club Details
@@ -347,7 +348,25 @@ type TabType = 'overview' | 'fighters' | 'champions' | 'matches';
 
 export function ClubDetail() {
   const { id } = useParams();
-  const club = id ? MOCK_CLUBS_DATA[id] : null;
+  
+  // Find in detailed mock data first
+  let club = id ? MOCK_CLUBS_DATA[id] : null;
+  
+  // If not found in detailed records, check the main MOCK_CLUBS array (for newly added clubs)
+  if (!club && id) {
+    const mainClub = MOCK_CLUBS.find(c => c.id === id);
+    if (mainClub) {
+      club = {
+        ...mainClub,
+        description: mainClub.description || "No description provided for this new club.",
+        phone: mainClub.phone || "No phone number",
+        email: mainClub.email || "No email address",
+        established: mainClub.established || "2026",
+        champions: mainClub.champions || 0
+      };
+    }
+  }
+  
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
   // Filter fighters by club ID
@@ -356,8 +375,13 @@ export function ClubDetail() {
   // Filter matches involving fighters from this club
   const clubFighterIds = clubFighters.map(f => f.id);
   const clubMatches = MOCK_MATCHES.filter(match => 
-    clubFighterIds.includes(match.fighterA.id) || clubFighterIds.includes(match.fighterB.id)
-  ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    match && match.fighterA && match.fighterB && (
+      clubFighterIds.includes(match.fighterA.id) || clubFighterIds.includes(match.fighterB.id)
+    )
+  ).sort((a, b) => {
+    if (!a.date || !b.date) return 0;
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
+  });
 
   // Mock champions from this club
   const clubChampions = clubFighters.filter(f => ['f1', 'f2'].includes(f.id)).map(fighter => ({
@@ -369,488 +393,499 @@ export function ClubDetail() {
 
   if (!club) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#F5F5F7] h-full">
-        <ShieldAlert className="w-16 h-16 text-[#C8102E] mb-4" />
-        <h2 className="text-2xl font-black text-[#0A3D91] uppercase">Club Not Found</h2>
-        <p className="text-[#707070] mt-2 mb-6">The club you are looking for does not exist or has been removed.</p>
-        <Link to="/home/clubs" className="flex items-center gap-2 bg-[#0A3D91] text-[#FFFFFF] px-6 py-3 rounded-xl font-bold hover:bg-[#0A3D91]/90 transition-colors shadow-md">
-          <ArrowLeft className="w-5 h-5" /> Back to Clubs
+      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-background min-h-full animate-fadeIn">
+        <ShieldAlert className="w-16 h-16 text-secondary mb-4 shrink-0" />
+        <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-2">Club Not Found</h2>
+        <p className="text-muted-foreground text-sm max-w-xs text-center mb-6">The club you are looking for does not exist or has been removed.</p>
+        <Link to="/home/clubs" className="btn-primary py-2.5 px-6">
+          <ArrowLeft className="w-4 h-4" /> Back to Clubs
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F5F5F7] min-h-full">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn">
       {/* Header */}
-      <header className="bg-[#FFFFFF] border-b border-[#B0B0B0]/20 px-4 md:px-6 py-4 sticky top-0 z-20 shadow-sm">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <Link to="/home/clubs" className="p-2 bg-[#F5F5F7] hover:bg-[#E8E8ED] text-[#0A3D91] rounded-lg transition-colors border border-[#B0B0B0]/20">
-            <ArrowLeft className="w-5 h-5" />
+          <Link 
+            to="/home/clubs" 
+            className="p-2.5 bg-white hover:bg-muted text-primary border border-border/80 rounded-xl transition-all active:scale-95 shadow-sm"
+          >
+            <ArrowLeft className="w-4 h-4" />
           </Link>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg md:text-2xl font-black text-[#0A3D91] tracking-tight uppercase truncate">{club.name}</h1>
-            <p className="text-xs md:text-sm font-medium text-[#707070] flex items-center gap-1.5">
-              <MapPin className="w-3 md:w-3.5 h-3 md:h-3.5 text-[#C8102E]" /> {club.location}
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{club.name}</h1>
+            <p className="text-sm text-muted-foreground mt-0.5 font-medium flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-secondary shrink-0" />
+              <span>{club.location}</span>
             </p>
           </div>
-          <button className="hidden md:flex items-center gap-2 bg-[#C8102E] hover:bg-[#A00D24] text-[#FFFFFF] px-4 py-2.5 rounded-xl font-bold transition-all shadow-md">
-            Edit Profile
-          </button>
         </div>
+        <button className="btn-outline py-2.5 px-5 shadow-sm">
+          Edit Profile
+        </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto">
-        {/* Hero Section */}
-        <div className="relative h-64 md:h-80 overflow-hidden">
-          <img src={club.image} alt={club.name} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0A3D91]/95 via-[#0A3D91]/60 to-transparent" />
-          <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-8">
-            <div className="flex items-center gap-2 mb-3">
-              <div className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider backdrop-blur-xl shadow-lg border-2 ${
-                club.status === 'active' 
-                  ? 'bg-emerald-500/90 text-white border-white/30' 
-                  : 'bg-[#C8102E]/90 text-white border-white/30'
-              }`}>
-                {club.status}
-              </div>
-              <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-xl px-3 py-1.5 rounded-lg border-2 border-white/30 shadow-lg">
-                <Star className="w-4 h-4 text-[#F2C94C] fill-[#F2C94C]" />
-                <span className="font-black text-white">{club.rating}</span>
+      {/* Hero Section */}
+      <div className="relative h-64 md:h-80 rounded-2xl overflow-hidden border border-border/60 shadow-md">
+        <img src={club.image} alt={club.name} className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/50 to-transparent" />
+        
+        <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-8">
+          <div className="flex items-center gap-2 mb-3">
+            <div className={`badge-premium shadow-md border-white/20 ${
+              club.status === 'active' 
+                ? 'badge-emerald bg-emerald-500/90 text-white' 
+                : 'badge-red bg-red-500/90 text-white'
+            }`}>
+              <span className={`badge-dot ${club.status === 'active' ? 'bg-white' : 'bg-white/70'}`} />
+              <span className="capitalize font-bold text-xs">{club.status}</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-[#FFFDF5] border border-amber-200/80 text-amber-700 px-3 py-1.5 rounded-full text-xs font-semibold shadow-md">
+              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+              <span>{club.rating}</span>
+            </div>
+          </div>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight drop-shadow-md mb-4 leading-tight">
+            {club.name}
+          </h2>
+          
+          {/* Hero Stats Subgrid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 max-w-3xl">
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-3 text-center shadow-sm">
+              <div className="text-[10px] font-bold text-white/70 uppercase tracking-wider mb-0.5">Head Coach</div>
+              <div className="text-sm font-semibold text-white truncate">{club.headCoach}</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-3 text-center shadow-sm">
+              <div className="text-[10px] font-bold text-white/70 uppercase tracking-wider mb-0.5">Active Fighters</div>
+              <div className="flex items-center justify-center gap-1">
+                <Dumbbell className="w-3.5 h-3.5 text-amber-300" />
+                <div className="text-sm font-semibold text-white">{club.activeFighters}</div>
               </div>
             </div>
-            <h2 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tight drop-shadow-2xl mb-4">
-              {club.name}
-            </h2>
-            
-            {/* Stats Grid */}
-            <div className="grid grid-cols-4 gap-3 md:gap-4 max-w-3xl">
-              <div className="bg-white/10 backdrop-blur-xl border-2 border-white/20 rounded-xl p-3 text-center">
-                <div className="text-xs font-bold text-white/70 uppercase tracking-wider mb-1">Coach</div>
-                <div className="text-sm md:text-base font-black text-white truncate">{club.headCoach}</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-xl border-2 border-white/20 rounded-xl p-3 text-center">
-                <div className="text-xs font-bold text-white/70 uppercase tracking-wider mb-1">Fighters</div>
-                <div className="flex items-center justify-center gap-1">
-                  <Dumbbell className="w-4 h-4 text-[#F2C94C]" />
-                  <div className="text-sm md:text-base font-black text-white">{club.activeFighters}</div>
-                </div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-xl border-2 border-white/20 rounded-xl p-3 text-center">
-                <div className="text-xs font-bold text-white/70 uppercase tracking-wider mb-1">Since</div>
-                <div className="text-sm md:text-base font-black text-white">{club.established}</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-xl border-2 border-white/20 rounded-xl p-3 text-center">
-                <div className="text-xs font-bold text-white/70 uppercase tracking-wider mb-1">Titles</div>
-                <div className="flex items-center justify-center gap-1">
-                  <Trophy className="w-4 h-4 text-[#F2C94C]" />
-                  <div className="text-sm md:text-base font-black text-white">{club.champions}</div>
-                </div>
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-3 text-center shadow-sm">
+              <div className="text-[10px] font-bold text-white/70 uppercase tracking-wider mb-0.5">Established Since</div>
+              <div className="text-sm font-semibold text-white">{club.established}</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-3 text-center shadow-sm">
+              <div className="text-[10px] font-bold text-white/70 uppercase tracking-wider mb-0.5">Champions</div>
+              <div className="flex items-center justify-center gap-1">
+                <Trophy className="w-3.5 h-3.5 text-amber-300" />
+                <div className="text-sm font-semibold text-white">{club.champions}</div>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Tab Navigation */}
-        <div className="sticky top-[73px] md:top-[89px] z-10 bg-white border-b-2 border-[#E0E0E0] shadow-md">
-          <div className="flex overflow-x-auto no-scrollbar">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 px-4 md:px-6 py-4 font-black text-sm md:text-base uppercase tracking-tight transition-all relative ${
-                activeTab === 'overview'
-                  ? 'text-[#0A3D91] bg-[#0A3D91]/5'
-                  : 'text-[#707070] hover:text-[#0A3D91] hover:bg-[#F5F5F7]'
-              }`}
-            >
-              <Users className="w-5 h-5" />
-              <span className="hidden sm:inline">Overview</span>
-              {activeTab === 'overview' && (
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#0A3D91] via-[#C8102E] to-[#F2C94C]" />
-              )}
-            </button>
+      {/* Tab Navigation */}
+      <div className="border-b border-border bg-white rounded-2xl p-1 gap-1 shadow-sm sticky top-0 z-20 flex overflow-x-auto no-scrollbar">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 py-3.5 text-sm font-semibold uppercase tracking-wider transition-all rounded-xl relative ${
+            activeTab === 'overview'
+              ? 'text-primary bg-primary/5 font-bold'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/45'
+          }`}
+        >
+          <Users className="w-4 h-4 shrink-0" />
+          <span>Overview</span>
+        </button>
 
-            <button
-              onClick={() => setActiveTab('fighters')}
-              className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 px-4 md:px-6 py-4 font-black text-sm md:text-base uppercase tracking-tight transition-all relative ${
-                activeTab === 'fighters'
-                  ? 'text-[#0A3D91] bg-[#0A3D91]/5'
-                  : 'text-[#707070] hover:text-[#0A3D91] hover:bg-[#F5F5F7]'
-              }`}
-            >
-              <Dumbbell className="w-5 h-5" />
-              <span className="hidden sm:inline">Fighters</span>
-              <span className="px-2 py-0.5 bg-[#0A3D91] text-white text-xs rounded-full font-black">
-                {clubFighters.length}
-              </span>
-              {activeTab === 'fighters' && (
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#0A3D91] via-[#C8102E] to-[#F2C94C]" />
-              )}
-            </button>
+        <button
+          onClick={() => setActiveTab('fighters')}
+          className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 py-3.5 text-sm font-semibold uppercase tracking-wider transition-all rounded-xl relative ${
+            activeTab === 'fighters'
+              ? 'text-primary bg-primary/5 font-bold'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/45'
+          }`}
+        >
+          <Dumbbell className="w-4 h-4 shrink-0" />
+          <span>Fighters</span>
+          <span className="badge-premium badge-blue px-2 py-0.5 ml-1">
+            {clubFighters.length}
+          </span>
+        </button>
 
-            <button
-              onClick={() => setActiveTab('champions')}
-              className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 px-4 md:px-6 py-4 font-black text-sm md:text-base uppercase tracking-tight transition-all relative ${
-                activeTab === 'champions'
-                  ? 'text-[#0A3D91] bg-[#0A3D91]/5'
-                  : 'text-[#707070] hover:text-[#0A3D91] hover:bg-[#F5F5F7]'
-              }`}
-            >
-              <Trophy className="w-5 h-5" />
-              <span className="hidden sm:inline">Champions</span>
-              <span className="px-2 py-0.5 bg-[#F2C94C] text-[#1A1A24] text-xs rounded-full font-black">
-                {clubChampions.length}
-              </span>
-              {activeTab === 'champions' && (
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#F2C94C] via-[#C8102E] to-[#0A3D91]" />
-              )}
-            </button>
+        <button
+          onClick={() => setActiveTab('champions')}
+          className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 py-3.5 text-sm font-semibold uppercase tracking-wider transition-all rounded-xl relative ${
+            activeTab === 'champions'
+              ? 'text-primary bg-primary/5 font-bold'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/45'
+          }`}
+        >
+          <Trophy className="w-4 h-4 shrink-0" />
+          <span>Champions</span>
+          <span className="badge-premium badge-amber px-2 py-0.5 ml-1">
+            {clubChampions.length}
+          </span>
+        </button>
 
-            <button
-              onClick={() => setActiveTab('matches')}
-              className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 px-4 md:px-6 py-4 font-black text-sm md:text-base uppercase tracking-tight transition-all relative ${
-                activeTab === 'matches'
-                  ? 'text-[#0A3D91] bg-[#0A3D91]/5'
-                  : 'text-[#707070] hover:text-[#0A3D91] hover:bg-[#F5F5F7]'
-              }`}
-            >
-              <TrendingUp className="w-5 h-5" />
-              <span className="hidden sm:inline">Matches</span>
-              <span className="px-2 py-0.5 bg-[#C8102E] text-white text-xs rounded-full font-black">
-                {clubMatches.length}
-              </span>
-              {activeTab === 'matches' && (
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#C8102E] via-[#0A3D91] to-[#F2C94C]" />
-              )}
-            </button>
-          </div>
-        </div>
+        <button
+          onClick={() => setActiveTab('matches')}
+          className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 py-3.5 text-sm font-semibold uppercase tracking-wider transition-all rounded-xl relative ${
+            activeTab === 'matches'
+              ? 'text-primary bg-primary/5 font-bold'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/45'
+          }`}
+        >
+          <TrendingUp className="w-4 h-4 shrink-0" />
+          <span>Matches</span>
+          <span className="badge-premium badge-red px-2 py-0.5 ml-1">
+            {clubMatches.length}
+          </span>
+        </button>
+      </div>
 
-        {/* Tab Content */}
-        <div className="p-4 md:p-8 max-w-7xl mx-auto w-full">
-          {/* Overview Tab */}
-          {activeTab === 'overview' && (
-            <div className="space-y-6 animate-fadeIn">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* About */}
-                <div className="md:col-span-2">
-                  <div className="bg-white rounded-2xl border-2 border-[#E0E0E0] p-6 shadow-lg hover:shadow-xl transition-shadow">
-                    <h3 className="text-xl font-black text-[#0A3D91] uppercase tracking-tight mb-4 flex items-center gap-2">
-                      <Users className="w-6 h-6 text-[#C8102E]" />
-                      About the Club
+      {/* Tab Content Section */}
+      <div className="w-full">
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* About description */}
+              <div className="md:col-span-2">
+                <div className="card-premium h-full flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+                      <Users className="w-4 h-4 text-primary shrink-0" />
+                      <span>About the Club</span>
                     </h3>
-                    <p className="text-[#333333] leading-relaxed font-medium text-base">
+                    <p className="text-slate-700 leading-relaxed font-medium text-sm">
                       {club.description}
                     </p>
                   </div>
                 </div>
+              </div>
 
-                {/* Contact */}
-                <div>
-                  <div className="bg-gradient-to-br from-[#0A3D91] to-[#051C42] rounded-2xl border-2 border-[#0A3D91] p-6 shadow-lg text-white">
-                    <h3 className="text-xl font-black uppercase tracking-tight mb-4">Contact Info</h3>
+              {/* Contact information details */}
+              <div>
+                <div className="card-premium bg-slate-900 border-slate-800 text-white shadow-md flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 mb-4">Contact Info</h3>
                     <div className="space-y-4">
                       <div className="flex items-start gap-3">
-                        <div className="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl">
-                          <Phone className="w-5 h-5" />
+                        <div className="p-2 bg-white/10 backdrop-blur-sm rounded-lg shrink-0 mt-0.5">
+                          <Phone className="w-4 h-4 text-amber-300" />
                         </div>
-                        <div className="flex-1">
-                          <span className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-1">Phone</span>
-                          <a href={`tel:${club.phone}`} className="text-sm font-bold hover:text-[#F2C94C] transition-colors break-all">{club.phone}</a>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <div className="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl">
-                          <Mail className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1">
-                          <span className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-1">Email</span>
-                          <a href={`mailto:${club.email}`} className="text-sm font-bold hover:text-[#F2C94C] transition-colors break-all">{club.email}</a>
+                        <div className="flex-1 min-w-0">
+                          <span className="block text-[10px] font-bold text-white/50 uppercase tracking-wider mb-0.5">Phone</span>
+                          <a href={`tel:${club.phone}`} className="text-sm font-semibold hover:text-[#F2C94C] transition-colors break-all block">{club.phone}</a>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
-                        <div className="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl">
-                          <MapPin className="w-5 h-5" />
+                        <div className="p-2 bg-white/10 backdrop-blur-sm rounded-lg shrink-0 mt-0.5">
+                          <Mail className="w-4 h-4 text-amber-300" />
                         </div>
-                        <div className="flex-1">
-                          <span className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-1">Location</span>
-                          <span className="text-sm font-bold">{club.location}</span>
+                        <div className="flex-1 min-w-0">
+                          <span className="block text-[10px] font-bold text-white/50 uppercase tracking-wider mb-0.5">Email</span>
+                          <a href={`mailto:${club.email}`} className="text-sm font-semibold hover:text-[#F2C94C] transition-colors break-all block">{club.email}</a>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-white/10 backdrop-blur-sm rounded-lg shrink-0 mt-0.5">
+                          <MapPin className="w-4 h-4 text-amber-300" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="block text-[10px] font-bold text-white/50 uppercase tracking-wider mb-0.5">Location</span>
+                          <span className="text-sm font-semibold text-slate-200 block truncate">{club.location}</span>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Quick Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-gradient-to-br from-[#0A3D91] to-[#051C42] rounded-2xl p-6 text-center shadow-lg border-2 border-[#0A3D91]">
-                  <div className="text-4xl font-black text-white mb-2">{clubFighters.length}</div>
-                  <div className="text-xs font-bold text-white/70 uppercase tracking-wider">Total Fighters</div>
+            {/* Quick Stats Summary Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="card-premium text-center hover:bg-muted/15 hover:border-slate-300 transition-all flex flex-col justify-center py-5">
+                <div className="text-3xl font-black text-primary mb-1">{clubFighters.length}</div>
+                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Fighters</div>
+              </div>
+              <div className="card-premium text-center hover:bg-muted/15 hover:border-slate-300 transition-all flex flex-col justify-center py-5">
+                <div className="text-3xl font-black text-amber-600 mb-1">{clubChampions.length}</div>
+                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Champions</div>
+              </div>
+              <div className="card-premium text-center hover:bg-muted/15 hover:border-slate-300 transition-all flex flex-col justify-center py-5">
+                <div className="text-3xl font-black text-secondary mb-1">{clubMatches.length}</div>
+                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Matches</div>
+              </div>
+              <div className="card-premium text-center hover:bg-muted/15 hover:border-slate-300 transition-all flex flex-col justify-center py-5">
+                <div className="text-3xl font-black text-emerald-600 mb-1">
+                  {clubFighters.filter(f => getFighterStatus(f).label === 'Available').length}
                 </div>
-                <div className="bg-gradient-to-br from-[#F2C94C] to-[#E0A800] rounded-2xl p-6 text-center shadow-lg border-2 border-[#F2C94C]">
-                  <div className="text-4xl font-black text-[#1A1A24] mb-2">{clubChampions.length}</div>
-                  <div className="text-xs font-bold text-[#1A1A24]/70 uppercase tracking-wider">Champions</div>
-                </div>
-                <div className="bg-gradient-to-br from-[#C8102E] to-[#A00D24] rounded-2xl p-6 text-center shadow-lg border-2 border-[#C8102E]">
-                  <div className="text-4xl font-black text-white mb-2">{clubMatches.length}</div>
-                  <div className="text-xs font-bold text-white/70 uppercase tracking-wider">Total Matches</div>
-                </div>
-                <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-2xl p-6 text-center shadow-lg border-2 border-emerald-500">
-                  <div className="text-4xl font-black text-white mb-2">{clubFighters.filter(f => getFighterStatus(f).label === 'Available').length}</div>
-                  <div className="text-xs font-bold text-white/70 uppercase tracking-wider">Available Now</div>
-                </div>
+                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Available Now</div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Fighters Tab */}
-          {activeTab === 'fighters' && (
-            <div className="animate-fadeIn">
-              {clubFighters.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {clubFighters.map((fighter) => {
-                    const availability = getFighterStatus(fighter);
-                    const approvalStatus: FighterApprovalStatus = ['f1', 'f2', 'f5'].includes(fighter.id) ? 'approved' : 'pending';
-                    const isApproved = approvalStatus === 'approved';
-                    
-                    return (
-                      <div
-                        key={fighter.id}
-                        onClick={() => window.location.href = `/fighters/${fighter.id}`}
-                        className="group cursor-pointer bg-white rounded-2xl overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 border-2 border-[#E0E0E0] hover:border-[#0A3D91]"
-                      >
-                        <div className="relative h-64 overflow-hidden bg-gradient-to-br from-[#0A3D91] to-[#051C42]">
-                          <img
-                            src={unknownFighterImg}
-                            alt={fighter.name}
-                            className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-700 ease-out"
-                          />
-                          {!isApproved && (
-                            <div className="absolute top-3 right-3">
-                              <FighterApprovalBadge status={approvalStatus} size="sm" />
+        {/* Fighters Tab */}
+        {activeTab === 'fighters' && (
+          <div className="animate-fadeIn">
+            {clubFighters.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {clubFighters.map((fighter) => {
+                  const availability = getFighterStatus(fighter);
+                  const approvalStatus: FighterApprovalStatus = ['f1', 'f2', 'f5'].includes(fighter.id) ? 'approved' : 'pending';
+                  const isApproved = approvalStatus === 'approved';
+                  
+                  return (
+                    <Link
+                      key={fighter.id}
+                      to={`/home/fighters/${fighter.id}`}
+                      className="group card-premium overflow-hidden hover:-translate-y-1.5 hover:shadow-xl hover:border-primary/20 transition-all duration-300 flex flex-col p-0"
+                    >
+                      {/* Photo Section */}
+                      <div className="h-56 relative overflow-hidden bg-gradient-to-br from-primary to-[#082E6E] shrink-0">
+                        <img
+                          src={fighter.image || unknownFighterImg}
+                          alt={fighter.name}
+                          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
+                        />
+                        {!isApproved && (
+                          <div className="absolute top-3 right-3 z-10">
+                            <FighterApprovalBadge status={approvalStatus} size="sm" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Details Section */}
+                      <div className="p-4 flex-1 flex flex-col justify-between">
+                        <div>
+                          <h3 className="text-base font-bold text-foreground leading-tight group-hover:text-primary transition-colors truncate mb-0.5">
+                            {fighter.name}
+                          </h3>
+                          <p className="text-xs text-muted-foreground font-bold italic truncate mb-3">&quot;{fighter.alias}&quot;</p>
+                          
+                          <div className="grid grid-cols-2 gap-2 mb-4">
+                            <div className="bg-muted/15 p-2 rounded-lg border border-border/40 flex items-center gap-1.5">
+                              <Weight className="w-3.5 h-3.5 text-secondary shrink-0" />
+                              <span className="text-xs font-semibold text-slate-700 font-mono">{fighter.weight} kg</span>
+                            </div>
+                            <div className="bg-muted/15 p-2 rounded-lg border border-border/40 flex items-center gap-1.5">
+                              <Activity className="w-3.5 h-3.5 text-primary shrink-0" />
+                              <span className="text-xs font-semibold text-slate-700 font-mono truncate">{fighter.record}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-border/60">
+                          {isApproved ? (
+                            <div className={`badge-premium ${availability.style}`}>
+                              <span className={`badge-dot ${availability.dot}`} />
+                              <span>{availability.label}</span>
+                              {availability.daysLeft !== undefined && <span className="font-mono ml-0.5">({availability.daysLeft}d)</span>}
+                            </div>
+                          ) : (
+                            <div className="badge-premium badge-red">
+                              <span className="badge-dot bg-red-500" />
+                              <span>Cannot Match</span>
                             </div>
                           )}
                         </div>
-                        
-                        <div className="p-5 space-y-3">
-                          <div>
-                            <h3 className="text-lg font-black text-[#1A1A24] leading-tight mb-1 group-hover:text-[#0A3D91] transition-colors">{fighter.name}</h3>
-                            <p className="text-sm text-[#707070] font-bold italic">&quot;{fighter.alias}&quot;</p>
-                          </div>
-
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-[#707070]">
-                              <Weight className="w-4 h-4 shrink-0 text-emerald-600" />
-                              <span className="text-xs font-semibold">{fighter.weight} kg</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-[#707070]">
-                              <Activity className="w-4 h-4 shrink-0 text-[#0A3D91]" />
-                              <span className="text-xs font-semibold">Record: {fighter.record}</span>
-                            </div>
-                          </div>
-
-                          <div className="pt-3 border-t-2 border-[#E0E0E0]">
-                            {isApproved ? (
-                              <div className={`inline-flex items-center gap-2 px-3 py-2 ${availability.style} rounded-lg border-2 text-xs font-bold`}>
-                                <Clock className="w-4 h-4" />
-                                {availability.label}
-                                {availability.daysLeft !== undefined && <span>({availability.daysLeft}d)</span>}
-                              </div>
-                            ) : (
-                              <div className="inline-flex items-center gap-2 px-3 py-2 bg-red-100 text-[#C8102E] border-red-200 rounded-lg border-2 text-xs font-bold">
-                                <ShieldAlert className="w-4 h-4" />
-                                Cannot Match
-                              </div>
-                            )}
-                          </div>
-                        </div>
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-20 bg-white rounded-2xl border-2 border-[#E0E0E0]">
-                  <Dumbbell className="w-20 h-20 text-[#B0B0B0] mx-auto mb-4" />
-                  <p className="text-[#707070] font-bold text-lg">No fighters found for this club</p>
-                </div>
-              )}
-            </div>
-          )}
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-20 bg-white rounded-2xl border border-border/60 shadow-sm">
+                <Dumbbell className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-foreground mb-1">No Fighters Registered</h3>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto">There are currently no fighters registered under this camp.</p>
+              </div>
+            )}
+          </div>
+        )}
 
-          {/* Champions Tab */}
-          {activeTab === 'champions' && (
-            <div className="animate-fadeIn">
-              {clubChampions.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {clubChampions.map((champion) => (
-                    <div
-                      key={champion.id}
-                      onClick={() => window.location.href = `/fighters/${champion.id}`}
-                      className="group cursor-pointer bg-white rounded-2xl border-2 border-[#F2C94C] overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300"
-                    >
-                      <div className="relative h-56 overflow-hidden bg-gradient-to-br from-[#F2C94C] to-[#C8102E]">
-                        <img
-                          src={unknownFighterImg}
-                          alt={champion.name}
-                          className="w-full h-full object-cover object-center opacity-80 group-hover:scale-110 transition-transform duration-700 ease-out"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-                        <div className="absolute top-4 left-4 bg-[#F2C94C] px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg border-2 border-white/30">
-                          <Trophy className="w-5 h-5 text-[#1A1A24]" />
-                          <span className="text-sm font-black text-[#1A1A24] uppercase">Champion</span>
-                        </div>
+        {/* Champions Tab */}
+        {activeTab === 'champions' && (
+          <div className="animate-fadeIn">
+            {clubChampions.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {clubChampions.map((champion) => (
+                  <Link
+                    key={champion.id}
+                    to={`/home/fighters/${champion.id}`}
+                    className="group card-premium overflow-hidden hover:-translate-y-1.5 hover:shadow-xl hover:border-amber-400/80 transition-all duration-300 flex flex-col p-0 border-amber-300"
+                  >
+                    {/* Champion Photo Section */}
+                    <div className="relative h-56 overflow-hidden bg-gradient-to-br from-amber-400 to-[#C8102E] shrink-0">
+                      <img
+                        src={champion.image || unknownFighterImg}
+                        alt={champion.name}
+                        className="w-full h-full object-cover object-center opacity-90 group-hover:scale-103 transition-transform duration-500 ease-out"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      <div className="absolute top-4 left-4 bg-amber-400 border border-white/20 text-[#1A1A24] px-3.5 py-1 rounded-full flex items-center gap-1.5 shadow-md">
+                        <Trophy className="w-4 h-4 text-[#1A1A24] fill-[#1A1A24]" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Champion</span>
                       </div>
-                      
-                      <div className="p-6">
-                        <h3 className="text-2xl font-black text-[#1A1A24] mb-2 group-hover:text-[#C8102E] transition-colors">{champion.name}</h3>
-                        <p className="text-sm text-[#707070] font-bold italic mb-5">&quot;{champion.alias}&quot;</p>
+                    </div>
+                    
+                    {/* Detail Section */}
+                    <div className="p-6 flex-1 flex flex-col justify-between">
+                      <div>
+                        <h3 className="text-xl font-extrabold text-foreground group-hover:text-primary transition-colors mb-0.5">{champion.name}</h3>
+                        <p className="text-xs text-muted-foreground font-bold italic mb-4">&quot;{champion.alias}&quot;</p>
                         
-                        <div className="bg-gradient-to-r from-[#F2C94C]/20 to-transparent p-4 rounded-xl mb-5 border-l-4 border-[#F2C94C]">
-                          <p className="text-lg font-black text-[#0A3D91] mb-2">{champion.beltTitle}</p>
-                          <div className="flex items-center gap-4 text-xs font-bold text-[#707070]">
-                            <span className="flex items-center gap-1.5">
-                              <Shield className="w-4 h-4 text-emerald-600" />
+                        {/* Belt Description */}
+                        <div className="bg-amber-50/50 border border-amber-200/60 p-4 rounded-xl mb-4 flex flex-col justify-between">
+                          <p className="text-base font-bold text-primary leading-snug">{champion.beltTitle}</p>
+                          <div className="flex items-center gap-3 text-xs font-semibold text-muted-foreground mt-2">
+                            <span className="flex items-center gap-1">
+                              <Shield className="w-3.5 h-3.5 text-emerald-600" />
                               {champion.defenses} Defense{champion.defenses !== 1 ? 's' : ''}
                             </span>
-                            <span className="flex items-center gap-1.5">
-                              <Calendar className="w-4 h-4 text-[#C8102E]" />
-                              Won: {new Date(champion.wonDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                            <span className="w-1 h-1 bg-slate-300 rounded-full" />
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3.5 h-3.5 text-secondary" />
+                              Won {new Date(champion.wonDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                             </span>
                           </div>
                         </div>
+                      </div>
 
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="bg-[#F5F5F7] p-3 rounded-xl text-center border-2 border-[#E0E0E0]">
-                            <p className="text-xs font-bold text-[#B0B0B0] uppercase mb-1">Weight</p>
-                            <p className="text-base font-black text-[#333333]">{champion.weight} kg</p>
-                          </div>
-                          <div className="bg-[#F5F5F7] p-3 rounded-xl text-center border-2 border-[#E0E0E0]">
-                            <p className="text-xs font-bold text-[#B0B0B0] uppercase mb-1">Record</p>
-                            <p className="text-base font-black text-[#333333]">{champion.record}</p>
-                          </div>
-                          <div className="bg-[#F5F5F7] p-3 rounded-xl text-center border-2 border-[#E0E0E0]">
-                            <p className="text-xs font-bold text-[#B0B0B0] uppercase mb-1">Grade</p>
-                            <p className="text-base font-black text-[#C8102E]">{champion.grade}</p>
-                          </div>
+                      {/* Stats Subgrid */}
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="bg-muted/10 p-2.5 rounded-lg border border-border/60 text-center">
+                          <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Weight</p>
+                          <p className="text-sm font-semibold text-slate-800 font-mono">{champion.weight} kg</p>
+                        </div>
+                        <div className="bg-muted/10 p-2.5 rounded-lg border border-border/60 text-center">
+                          <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Record</p>
+                          <p className="text-sm font-semibold text-slate-800 font-mono">{champion.record}</p>
+                        </div>
+                        <div className="bg-muted/10 p-2.5 rounded-lg border border-border/60 text-center">
+                          <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Grade</p>
+                          <p className="text-sm font-semibold text-secondary font-mono">{champion.grade}</p>
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-20 bg-gradient-to-br from-[#F2C94C]/10 to-white rounded-2xl border-2 border-[#F2C94C]">
-                  <Trophy className="w-20 h-20 text-[#F2C94C] mx-auto mb-4" />
-                  <p className="text-[#707070] font-bold text-lg">No champions from this club yet</p>
-                  <p className="text-sm text-[#B0B0B0] mt-2">Keep training and competing!</p>
-                </div>
-              )}
-            </div>
-          )}
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-20 bg-amber-50/20 rounded-2xl border border-amber-200/50 shadow-sm flex flex-col justify-center">
+                <Trophy className="w-16 h-16 text-amber-400 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-foreground mb-1">No Champions Yet</h3>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto">This training camp does not currently hold any title belts.</p>
+              </div>
+            )}
+          </div>
+        )}
 
-          {/* Matches Tab */}
-          {activeTab === 'matches' && (
-            <div className="space-y-4 animate-fadeIn">
-              {clubMatches.length > 0 ? (
-                <>
-                  {clubMatches.map((match) => {
-                    const clubFighterIsA = clubFighterIds.includes(match.fighterA.id);
-                    const clubFighterIsB = clubFighterIds.includes(match.fighterB.id);
-                    const bothFromClub = clubFighterIsA && clubFighterIsB;
-                    
-                    return (
-                      <Link
-                        key={match.id}
-                        to={`/match/${match.id}`}
-                        className="block bg-white rounded-2xl border-2 border-[#E0E0E0] hover:border-[#0A3D91] hover:shadow-xl transition-all duration-300 overflow-hidden"
-                      >
-                        <div className="p-6">
-                          <div className="flex items-center justify-between mb-5">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="w-5 h-5 text-[#C8102E]" />
-                              <span className="font-bold text-[#707070]">
-                                {new Date(match.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                              </span>
-                            </div>
-                            <span className={`px-4 py-2 rounded-lg text-xs font-black uppercase ${
-                              match.status === 'Scheduled' ? 'bg-blue-100 text-blue-700 border-2 border-blue-200' :
-                              match.status === 'Completed' ? 'bg-emerald-100 text-emerald-700 border-2 border-emerald-200' :
-                              'bg-gray-100 text-gray-700 border-2 border-gray-200'
-                            }`}>
-                              {match.status}
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
-                            {/* Fighter A */}
-                            <div className={`text-left ${
-                              clubFighterIsA ? 'bg-[#0A3D91]/10 p-4 rounded-xl border-2 border-[#0A3D91]/30' : ''
-                            }`}>
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="text-lg font-black text-[#1A1A24]">{match.fighterA.name}</span>
-                                {clubFighterIsA && (
-                                  <span className="px-2 py-1 bg-[#0A3D91] text-white text-[9px] font-black rounded uppercase">
-                                    Our Fighter
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-sm text-[#707070] font-semibold">{match.fighterA.weight} kg • {match.fighterA.gym}</p>
-                            </div>
-
-                            {/* VS */}
-                            <div className="flex flex-col items-center">
-                              <span className="font-black text-[#C8102E] px-6 py-3 bg-red-50 rounded-xl border-2 border-[#C8102E]/20">VS</span>
-                            </div>
-
-                            {/* Fighter B */}
-                            <div className={`text-right ${
-                              clubFighterIsB ? 'bg-[#0A3D91]/10 p-4 rounded-xl border-2 border-[#0A3D91]/30' : ''
-                            }`}>
-                              <div className="flex items-center justify-end gap-2 mb-2">
-                                {clubFighterIsB && (
-                                  <span className="px-2 py-1 bg-[#0A3D91] text-white text-[9px] font-black rounded uppercase">
-                                    Our Fighter
-                                  </span>
-                                )}
-                                <span className="text-lg font-black text-[#1A1A24]">{match.fighterB.name}</span>
-                              </div>
-                              <p className="text-sm text-[#707070] font-semibold">{match.fighterB.weight} kg • {match.fighterB.gym}</p>
-                            </div>
-                          </div>
-
-                          {match.result && (
-                            <div className="mt-5 pt-5 border-t-2 border-[#E0E0E0] flex items-center justify-center">
-                              <div className="flex items-center gap-3 px-5 py-3 bg-emerald-50 rounded-xl border-2 border-emerald-200">
-                                <Trophy className="w-5 h-5 text-emerald-600" />
-                                <span className="font-black text-emerald-700">
-                                  Winner: {match.result.winner === 'A' ? match.fighterA.name : match.fighterB.name}
-                                </span>
-                                <span className="text-sm font-bold text-emerald-600">({match.result.method})</span>
-                              </div>
-                            </div>
-                          )}
-
-                          {bothFromClub && (
-                            <div className="mt-4 text-center">
-                              <span className="inline-flex items-center gap-2 px-4 py-2 bg-[#F2C94C]/20 text-[#1A1A24] rounded-xl text-xs font-black border-2 border-[#F2C94C]/50">
-                                <Users className="w-4 h-4" />
-                                CLUB INTERNAL MATCH
-                              </span>
-                            </div>
-                          )}
+        {/* Matches Tab */}
+        {activeTab === 'matches' && (
+          <div className="space-y-4 animate-fadeIn">
+            {clubMatches.length > 0 ? (
+              <>
+                {clubMatches.map((match) => {
+                  const clubFighterIsA = clubFighterIds.includes(match.fighterA.id);
+                  const clubFighterIsB = clubFighterIds.includes(match.fighterB.id);
+                  const bothFromClub = clubFighterIsA && clubFighterIsB;
+                  
+                  return (
+                    <Link
+                      key={match.id}
+                      to={`/home/match/${match.id}`}
+                      className="block card-premium hover:border-primary/20 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 overflow-hidden p-6"
+                    >
+                      <div className="flex items-center justify-between border-b border-border/40 pb-4 mb-4">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-secondary" />
+                          <span className="text-sm font-semibold text-muted-foreground">
+                            {new Date(match.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
                         </div>
-                      </Link>
-                    );
-                  })}
-                </>
-              ) : (
-                <div className="text-center py-20 bg-white rounded-2xl border-2 border-[#E0E0E0]">
-                  <TrendingUp className="w-20 h-20 text-[#B0B0B0] mx-auto mb-4" />
-                  <p className="text-[#707070] font-bold text-lg">No matches found for this club</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                        <span className={`badge-premium ${
+                          match.status === 'Scheduled' ? 'badge-blue' :
+                          match.status === 'Completed' ? 'badge-emerald' :
+                          'bg-slate-100 text-slate-700'
+                        }`}>
+                          {match.status}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
+                        {/* Fighter A */}
+                        <div className={`p-4 rounded-xl flex flex-col justify-center ${
+                          clubFighterIsA 
+                            ? 'bg-primary/5 border border-primary/20 text-left' 
+                            : 'text-left border border-transparent'
+                        }`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-base font-bold text-foreground truncate">{match.fighterA.name}</span>
+                            {clubFighterIsA && (
+                              <span className="px-2 py-0.5 bg-primary text-white text-[9px] font-bold rounded uppercase">
+                                Our Fighter
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground font-semibold">{match.fighterA.weight} kg • {match.fighterA.gym}</p>
+                        </div>
+
+                        {/* VS Badging */}
+                        <div className="flex flex-col items-center">
+                          <span className="text-[10px] font-bold text-secondary px-2.5 py-1 bg-red-50 border border-red-200/50 rounded-lg shadow-sm font-mono">VS</span>
+                        </div>
+
+                        {/* Fighter B */}
+                        <div className={`p-4 rounded-xl flex flex-col justify-center ${
+                          clubFighterIsB 
+                            ? 'bg-primary/5 border border-primary/20 text-right' 
+                            : 'text-right border border-transparent'
+                        }`}>
+                          <div className="flex items-center justify-end gap-2 mb-1">
+                            {clubFighterIsB && (
+                              <span className="px-2 py-0.5 bg-primary text-white text-[9px] font-bold rounded uppercase">
+                                Our Fighter
+                              </span>
+                            )}
+                            <span className="text-base font-bold text-foreground truncate">{match.fighterB.name}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground font-semibold text-right">{match.fighterB.weight} kg • {match.fighterB.gym}</p>
+                        </div>
+                      </div>
+
+                      {match.result && (
+                        <div className="mt-4 pt-4 border-t border-border/40 flex items-center justify-center">
+                          <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-200 text-xs font-bold text-emerald-700 shadow-sm animate-fadeIn">
+                            <Trophy className="w-4 h-4 text-emerald-600 fill-emerald-100" />
+                            <span>
+                              Winner: {match.result.winner === 'A' ? match.fighterA.name : match.fighterB.name}
+                            </span>
+                            <span className="text-[10px] text-emerald-600">({match.result.method})</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {bothFromClub && (
+                        <div className="mt-3 text-center">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50/50 text-[#1A1A24] rounded-lg text-[10px] font-bold border border-amber-200/50">
+                            <Users className="w-3.5 h-3.5 text-amber-500" />
+                            CLUB INTERNAL MATCH
+                          </span>
+                        </div>
+                      )}
+                    </Link>
+                  );
+                })}
+              </>
+            ) : (
+              <div className="text-center py-20 bg-white rounded-2xl border border-border/60 shadow-sm">
+                <TrendingUp className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-foreground mb-1">No Matches Found</h3>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto">This club's fighters have not competed in any matches yet.</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

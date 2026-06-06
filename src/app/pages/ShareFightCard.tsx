@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { getBatchById, formatDisplayDate } from "../data/batches";
 import { toast } from "sonner";
-import kkfLogo from "figma:asset/a66d0715b1669c88badc1b57f275bd3b2182d59e.png";
+import kkfLogo from "../../assets/modern_logo.png";
 
 export function ShareFightCard() {
   const { batchId } = useParams<{ batchId: string }>();

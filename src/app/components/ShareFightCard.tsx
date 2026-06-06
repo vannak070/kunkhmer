@@ -4,7 +4,7 @@ import html2canvas from "html2canvas";
 import { toast } from "sonner";
 import type { MatchBatch } from "../data/batches";
 import { formatDisplayDate } from "../data/batches";
-import kkfLogo from "figma:asset/a66d0715b1669c88badc1b57f275bd3b2182d59e.png";
+import kkfLogo from "../../assets/modern_logo.png";
 
 interface ShareFightCardProps {
   batch: MatchBatch;

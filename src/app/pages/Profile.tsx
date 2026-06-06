@@ -1,32 +1,56 @@
-import { UserCircle, Shield, Settings, Bell, LogOut } from "lucide-react";
+import { UserCircle, Shield, Settings, LogOut, Phone, Building } from "lucide-react";
+import { usePermissions } from "../hooks/usePermissions";
+import { ROLE_LABELS, logoutUser } from "../data/users";
+import { useNavigate } from "react-router";
 
 export function Profile() {
+  const permissions = usePermissions();
+  const currentUser = permissions.currentUser;
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logoutUser();
+    navigate("/login");
+  };
+
+  const roleInfo = currentUser 
+    ? ROLE_LABELS[currentUser.role] 
+    : { label: "Guest", color: "bg-slate-100 text-slate-700 border-slate-200", description: "" };
+
   return (
-    <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8">
+    <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8 animate-fadeIn">
       <header>
-        <h1 className="text-3xl font-extrabold tracking-tight uppercase text-[#0A3D91]">Account Settings</h1>
-        <p className="text-[#707070] mt-1">Manage your profile, roles, and preferences.</p>
+        <h1 className="text-2xl font-semibold text-foreground tracking-tight">Account Settings</h1>
+        <p className="text-sm text-muted-foreground mt-1">Manage your profile information, roles, and security sessions.</p>
       </header>
 
-      <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-6 md:p-8 shadow-sm">
-        <div className="flex flex-col md:flex-row items-center gap-6">
+      {/* Profile Overview Card */}
+      <div className="card-premium !p-6 md:!p-8">
+        <div className="flex flex-col sm:flex-row items-center gap-6">
           <div className="relative">
-            <img 
-              src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&q=80&w=150&h=150" 
-              alt="Admin" 
-              className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-[#F5F5F7] shadow-md"
-            />
-            <button className="absolute bottom-0 right-0 w-8 h-8 bg-[#C8102E] rounded-full flex items-center justify-center text-white border-2 border-[#FFFFFF] hover:bg-[#A00D24] transition-colors shadow-sm">
+            {currentUser?.avatar ? (
+              <img 
+                src={currentUser.avatar} 
+                alt={currentUser.fullName} 
+                className="w-24 h-24 md:w-28 md:h-28 rounded-full object-cover border-4 border-[#F8FAFC] shadow-md"
+              />
+            ) : (
+              <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-3xl border-4 border-[#F8FAFC] shadow-md">
+                {currentUser?.fullName?.charAt(0) || "U"}
+              </div>
+            )}
+            <button className="absolute bottom-0 right-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white border-2 border-white hover:bg-primary/90 transition-colors shadow-md">
               <Settings className="w-4 h-4" />
             </button>
           </div>
           
-          <div className="flex-1 text-center md:text-left">
-            <h2 className="text-2xl font-bold text-[#333333] mb-1">Sokha M.</h2>
-            <p className="text-[#707070] mb-3">sokha@kunkhmer.org</p>
-            <div className="flex items-center justify-center md:justify-start gap-2">
-              <span className="flex items-center gap-1.5 px-3 py-1 bg-red-100 text-[#C8102E] text-xs font-bold uppercase tracking-widest rounded-md border border-red-200">
-                <Shield className="w-3 h-3" /> Administrator
+          <div className="flex-1 text-center sm:text-left">
+            <h2 className="text-xl font-bold text-foreground mb-1">{currentUser?.fullName || "Guest User"}</h2>
+            <p className="text-sm text-muted-foreground mb-3">{currentUser?.email || "No email provided"}</p>
+            <div className="flex items-center justify-center sm:justify-start gap-2">
+              <span className={`badge-premium ${roleInfo.color}`}>
+                <Shield className="w-3 h-3 shrink-0" />
+                <span>{roleInfo.label}</span>
               </span>
             </div>
           </div>
@@ -34,49 +58,62 @@ export function Profile() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-xl overflow-hidden shadow-sm">
-          <div className="p-4 border-b border-[#E0E0E0] bg-[#F5F5F7]">
-            <h3 className="font-bold uppercase tracking-wide text-[#707070]">Preferences</h3>
+        {/* Contact and Organization Details */}
+        <div className="card-premium !p-0 overflow-hidden">
+          <div className="p-4 border-b border-border bg-muted/30">
+            <h3 className="text-sm font-semibold text-foreground">Organization & Info</h3>
           </div>
-          <div className="p-2">
-            {[
-              { icon: Bell, label: "Notifications", desc: "Match alerts, medical updates" },
-              { icon: UserCircle, label: "Personal Info", desc: "Update name, contact details" },
-              { icon: Settings, label: "System Settings", desc: "Scoring method, weights" },
-            ].map((item, i) => (
-              <button key={i} className="w-full flex items-center gap-4 p-4 hover:bg-[#F5F5F7] rounded-lg transition-colors text-left group">
-                <div className="w-10 h-10 rounded-lg bg-[#E0E0E0] flex items-center justify-center group-hover:bg-[#0A3D91] transition-colors">
-                  <item.icon className="w-5 h-5 text-[#707070] group-hover:text-white" />
-                </div>
-                <div>
-                  <p className="font-bold text-sm text-[#333333] group-hover:text-[#0A3D91]">{item.label}</p>
-                  <p className="text-xs text-[#B0B0B0]">{item.desc}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-xl overflow-hidden shadow-sm">
-          <div className="p-4 border-b border-[#E0E0E0] bg-[#F5F5F7]">
-            <h3 className="font-bold uppercase tracking-wide text-[#707070]">Security & Access</h3>
-          </div>
-          <div className="p-6 space-y-6">
-            <div>
-              <p className="text-sm font-bold text-[#333333] mb-1">Current Role</p>
-              <p className="text-xs text-[#707070] leading-relaxed">
-                You have <span className="text-[#C8102E] font-bold">Admin</span> privileges. This grants full access to create events, manage fighters, and overwrite match decisions.
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-bold text-[#333333] mb-2">Active Sessions</p>
-              <div className="flex items-center justify-between text-xs p-3 bg-[#F5F5F7] rounded-lg border border-[#E0E0E0]">
-                <span className="text-[#707070]">MacBook Pro - Chrome</span>
-                <span className="text-emerald-600 font-medium">Current</span>
+          <div className="p-4 space-y-4">
+            <div className="flex items-center gap-3 text-sm">
+              <Building className="w-5 h-5 text-muted-foreground shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">Affiliated Organization</p>
+                <p className="font-semibold text-foreground">{currentUser?.organization || "Kun Khmer Federation (KKF)"}</p>
               </div>
             </div>
             
-            <button className="w-full flex items-center justify-center gap-2 py-3 mt-4 text-[#C8102E] font-bold bg-[#C8102E]/10 hover:bg-[#C8102E]/20 rounded-lg transition-colors">
+            <div className="flex items-center gap-3 text-sm">
+              <Phone className="w-5 h-5 text-muted-foreground shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">Phone Number</p>
+                <p className="font-semibold text-foreground">{currentUser?.phone || "+855 12 345 678"}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 text-sm">
+              <UserCircle className="w-5 h-5 text-muted-foreground shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">Username</p>
+                <p className="font-semibold text-foreground">@{currentUser?.username || "username"}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Security & Access */}
+        <div className="card-premium !p-0 overflow-hidden">
+          <div className="p-4 border-b border-border bg-muted/30">
+            <h3 className="text-sm font-semibold text-foreground">Security & Access</h3>
+          </div>
+          <div className="p-5 space-y-5">
+            <div>
+              <p className="text-sm font-semibold text-foreground mb-1">Role Permissions</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {roleInfo.description || "Grants dynamic permissions based on your registered combat organization role."}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground mb-2">Active Session</p>
+              <div className="flex items-center justify-between text-xs p-3 bg-muted/40 rounded-lg border border-border">
+                <span className="text-muted-foreground">MacBook Pro - Chrome</span>
+                <span className="text-emerald-600 font-semibold">Active Now</span>
+              </div>
+            </div>
+            
+            <button 
+              onClick={handleLogout}
+              className="btn-secondary w-full mt-2"
+            >
               <LogOut className="w-4 h-4" /> Sign Out
             </button>
           </div>

@@ -1,11 +1,11 @@
 import { Home, CalendarDays, ShieldAlert, Dumbbell, Gavel, Award, LineChart, ChevronDown, Flag, Globe, Radio, DollarSign, UserCog, Shield, LogOut, User as UserIcon, ClipboardCheck, ShieldCheck, Settings, Box, Building2, Users, FileText, Package, ShoppingBag, Tag, Newspaper, Video, Search, Bell } from "lucide-react";
-import { Outlet, NavLink, useLocation, useNavigate } from "react-router";
+import { Outlet, NavLink, useLocation, useNavigate, Link } from "react-router";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useState } from "react";
 import { usePermissions } from "../hooks/usePermissions";
 import { logoutUser } from "../data/users";
-import logoImg from "figma:asset/a66d0715b1669c88badc1b57f275bd3b2182d59e.png";
+import logoImg from "../../assets/modern_logo.png";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -82,6 +82,7 @@ const navItems = [
 export function Layout() {
   const location = useLocation();
   const [openSubmenu, setOpenSubmenu] = useState<string | null>("Program");
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const toggleSubmenu = (label: string) => {
     setOpenSubmenu(openSubmenu === label ? null : label);
@@ -102,10 +103,12 @@ export function Layout() {
       <aside className="hidden md:flex w-[260px] flex-col bg-[#0A3D91] text-white border-r border-[#083073] relative z-40 shadow-xl shrink-0">
         <div className="h-16 flex items-center px-6 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3">
-            <img src={logoImg} alt="Logo" className="w-8 h-8 object-contain brightness-0 invert" />
+            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center overflow-hidden p-0.5 shadow-sm shrink-0">
+              <img src={logoImg} alt="Logo" className="w-full h-full object-contain" />
+            </div>
             <div className="flex flex-col">
-              <span className="font-bold text-lg tracking-tight leading-none">Kun Khmer Hub</span>
-              <span className="text-[10px] text-white/60 uppercase tracking-widest mt-0.5">Management System</span>
+              <span className="font-extrabold text-[#F2C94C] text-sm tracking-wide leading-none uppercase">DIGITAL KUNKHMER</span>
+              <span className="text-[10px] text-white/60 uppercase tracking-widest mt-1">Management System</span>
             </div>
           </div>
         </div>
@@ -191,7 +194,7 @@ export function Layout() {
         <div className="p-4 bg-[#083073] border-t border-white/10 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white font-bold border border-white/10">
-              {permissions.currentUser?.fullName.charAt(0) || "U"}
+              {permissions.currentUser?.fullName?.charAt(0) || "U"}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white truncate">{permissions.currentUser?.fullName || "Guest"}</p>
@@ -212,12 +215,12 @@ export function Layout() {
       <div className="flex-1 flex flex-col min-w-0 bg-[#F8FAFC]">
         {/* Top Header */}
         <header className="h-16 bg-white border-b border-border flex items-center justify-between px-6 shrink-0 shadow-sm z-30">
-          <div className="flex items-center w-full max-w-md relative">
-            <Search className="w-4 h-4 text-muted-foreground absolute left-3" />
+          <div className="flex items-center w-full max-w-md relative group">
+            <Search className="w-4 h-4 text-muted-foreground absolute left-3 group-focus-within:text-primary transition-colors" />
             <input 
               type="text" 
               placeholder="Search fighters, matches, events..." 
-              className="w-full pl-9 pr-4 py-2 bg-muted/50 border border-transparent hover:border-border focus:border-primary focus:bg-white rounded-lg text-sm transition-colors outline-none"
+              className="w-full pl-9 pr-4 py-2 bg-muted/15 border border-border/60 hover:border-slate-300 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/5 rounded-xl text-sm transition-all outline-none"
             />
           </div>
           
@@ -227,11 +230,48 @@ export function Layout() {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full ring-2 ring-white" />
             </button>
             <div className="h-8 w-px bg-border mx-2" />
-            <div className="flex items-center gap-2 cursor-pointer">
-              <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
-                {permissions.currentUser?.fullName.charAt(0) || "U"}
-              </div>
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            <div className="relative">
+              <button 
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="flex items-center gap-2 cursor-pointer focus:outline-none hover:opacity-85 transition-opacity"
+              >
+                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+                  {permissions.currentUser?.fullName?.charAt(0) || "U"}
+                </div>
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              </button>
+              
+              {showProfileMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-border rounded-lg shadow-lg py-1 z-50 animate-fadeIn">
+                  <Link 
+                    to="/home/profile" 
+                    onClick={() => setShowProfileMenu(false)}
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                  >
+                    <UserIcon className="w-4 h-4 text-muted-foreground" />
+                    <span>View Profile</span>
+                  </Link>
+                  <Link 
+                    to="/home/settings" 
+                    onClick={() => setShowProfileMenu(false)}
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Settings className="w-4 h-4 text-muted-foreground" />
+                    <span>Settings</span>
+                  </Link>
+                  <hr className="border-border my-1" />
+                  <button 
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      handleLogout();
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-red-50 text-left transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>

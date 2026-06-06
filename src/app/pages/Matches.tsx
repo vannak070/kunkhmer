@@ -154,376 +154,388 @@ export function Matches() {
   });
   const clubs = Array.from(clubsSet).sort();
 
+  const getBatchBadgeVariant = (status: string) => {
+    switch (status) {
+      case "Draft": return "badge-outline text-muted-foreground border-border/60 bg-muted/5";
+      case "Weight-In": return "badge-amber";
+      case "Ready": return "badge-blue";
+      case "Live": return "badge-red";
+      case "Complete": return "badge-emerald";
+      default: return "badge-outline";
+    }
+  };
+
+  const getBatchDotColor = (status: string) => {
+    switch (status) {
+      case "Draft": return "bg-slate-400";
+      case "Weight-In": return "bg-amber-500";
+      case "Ready": return "bg-blue-500";
+      case "Live": return "bg-red-500";
+      case "Complete": return "bg-emerald-500";
+      default: return "bg-slate-400";
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F4F5F8] via-white to-[#F9FAFB]">
-      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
-        {/* Enhanced Header */}
-        <header className="bg-white rounded-2xl shadow-lg border-2 border-[#E0E0E0] p-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-[#C8102E] to-[#A00D24] rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
-                <Box className="w-7 h-7 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl md:text-4xl font-black text-[#1A1A24] uppercase tracking-tight mb-2">
-                  Match Management
-                </h1>
-                <p className="text-sm text-[#707070] font-bold">Organize batches and matches for events</p>
-              </div>
-            </div>
-
-            {permissions.hasPermission('matches.create') && (
-              <button
-                onClick={handleCreateBatch}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-black uppercase tracking-wide transition-all bg-gradient-to-r from-[#C8102E] to-[#A00D24] text-white hover:shadow-xl hover:scale-105 shadow-md"
-              >
-                <Plus className="w-5 h-5" />
-                New Batch
-              </button>
-            )}
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn">
+      {/* Enhanced Header */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0">
+            <Box className="w-5 h-5" />
           </div>
-        </header>
-
-        {/* Enhanced Status Legend & Stats */}
-        <div className="bg-white rounded-2xl shadow-lg border-2 border-[#E0E0E0] overflow-hidden">
-          {/* Status Legend */}
-          <div className="border-b border-[#E0E0E0] px-6 py-5">
-            <h3 className="text-base font-black text-[#1A1A24] mb-4 uppercase tracking-wide">Status Legend</h3>
-            <div className="flex flex-wrap items-center gap-6">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">✏️</span>
-                <span className="text-sm font-bold text-[#707070]">Draft</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl">⚖️</span>
-                <span className="text-sm font-bold text-orange-600">Weight-In</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl">💪</span>
-                <span className="text-sm font-bold text-blue-600">Ready</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl">📡</span>
-                <span className="text-sm font-bold text-purple-600">Live</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl">🏆</span>
-                <span className="text-sm font-bold text-[#1A1A24]">Complete</span>
-              </div>
-            </div>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              Match Management
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5 font-medium">Organize batches and matches for events</p>
           </div>
+        </div>
 
-          {/* Stats Row */}
-          <div className="grid grid-cols-2 md:grid-cols-5 divide-x divide-[#E0E0E0]">
-            <div className="px-6 py-5 text-center">
-              <div className="text-3xl font-black text-[#0A3D91] mb-1">{stats.total}</div>
-              <div className="text-sm font-bold text-[#707070]">Total Batches</div>
+        {permissions.hasPermission('matches.create') && (
+          <button
+            onClick={handleCreateBatch}
+            className="btn-primary py-2.5 px-5"
+          >
+            <Plus className="w-4 h-4" />
+            New Batch
+          </button>
+        )}
+      </header>
+
+      {/* Enhanced Status Legend & Stats */}
+      <div className="bg-white rounded-xl border border-border/75 shadow-sm overflow-hidden flex flex-col">
+        {/* Status Legend */}
+        <div className="border-b border-border/60 px-5 py-4">
+          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Status Legend</h3>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="badge-premium badge-outline text-muted-foreground">
+              <span className="badge-dot bg-slate-400" />
+              <span>Draft</span>
             </div>
-            <div className="px-6 py-5 text-center">
-              <div className="text-3xl font-black text-gray-600 mb-1">{stats.draft}</div>
-              <div className="text-sm font-bold text-[#707070]">Draft</div>
+            <div className="badge-premium badge-amber">
+              <span className="badge-dot bg-amber-500" />
+              <span>Weight-In</span>
             </div>
-            <div className="px-6 py-5 text-center">
-              <div className="text-3xl font-black text-orange-600 mb-1">{stats.weightIn}</div>
-              <div className="text-sm font-bold text-[#707070]">Weight-In</div>
+            <div className="badge-premium badge-blue">
+              <span className="badge-dot bg-blue-500" />
+              <span>Ready</span>
             </div>
-            <div className="px-6 py-5 text-center">
-              <div className="text-3xl font-black text-purple-600 mb-1">{stats.live}</div>
-              <div className="text-sm font-bold text-[#707070]">Live</div>
+            <div className="badge-premium badge-red">
+              <span className="badge-dot bg-red-500" />
+              <span>Live</span>
             </div>
-            <div className="px-6 py-5 text-center">
-              <div className="text-3xl font-black text-[#1A1A24] mb-1">{stats.complete}</div>
-              <div className="text-sm font-bold text-[#707070]">Complete</div>
+            <div className="badge-premium badge-emerald">
+              <span className="badge-dot bg-emerald-500" />
+              <span>Complete</span>
             </div>
           </div>
         </div>
 
-        {/* Enhanced Search & Filters */}
-        <div className="bg-white rounded-2xl p-6 shadow-lg border-2 border-[#E0E0E0]">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Search */}
-            <div className="relative md:col-span-2 group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#707070] group-focus-within:text-[#0A3D91] transition-colors" />
-              <input
-                type="text"
-                placeholder="Search batches, events, fighters..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl pl-12 pr-4 py-3.5 text-sm text-[#1A1A24] font-bold focus:outline-none focus:border-[#0A3D91] focus:ring-2 focus:ring-[#0A3D91]/20 transition-all"
-              />
-            </div>
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 md:grid-cols-5 divide-x divide-border/60">
+          <div className="px-5 py-4 text-center">
+            <div className="text-xl font-bold text-primary mb-0.5">{stats.total}</div>
+            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Batches</div>
+          </div>
+          <div className="px-5 py-4 text-center">
+            <div className="text-xl font-bold text-slate-500 mb-0.5">{stats.draft}</div>
+            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Draft</div>
+          </div>
+          <div className="px-5 py-4 text-center">
+            <div className="text-xl font-bold text-amber-600 mb-0.5">{stats.weightIn}</div>
+            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Weight-In</div>
+          </div>
+          <div className="px-5 py-4 text-center">
+            <div className="text-xl font-bold text-red-600 mb-0.5">{stats.live}</div>
+            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Live</div>
+          </div>
+          <div className="px-5 py-4 text-center">
+            <div className="text-xl font-bold text-emerald-600 mb-0.5">{stats.complete}</div>
+            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Complete</div>
+          </div>
+        </div>
+      </div>
 
-            {/* Status Filter */}
+      {/* Enhanced Search & Filters */}
+      <div className="bg-white rounded-xl p-5 border border-border/75 shadow-sm space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Search */}
+          <div className="relative md:col-span-2 group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <input
+              type="text"
+              placeholder="Search batches, events, fighters..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-white border border-border/80 rounded-xl pl-11 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all"
+            />
+          </div>
+
+          {/* Status Filter */}
+          <div className="relative">
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3.5 text-sm text-[#1A1A24] font-black focus:outline-none focus:border-[#0A3D91] focus:ring-2 focus:ring-[#0A3D91]/20 transition-all hover:border-[#0A3D91]/50 cursor-pointer"
+              className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm text-foreground font-medium appearance-none focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm cursor-pointer hover:border-slate-300 transition-all"
             >
               <option value="all">All Status</option>
-              <option value="Draft">✏️ Draft</option>
-              <option value="Weight-In">⚖️ Weight-In</option>
-              <option value="Ready">💪 Ready</option>
-              <option value="Live">📡 Live</option>
-              <option value="Complete">🏆 Complete</option>
+              <option value="Draft">Draft</option>
+              <option value="Weight-In">Weight-In</option>
+              <option value="Ready">Ready</option>
+              <option value="Live">Live</option>
+              <option value="Complete">Complete</option>
             </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           </div>
+        </div>
 
-          {/* Advanced Filters Toggle */}
-          <button
-            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            className="text-sm font-black text-[#0A3D91] hover:text-[#082F6E] flex items-center gap-2 mt-4 transition-colors"
-          >
-            <Filter className="w-4 h-4" />
-            {showAdvancedFilters ? 'Hide' : 'Show'} Advanced Filters
-            {showAdvancedFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
+        {/* Advanced Filters Toggle */}
+        <button
+          onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+          className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 transition-colors"
+        >
+          <Filter className="w-3.5 h-3.5" />
+          {showAdvancedFilters ? 'Hide' : 'Show'} Advanced Filters
+          {showAdvancedFilters ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </button>
 
-          {showAdvancedFilters && (
-            <div className="mt-5 pt-5 border-t-2 border-[#E0E0E0] grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Event Filter */}
+        {showAdvancedFilters && (
+          <div className="pt-4 border-t border-border/60 grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Event Filter */}
+            <div className="relative">
               <select
                 value={filterEvent}
                 onChange={(e) => setFilterEvent(e.target.value)}
-                className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3 text-sm text-[#1A1A24] font-black focus:outline-none focus:border-[#0A3D91] focus:ring-2 focus:ring-[#0A3D91]/20 transition-all hover:border-[#0A3D91]/50 cursor-pointer"
+                className="w-full bg-white border border-border/80 rounded-xl px-4 py-2 text-sm text-foreground font-medium appearance-none focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm cursor-pointer hover:border-slate-300 transition-all"
               >
                 <option value="all">All Events</option>
                 {events.map(event => (
                   <option key={event} value={event}>{event}</option>
                 ))}
               </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            </div>
 
-              {/* Location Filter */}
+            {/* Location Filter */}
+            <div className="relative">
               <select
                 value={filterLocation}
                 onChange={(e) => setFilterLocation(e.target.value)}
-                className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3 text-sm text-[#1A1A24] font-black focus:outline-none focus:border-[#0A3D91] focus:ring-2 focus:ring-[#0A3D91]/20 transition-all hover:border-[#0A3D91]/50 cursor-pointer"
+                className="w-full bg-white border border-border/80 rounded-xl px-4 py-2 text-sm text-foreground font-medium appearance-none focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm cursor-pointer hover:border-slate-300 transition-all"
               >
                 <option value="all">All Locations</option>
                 {locations.map(loc => (
                   <option key={loc} value={loc}>{loc}</option>
                 ))}
               </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            </div>
 
-              {/* Club Filter */}
+            {/* Club Filter */}
+            <div className="relative">
               <select
                 value={filterClub}
                 onChange={(e) => setFilterClub(e.target.value)}
-                className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3 text-sm text-[#1A1A24] font-black focus:outline-none focus:border-[#0A3D91] focus:ring-2 focus:ring-[#0A3D91]/20 transition-all hover:border-[#0A3D91]/50 cursor-pointer"
+                className="w-full bg-white border border-border/80 rounded-xl px-4 py-2 text-sm text-foreground font-medium appearance-none focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm cursor-pointer hover:border-slate-300 transition-all"
               >
                 <option value="all">All Clubs</option>
                 {clubs.map(club => (
                   <option key={club} value={club}>{club}</option>
                 ))}
               </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
-        {/* Batches List */}
-        <div className="space-y-5">
-          {filteredBatches.length === 0 ? (
-            <div className="bg-white rounded-2xl p-16 text-center shadow-lg border-2 border-[#E0E0E0]">
-              <div className="w-20 h-20 bg-gradient-to-br from-[#0A3D91]/10 to-[#0A3D91]/5 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <Box className="w-10 h-10 text-[#0A3D91]/40" />
-              </div>
-              <h3 className="text-2xl font-black text-[#1A1A24] mb-3">No Batches Found</h3>
-              <p className="text-[#707070] font-bold text-base mb-6">
-                {search || filterStatus !== "all"
-                  ? "Try adjusting your search or filter criteria"
-                  : "Create your first batch to get started with match management"}
-              </p>
-              {permissions.hasPermission('matches.create') && !search && filterStatus === "all" && (
-                <button
-                  onClick={handleCreateBatch}
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-[#C8102E] to-[#A00D24] text-white px-6 py-3 rounded-xl font-black hover:shadow-lg transition-all"
-                >
-                  <Plus className="w-5 h-5" />
-                  Create First Batch
-                </button>
-              )}
-            </div>
-          ) : (
-            filteredBatches.map((batch) => {
-              const isExpanded = expandedBatchId === batch.id;
-              const statusConfig = BATCH_STATUS_CONFIG[batch.status] || BATCH_STATUS_CONFIG["Draft"];
-              const hasChampionship = batch.matches.some(m => m.isChampionshipBout);
+      {/* Batches List */}
+      <div className="space-y-4">
+        {filteredBatches.length === 0 ? (
+          <div className="bg-white rounded-xl py-16 text-center border border-border/60 shadow-sm">
+            <Box className="w-16 h-16 text-muted-foreground/60 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-foreground tracking-tight mb-1">No Batches Found</h3>
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">
+              {search || filterStatus !== "all"
+                ? "Try adjusting your search or filter criteria"
+                : "Create your first batch to get started with match management"}
+            </p>
+            {permissions.hasPermission('matches.create') && !search && filterStatus === "all" && (
+              <button
+                onClick={handleCreateBatch}
+                className="btn-outline inline-flex py-2 px-4 text-xs font-semibold"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Create First Batch
+              </button>
+            )}
+          </div>
+        ) : (
+          filteredBatches.map((batch) => {
+            const isExpanded = expandedBatchId === batch.id;
+            const statusConfig = BATCH_STATUS_CONFIG[batch.status] || BATCH_STATUS_CONFIG["Draft"];
+            const hasChampionship = batch.matches.some(m => m.isChampionshipBout);
 
-              return (
-                <div
-                  key={batch.id}
-                  className="bg-white rounded-2xl border-2 border-[#E0E0E0] overflow-hidden transition-all hover:border-[#0A3D91] hover:shadow-xl group"
-                >
-                  {/* Batch Header - Enhanced */}
-                  <div className="p-6 bg-gradient-to-r from-white to-[#F9FAFB]">
-                    <div className="flex items-start justify-between gap-4 mb-4">
-                      <div className="flex-1 min-w-0">
-                        {/* Batch Number & Status Row */}
-                        <div className="flex items-center gap-3 mb-3">
-                          <h3 className="text-2xl font-black text-[#0A3D91] uppercase tracking-tight group-hover:text-[#082F6E] transition-colors">
-                            {batch.batchNumber}
-                          </h3>
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase ${statusConfig.bgColor} ${statusConfig.color} border-2 ${statusConfig.color.replace('text-', 'border-')} shadow-sm`}
-                          >
-                            <span className="text-base">{statusConfig.icon}</span>
-                            {statusConfig.label}
+            return (
+              <div
+                key={batch.id}
+                className="bg-white rounded-2xl border border-border/75 overflow-hidden transition-all hover:border-primary/20 hover:shadow-xl hover:-translate-y-0.5 duration-300 flex flex-col group shadow-sm"
+              >
+                {/* Batch Header - Enhanced */}
+                <div className="p-5 bg-gradient-to-r from-white to-muted/5">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      {/* Batch Number & Status Row */}
+                      <div className="flex flex-wrap items-center gap-2.5 mb-2">
+                        <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors tracking-tight">
+                          {batch.batchNumber}
+                        </h3>
+                        <span className={`badge-premium ${getBatchBadgeVariant(batch.status)}`}>
+                          <span className={`badge-dot ${getBatchDotColor(batch.status)}`} />
+                          <span>{statusConfig.label}</span>
+                        </span>
+                        {hasChampionship && (
+                          <span className="badge-premium bg-[#FFFDF5] border border-amber-200/80 text-amber-700 shadow-sm">
+                            <Trophy className="w-3 h-3 text-amber-500 fill-amber-500" />
+                            Title Bout
                           </span>
-                          {hasChampionship && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-yellow-100 to-amber-100 rounded-xl text-xs font-black text-yellow-800 uppercase border-2 border-yellow-200 shadow-sm">
-                              <Trophy className="w-3.5 h-3.5" />
-                              Title
-                            </span>
-                          )}
-                        </div>
-                        
-                        {/* Event Name */}
-                        <h4 className="text-xl font-black text-[#1A1A24] mb-4">
-                          {batch.eventName}
-                        </h4>
-
-                        {/* Enhanced Metadata Grid */}
-                        <div className="space-y-3">
-                          {/* Row 1: Date, Location, Matches */}
-                          <div className="flex items-center gap-6 flex-wrap text-sm">
-                            <div className="inline-flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
-                              <Calendar className="w-4 h-4 text-[#0A3D91]" />
-                              <span className="font-black text-[#1A1A24]">{formatDisplayDate(batch.date)}</span>
-                            </div>
-
-                            <div className="flex items-center gap-2 text-[#707070]">
-                              <MapPin className="w-4 h-4 text-[#C8102E]" />
-                              <span className="font-bold">{batch.location}</span>
-                            </div>
-
-                            <div className="inline-flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
-                              <Users className="w-4 h-4 text-[#707070]" />
-                              <span className="font-black text-[#1A1A24]">{batch.totalMatches} {batch.totalMatches === 1 ? 'Match' : 'Matches'}</span>
-                            </div>
-                          </div>
-
-                          {/* Row 2: Club, Broadcast (if available) */}
-                          {(batch.organizerClub || batch.broadcastStation) && (
-                            <div className="flex items-center gap-4 flex-wrap text-sm">
-                              {batch.organizerClub && (
-                                <div className="flex items-center gap-2 text-[#707070]">
-                                  <Building2 className="w-4 h-4 text-[#0A3D91]" />
-                                  <span className="font-bold">{batch.organizerClub}</span>
-                                </div>
-                              )}
-
-                              {batch.broadcastStation && (
-                                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-50 rounded-lg border-2 border-purple-200">
-                                  <Radio className="w-4 h-4 text-purple-600" />
-                                  <span className="font-black text-purple-700 text-xs uppercase">{batch.broadcastStation}</span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Action Buttons - Right Side */}
-                      <div className="flex items-center gap-2">
-                        {batch.status === "Draft" && permissions.hasPermission('matches.create') && (
-                          <button
-                            onClick={() => handlePublish(batch.id)}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold transition-all text-sm shadow-sm"
-                          >
-                            <Send className="w-4 h-4" />
-                            Publish
-                          </button>
                         )}
-
-                        <button
-                          onClick={() => handleViewDetails(batch.id)}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-[#0A3D91] hover:bg-[#082F6E] text-white rounded-lg font-bold transition-all text-sm shadow-sm"
-                        >
-                          <Eye className="w-4 h-4" />
-                          View
-                        </button>
-
-                        <button
-                          onClick={() => toggleBatch(batch.id)}
-                          className="p-2 hover:bg-[#F4F5F8] rounded-lg transition-colors"
-                          title={isExpanded ? "Hide matches" : "Show matches"}
-                        >
-                          {isExpanded ? (
-                            <ChevronUp className="w-5 h-5 text-[#707070]" />
-                          ) : (
-                            <ChevronDown className="w-5 h-5 text-[#707070]" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Expanded Content - Match List */}
-                  {isExpanded && (
-                    <div className="border-t-2 border-[#E0E0E0] bg-[#F9FAFB] p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <h5 className="text-sm font-black text-[#1A1A24] uppercase tracking-wide">
-                          Matches in this Batch
-                        </h5>
                       </div>
                       
-                      <div className="space-y-3">
-                        {batch.matches.map((match, idx) => (
-                          <Link
-                            key={match.id}
-                            to={`/match/${match.id}`}
-                            className="bg-white border-2 border-[#E0E0E0] rounded-lg p-4 hover:border-[#0A3D91] hover:shadow-md transition-all block group"
-                          >
-                            <div className="flex items-center gap-4">
-                              {/* Match Number */}
-                              <div className="w-10 h-10 bg-gradient-to-br from-[#0A3D91] to-[#082F6E] group-hover:from-[#C8102E] group-hover:to-[#A00D24] rounded-lg flex items-center justify-center flex-shrink-0 transition-all shadow-sm">
-                                <span className="text-base font-black text-white">{idx + 1}</span>
-                              </div>
+                      {/* Event Name */}
+                      <h4 className="text-sm font-semibold text-slate-800 mb-3">
+                        {batch.eventName}
+                      </h4>
 
-                              {/* Fighters */}
-                              <div className="flex-1 flex items-center gap-4">
-                                <div className="flex-1 text-right">
-                                  <div className="font-bold text-base text-[#1A1A24] mb-1">{match.fighterA.name}</div>
-                                  <div className="text-xs text-[#707070] font-semibold">{match.fighterA.clubName} • {match.fighterA.weight}kg</div>
-                                </div>
-                                 
-                                <div className="px-4 py-1.5 bg-gradient-to-r from-[#0A3D91] to-[#C8102E] rounded-lg flex-shrink-0 shadow-sm">
-                                  <span className="text-white font-black text-sm">VS</span>
-                                </div>
-                                
-                                <div className="flex-1">
-                                  <div className="font-bold text-base text-[#1A1A24] mb-1">{match.fighterB.name}</div>
-                                  <div className="text-xs text-[#707070] font-semibold">{match.fighterB.clubName} • {match.fighterB.weight}kg</div>
-                                </div>
-                              </div>
+                      {/* Enhanced Metadata Grid */}
+                      <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
+                        <div className="inline-flex items-center gap-1.5 bg-blue-50/70 border border-blue-100/50 text-[#0A3D91] px-2 py-0.5 rounded-md font-medium">
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span>{formatDisplayDate(batch.date)}</span>
+                        </div>
 
-                              {/* Match Details */}
-                              <div className="flex items-center gap-3 flex-shrink-0">
-                                <div className="text-center px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
-                                  <div className="text-sm font-black text-[#1A1A24]">{match.weightClass}</div>
-                                  <div className="text-xs text-[#707070] font-medium">{match.rounds}R</div>
-                                </div>
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-secondary" />
+                          <span className="font-medium">{batch.location}</span>
+                        </div>
 
-                                {match.isChampionshipBout && (
-                                  <div className="px-3 py-2 bg-gradient-to-r from-yellow-100 to-amber-100 rounded-lg border border-yellow-300 shadow-sm">
-                                    <Trophy className="w-5 h-5 text-yellow-700" />
-                                  </div>
-                                )}
+                        <div className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 text-slate-600 px-2 py-0.5 rounded-md font-medium">
+                          <Users className="w-3.5 h-3.5" />
+                          <span>{batch.totalMatches} {batch.totalMatches === 1 ? 'Match' : 'Matches'}</span>
+                        </div>
 
-                                <div className="text-[#0A3D91] group-hover:text-[#C8102E] transition-colors">
-                                  <Eye className="w-5 h-5" />
-                                </div>
-                              </div>
-                            </div>
-                          </Link>
-                        ))}
+                        {batch.organizerClub && (
+                          <div className="flex items-center gap-1.5">
+                            <Building2 className="w-3.5 h-3.5 text-primary" />
+                            <span className="font-medium">{batch.organizerClub}</span>
+                          </div>
+                        )}
+
+                        {batch.broadcastStation && (
+                          <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200/60 rounded-md font-medium uppercase text-[10px] tracking-wide">
+                            <Radio className="w-3 h-3" />
+                            <span>{batch.broadcastStation}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  )}
+
+                    {/* Action Buttons - Right Side */}
+                    <div className="flex items-center gap-2 self-end sm:self-start">
+                      {batch.status === "Draft" && permissions.hasPermission('matches.create') && (
+                        <button
+                          onClick={() => handlePublish(batch.id)}
+                          className="btn-primary px-3 py-1.5 text-xs font-semibold"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          Publish
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => handleViewDetails(batch.id)}
+                        className="btn-outline px-3 py-1.5 text-xs font-semibold"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        View
+                      </button>
+
+                      <button
+                        onClick={() => toggleBatch(batch.id)}
+                        className="p-1.5 hover:bg-muted/60 rounded-lg transition-colors border border-transparent hover:border-border/60"
+                        title={isExpanded ? "Hide matches" : "Show matches"}
+                      >
+                        {isExpanded ? (
+                          <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              );
-            })
-          )}
-        </div>
+
+                {/* Expanded Content - Match List */}
+                {isExpanded && (
+                  <div className="border-t border-border/60 bg-muted/5 p-5">
+                    <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-3">
+                      Matches in this Batch
+                    </h5>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {batch.matches.map((match, idx) => (
+                        <Link
+                          key={match.id}
+                          to={`/match/${match.id}`}
+                          className="bg-white border border-border/75 rounded-xl p-4 hover:border-primary/20 hover:shadow-md transition-all block group/match"
+                        >
+                          <div className="flex items-center justify-between gap-4">
+                            {/* Match Number */}
+                            <div className="w-8 h-8 bg-muted text-slate-600 group-hover/match:bg-primary group-hover/match:text-white rounded-lg flex items-center justify-center shrink-0 transition-all font-bold text-xs shadow-sm">
+                              {idx + 1}
+                            </div>
+
+                            {/* Fighters */}
+                            <div className="flex-1 flex items-center justify-center gap-2 text-center min-w-0">
+                              <div className="flex-1 min-w-0 text-right">
+                                <div className="font-bold text-xs text-foreground truncate">{match.fighterA.name}</div>
+                                <div className="text-[10px] text-muted-foreground truncate">{match.fighterA.clubName}</div>
+                              </div>
+                               
+                              <div className="px-2 py-0.5 bg-gradient-to-r from-primary/90 to-secondary/90 rounded-md shrink-0 shadow-sm">
+                                <span className="text-white font-bold text-[10px]">VS</span>
+                              </div>
+                              
+                              <div className="flex-1 min-w-0 text-left">
+                                <div className="font-bold text-xs text-foreground truncate">{match.fighterB.name}</div>
+                                <div className="text-[10px] text-muted-foreground truncate">{match.fighterB.clubName}</div>
+                              </div>
+                            </div>
+
+                            {/* Match Details */}
+                            <div className="flex items-center gap-2.5 shrink-0">
+                              <div className="text-center px-2 py-1 bg-muted/20 border border-border/40 rounded-lg">
+                                <div className="text-[10px] font-bold text-foreground">{match.weightClass}</div>
+                                <div className="text-[9px] font-semibold text-muted-foreground">{match.rounds}R</div>
+                              </div>
+
+                              {match.isChampionshipBout && (
+                                <div className="p-1.5 bg-[#FFFDF5] rounded-lg border border-amber-200 shadow-sm" title="Championship Title Bout">
+                                  <Trophy className="w-4 h-4 text-amber-500" />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
