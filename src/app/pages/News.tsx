@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { Link } from "react-router";
-import { Plus, Search, Newspaper, Calendar, Eye, Edit2, Trash2, Image as ImageIcon, FileText, CheckCircle, Clock, XCircle, Upload, X } from "lucide-react";
+import { Plus, Search, Newspaper, Calendar, Eye, Edit2, Trash2, Image as ImageIcon, FileText, CheckCircle, Clock, XCircle, Upload, X, ArrowLeft, Save, ChevronDown } from "lucide-react";
 import { usePermissions } from "../hooks/usePermissions";
 
 interface NewsArticle {
@@ -91,10 +91,19 @@ export function News() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [news, setNews] = useState<NewsArticle[]>(MOCK_NEWS);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'add' | 'edit'>('list');
   const [editingNews, setEditingNews] = useState<NewsArticle | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [formData, setFormData] = useState({
+    title: "",
+    subtitle: "",
+    content: "",
+    category: "",
+    status: "Draft" as "Draft" | "Published" | "Archived",
+    tags: ""
+  });
 
   // Filter news
   const filteredNews = news.filter(article => {
@@ -132,15 +141,31 @@ export function News() {
   };
 
   const handleAddNews = () => {
+    setFormData({
+      title: "",
+      subtitle: "",
+      content: "",
+      category: "",
+      status: "Draft",
+      tags: ""
+    });
     setEditingNews(null);
     setImagePreview(null);
-    setShowAddModal(true);
+    setViewMode("add");
   };
 
   const handleEditNews = (article: NewsArticle) => {
+    setFormData({
+      title: article.title,
+      subtitle: article.subtitle,
+      content: article.content,
+      category: article.category,
+      status: article.status,
+      tags: article.tags.join(", ")
+    });
     setEditingNews(article);
     setImagePreview(article.featuredImage || null);
-    setShowAddModal(true);
+    setViewMode("edit");
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -161,335 +186,449 @@ export function News() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F4F5F8] via-white to-[#F9FAFB]">
-      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <h1 className="text-5xl md:text-6xl font-black tracking-tighter text-[#1A1A24] uppercase mb-3 leading-none">
-              News Management
-            </h1>
-            <p className="text-[#707070] font-medium text-lg">
-              Create and manage news articles • {filteredNews.length} {filteredNews.length === 1 ? 'article' : 'articles'} found
-            </p>
-          </div>
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.title.trim()) {
+      alert("Title is required");
+      return;
+    }
 
-          <button
-            onClick={handleAddNews}
-            className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-[#C8102E] to-[#A00D24] hover:from-[#A00D24] hover:to-[#8A0B20] text-white px-8 py-4 rounded-2xl font-black uppercase tracking-wider transition-all shadow-xl hover:shadow-2xl hover:scale-[1.02]"
-          >
-            <Plus className="w-5 h-5" />
-            Add News
-          </button>
+    const tagsArray = formData.tags
+      .split(",")
+      .map(tag => tag.trim())
+      .filter(Boolean);
+
+    if (viewMode === "add") {
+      const newArticle: NewsArticle = {
+        id: `n${Date.now()}`,
+        title: formData.title,
+        subtitle: formData.subtitle,
+        content: formData.content,
+        category: formData.category || "General",
+        status: formData.status,
+        tags: tagsArray,
+        author: "Sok Pheakdey",
+        publishDate: new Date().toISOString().split("T")[0],
+        featuredImage: imagePreview || undefined,
+        views: 0
+      };
+      setNews([newArticle, ...news]);
+    } else if (viewMode === "edit" && editingNews) {
+      setNews(news.map(art => {
+        if (art.id === editingNews.id) {
+          return {
+            ...art,
+            title: formData.title,
+            subtitle: formData.subtitle,
+            content: formData.content,
+            category: formData.category || "General",
+            status: formData.status,
+            tags: tagsArray,
+            featuredImage: imagePreview || undefined
+          };
+        }
+        return art;
+      }));
+    }
+
+    setViewMode("list");
+  };
+
+  if (viewMode === "add" || viewMode === "edit") {
+    return (
+      <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn">
+        {/* Header */}
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className="p-2.5 bg-white hover:bg-muted text-primary border border-border/80 rounded-xl transition-all active:scale-95 shadow-sm"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+                {viewMode === "edit" ? "Edit Article" : "Add New Article"}
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1 font-medium">
+                {viewMode === "edit" ? "Edit details of the published news article" : "Publish a new Kun Khmer federation news article"}
+              </p>
+            </div>
+          </div>
         </header>
 
-        {/* Filters */}
-        <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-[#E0E0E0]/50">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#707070]" />
-              <input
-                type="text"
-                placeholder="Search articles, authors, tags..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl pl-12 pr-4 py-3.5 text-[#1A1A24] font-semibold focus:ring-2 focus:ring-[#0A3D91] focus:border-[#0A3D91] transition-all placeholder:text-[#B0B0B0]"
-              />
+        {/* Form Content */}
+        <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Columns: Form Inputs */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Basic Information */}
+            <div className="card-premium">
+              <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                <span>Article Content</span>
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    Article Title <span className="text-secondary">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    required
+                    placeholder="Enter article title"
+                    className="input-premium font-semibold text-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    Subtitle
+                  </label>
+                  <input
+                    type="text"
+                    name="subtitle"
+                    value={formData.subtitle}
+                    onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
+                    placeholder="Enter short description or subtitle"
+                    className="input-premium font-medium text-slate-700"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    Content Body <span className="text-secondary">*</span>
+                  </label>
+                  <textarea
+                    rows={12}
+                    name="content"
+                    value={formData.content}
+                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                    required
+                    placeholder="Write the full content of the news article here..."
+                    className="input-premium font-medium text-slate-700 resize-none"
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Status Filter */}
-            <div>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3.5 text-[#1A1A24] font-bold focus:ring-2 focus:ring-[#0A3D91] focus:border-[#0A3D91] transition-all"
-              >
-                <option value="all">All Status</option>
-                <option value="Draft">Draft</option>
-                <option value="Published">Published</option>
-                <option value="Archived">Archived</option>
-              </select>
-            </div>
-
-            {/* Category Filter */}
-            <div>
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3.5 text-[#1A1A24] font-bold focus:ring-2 focus:ring-[#0A3D91] focus:border-[#0A3D91] transition-all"
-              >
-                <option value="all">All Categories</option>
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* News List */}
-        <div className="space-y-4">
-          {filteredNews.length === 0 && (
-            <div className="bg-white rounded-3xl p-16 text-center shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-[#E0E0E0]/50">
-              <Newspaper className="w-20 h-20 text-[#E0E0E0] mx-auto mb-6" />
-              <h3 className="text-2xl font-black text-[#1A1A24] mb-3">No News Articles Found</h3>
-              <p className="text-[#707070] font-medium text-lg mb-8">
-                No articles match your current filters. Try adjusting your search or create a new article.
-              </p>
-              <button
-                onClick={handleAddNews}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-[#0A3D91] to-[#051C42] text-white px-6 py-3 rounded-xl font-bold"
-              >
-                <Plus className="w-5 h-5" />
-                Create First Article
-              </button>
-            </div>
-          )}
-
-          {filteredNews.map((article) => {
-            const statusBadge = getStatusBadge(article.status);
-
-            return (
-              <div
-                key={article.id}
-                onClick={() => handleEditNews(article)}
-                className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden transition-all hover:shadow-md hover:border-[#0A3D91]/20 cursor-pointer"
-              >
-                <div className="flex flex-col md:flex-row gap-4 p-6">
-                  {/* Featured Image */}
-                  {article.featuredImage && (
-                    <div className="w-full md:w-48 h-32 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100">
-                      <img
-                        src={article.featuredImage}
-                        alt={article.title}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4 mb-3">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-xl font-bold text-[#111827] mb-1 line-clamp-2">
-                          {article.title}
-                        </h3>
-                        <p className="text-sm text-[#6B7280] line-clamp-1 mb-2">
-                          {article.subtitle}
-                        </p>
-                      </div>
-
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold border flex-shrink-0 ${statusBadge.bg}`}>
-                        {statusBadge.icon}
-                        {article.status}
-                      </span>
-                    </div>
-
-                    {/* Metadata */}
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-[#6B7280] mb-3">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="w-4 h-4" />
-                        <span>{article.publishDate}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <FileText className="w-4 h-4" />
-                        <span>{article.author}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Eye className="w-4 h-4" />
-                        <span>{article.views.toLocaleString()} views</span>
-                      </div>
-                      <div className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-semibold">
-                        {article.category}
-                      </div>
-                    </div>
-
-                    {/* Tags */}
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {article.tags.map(tag => (
-                        <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditNews(article);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0A3D91] hover:bg-[#051C42] text-white rounded-lg text-sm font-semibold transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                        Edit
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(article.id);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm font-semibold transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Delete
-                      </button>
+            {/* Categorization & Metadata */}
+            <div className="card-premium">
+              <h2 className="text-base font-bold text-foreground mb-4">Metadata & Classification</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    Category <span className="text-secondary">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      name="category"
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      required
+                      className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none animate-fadeIn"
+                    >
+                      <option value="">Select category</option>
+                      <option value="Championship">Championship</option>
+                      <option value="Regulations">Regulations</option>
+                      <option value="Interview">Interview</option>
+                      <option value="Youth Development">Youth Development</option>
+                      <option value="International">International</option>
+                      <option value="Charity">Charity</option>
+                      <option value="General">General</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-muted-foreground">
+                      <ChevronDown className="w-4 h-4" />
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Add/Edit Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-8 py-6 rounded-t-3xl z-10">
-              <h2 className="text-3xl font-black text-[#1A1A24]">
-                {editingNews ? "Edit News Article" : "Add New News Article"}
-              </h2>
-            </div>
-
-            <div className="p-8 space-y-6">
-              <div>
-                <label className="block text-sm font-bold text-[#1A1A24] mb-2">Article Title</label>
-                <input
-                  type="text"
-                  placeholder="Enter article title"
-                  defaultValue={editingNews?.title}
-                  className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3 text-[#1A1A24] font-semibold focus:ring-2 focus:ring-[#0A3D91] focus:border-[#0A3D91] transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-[#1A1A24] mb-2">Subtitle</label>
-                <input
-                  type="text"
-                  placeholder="Enter article subtitle"
-                  defaultValue={editingNews?.subtitle}
-                  className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3 text-[#1A1A24] font-semibold focus:ring-2 focus:ring-[#0A3D91] focus:border-[#0A3D91] transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-[#1A1A24] mb-2">Content</label>
-                <textarea
-                  rows={8}
-                  placeholder="Enter article content"
-                  defaultValue={editingNews?.content}
-                  className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3 text-[#1A1A24] font-semibold focus:ring-2 focus:ring-[#0A3D91] focus:border-[#0A3D91] transition-all resize-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-[#1A1A24] mb-2">Category</label>
-                  <select
-                    defaultValue={editingNews?.category}
-                    className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3 text-[#1A1A24] font-bold focus:ring-2 focus:ring-[#0A3D91] focus:border-[#0A3D91] transition-all"
-                  >
-                    <option value="">Select category</option>
-                    <option value="Championship">Championship</option>
-                    <option value="Regulations">Regulations</option>
-                    <option value="Interview">Interview</option>
-                    <option value="Youth Development">Youth Development</option>
-                    <option value="International">International</option>
-                    <option value="Charity">Charity</option>
-                    <option value="General">General</option>
-                  </select>
-                </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-[#1A1A24] mb-2">Status</label>
-                  <select
-                    defaultValue={editingNews?.status || "Draft"}
-                    className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3 text-[#1A1A24] font-bold focus:ring-2 focus:ring-[#0A3D91] focus:border-[#0A3D91] transition-all"
-                  >
-                    <option value="Draft">Draft</option>
-                    <option value="Published">Published</option>
-                    <option value="Archived">Archived</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-[#1A1A24] mb-2">Featured Image</label>
-
-                {/* Image Preview */}
-                {imagePreview ? (
-                  <div className="relative rounded-xl overflow-hidden border-2 border-[#E0E0E0] bg-gray-50 mb-3">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="w-full h-64 object-cover"
-                    />
-                    <button
-                      onClick={removeImage}
-                      className="absolute top-3 right-3 w-8 h-8 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center transition-colors shadow-lg"
-                      type="button"
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    Publication Status <span className="text-secondary">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      name="status"
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                      required
+                      className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none animate-fadeIn"
                     >
-                      <X className="w-4 h-4" />
+                      <option value="Draft">Draft</option>
+                      <option value="Published">Published</option>
+                      <option value="Archived">Archived</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-muted-foreground">
+                      <ChevronDown className="w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    Tags (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    name="tags"
+                    value={formData.tags}
+                    onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                    placeholder="Championship, National, Tournament"
+                    className="input-premium font-semibold text-slate-800"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Upload Image & Actions */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Featured Image upload */}
+            <div className="card-premium">
+              <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                <Upload className="w-4 h-4 text-primary" />
+                <span>Featured Image</span>
+              </h3>
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-center w-full">
+                  <label className="flex flex-col items-center justify-center w-full h-40 border border-border/80 border-dashed rounded-xl cursor-pointer bg-muted/10 hover:bg-muted/20 transition-all duration-200">
+                    <div className="flex flex-col items-center justify-center pt-4 pb-4 px-2 text-center">
+                      <Upload className="w-7 h-7 text-muted-foreground mb-2" />
+                      <p className="text-xs font-semibold text-slate-700">
+                        <span className="text-primary hover:underline">Click to upload</span> or drag
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">PNG, JPG (MAX. 10MB)</p>
+                    </div>
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept="image/*"
+                      onChange={handleImageChange}
+                    />
+                  </label>
+                </div>
+
+                {imagePreview ? (
+                  <div className="relative w-full h-40 rounded-xl overflow-hidden border border-border/60 shadow-sm animate-fadeIn">
+                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="absolute top-2 right-2 p-1.5 bg-red-500/90 hover:bg-red-600 text-white rounded-lg transition-colors shadow-md"
+                    >
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ) : (
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full h-64 border-2 border-dashed border-[#E0E0E0] rounded-xl bg-[#F4F5F8] hover:bg-gray-100 transition-colors cursor-pointer flex flex-col items-center justify-center gap-3"
-                  >
-                    <div className="w-16 h-16 bg-[#0A3D91]/10 rounded-full flex items-center justify-center">
-                      <Upload className="w-8 h-8 text-[#0A3D91]" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm font-bold text-[#1A1A24] mb-1">Click to upload image</p>
-                      <p className="text-xs text-[#707070]">PNG, JPG, GIF up to 10MB</p>
-                    </div>
+                  <div className="h-40 rounded-xl bg-muted/10 border border-border/40 flex items-center justify-center text-muted-foreground text-xs font-medium">
+                    No image selected
                   </div>
                 )}
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-[#1A1A24] mb-2">Tags (comma-separated)</label>
-                <input
-                  type="text"
-                  placeholder="Championship, National, Tournament"
-                  defaultValue={editingNews?.tags.join(", ")}
-                  className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3 text-[#1A1A24] font-semibold focus:ring-2 focus:ring-[#0A3D91] focus:border-[#0A3D91] transition-all"
-                />
               </div>
             </div>
 
-            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-8 py-6 flex items-center justify-end gap-4 rounded-b-3xl">
+            {/* Actions Card */}
+            <div className="bg-white rounded-xl border border-border p-4 shadow-sm flex flex-col gap-3">
               <button
-                onClick={() => setShowAddModal(false)}
-                className="px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors"
+                type="submit"
+                className="btn-primary w-full py-3"
+              >
+                <Save className="w-4 h-4" />
+                {viewMode === "edit" ? "Save Changes" : "Publish Article"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                className="btn-outline w-full py-3"
               >
                 Cancel
               </button>
-              <button
-                onClick={() => {
-                  // Here you would handle the save logic
-                  setShowAddModal(false);
-                }}
-                className="px-6 py-3 bg-gradient-to-r from-[#0A3D91] to-[#051C42] text-white rounded-xl font-bold hover:from-[#051C42] hover:to-[#0A3D91] transition-all shadow-lg"
-              >
-                {editingNews ? "Save Changes" : "Add Article"}
-              </button>
             </div>
           </div>
+        </form>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn">
+      {/* Header */}
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">News Management</h1>
+          <p className="text-sm text-muted-foreground mt-1 font-medium">Create and publish Kun Khmer articles and federation news</p>
+        </div>
+        <button
+          onClick={handleAddNews}
+          className="btn-secondary py-2.5 px-5"
+        >
+          <Plus className="w-4 h-4" />
+          Add Article
+        </button>
+      </header>
+
+      {/* Search & Filter Bar */}
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1 group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+          <input
+            type="text"
+            placeholder="Search articles by title, subtitle, author, or tag..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-white border border-border/80 rounded-xl pl-11 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all"
+          />
+        </div>
+        <div className="flex gap-3">
+          <select 
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2.5 bg-white border border-border/80 rounded-xl text-sm font-medium text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm hover:border-slate-300 transition-all cursor-pointer min-w-[140px]"
+          >
+            <option value="all">All Status</option>
+            <option value="Draft">Draft</option>
+            <option value="Published">Published</option>
+            <option value="Archived">Archived</option>
+          </select>
+
+          <select 
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="px-4 py-2.5 bg-white border border-border/80 rounded-xl text-sm font-medium text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm hover:border-slate-300 transition-all cursor-pointer min-w-[140px]"
+          >
+            <option value="all">All Categories</option>
+            {categories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredNews.map((article) => {
+          return (
+            <div 
+              key={article.id} 
+              className="bg-white rounded-2xl border border-border/75 overflow-hidden shadow-sm hover:shadow-xl hover:border-primary/20 hover:-translate-y-1.5 transition-all duration-300 group flex flex-col cursor-pointer"
+              onClick={() => handleEditNews(article)}
+            >
+              {/* Image Banner Section */}
+              <div className="h-44 relative overflow-hidden bg-muted flex-shrink-0">
+                <img 
+                  src={article.featuredImage || "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?ixlib=rb-4.0.3&w=800&q=80"} 
+                  alt={article.title} 
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+                
+                {/* Badge Overlays */}
+                <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
+                  <div className="px-2.5 py-0.5 bg-white/10 border border-white/20 text-white rounded-full text-[10px] font-bold shadow-sm backdrop-blur-md uppercase">
+                    {article.category}
+                  </div>
+                  
+                  <div className={`badge-premium ${
+                    article.status === 'Published' ? 'badge-emerald' : 
+                    article.status === 'Draft' ? 'badge-amber' : 'badge-red'
+                  }`}>
+                    <span className={`badge-dot ${
+                      article.status === 'Published' ? 'bg-emerald-500' : 
+                      article.status === 'Draft' ? 'bg-amber-500' : 'bg-red-500'
+                    }`} />
+                    <span className="text-[10px] font-bold uppercase">{article.status}</span>
+                  </div>
+                </div>
+                
+                {/* Action Overlays on Hover */}
+                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-200 flex gap-2 translate-y-[-5px] group-hover:translate-y-0">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditNews(article);
+                    }}
+                    className="p-2 bg-white/95 hover:bg-white text-primary border border-border/40 rounded-xl shadow-md backdrop-blur-md transition-all duration-150 hover:scale-105 active:scale-95"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(article.id);
+                    }}
+                    className="p-2 bg-red-50/95 hover:bg-red-500 hover:text-white text-secondary border border-red-100 rounded-xl shadow-md backdrop-blur-md transition-all duration-150 hover:scale-105 active:scale-95"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              
+              {/* Card Content Section */}
+              <div className="p-5 flex-1 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors duration-200 tracking-tight leading-tight line-clamp-2 mb-1.5">
+                    {article.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground font-medium line-clamp-2 mb-4">
+                    {article.subtitle}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px]">
+                      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Author</div>
+                      <div className="text-xs font-semibold text-foreground line-clamp-1">{article.author}</div>
+                    </div>
+                    <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px]">
+                      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Views</div>
+                      <div className="flex items-center gap-1 text-primary">
+                        <Eye className="w-3.5 h-3.5 shrink-0" />
+                        <span className="text-xs font-bold">{article.views.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    {article.tags.slice(0, 3).map(tag => (
+                      <span key={tag} className="px-2 py-0.5 bg-muted text-muted-foreground rounded-full text-[10px] font-medium border border-border/40">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Date Row */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground font-medium pt-3 border-t border-border/50">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 shrink-0" />
+                      {article.publishDate}
+                    </span>
+                    <span className="text-primary group-hover:text-secondary font-semibold flex items-center gap-1 transition-colors">
+                      Read Article
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {filteredNews.length === 0 && (
+        <div className="text-center py-16 bg-white rounded-2xl border border-border/60 shadow-sm">
+          <div className="w-16 h-16 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Newspaper className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-bold text-foreground tracking-tight mb-1">No Articles Found</h3>
+          <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+            We couldn't find any news articles matching your search. Try adjusting your filters or search term.
+          </p>
         </div>
       )}
     </div>

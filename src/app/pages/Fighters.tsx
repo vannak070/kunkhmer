@@ -248,13 +248,7 @@ export function Fighters() {
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
 
                 {/* Badge Overlays */}
-                <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
-                  {/* Grade Badge */}
-                  <div className="flex items-center gap-1 bg-[#FFFDF5] border border-amber-200/80 text-amber-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm">
-                    <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                    <span>Grade {fighter.grade || 'A'}</span>
-                  </div>
-
+                <div className="absolute bottom-4 left-4 right-4 flex justify-end items-end">
                   {/* Availability Badge */}
                   <div className={`badge-premium ${getAvailabilityBadgeVariant(availability.label)} shadow-sm`}>
                     <span className={`badge-dot ${getAvailabilityDotColor(availability.label)}`} />
@@ -293,36 +287,57 @@ export function Fighters() {
               </div>
 
               {/* Card Content Section */}
-              <div className="p-5 flex-1 flex flex-col justify-between">
-                <div>
-                  <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors duration-200 tracking-tight leading-tight line-clamp-1 mb-0.5">
-                    {fighter.name}
-                  </h3>
-                  <div className="flex items-center gap-1.5 text-muted-foreground mb-4">
-                    <MapPin className="w-3.5 h-3.5 text-secondary shrink-0" />
-                    <span className="text-xs font-semibold">{fighter.gym}</span>
-                  </div>
+              <div className="p-4 flex-1 flex flex-col gap-3">
 
-                  <div className="grid grid-cols-2 gap-3 mb-5">
-                    <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px]">
-                      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Weight Class</div>
-                      <div className="text-sm font-semibold text-slate-800 line-clamp-1">{fighter.weight} kg</div>
-                    </div>
-                    <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px]">
-                      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Record</div>
-                      <div className="flex items-center gap-1 text-primary">
-                        <Activity className="w-3.5 h-3.5 shrink-0" />
-                        <span className="text-sm font-bold">{fighter.record}</span>
-                      </div>
-                    </div>
+                {/* Name + Origin */}
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-0.5">
+                    <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors duration-200 tracking-tight leading-tight line-clamp-1">
+                      {fighter.name}
+                    </h3>
+                    <span className={`shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                      fighter.origin === 'Foreigner'
+                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}>
+                      {fighter.origin === 'Foreigner' ? '🌍 INT' : '🇰🇭 KHM'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <MapPin className="w-3 h-3 text-secondary shrink-0" />
+                    <span className="text-xs font-semibold line-clamp-1">{fighter.gym}</span>
                   </div>
                 </div>
 
+                {/* Style Chip */}
+                {fighter.style && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/8 border border-primary/20 px-2.5 py-1 rounded-full">
+                      <Activity className="w-3 h-3" />
+                      {fighter.style} Style
+                    </span>
+                  </div>
+                )}
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-muted/20 rounded-xl p-2.5 border border-border/40 flex flex-col gap-0.5">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Weight</span>
+                    <span className="text-sm font-bold text-slate-800">{fighter.weight} <span className="text-[10px] font-semibold text-muted-foreground">kg</span></span>
+                  </div>
+                  <div className="bg-muted/20 rounded-xl p-2.5 border border-border/40 flex flex-col gap-0.5">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Record</span>
+                    <span className="text-sm font-bold text-primary">{fighter.record || '0-0-0'}</span>
+                  </div>
+                </div>
+
+                {/* CTA */}
                 <Link
                   to={`/home/fighters/${fighter.id}`}
-                  className="btn-outline w-full py-2 text-center"
+                  className="mt-auto btn-primary w-full py-2 text-center text-sm flex items-center justify-center gap-1.5"
                 >
                   View Profile
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </Link>
               </div>
             </div>

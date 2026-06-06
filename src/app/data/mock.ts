@@ -2796,3 +2796,110 @@ export const MOCK_CLUBS = [
     image: "https://images.unsplash.com/photo-1552196563-55cd4e45efb3?q=80&w=2940&auto=format&fit=crop"
   }
 ];
+
+export interface VideoItem {
+  id: string;
+  title: string;
+  description: string;
+  duration: string;
+  uploadDate: string;
+  status: "Draft" | "Published" | "Archived";
+  category: string;
+  thumbnail?: string;
+  youtubeUrl?: string;
+  views: number;
+  tags: string[];
+  fighterId?: string;
+  clubId?: string;
+  matchId?: string;
+}
+
+export const MOCK_VIDEOS: VideoItem[] = [
+  {
+    id: "1",
+    title: "Kun Khmer National Championship 2026 - Opening Ceremony Highlights",
+    description: "Watch the spectacular opening ceremony of the National Championship featuring traditional performances and fighter introductions",
+    duration: "12:45",
+    uploadDate: "2026-04-25",
+    status: "Published",
+    category: "Championship",
+    thumbnail: "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?ixlib=rb-4.0.3&w=800&q=80",
+    youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    views: 5420,
+    tags: ["Championship", "Opening Ceremony", "Highlights"],
+    clubId: "c1"
+  },
+  {
+    id: "2",
+    title: "Training Tutorial: Advanced Elbow Techniques with Prak Sophea",
+    description: "Master the art of elbow strikes with this comprehensive training tutorial from the Elbow King",
+    duration: "18:30",
+    uploadDate: "2026-04-22",
+    status: "Published",
+    category: "Training",
+    thumbnail: "https://images.unsplash.com/photo-1555597673-b21d5c935865?ixlib=rb-4.0.3&w=800&q=80",
+    youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    views: 3210,
+    tags: ["Training", "Tutorial", "Techniques"],
+    fighterId: "f5",
+    clubId: "c1",
+    matchId: "m1"
+  },
+  {
+    id: "3",
+    title: "Full Match: Kem Sitha vs Chan Rothana - Lightweight Title Fight",
+    description: "Complete recording of the intense lightweight championship bout between two top contenders",
+    duration: "45:20",
+    uploadDate: "2026-04-20",
+    status: "Published",
+    category: "Match Recording",
+    thumbnail: "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?ixlib=rb-4.0.3&w=800&q=80",
+    youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    views: 8765,
+    tags: ["Match", "Championship", "Full Fight"],
+    fighterId: "f6",
+    matchId: "m2"
+  },
+  {
+    id: "4",
+    title: "Youth Development Program - Documentary",
+    description: "Behind-the-scenes look at the expanding youth development program across Cambodia",
+    duration: "25:15",
+    uploadDate: "2026-04-18",
+    status: "Published",
+    category: "Documentary",
+    thumbnail: "https://images.unsplash.com/photo-1555597673-b21d5c935865?ixlib=rb-4.0.3&w=800&q=80",
+    youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    views: 2340,
+    tags: ["Youth", "Documentary", "Development"],
+    clubId: "c2"
+  },
+  {
+    id: "5",
+    title: "Fighter Profile: Interview with Sorn Seavmey",
+    description: "Exclusive in-depth interview with The Tiger discussing training, motivation, and future goals",
+    duration: "15:45",
+    uploadDate: "2026-04-15",
+    status: "Published",
+    category: "Interview",
+    thumbnail: "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?ixlib=rb-4.0.3&w=800&q=80",
+    youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    views: 4520,
+    tags: ["Interview", "Champion", "Profile"],
+    fighterId: "f1",
+    clubId: "c1"
+  },
+  {
+    id: "6",
+    title: "Charity Fight Night 2026 - Event Recap",
+    description: "Highlights from the successful charity event that raised $50,000 for local communities",
+    duration: "8:30",
+    uploadDate: "2026-04-12",
+    status: "Draft",
+    category: "Event Recap",
+    thumbnail: "https://images.unsplash.com/photo-1555597673-b21d5c935865?ixlib=rb-4.0.3&w=800&q=80",
+    youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    views: 0,
+    tags: ["Charity", "Event", "Recap"]
+  }
+];

@@ -369,6 +369,16 @@ export function ClubDetail() {
   
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    if (tab === 'overview') {
+      const mainEl = document.querySelector('main');
+      if (mainEl) {
+        mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  };
+
   // Filter fighters by club ID
   const clubFighters = MOCK_FIGHTERS.filter(fighter => fighter.clubId === id);
 
@@ -405,9 +415,9 @@ export function ClubDetail() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto flex flex-col min-h-full animate-fadeIn">
       {/* Header */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div className="flex items-center gap-4">
           <Link 
             to="/home/clubs" 
@@ -429,7 +439,7 @@ export function ClubDetail() {
       </header>
 
       {/* Hero Section */}
-      <div className="relative h-64 md:h-80 rounded-2xl overflow-hidden border border-border/60 shadow-md">
+      <div className="relative h-64 md:h-80 rounded-2xl overflow-hidden border border-border/60 shadow-md mb-6">
         <img src={club.image} alt={club.name} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/50 to-transparent" />
         
@@ -481,9 +491,9 @@ export function ClubDetail() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-border bg-white rounded-2xl p-1 gap-1 shadow-sm sticky top-0 z-20 flex overflow-x-auto no-scrollbar">
+      <div className="border-b border-border bg-white rounded-2xl p-1 gap-1 shadow-sm sticky -top-6 md:-top-8 z-20 flex overflow-x-auto no-scrollbar mb-6">
         <button
-          onClick={() => setActiveTab('overview')}
+          onClick={() => handleTabChange('overview')}
           className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 py-3.5 text-sm font-semibold uppercase tracking-wider transition-all rounded-xl relative ${
             activeTab === 'overview'
               ? 'text-primary bg-primary/5 font-bold'
@@ -495,7 +505,7 @@ export function ClubDetail() {
         </button>
 
         <button
-          onClick={() => setActiveTab('fighters')}
+          onClick={() => handleTabChange('fighters')}
           className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 py-3.5 text-sm font-semibold uppercase tracking-wider transition-all rounded-xl relative ${
             activeTab === 'fighters'
               ? 'text-primary bg-primary/5 font-bold'
@@ -510,7 +520,7 @@ export function ClubDetail() {
         </button>
 
         <button
-          onClick={() => setActiveTab('champions')}
+          onClick={() => handleTabChange('champions')}
           className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 py-3.5 text-sm font-semibold uppercase tracking-wider transition-all rounded-xl relative ${
             activeTab === 'champions'
               ? 'text-primary bg-primary/5 font-bold'
@@ -525,7 +535,7 @@ export function ClubDetail() {
         </button>
 
         <button
-          onClick={() => setActiveTab('matches')}
+          onClick={() => handleTabChange('matches')}
           className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 py-3.5 text-sm font-semibold uppercase tracking-wider transition-all rounded-xl relative ${
             activeTab === 'matches'
               ? 'text-primary bg-primary/5 font-bold'
@@ -638,55 +648,83 @@ export function ClubDetail() {
                     <Link
                       key={fighter.id}
                       to={`/home/fighters/${fighter.id}`}
-                      className="group card-premium overflow-hidden hover:-translate-y-1.5 hover:shadow-xl hover:border-primary/20 transition-all duration-300 flex flex-col p-0"
+                      className="group bg-white rounded-2xl border border-border/75 overflow-hidden shadow-sm hover:shadow-xl hover:border-primary/20 hover:-translate-y-1.5 transition-all duration-300 flex flex-col"
                     >
                       {/* Photo Section */}
-                      <div className="h-56 relative overflow-hidden bg-gradient-to-br from-primary to-[#082E6E] shrink-0">
+                      <div className="h-44 relative overflow-hidden bg-muted shrink-0">
                         <img
                           src={fighter.image || unknownFighterImg}
                           alt={fighter.name}
-                          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
+                          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
                         />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+
+                        {/* Approval badge top-right */}
                         {!isApproved && (
                           <div className="absolute top-3 right-3 z-10">
                             <FighterApprovalBadge status={approvalStatus} size="sm" />
                           </div>
                         )}
-                      </div>
-                      
-                      {/* Details Section */}
-                      <div className="p-4 flex-1 flex flex-col justify-between">
-                        <div>
-                          <h3 className="text-base font-bold text-foreground leading-tight group-hover:text-primary transition-colors truncate mb-0.5">
-                            {fighter.name}
-                          </h3>
-                          <p className="text-xs text-muted-foreground font-bold italic truncate mb-3">&quot;{fighter.alias}&quot;</p>
-                          
-                          <div className="grid grid-cols-2 gap-2 mb-4">
-                            <div className="bg-muted/15 p-2 rounded-lg border border-border/40 flex items-center gap-1.5">
-                              <Weight className="w-3.5 h-3.5 text-secondary shrink-0" />
-                              <span className="text-xs font-semibold text-slate-700 font-mono">{fighter.weight} kg</span>
-                            </div>
-                            <div className="bg-muted/15 p-2 rounded-lg border border-border/40 flex items-center gap-1.5">
-                              <Activity className="w-3.5 h-3.5 text-primary shrink-0" />
-                              <span className="text-xs font-semibold text-slate-700 font-mono truncate">{fighter.record}</span>
-                            </div>
-                          </div>
-                        </div>
 
-                        <div className="pt-3 border-t border-border/60">
+                        {/* Availability badge bottom-right */}
+                        <div className="absolute bottom-3 left-3 right-3 flex justify-end">
                           {isApproved ? (
-                            <div className={`badge-premium ${availability.style}`}>
+                            <div className={`badge-premium ${availability.style} shadow-sm`}>
                               <span className={`badge-dot ${availability.dot}`} />
                               <span>{availability.label}</span>
                               {availability.daysLeft !== undefined && <span className="font-mono ml-0.5">({availability.daysLeft}d)</span>}
                             </div>
                           ) : (
-                            <div className="badge-premium badge-red">
+                            <div className="badge-premium badge-red shadow-sm">
                               <span className="badge-dot bg-red-500" />
                               <span>Cannot Match</span>
                             </div>
                           )}
+                        </div>
+                      </div>
+
+                      {/* Details Section */}
+                      <div className="p-4 flex-1 flex flex-col gap-3">
+
+                        {/* Name + Origin */}
+                        <div>
+                          <div className="flex items-start justify-between gap-2 mb-0.5">
+                            <h3 className="text-base font-bold text-foreground leading-tight group-hover:text-primary transition-colors line-clamp-1">
+                              {fighter.name}
+                            </h3>
+                            <span className={`shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                              fighter.origin === 'Foreigner'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : 'bg-amber-50 text-amber-700 border-amber-200'
+                            }`}>
+                              {fighter.origin === 'Foreigner' ? '🌍 INT' : '🇰🇭 KHM'}
+                            </span>
+                          </div>
+                          {fighter.alias && (
+                            <p className="text-xs text-muted-foreground font-bold italic truncate">&quot;{fighter.alias}&quot;</p>
+                          )}
+                        </div>
+
+                        {/* Style Chip */}
+                        {fighter.style && (
+                          <div>
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/8 border border-primary/20 px-2.5 py-1 rounded-full">
+                              <Activity className="w-3 h-3" />
+                              {fighter.style} Style
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Stats Grid */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-muted/20 rounded-xl p-2.5 border border-border/40 flex flex-col gap-0.5">
+                            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Weight</span>
+                            <span className="text-sm font-bold text-slate-800">{fighter.weight} <span className="text-[10px] font-semibold text-muted-foreground">kg</span></span>
+                          </div>
+                          <div className="bg-muted/20 rounded-xl p-2.5 border border-border/40 flex flex-col gap-0.5">
+                            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Record</span>
+                            <span className="text-sm font-bold text-primary">{fighter.record || '0-0-0'}</span>
+                          </div>
                         </div>
                       </div>
                     </Link>

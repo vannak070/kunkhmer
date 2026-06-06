@@ -43,6 +43,7 @@ export function AddFighter() {
     medicalConditions: "None", allergies: "None",
     weight: "", height: "", reach: "", experience: "0",
     styles: [] as string[], type: "Amateur", grade: "D",
+    weightClass: "", record: existingFighter?.record || "0-0-0",
     origin: isKunKhmer ? "Local" : "Foreigner",
     gym: "", clubId: "", trainer: "", promoter: "",
     image: "", status: "Active",
@@ -80,6 +81,8 @@ export function AddFighter() {
         image: existingFighter.image || "",
         status: existingFighter.status || "Active",
         termsAccepted: true, consentCompete: true, medicalFitness: true,
+        record: existingFighter.record || "0-0-0",
+        weightClass: existingFighter.weightClass || "",
       });
       if (existingFighter.image) setPhotoPreview(existingFighter.image);
     }
@@ -162,9 +165,10 @@ export function AddFighter() {
       name: fighter.nameEN || fighter.nameKH,
       alias: fighter.alias || "The Warrior",
       weight: parseFloat(fighter.weight) || 0,
-      record: isEditMode && existingFighter ? existingFighter.record : "0-0-0",
       gym: fighter.gym, clubId: fighter.clubId, origin: fighter.origin,
       type: fighter.type, grade: fighter.grade,
+      weightClass: fighter.weightClass,
+      record: fighter.record || "0-0-0",
       style: fighter.styles.join(", "),
       image: finalImage, status: fighter.status,
     };
@@ -181,8 +185,6 @@ export function AddFighter() {
   const fieldClass = (field: string) =>
     `input-premium font-semibold text-slate-800 ${errors[field] && touched[field] ? "border-secondary!" : ""}`;
 
-  const isUnder18Amateur =
-    fighter.type === "Amateur" && fighter.dob && calculateAge(fighter.dob) < 18;
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn">
@@ -228,43 +230,6 @@ export function AddFighter() {
 
         {/* ── Left / Main Column ── */}
         <div className="lg:col-span-2 space-y-6">
-
-          {/* Fighter Type */}
-          <div className="card-premium">
-            <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
-              <Shield className="w-5 h-5 text-primary" />
-              Fighter Classification
-            </h2>
-            <div className="grid grid-cols-2 gap-3">
-              {["Amateur", "Professional"].map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => updateField("type", type)}
-                  className={`relative px-6 py-4 rounded-xl font-bold text-sm transition-all border-2 ${
-                    fighter.type === type
-                      ? "bg-primary text-white border-primary shadow-md"
-                      : "bg-white text-foreground border-border hover:border-primary/40 hover:bg-muted/30"
-                  }`}
-                >
-                  {type}
-                  {fighter.type === type && (
-                    <CheckCircle2 className="w-4 h-4 absolute top-2.5 right-2.5 opacity-80" />
-                  )}
-                </button>
-              ))}
-            </div>
-            {fighter.type && (
-              <div className="mt-3 p-3 bg-muted/30 rounded-lg border border-border/60 flex items-start gap-2">
-                <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                <p className="text-xs text-muted-foreground">
-                  {fighter.type === "Amateur"
-                    ? "For fighters under 18 years old, only a birth certificate is required for registration."
-                    : "Full documentation including National ID or Passport is required for all professional fighters."}
-                </p>
-              </div>
-            )}
-          </div>
 
           {/* Personal Information */}
           <div className="card-premium">
@@ -415,70 +380,44 @@ export function AddFighter() {
               <Shield className="w-5 h-5 text-amber-500" />
               KYC Verification
             </h2>
-
-            {isUnder18Amateur ? (
-              <div className="p-4 bg-green-50 rounded-xl border border-green-200">
-                <div className="flex items-start gap-3 mb-3">
-                  <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm font-bold text-green-800">Simplified Requirements</p>
-                    <p className="text-xs text-green-700 mt-0.5">
-                      Amateur fighter under 18 (Age: {calculateAge(fighter.dob)}) — only a birth certificate is required.
-                    </p>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    ID Type <span className="text-secondary">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={fighter.idType}
+                      onChange={(e) => updateField("idType", e.target.value)}
+                      className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none"
+                    >
+                      <option>National ID</option>
+                      <option>Passport</option>
+                      <option>Birth Certificate</option>
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   </div>
                 </div>
-                <input ref={docInputRef} type="file" accept="image/*,application/pdf" onChange={handleDocChange} className="hidden" id="doc-upload" />
-                {!docPreview ? (
-                  <label htmlFor="doc-upload" className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold cursor-pointer transition-all">
-                    <Upload className="w-4 h-4" /> Upload Birth Certificate
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    ID Number <span className="text-secondary">*</span>
                   </label>
-                ) : (
-                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-green-200">
-                    <CheckCircle2 className="w-4 h-4 text-green-600" />
-                    <span className="text-sm font-semibold flex-1">Birth Certificate Uploaded</span>
-                    <button type="button" onClick={removeDoc} className="p-1.5 hover:bg-red-50 rounded-lg text-secondary transition-colors">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                      ID Type <span className="text-secondary">*</span>
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={fighter.idType}
-                        onChange={(e) => updateField("idType", e.target.value)}
-                        className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none"
-                      >
-                        <option>National ID</option>
-                        <option>Passport</option>
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                      ID Number <span className="text-secondary">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={fighter.idNumber}
-                      onChange={(e) => updateField("idNumber", e.target.value)}
-                      onBlur={() => handleBlur("idNumber")}
-                      placeholder="Enter ID number"
-                      className={fieldClass("idNumber")}
-                    />
-                    {errors.idNumber && touched.idNumber && (
-                      <p className="text-xs text-secondary mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" /> {errors.idNumber}
-                      </p>
-                    )}
-                  </div>
+                  <input
+                    type="text"
+                    value={fighter.idNumber}
+                    onChange={(e) => updateField("idNumber", e.target.value)}
+                    onBlur={() => handleBlur("idNumber")}
+                    placeholder="Enter ID number"
+                    className={fieldClass("idNumber")}
+                  />
+                  {errors.idNumber && touched.idNumber && (
+                    <p className="text-xs text-secondary mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {errors.idNumber}
+                    </p>
+                  )}
+                </div>
+                {fighter.idType !== "Birth Certificate" && (
                   <div>
                     <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                       Expiry Date <span className="text-secondary">*</span>
@@ -490,34 +429,34 @@ export function AddFighter() {
                       className="input-premium font-semibold text-slate-800"
                     />
                   </div>
-                </div>
+                )}
+              </div>
 
-                {/* Document Upload */}
-                <div className="p-4 bg-blue-50/60 rounded-xl border border-dashed border-blue-200">
-                  <div className="flex items-start gap-3">
-                    <FileCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-primary mb-1">Upload {fighter.idType}</p>
-                      <p className="text-xs text-muted-foreground mb-3">Clear photo or scan of the front side</p>
-                      <input ref={docInputRef} type="file" accept="image/*,application/pdf" onChange={handleDocChange} className="hidden" id="doc-upload" />
-                      {!docPreview ? (
-                        <label htmlFor="doc-upload" className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-bold cursor-pointer transition-all">
-                          <Upload className="w-4 h-4" /> Choose File
-                        </label>
-                      ) : (
-                        <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-green-200">
-                          <CheckCircle2 className="w-4 h-4 text-green-600" />
-                          <span className="text-sm font-semibold flex-1">{fighter.idType} — Ready</span>
-                          <button type="button" onClick={removeDoc} className="p-1.5 hover:bg-red-50 rounded-lg text-secondary transition-colors">
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
+              {/* Document Upload */}
+              <div className="p-4 bg-blue-50/60 rounded-xl border border-dashed border-blue-200">
+                <div className="flex items-start gap-3">
+                  <FileCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-primary mb-1">Upload {fighter.idType}</p>
+                    <p className="text-xs text-muted-foreground mb-3">Clear photo or scan of the front side</p>
+                    <input ref={docInputRef} type="file" accept="image/*,application/pdf" onChange={handleDocChange} className="hidden" id="doc-upload" />
+                    {!docPreview ? (
+                      <label htmlFor="doc-upload" className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-bold cursor-pointer transition-all">
+                        <Upload className="w-4 h-4" /> Choose File
+                      </label>
+                    ) : (
+                      <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-green-200">
+                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        <span className="text-sm font-semibold flex-1">{fighter.idType} — Ready</span>
+                        <button type="button" onClick={removeDoc} className="p-1.5 hover:bg-red-50 rounded-lg text-secondary transition-colors">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
-            )}
+            </div>
           </div>
 
           {/* Contact Information */}
@@ -696,6 +635,51 @@ export function AddFighter() {
                     )}
                   </div>
                 ))}
+              </div>
+
+              {/* Weight Class & Record */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    Weight Class
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={fighter.weightClass}
+                      onChange={(e) => updateField("weightClass", e.target.value)}
+                      className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none"
+                    >
+                      <option value="">Select Weight Class</option>
+                      <option>Mini Flyweight (under 48 kg)</option>
+                      <option>Light Flyweight (48 kg)</option>
+                      <option>Flyweight (51 kg)</option>
+                      <option>Super Flyweight (52 kg)</option>
+                      <option>Bantamweight (54 kg)</option>
+                      <option>Featherweight (57 kg)</option>
+                      <option>Lightweight (61 kg)</option>
+                      <option>Welterweight (67 kg)</option>
+                      <option>Middleweight (72 kg)</option>
+                      <option>Light Heavyweight (79 kg)</option>
+                      <option>Heavyweight (over 79 kg)</option>
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    Fight Record
+                  </label>
+                  <input
+                    type="text"
+                    value={fighter.record}
+                    onChange={(e) => updateField("record", e.target.value)}
+                    placeholder="W-L-D (e.g. 10-2-1)"
+                    className="input-premium font-semibold text-slate-800 font-mono tracking-widest"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                    <Info className="w-3 h-3" /> Format: Wins-Losses-Draws
+                  </p>
+                </div>
               </div>
 
               {/* Club / Gym */}
@@ -939,8 +923,9 @@ export function AddFighter() {
                   { label: "Name", val: fighter.nameEN || fighter.nameKH || "—" },
                   { label: "Age", val: fighter.dob ? `${calculateAge(fighter.dob)} yrs` : "—" },
                   { label: "Weight", val: fighter.weight ? `${fighter.weight} kg` : "—" },
+                  { label: "Class", val: fighter.weightClass || "—" },
+                  { label: "Record", val: fighter.record || "—" },
                   { label: "Club", val: fighter.gym || "—" },
-                  { label: "Type", val: fighter.type },
                   { label: "Styles", val: fighter.styles.length ? `${fighter.styles.length} selected` : "—" },
                 ].map(({ label, val }) => (
                   <div key={label} className="flex justify-between items-center py-1.5 border-b border-border/40 last:border-0">
@@ -951,30 +936,16 @@ export function AddFighter() {
               </div>
             </div>
 
-            {/* Grade / Status */}
+            {/* Status */}
             <div className="card-premium">
-              <h3 className="text-sm font-bold text-foreground mb-3">Grade & Status</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Grade</label>
-                  <div className="relative">
-                    <select value={fighter.grade} onChange={(e) => updateField("grade", e.target.value)} className="input-premium font-bold text-slate-800 cursor-pointer appearance-none">
-                      {["S", "A", "B", "C", "D"].map((g) => <option key={g}>{g}</option>)}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Status</label>
-                  <div className="relative">
-                    <select value={fighter.status} onChange={(e) => updateField("status", e.target.value)} className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none">
-                      <option>Active</option>
-                      <option>Inactive</option>
-                      <option>Suspended</option>
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  </div>
-                </div>
+              <h3 className="text-sm font-bold text-foreground mb-3">Status</h3>
+              <div className="relative">
+                <select value={fighter.status} onChange={(e) => updateField("status", e.target.value)} className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none">
+                  <option>Active</option>
+                  <option>Inactive</option>
+                  <option>Suspended</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               </div>
             </div>
 
