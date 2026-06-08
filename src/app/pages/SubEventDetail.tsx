@@ -10,7 +10,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import { ShareableMatchCard } from "../components/ShareableMatchCard";
 import { clsx } from "clsx";
 import { toast } from "sonner";
-import html2canvas from "html2canvas";
+import html2canvas from "html2canvas-pro";
 
 export function SubEventDetail() {
   const { eventId, subEventId } = useParams();

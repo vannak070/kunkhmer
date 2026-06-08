@@ -17,7 +17,7 @@ import type { BatchStatus } from "../data/batches";
 import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
 import { clsx } from "clsx";
-import html2canvas from "html2canvas";
+import html2canvas from "html2canvas-pro";
 import { ShareFightCard } from "../components/ShareFightCard";
 import kkfLogo from "../../assets/modern_logo.png";
 import { getJudges, getReferees } from "../utils/officialsStore";
@@ -189,7 +189,8 @@ export function BatchDetail() {
   const isLocked = ["Completed", "Complete", "Live"].includes(batch.status);
 
   const steps = [
-    { id: "draft", label: "Drafting", icon: "✏️", desc: "Batch created" },
+    { id: "draft", label: "Draft", icon: "✏️", desc: "Batch created" },
+    { id: "draft-ready", label: "Draft Ready", icon: "📋", desc: "Matches finalized" },
     { id: "weight-in", label: "Weight-In", icon: "⚖️", desc: "Fighter check" },
     { id: "live", label: "Ready & Live", icon: "🔥", desc: "Fight day" },
     { id: "complete", label: "Completed", icon: "🏆", desc: "Results declared" }
@@ -197,17 +198,33 @@ export function BatchDetail() {
 
   const getStepState = (stepId: string) => {
     const status = batch.status;
+    const hasMatches = batch.matches.length > 0;
+
     if (status === "Complete" || status === "Completed") {
       return "completed";
     }
+
     switch (stepId) {
       case "draft":
-        return status === "Draft" ? "active" : "completed";
+        if (status !== "Draft") return "completed";
+        return hasMatches ? "completed" : "active";
+      case "draft-ready":
+        if (status === "Draft") {
+          return hasMatches ? "active" : "upcoming";
+        }
+        if (["Pending KKF", "Approved", "Rejected", "Scheduled"].includes(status)) {
+          return "active";
+        }
+        return "completed";
       case "weight-in":
-        if (status === "Draft") return "upcoming";
+        if (["Draft", "Pending KKF", "Approved", "Rejected", "Scheduled"].includes(status)) {
+          return "upcoming";
+        }
         return status === "Weight-In" ? "active" : "completed";
       case "live":
-        if (["Draft", "Weight-In"].includes(status)) return "upcoming";
+        if (["Draft", "Pending KKF", "Approved", "Rejected", "Scheduled", "Weight-In"].includes(status)) {
+          return "upcoming";
+        }
         return ["Ready", "Live"].includes(status) ? "active" : "completed";
       case "complete":
         return (status === "Complete" || status === "Completed") ? "active" : "upcoming";
@@ -472,6 +489,56 @@ export function BatchDetail() {
                 </button>
               )}
 
+              {/* Share Fight Card */}
+              {(() => {
+                const isDraftReady = batch.status === "Draft" && batch.matches.length > 0;
+                const isActiveStage = ["Weight-In", "Ready", "Live"].includes(batch.status);
+                const isCompleted = ["Complete", "Completed"].includes(batch.status);
+                const allResultsUpdated = isCompleted && batch.matches.length > 0 && batch.matches.every(m => m.winner);
+                
+                // Show share button for Draft Ready, Weight-In, Ready, Live
+                if (isDraftReady || isActiveStage) {
+                  return (
+                    <button
+                      onClick={handleShare}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow hover:-translate-y-[1px] active:scale-[0.98]"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Share Fight Card
+                    </button>
+                  );
+                }
+                
+                // For Completed: show share only if results are updated
+                if (isCompleted && allResultsUpdated) {
+                  return (
+                    <button
+                      onClick={handleShare}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow hover:-translate-y-[1px] active:scale-[0.98]"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Share with Results
+                    </button>
+                  );
+                }
+                
+                // Completed but no results yet
+                if (isCompleted && !allResultsUpdated) {
+                  return (
+                    <button
+                      disabled
+                      title="Update match results first to enable sharing"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-100 text-slate-400 rounded-xl font-semibold uppercase tracking-wider text-xs cursor-not-allowed border border-slate-200"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Share (Results Needed)
+                    </button>
+                  );
+                }
+                
+                return null;
+              })()}
+
               {/* Delete Batch */}
               {batch.status === "Draft" && permissions.hasPermission('matches.delete') && (
                 <button
@@ -501,7 +568,7 @@ export function BatchDetail() {
                 placeholder="Search fighters or weight..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="input-premium rounded-xl pl-11 pr-10 py-2.5 text-sm font-medium text-slate-700"
+                className="input-premium rounded-xl !pl-11 !pr-10 py-2.5 text-sm font-medium text-slate-700"
               />
               {searchQuery && (
                 <button

@@ -287,7 +287,7 @@ export function MatchesEnhanced() {
                 placeholder="Search by batch ID, event, location, or fighter..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="input-premium rounded-xl pl-11 pr-10 py-2.5 text-sm font-medium border border-border focus:border-primary text-slate-800"
+                className="input-premium rounded-xl !pl-11 !pr-10 py-2.5 text-sm font-medium border border-border focus:border-primary text-slate-800"
               />
               {search && (
                 <button
@@ -599,36 +599,34 @@ export function MatchesEnhanced() {
                         </div>
 
                         {/* More Menu */}
-                        <div className="relative group">
-                          <button className="p-2 hover:bg-muted rounded-lg transition-colors border border-transparent hover:border-border">
-                            <MoreVertical className="w-5 h-5 text-muted-foreground" />
-                          </button>
+                        {(() => {
+                          const isDraftReady = batch.status === "Draft" && batch.matches.length > 0;
+                          const isActiveStage = ["Weight-In", "Ready", "Live"].includes(batch.status);
+                          const isCompleted = ["Complete", "Completed"].includes(batch.status);
+                          const allResultsUpdated = isCompleted && batch.matches.length > 0 && batch.matches.every(m => m.winner);
+                          const showShare = isDraftReady || isActiveStage || (isCompleted && allResultsUpdated);
+                          
+                          if (!showShare) return null;
+                          
+                          return (
+                          <div className="relative group">
+                            <button className="p-2 hover:bg-muted rounded-lg transition-colors border border-transparent hover:border-border">
+                              <MoreVertical className="w-5 h-5 text-muted-foreground" />
+                            </button>
 
-                          {/* Dropdown Menu */}
-                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-border py-1.5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                            <button
-                              onClick={() => handleDuplicateBatch(batch.id)}
-                              className="w-full px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
-                            >
-                              <Copy className="w-3.5 h-3.5 text-muted-foreground" />
-                              Duplicate
-                            </button>
-                            <button
-                              onClick={() => navigate(`/batches/${batch.id}/share`)}
-                              className="w-full px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
-                            >
-                              <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
-                              Share
-                            </button>
-                            <button
-                              onClick={() => {/* Export functionality */}}
-                              className="w-full px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
-                            >
-                              <Download className="w-3.5 h-3.5 text-muted-foreground" />
-                              Export PDF
-                            </button>
+                            {/* Dropdown Menu */}
+                            <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-border py-1.5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                              <button
+                                onClick={() => navigate(`/batches/${batch.id}/share`)}
+                                className="w-full px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
+                              >
+                                <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
+                                {isCompleted ? "Share with Results" : "Share"}
+                              </button>
+                            </div>
                           </div>
-                        </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Special Badges */}

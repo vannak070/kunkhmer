@@ -46,7 +46,7 @@
     "date-fns": "3.6.0",
     "embla-carousel-react": "8.6.0",
     "enhanced-resolve": "^5.22.2",
-    "html2canvas": "^1.4.1",
+    "html2canvas-pro": "^2.0.4",
     "input-otp": "1.4.2",
     "lucide-react": "0.487.0",
     "motion": "12.23.24",

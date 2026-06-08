@@ -3,10 +3,6 @@
 
 import { MatchStatus, MatchType } from "./event-types";
 
-// Import poster images for batches
-import posterImage1 from 'figma:asset/485f7dc6660a4a78fbd9168093303630f0740df2.png';
-import posterImage2 from 'figma:asset/76de12a848bf50a1769fa454bf2dab5cb85ea354.png';
-
 export type BatchStatus = 
   | "Draft"           // Being created
   | "Pending KKF"     // Submitted to KKF, awaiting review
@@ -202,21 +198,38 @@ export const MOCK_BATCHES: MatchBatch[] = [
     id: "batch-001",
     batchNumber: "BATCH-001",
     eventId: "e1",
-    eventName: "KUN KHMER Championship 2026",
-    eventDate: "2026-04-15",
-    status: "Weight-In",
-    totalMatches: 6,
-    date: "2026-04-15",
-    location: "Phnom Penh, Cambodia",
-    posterImage: posterImage1,
+    eventName: "Kun Khmer National Championship 2026",
+    eventDate: "2026-04-12",
+    status: "Draft",
+    totalMatches: 0,
+    date: "2026-04-12",
+    location: "Morodok Techo National Stadium, Phnom Penh",
     organizerClub: "Olympic Club",
-    broadcastStation: "TVK Cambodia",
-    mainSponsor: "Angkor Beer",
+    broadcastStation: "Town Full HDTV",
+    mainSponsor: "Carabao",
+    matches: [],
+    createdBy: "Olympic Club",
+    createdAt: "2026-03-01T10:00:00Z",
+    updatedAt: "2026-03-01T10:00:00Z"
+  },
+  {
+    id: "batch-002",
+    batchNumber: "BATCH-002",
+    eventId: "e1",
+    eventName: "Kun Khmer National Championship 2026",
+    eventDate: "2026-04-12",
+    status: "Draft",
+    totalMatches: 4,
+    date: "2026-04-12",
+    location: "Morodok Techo National Stadium, Phnom Penh",
+    organizerClub: "Olympic Club",
+    broadcastStation: "Town Full HDTV",
+    mainSponsor: "Carabao",
     matches: [
       {
-        id: "match-001",
+        id: "m2-1",
         matchNumber: "M-001",
-        batchId: "batch-001",
+        batchId: "batch-002",
         fighterA: {
           id: "f1",
           name: "Sok Thy",
@@ -239,16 +252,17 @@ export const MOCK_BATCHES: MatchBatch[] = [
         },
         matchType: "Championship Bout",
         weightClass: "70kg",
+        agreedWeight: 70,
         rounds: 5,
         matchOrder: 1,
-        notes: "Main Event - Championship Bout",
-        status: "Ready",
-        date: "2026-04-15"
+        isChampionshipBout: true,
+        championshipTitle: "KKF National Welterweight Champion",
+        status: "Draft"
       },
       {
-        id: "match-002",
+        id: "m2-2",
         matchNumber: "M-002",
-        batchId: "batch-001",
+        batchId: "batch-002",
         fighterA: {
           id: "f3",
           name: "Kimsan Vorn",
@@ -271,16 +285,15 @@ export const MOCK_BATCHES: MatchBatch[] = [
         },
         matchType: "Ranking Fight",
         weightClass: "60kg",
+        agreedWeight: 60,
         rounds: 3,
         matchOrder: 2,
-        notes: "Co-Main Event",
-        status: "Ready",
-        date: "2026-04-15"
+        status: "Draft"
       },
       {
-        id: "match-003",
+        id: "m2-3",
         matchNumber: "M-003",
-        batchId: "batch-001",
+        batchId: "batch-002",
         fighterA: {
           id: "f5",
           name: "Sopheak Meas",
@@ -303,15 +316,15 @@ export const MOCK_BATCHES: MatchBatch[] = [
         },
         matchType: "Ranking Fight",
         weightClass: "75kg",
+        agreedWeight: 75,
         rounds: 3,
         matchOrder: 3,
-        status: "Ready",
-        date: "2026-04-15"
+        status: "Draft"
       },
       {
-        id: "match-004",
+        id: "m2-4",
         matchNumber: "M-004",
-        batchId: "batch-001",
+        batchId: "batch-002",
         fighterA: {
           id: "f7",
           name: "Bopha Lim",
@@ -334,49 +347,37 @@ export const MOCK_BATCHES: MatchBatch[] = [
         },
         matchType: "Ranking Fight",
         weightClass: "54kg",
+        agreedWeight: 54,
         rounds: 3,
         matchOrder: 4,
         notes: "Women's Division",
-        status: "Ready",
-        date: "2026-04-15"
-      },
+        status: "Draft"
+      }
+    ],
+    createdBy: "Olympic Club",
+    createdAt: "2026-03-05T10:00:00Z",
+    updatedAt: "2026-03-05T10:00:00Z"
+  },
+  {
+    id: "batch-003",
+    batchNumber: "BATCH-003",
+    eventId: "e2",
+    eventName: "Fight Night March 30",
+    eventDate: "2026-03-30",
+    status: "Weight-In",
+    totalMatches: 4,
+    date: "2026-03-30",
+    location: "Siem Reap Arena, Siem Reap",
+    organizerClub: "Victory Gym",
+    broadcastStation: "Bayon TV",
+    mainSponsor: "Angkor Beer",
+    matches: [
       {
-        id: "match-005",
+        id: "m3-1",
         matchNumber: "M-005",
-        batchId: "batch-001",
+        batchId: "batch-003",
         fighterA: {
           id: "f9",
-          name: "Vanneth Ouk",
-          image: "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=400",
-          weight: 65,
-          record: "5-2-0",
-          grade: "B",
-          clubId: "club-001",
-          clubName: "Olympic Club"
-        },
-        fighterB: {
-          id: "f10",
-          name: "Piseth Nhem",
-          image: "https://images.unsplash.com/photo-1531891437562-4301cf35b7e4?w=400",
-          weight: 65,
-          record: "4-3-0",
-          grade: "B",
-          clubId: "club-001",
-          clubName: "Olympic Club"
-        },
-        matchType: "Ranking Fight",
-        weightClass: "65kg",
-        rounds: 3,
-        matchOrder: 5,
-        status: "Ready",
-        date: "2026-04-15"
-      },
-      {
-        id: "match-006",
-        matchNumber: "M-006",
-        batchId: "batch-001",
-        fighterA: {
-          id: "f11",
           name: "Ponleak Sor",
           image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400",
           weight: 67,
@@ -386,7 +387,7 @@ export const MOCK_BATCHES: MatchBatch[] = [
           clubName: "Victory Gym"
         },
         fighterB: {
-          id: "f12",
+          id: "f10",
           name: "Virak Nhem",
           image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
           weight: 67,
@@ -397,39 +398,46 @@ export const MOCK_BATCHES: MatchBatch[] = [
         },
         matchType: "Ranking Fight",
         weightClass: "67kg",
+        agreedWeight: 67,
         rounds: 3,
-        matchOrder: 6,
-        status: "Scheduled",
-        date: "2026-04-15"
-      }
-    ],
-    submittedDate: "2026-03-01",
-    submittedBy: "Olympic Club",
-    reviewedDate: "2026-03-05",
-    reviewedBy: "KKF Admin",
-    approvalNotes: "All matches approved. Excellent matchmaking.",
-    createdBy: "Olympic Club",
-    createdAt: "2026-02-28T10:00:00Z",
-    updatedAt: "2026-03-05T14:30:00Z"
-  },
-  {
-    id: "batch-002",
-    batchNumber: "BATCH-002",
-    eventId: "e2",
-    eventName: "Fight Night March 30",
-    eventDate: "2026-03-30",
-    status: "Live",
-    totalMatches: 6,
-    date: "2026-03-30",
-    location: "Siem Reap, Cambodia",
-    posterImage: posterImage2,
-    organizerClub: "Victory Gym",
-    broadcastStation: "Bayon TV",
-    matches: [
+        matchOrder: 1,
+        status: "Weight-In"
+      },
       {
-        id: "match-007",
+        id: "m3-2",
+        matchNumber: "M-006",
+        batchId: "batch-003",
+        fighterA: {
+          id: "f11",
+          name: "Vanneth Ouk",
+          image: "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=400",
+          weight: 65,
+          record: "5-2-0",
+          grade: "B",
+          clubId: "club-002",
+          clubName: "Victory Gym"
+        },
+        fighterB: {
+          id: "f12",
+          name: "Piseth Nhem",
+          image: "https://images.unsplash.com/photo-1531891437562-4301cf35b7e4?w=400",
+          weight: 65,
+          record: "4-3-0",
+          grade: "B",
+          clubId: "club-002",
+          clubName: "Victory Gym"
+        },
+        matchType: "Ranking Fight",
+        weightClass: "65kg",
+        agreedWeight: 65,
+        rounds: 3,
+        matchOrder: 2,
+        status: "Weight-In"
+      },
+      {
+        id: "m3-3",
         matchNumber: "M-007",
-        batchId: "batch-002",
+        batchId: "batch-003",
         fighterA: {
           id: "f13",
           name: "Chakrya Heng",
@@ -452,15 +460,15 @@ export const MOCK_BATCHES: MatchBatch[] = [
         },
         matchType: "Ranking Fight",
         weightClass: "80kg",
+        agreedWeight: 80,
         rounds: 3,
-        matchOrder: 1,
-        status: "Scheduled",
-        date: "2026-03-30"
+        matchOrder: 3,
+        status: "Weight-In"
       },
       {
-        id: "match-008",
+        id: "m3-4",
         matchNumber: "M-008",
-        batchId: "batch-002",
+        batchId: "batch-003",
         fighterA: {
           id: "f15",
           name: "Thyda Keo",
@@ -483,158 +491,69 @@ export const MOCK_BATCHES: MatchBatch[] = [
         },
         matchType: "Ranking Fight",
         weightClass: "57kg",
+        agreedWeight: 57,
         rounds: 3,
-        matchOrder: 2,
-        status: "Scheduled",
-        date: "2026-03-30"
-      },
+        matchOrder: 4,
+        status: "Weight-In"
+      }
+    ],
+    createdBy: "Victory Gym",
+    createdAt: "2026-03-10T09:00:00Z",
+    updatedAt: "2026-03-10T09:00:00Z"
+  },
+  {
+    id: "batch-004",
+    batchNumber: "BATCH-004",
+    eventId: "e4",
+    eventName: "Youth Championship",
+    eventDate: "2026-05-10",
+    status: "Live",
+    totalMatches: 3,
+    date: "2026-05-10",
+    location: "Olympic Stadium Indoor Arena, Phnom Penh",
+    organizerClub: "Olympic Club",
+    broadcastStation: "TVK Cambodia",
+    mainSponsor: "Krud Energy",
+    matches: [
       {
-        id: "match-009",
+        id: "m4-1",
         matchNumber: "M-009",
-        batchId: "batch-002",
+        batchId: "batch-004",
         fighterA: {
           id: "f17",
-          name: "Serey Rith",
-          image: "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=400",
-          weight: 85,
-          record: "10-1-0",
+          name: "Rithea Sok",
+          image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400",
+          weight: 72,
+          record: "15-3-0",
           grade: "A",
-          clubId: "club-003",
-          clubName: "KKF Admin"
+          clubId: "club-001",
+          clubName: "Olympic Club"
         },
         fighterB: {
           id: "f18",
-          name: "Kosal Leng",
-          image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400",
-          weight: 85,
-          record: "9-2-0",
+          name: "Bunthoeun Chea",
+          image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400",
+          weight: 72,
+          record: "14-4-0",
           grade: "A",
-          clubId: "club-003",
-          clubName: "KKF Admin"
+          clubId: "club-002",
+          clubName: "Victory Gym"
         },
-        matchType: "National Title Fight",
-        weightClass: "85kg",
+        matchType: "Championship Bout",
+        weightClass: "72kg",
+        agreedWeight: 72,
         rounds: 5,
-        matchOrder: 3,
-        status: "Waiting Club Approval",
-        date: "2026-03-30"
+        matchOrder: 1,
+        isChampionshipBout: true,
+        championshipTitle: "KKF National Welterweight Champion",
+        refereeName: "Sopheak Chea",
+        judgeNames: ["Virak Prum", "Chanthy Sok", "Dara Nhem"],
+        status: "Live"
       },
       {
-        id: "match-009-1",
-        matchNumber: "M-009-1",
-        batchId: "batch-002",
-        fighterA: {
-          id: "f29",
-          name: "Sovann Huy",
-          image: "https://images.unsplash.com/photo-1531891437562-4301cf35b7e4?w=400",
-          weight: 62,
-          record: "7-1-0",
-          grade: "B",
-          clubId: "club-002",
-          clubName: "Victory Gym"
-        },
-        fighterB: {
-          id: "f30",
-          name: "Kosal Ith",
-          image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400",
-          weight: 62,
-          record: "6-2-0",
-          grade: "B",
-          clubId: "club-002",
-          clubName: "Victory Gym"
-        },
-        matchType: "Ranking Fight",
-        weightClass: "62kg",
-        rounds: 3,
-        matchOrder: 4,
-        status: "Scheduled",
-        date: "2026-03-30"
-      },
-      {
-        id: "match-009-2",
-        matchNumber: "M-009-2",
-        batchId: "batch-002",
-        fighterA: {
-          id: "f31",
-          name: "Narith Pok",
-          image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
-          weight: 76,
-          record: "9-3-0",
-          grade: "A",
-          clubId: "club-003",
-          clubName: "KKF Admin"
-        },
-        fighterB: {
-          id: "f32",
-          name: "Bunna Ros",
-          image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400",
-          weight: 76,
-          record: "8-4-0",
-          grade: "A",
-          clubId: "club-003",
-          clubName: "KKF Admin"
-        },
-        matchType: "Ranking Fight",
-        weightClass: "76kg",
-        rounds: 3,
-        matchOrder: 5,
-        status: "Scheduled",
-        date: "2026-03-30"
-      },
-      {
-        id: "match-009-3",
-        matchNumber: "M-009-3",
-        batchId: "batch-002",
-        fighterA: {
-          id: "f33",
-          name: "Sokna Penh",
-          image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400",
-          weight: 52,
-          record: "5-0-0",
-          grade: "B",
-          clubId: "club-002",
-          clubName: "Victory Gym"
-        },
-        fighterB: {
-          id: "f34",
-          name: "Devi Meng",
-          image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400",
-          weight: 52,
-          record: "4-1-0",
-          grade: "B",
-          clubId: "club-002",
-          clubName: "Victory Gym"
-        },
-        matchType: "Ranking Fight",
-        weightClass: "52kg",
-        rounds: 3,
-        matchOrder: 6,
-        notes: "Women's Division",
-        status: "Scheduled",
-        date: "2026-03-30"
-      }
-    ],
-    submittedDate: "2026-03-20",
-    submittedBy: "Victory Gym",
-    createdBy: "Victory Gym",
-    createdAt: "2026-03-18T09:00:00Z",
-    updatedAt: "2026-03-20T11:00:00Z"
-  },
-  {
-    id: "batch-003",
-    batchNumber: "BATCH-003",
-    eventId: "e3",
-    eventName: "National Title Bouts",
-    eventDate: "2026-04-20",
-    status: "Draft",
-    totalMatches: 2,
-    date: "2026-04-20",
-    location: "Phnom Penh, Cambodia",
-    matches: [
-      {
-        id: "match-010",
+        id: "m4-2",
         matchNumber: "M-010",
-        batchId: "batch-003",
+        batchId: "batch-004",
         fighterA: {
           id: "f19",
           name: "Chanthy Prak",
@@ -657,15 +576,17 @@ export const MOCK_BATCHES: MatchBatch[] = [
         },
         matchType: "Ranking Fight",
         weightClass: "51kg",
+        agreedWeight: 51,
         rounds: 3,
-        matchOrder: 1,
-        status: "Waiting Club Approval",
-        date: "2026-04-20"
+        matchOrder: 2,
+        refereeName: "Kimheng Long",
+        judgeNames: ["Rithy Ouk", "Sophat Keo", "Chanthoeun Morn"],
+        status: "Ready"
       },
       {
-        id: "match-011",
+        id: "m4-3",
         matchNumber: "M-011",
-        batchId: "batch-003",
+        batchId: "batch-004",
         fighterA: {
           id: "f21",
           name: "Vuthy Chan",
@@ -688,75 +609,17 @@ export const MOCK_BATCHES: MatchBatch[] = [
         },
         matchType: "Ranking Fight",
         weightClass: "63kg",
+        agreedWeight: 63,
         rounds: 3,
-        matchOrder: 2,
-        status: "Proposed",
-        date: "2026-04-20"
-      }
-    ],
-    createdBy: "KKF Admin",
-    createdAt: "2026-03-22T15:00:00Z",
-    updatedAt: "2026-03-22T15:00:00Z"
-  },
-  {
-    id: "batch-004",
-    batchNumber: "BATCH-004",
-    eventId: "e4",
-    eventName: "Youth Championship",
-    eventDate: "2026-05-10",
-    status: "Draft",
-    totalMatches: 1,
-    date: "2026-05-10",
-    location: "Siem Reap, Cambodia",
-    matches: [
-      {
-        id: "match-012",
-        matchNumber: "M-012",
-        batchId: "batch-004",
-        fighterA: {
-          id: "f23",
-          name: "Rithea Sok",
-          image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400",
-          weight: 72,
-          record: "15-3-0",
-          grade: "A",
-          clubId: "club-001",
-          clubName: "Olympic Club"
-        },
-        fighterB: {
-          id: "f24",
-          name: "Bunthoeun Chea",
-          image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400",
-          weight: 72,
-          record: "14-4-0",
-          grade: "A",
-          clubId: "club-002",
-          clubName: "Victory Gym"
-        },
-        matchType: "Championship Bout",
-        weightClass: "72kg",
-        rounds: 5,
-        matchOrder: 1,
-        notes: "KKF National Championship - Main Event",
-        isChampionshipBout: true,
-        championshipId: "champ-001",
-        championshipTitle: "KKF National Welterweight Champion",
-        defendingChampion: null,
-        refereeId: "ref-001",
-        refereeName: "Sopheak Chea",
-        judgeIds: ["judge-001", "judge-002", "judge-003"],
-        judgeNames: ["Virak Prum", "Chanthy Sok", "Dara Nhem"],
-        status: "Completed",
-        winner: "Rithea Sok",
-        winnerMethod: "TKO",
-        winnerRound: 4,
-        highlightVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        date: "2026-02-20"
+        matchOrder: 3,
+        refereeName: "Sophorn Ith",
+        judgeNames: ["Seyha Prum", "Sarath Nhem", "Dara Keo"],
+        status: "Ready"
       }
     ],
     createdBy: "Olympic Club",
-    createdAt: "2026-03-24T10:00:00Z",
-    updatedAt: "2026-03-24T10:00:00Z"
+    createdAt: "2026-03-12T10:00:00Z",
+    updatedAt: "2026-03-12T10:00:00Z"
   },
   {
     id: "batch-005",
@@ -765,16 +628,19 @@ export const MOCK_BATCHES: MatchBatch[] = [
     eventName: "Fight Night February 2026",
     eventDate: "2026-02-20",
     status: "Complete",
-    totalMatches: 2,
+    totalMatches: 3,
     date: "2026-02-20",
-    location: "Phnom Penh, Cambodia",
+    location: "Morodok Techo National Stadium, Phnom Penh",
+    organizerClub: "Victory Gym",
+    broadcastStation: "Town Full HDTV",
+    mainSponsor: "Ganzberg",
     matches: [
       {
-        id: "match-013",
-        matchNumber: "M-013",
+        id: "m5-1",
+        matchNumber: "M-012",
         batchId: "batch-005",
         fighterA: {
-          id: "f25",
+          id: "f23",
           name: "Malika Srey",
           image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400",
           weight: 48,
@@ -784,7 +650,7 @@ export const MOCK_BATCHES: MatchBatch[] = [
           clubName: "Olympic Club"
         },
         fighterB: {
-          id: "f26",
+          id: "f24",
           name: "Sophea Mao",
           image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400",
           weight: 48,
@@ -795,21 +661,21 @@ export const MOCK_BATCHES: MatchBatch[] = [
         },
         matchType: "Ranking Fight",
         weightClass: "48kg",
+        agreedWeight: 48,
         rounds: 3,
         matchOrder: 1,
         notes: "Women's Division Co-Main Event",
         status: "Completed",
         winner: "Malika Srey",
         winnerMethod: "Decision",
-        highlightVideo: "https://www.youtube.com/watch?v=example123",
-        date: "2026-02-20"
+        winnerRound: 3
       },
       {
-        id: "match-014",
-        matchNumber: "M-014",
+        id: "m5-2",
+        matchNumber: "M-013",
         batchId: "batch-005",
         fighterA: {
-          id: "f27",
+          id: "f25",
           name: "Sokha Lim",
           image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400",
           weight: 55,
@@ -819,7 +685,7 @@ export const MOCK_BATCHES: MatchBatch[] = [
           clubName: "Olympic Club"
         },
         fighterB: {
-          id: "f28",
+          id: "f26",
           name: "Rath Sok",
           image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400",
           weight: 55,
@@ -830,22 +696,50 @@ export const MOCK_BATCHES: MatchBatch[] = [
         },
         matchType: "Ranking Fight",
         weightClass: "55kg",
+        agreedWeight: 55,
         rounds: 3,
         matchOrder: 2,
         status: "Completed",
         winner: "Sokha Lim",
         winnerMethod: "KO",
-        winnerRound: 2,
-        highlightVideo: "https://www.youtube.com/watch?v=example456",
-        date: "2026-02-20"
+        winnerRound: 2
+      },
+      {
+        id: "m5-3",
+        matchNumber: "M-014",
+        batchId: "batch-005",
+        fighterA: {
+          id: "f27",
+          name: "Sovann Huy",
+          image: "https://images.unsplash.com/photo-1531891437562-4301cf35b7e4?w=400",
+          weight: 62,
+          record: "7-1-0",
+          grade: "B",
+          clubId: "club-002",
+          clubName: "Victory Gym"
+        },
+        fighterB: {
+          id: "f28",
+          name: "Kosal Ith",
+          image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400",
+          weight: 62,
+          record: "6-2-0",
+          grade: "B",
+          clubId: "club-002",
+          clubName: "Victory Gym"
+        },
+        matchType: "Ranking Fight",
+        weightClass: "62kg",
+        agreedWeight: 62,
+        rounds: 3,
+        matchOrder: 3,
+        status: "Completed",
+        winner: "Sovann Huy",
+        winnerMethod: "TKO",
+        winnerRound: 3
       }
     ],
-    submittedDate: "2026-02-01",
-    submittedBy: "Olympic Club",
-    reviewedDate: "2026-02-05",
-    reviewedBy: "KKF Admin",
-    approvalNotes: "Championship bout approved. All requirements met.",
-    createdBy: "Olympic Club",
+    createdBy: "Victory Gym",
     createdAt: "2026-01-25T10:00:00Z",
     updatedAt: "2026-02-21T08:00:00Z"
   }
@@ -897,7 +791,7 @@ export function updateBatchStatusIfAllMatchesCompleted(batch: MatchBatch): boole
     batch.matches.every(match => match.status === "Completed");
   
   if (allMatchesCompleted) {
-    batch.status = "Completed";
+    batch.status = "Complete";
     batch.updatedAt = new Date().toISOString();
     return true; // Returns true if status was updated
   }
@@ -937,8 +831,8 @@ export function calculateBatchReadiness(batch: MatchBatch): number {
     if (allOfficialsAssigned) score += 1;
   }
   
-  // 4. KKF approved
-  if (batch.status === "Approved" || batch.status === "Scheduled" || batch.status === "Completed") {
+  // 4. Approved/Completed status
+  if (batch.status === "Approved" || batch.status === "Scheduled" || batch.status === "Complete" || batch.status === "Live" || batch.status === "Weight-In") {
     score += 1;
   }
   
@@ -965,7 +859,7 @@ export function getBatchWarnings(batch: MatchBatch): string[] {
     }
   }
   
-  // Check if not KKF approved (for non-draft batches)
+  // Check if not approved (for non-draft batches)
   if (batch.status === "Pending KKF") {
     warnings.push("Awaiting KKF approval");
   }

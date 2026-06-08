@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { 
-  Swords, Calendar, GitFork, Crown, Tv, Users, Settings, 
+  Swords, Calendar, GitFork, Crown, Users, Settings, 
   Plus, Trash2, X, Check, ChevronRight
 } from "lucide-react";
 import { usePermissions } from "../hooks/usePermissions";
@@ -65,7 +65,7 @@ const FighterWatermark = () => (
   </div>
 );
 
-export type ActiveTab = "fighting" | "event" | "match" | "champion" | "media" | "user" | "system";
+export type ActiveTab = "fighting" | "event" | "match" | "champion" | "user" | "system";
 
 export interface SettingsCategoryConfig {
   id: ActiveTab;
@@ -104,13 +104,7 @@ export const CATEGORIES_CONFIG: SettingsCategoryConfig[] = [
     title: "Championship & Title Management",
     desc: "Configure official sponsors and championship title templates."
   },
-  {
-    id: "media",
-    label: "Media Settings",
-    icon: Tv,
-    title: "Media & Broadcast Configurations",
-    desc: "Manage broadcasting channels and platform rights for events."
-  },
+
   {
     id: "user",
     label: "User Settings",
@@ -178,8 +172,7 @@ export function SystemSettings() {
             { id: "t-3", title: "Vacant Title Status", subtitle: "Official Title Status" }
           ];
         }
-      case "media":
-        return BROADCAST_STATIONS.map(bs => ({ id: bs.id, title: bs.name, subtitle: `${bs.type} · ${bs.reach}` }));
+
       case "user":
         if (subTab === "referees") {
           return getReferees().map(ref => ({ id: ref.id, title: ref.name, subtitle: `${ref.grade} (${ref.experience} experience)` }));
@@ -203,8 +196,6 @@ export function SystemSettings() {
         return WEIGHT_RANGES.length + GLOVE_TYPES.length;
       case "champion":
         return SPONSORS.length + 3; // sponsors + titles
-      case "media":
-        return BROADCAST_STATIONS.length;
       case "user":
         return getReferees().length + getJudges().length;
       case "system":
@@ -227,8 +218,6 @@ export function SystemSettings() {
       case "champion":
         if (subTab === "sponsors") return "Add sponsor (e.g., Wing Bank / Financial Services / Gold)...";
         return "Add title status template...";
-      case "media":
-        return "Add broadcaster (e.g., PNN TV / Cable TV / National)...";
       case "user":
         if (subTab === "referees") return "Add referee (e.g., Som Panha / 10 years / International A)...";
         return "Add judge (e.g., Meas Sopheak / 8 years / National B)...";
@@ -249,9 +238,6 @@ export function SystemSettings() {
         break;
       case "champion":
         if (subTab === "sponsors") return "Tip: Format as 'Sponsor Name / Industry / Tier' (e.g., Wing Bank / Financial Services / Gold). Tiers: Platinum, Gold, Silver, Bronze.";
-        break;
-      case "media":
-        return "Tip: Format as 'Broadcaster Name / Type / Reach' (e.g., CNC / Cable TV / National). Types: National TV, Cable TV, Digital Platform, Radio.";
         break;
       case "user":
         return "Tip: Format as 'Full Name / Experience / Grade' (e.g., Som Panha / 10 years / International A).";
@@ -337,21 +323,6 @@ export function SystemSettings() {
           return;
         }
       } 
-      else if (activeTab === "media") {
-        const parts = value.split("/");
-        const name = parts[0]?.trim() || value;
-        const type = (parts[1]?.trim() as any) || "Cable TV";
-        const reach = parts[2]?.trim() || "National";
-        BROADCAST_STATIONS.push({
-          id: `bs-${Date.now()}`,
-          name,
-          logo: "📺",
-          type,
-          reach,
-          active: true
-        });
-        localStorage.setItem("kkf_broadcast_stations", JSON.stringify(BROADCAST_STATIONS));
-      } 
       else if (activeTab === "user") {
         const parts = value.split("/");
         const name = parts[0]?.trim() || value;
@@ -433,11 +404,6 @@ export function SystemSettings() {
           toast.warning("Title templates are core system properties and cannot be deleted.");
           return;
         }
-      } 
-      else if (activeTab === "media") {
-        const idx = BROADCAST_STATIONS.findIndex(bs => bs.id === id);
-        if (idx !== -1) BROADCAST_STATIONS.splice(idx, 1);
-        localStorage.setItem("kkf_broadcast_stations", JSON.stringify(BROADCAST_STATIONS));
       } 
       else if (activeTab === "user") {
         if (subTab === "referees") {
