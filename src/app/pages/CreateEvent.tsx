@@ -6,7 +6,7 @@ import {
   Search, X, ChevronDown
 } from "lucide-react";
 import { MOCK_EVENTS, MOCK_CLUBS } from "../data/mock";
-import { BROADCAST_STATIONS, SPONSORS, getActiveBroadcastStations, getActiveSponsors } from "../data/masterData";
+import { BROADCAST_STATIONS, SPONSORS, getActiveBroadcastStations, getActiveSponsors, ORGANIZERS, VENUES } from "../data/masterData";
 import {
   EVENT_TYPE_CONFIG, type EventType,
   TOURNAMENT_FORMAT_CONFIG, type TournamentFormat,
@@ -16,71 +16,7 @@ import { toast } from "sonner";
 import { clsx } from "clsx";
 import mapPickerImg from "../../assets/phnom_penh_map_picker.png";
 
-const QUICK_VENUES = [
-  {
-    name: "Morodok Techo National Stadium",
-    region: "Phnom Penh (National)",
-    x: 52,
-    y: 58,
-    lat: 11.6970,
-    lng: 104.9125,
-    description: "Main national stadium with 75,000 capacity"
-  },
-  {
-    name: "Olympic Stadium Arena",
-    region: "Phnom Penh",
-    x: 68,
-    y: 62,
-    lat: 11.5564,
-    lng: 104.9282,
-    description: "Historic indoor and outdoor national sports complex"
-  },
-  {
-    name: "Town Full HDTV Arena",
-    region: "Phnom Penh",
-    x: 63,
-    y: 50,
-    lat: 11.5725,
-    lng: 104.8988,
-    description: "State-of-the-art modern Kun Khmer broadcast arena"
-  },
-  {
-    name: "Bayon TV Arena (Steung Meanchey)",
-    region: "Phnom Penh",
-    x: 72,
-    y: 69,
-    lat: 11.5301,
-    lng: 104.8950,
-    description: "Famous arena hosting weekend championship tournaments"
-  },
-  {
-    name: "PNN Arena (Prek Pnov)",
-    region: "Phnom Penh Outskirts",
-    x: 48,
-    y: 40,
-    lat: 11.6611,
-    lng: 104.8814,
-    description: "Premium television broadcast stadium"
-  },
-  {
-    name: "Siem Reap Boxing Stadium",
-    region: "Siem Reap",
-    x: 42,
-    y: 28,
-    lat: 13.3671,
-    lng: 103.8566,
-    description: "Popular stadium hosting fights for domestic and international fans"
-  },
-  {
-    name: "Battambang Indoor Stadium",
-    region: "Battambang",
-    x: 25,
-    y: 35,
-    lat: 13.0957,
-    lng: 103.2022,
-    description: "Provincial stadium hosting major regional galas"
-  }
-];
+const QUICK_VENUES = VENUES;
 
 export function CreateEvent() {
   const navigate = useNavigate();
@@ -104,15 +40,7 @@ export function CreateEvent() {
     expectedParticipants: 8,
   });
 
-  const standardOrganizers = [
-    "Kun Khmer Federation (KKF)",
-    "Bayon Entertainment Group",
-    "PNN Media Group",
-    "Town HDTV Arena Promotions",
-    "Royal Khmer Promotions",
-    "Cambodia Fight Sports Association",
-    "Kun Khmer Legends Association"
-  ];
+  const standardOrganizers = ORGANIZERS;
 
   const organizerList = [
     ...standardOrganizers,

@@ -7,6 +7,7 @@ import { ArrowLeft, User, HeartPulse, Activity, History, Edit, MapPin, Zap, Chec
 import { clsx } from "clsx";
 import unknownFighterImg from "figma:asset/b9f2c3f9c8bd58ed74f9c92de40fb83809a138b3.png";
 import { usePermissions } from "../hooks/usePermissions";
+import { getWeightRangeCategory } from "../data/masterData";
 
 const tabs = [
   { id: "overview", label: "Overview", icon: User },
@@ -16,6 +17,10 @@ const tabs = [
   { id: "training", label: "Training", icon: Activity },
   { id: "medical", label: "Medical", icon: HeartPulse },
 ];
+
+const getWeightRangeBilingual = (weight: number) => {
+  return getWeightRangeCategory(weight);
+};
 
 export function FighterDetail() {
   const { id } = useParams();
@@ -145,9 +150,9 @@ export function FighterDetail() {
 
             {/* Stats Subgrid */}
             <div className="flex flex-wrap justify-center md:justify-start items-center gap-3 text-white text-xs md:text-sm">
-              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/10 font-medium shadow-sm">
+              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/10 font-medium shadow-sm" title={getWeightRangeBilingual(fighter.weight)}>
                 <span>⚖️</span>
-                <span className="font-semibold">{fighter.weight} kg</span>
+                <span className="font-semibold">{getWeightRangeCategory(fighter.weight)} ({fighter.weight} kg)</span>
               </div>
               <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/10 font-medium shadow-sm">
                 <span>Record:</span>
@@ -300,9 +305,9 @@ export function FighterDetail() {
                   <div className="grid grid-cols-2 gap-4">
                     {[
                       { l: "Height", v: "172 cm" },
+                      { l: "Weight Range", v: getWeightRangeCategory(fighter.weight) },
                       { l: "Weight", v: `${fighter.weight} kg` },
                       { l: "Reach", v: "175 cm" },
-                      { l: "Age", v: "24" },
                     ].map((stat, i) => (
                       <div key={i} className="p-4 bg-muted/30 rounded-xl border border-border/60">
                         <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1">{stat.l}</div>

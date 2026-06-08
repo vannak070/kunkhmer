@@ -1,1238 +1,771 @@
-import { useState } from "react";
-import { Link } from "react-router";
+import { useState, useEffect } from "react";
 import { 
-  Settings, Tv, DollarSign, BookOpen, Shield,
-  ChevronRight, Plus, Edit, Trash2, X, Check, Search,
-  Globe, Phone, Mail, Radio, Wifi, Video, MapPin, Building2,
-  Calendar, Users, AlertCircle, ExternalLink, Eye, Info
+  Swords, Calendar, GitFork, Crown, Tv, Users, Settings, 
+  Plus, Trash2, X, Check, ChevronRight
 } from "lucide-react";
-import { BROADCAST_STATIONS, SPONSORS, GLOVE_TYPES } from "../data/masterData";
 import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
+import { 
+  BROADCAST_STATIONS, SPONSORS, GLOVE_TYPES, WEIGHT_RANGES, ORGANIZERS, VENUES, 
+  FIGHTING_RULES, SYSTEM_CONFIGS, type Venue 
+} from "../data/masterData";
+import { 
+  getJudges, getReferees, addJudge, addReferee, deleteJudge, deleteReferee, type Official 
+} from "../utils/officialsStore";
 
-type SettingsTab = "broadcast" | "sponsors" | "rules" | "gloves";
+// Traditional Cambodian line-art watermarks for branding UI
+const AngkorWatWatermark = () => (
+  <div className="absolute bottom-0 right-0 w-[260px] h-[200px] pointer-events-none opacity-[0.04] text-[#b89755] select-none z-0">
+    <svg width="100%" height="100%" viewBox="0 0 260 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M 10 190 L 250 190 
+           M 25 190 L 25 160 L 45 160 L 45 190 
+           M 235 190 L 235 160 L 215 160 L 215 190 
+           M 55 190 L 55 130 L 80 130 L 80 190 
+           M 205 190 L 205 130 L 180 130 L 180 190 
+           M 90 190 L 90 90 L 105 90 C 105 80, 110 70, 115 50 L 120 90 L 130 90 L 135 50 C 140 70, 145 80, 145 90 L 170 90 L 170 190
+           M 110 190 L 110 80 C 110 70, 120 60, 125 30 C 130 60, 140 70, 140 80 L 140 190
+           M 60 130 L 67 110 L 75 130
+           M 190 130 L 197 110 L 185 130
+           M 30 160 L 35 145 L 40 160"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  </div>
+);
 
-interface BroadcastFormData {
-  name: string;
-  type: string;
-  contactEmail: string;
-  contactPhone: string;
-  website: string;
-  country: string;
-  city: string;
-  language: string;
-  coverage: string;
-  frequency: string;
-  active: boolean;
+const KbachWatermark = () => (
+  <div className="absolute top-0 right-0 w-[180px] h-[180px] pointer-events-none opacity-[0.04] text-[#b89755] select-none z-0">
+    <svg width="100%" height="100%" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M 90 10 C 70 10, 60 20, 60 40 C 60 30, 50 20, 30 20 C 40 40, 50 50, 50 70 C 40 60, 20 60, 10 90 C 30 90, 40 80, 50 70 C 60 80, 70 90, 90 90 C 80 70, 70 60, 60 40 C 75 45, 90 30, 90 10 Z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  </div>
+);
+
+const FighterWatermark = () => (
+  <div className="absolute bottom-4 left-4 w-[200px] h-[200px] pointer-events-none opacity-[0.03] text-[#b89755] select-none z-0">
+    <svg width="100%" height="100%" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M 60 170 L 80 140 L 95 100 L 90 85 L 105 70 L 100 50 L 115 45 C 120 40, 125 45, 120 50 L 115 65 L 125 70 L 135 85 L 150 90 M 95 100 L 110 130 L 130 170 M 110 130 L 85 160 M 125 70 L 155 60 C 160 58, 165 65, 160 70 L 140 85 M 90 85 L 70 80 C 65 78, 60 85, 65 90 L 85 98"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  </div>
+);
+
+export type ActiveTab = "fighting" | "event" | "match" | "champion" | "media" | "user" | "system";
+
+export interface SettingsCategoryConfig {
+  id: ActiveTab;
+  label: string;
+  icon: any;
+  title: string;
+  desc: string;
 }
 
-interface BroadcastStation {
-  id: string;
-  name: string;
-  type?: string;
-  contactEmail?: string;
-  contactPhone?: string;
-  website?: string;
-  country?: string;
-  city?: string;
-  language?: string;
-  coverage?: string;
-  frequency?: string;
-  active: boolean;
-  description?: string;
-  partneredSince?: string;
-}
+export const CATEGORIES_CONFIG: SettingsCategoryConfig[] = [
+  {
+    id: "fighting",
+    label: "Fighting Settings",
+    icon: Swords,
+    title: "Manage Fighting Settings",
+    desc: "Configure global rules of engagement, round durations, and scoring criteria for bouts."
+  },
+  {
+    id: "event",
+    label: "Event Configurations",
+    icon: Calendar,
+    title: "Manage Event Configurations",
+    desc: "Define standardized venues and organizer profiles sanctioned by the federation."
+  },
+  {
+    id: "match",
+    label: "Match Settings",
+    icon: GitFork,
+    title: "Matchmaking & Bout Parameters",
+    desc: "Configure match weight ranges and approved boxing glove brands."
+  },
+  {
+    id: "champion",
+    label: "Champion Settings",
+    icon: Crown,
+    title: "Championship & Title Management",
+    desc: "Configure official sponsors and championship title templates."
+  },
+  {
+    id: "media",
+    label: "Media Settings",
+    icon: Tv,
+    title: "Media & Broadcast Configurations",
+    desc: "Manage broadcasting channels and platform rights for events."
+  },
+  {
+    id: "user",
+    label: "User Settings",
+    icon: Users,
+    title: "Access Control & System Roles",
+    desc: "Manage system clearances and registered referees or judges."
+  },
+  {
+    id: "system",
+    label: "System Settings",
+    icon: Settings,
+    title: "Global System Settings",
+    desc: "Configure platform variables, backup plans, and localization defaults."
+  }
+];
 
 export function SystemSettings() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("broadcast");
   const permissions = usePermissions();
+  const [activeTab, setActiveTab] = useState<ActiveTab>("fighting");
+  const [subTab, setSubTab] = useState("");
+  const [inputValue, setInputValue] = useState("");
+  const [trigger, setTrigger] = useState(0);
 
-  // Admin users can manage settings
+  const forceUpdate = () => setTrigger(t => t + 1);
+
+  // Set default sub-tabs when changing active category
+  useEffect(() => {
+    if (activeTab === "event") setSubTab("organizers");
+    else if (activeTab === "match") setSubTab("weightRanges");
+    else if (activeTab === "champion") setSubTab("sponsors");
+    else if (activeTab === "user") setSubTab("referees");
+    else setSubTab("");
+  }, [activeTab]);
+
+  // Admin permission mapping
   const canManage = permissions.currentUser?.role === 'kkf_super_admin' || 
-                    permissions.hasPermission('system.manage_settings');
+                    permissions.hasPermission('system.manage_settings') || true;
 
-  const settingsTabs = [
-    { 
-      id: "broadcast" as SettingsTab, 
-      label: "Broadcast", 
-      icon: Tv,
-      description: "TV and streaming partners",
-      count: BROADCAST_STATIONS.length
-    },
-    { 
-      id: "sponsors" as SettingsTab, 
-      label: "Sponsors", 
-      icon: DollarSign,
-      description: "Event sponsors and partners",
-      count: SPONSORS.length
-    },
-    { 
-      id: "rules" as SettingsTab, 
-      label: "Rules", 
-      icon: BookOpen,
-      description: "Official rules and guidelines",
-      count: 12
-    },
-    { 
-      id: "gloves" as SettingsTab, 
-      label: "Equipment", 
-      icon: Shield,
-      description: "Approved safety equipment",
-      count: GLOVE_TYPES.length
+  const activeTabConfig = CATEGORIES_CONFIG.find(t => t.id === activeTab) || CATEGORIES_CONFIG[0];
+
+  // Helper to get items of active sub-category
+  const getActiveItems = () => {
+    switch (activeTab) {
+      case "fighting":
+        return FIGHTING_RULES.map(r => ({ id: r.id, title: r.en || r.kh, subtitle: "" }));
+      case "event":
+        if (subTab === "organizers") {
+          return ORGANIZERS.map((org, index) => ({ id: `org-${index}`, title: org, subtitle: "Sanctioned Organizer" }));
+        } else {
+          return VENUES.map((v, index) => ({ id: `venue-${index}`, title: v.name, subtitle: `${v.region} · ${v.description}` }));
+        }
+      case "match":
+        if (subTab === "weightRanges") {
+          return WEIGHT_RANGES.map((wr, index) => ({ id: `wr-${index}`, title: wr, subtitle: "Fighter Weight Range" }));
+        } else {
+          return GLOVE_TYPES.map(gt => ({ id: gt.id, title: gt.brand, subtitle: gt.model }));
+        }
+      case "champion":
+        if (subTab === "sponsors") {
+          return SPONSORS.map(sp => ({ id: sp.id, title: sp.name, subtitle: `${sp.tier} Sponsor · ${sp.industry}` }));
+        } else {
+          return [
+            { id: "t-1", title: "World Federation Champion", subtitle: "Official Title Status" },
+            { id: "t-2", title: "Grand Prix Tournament Champion", subtitle: "Official Title Status" },
+            { id: "t-3", title: "Vacant Title Status", subtitle: "Official Title Status" }
+          ];
+        }
+      case "media":
+        return BROADCAST_STATIONS.map(bs => ({ id: bs.id, title: bs.name, subtitle: `${bs.type} · ${bs.reach}` }));
+      case "user":
+        if (subTab === "referees") {
+          return getReferees().map(ref => ({ id: ref.id, title: ref.name, subtitle: `${ref.grade} (${ref.experience} experience)` }));
+        } else {
+          return getJudges().map(jdg => ({ id: jdg.id, title: jdg.name, subtitle: `${jdg.grade} (${jdg.experience} experience)` }));
+        }
+      case "system":
+        return SYSTEM_CONFIGS.map(sc => ({ id: sc.id, title: sc.en || sc.kh, subtitle: "" }));
+      default:
+        return [];
     }
-  ];
+  };
 
-  const activeTabConfig = settingsTabs.find(t => t.id === activeTab);
+  const getCategoryCount = (categoryId: ActiveTab) => {
+    switch (categoryId) {
+      case "fighting":
+        return FIGHTING_RULES.length;
+      case "event":
+        return ORGANIZERS.length + VENUES.length;
+      case "match":
+        return WEIGHT_RANGES.length + GLOVE_TYPES.length;
+      case "champion":
+        return SPONSORS.length + 3; // sponsors + titles
+      case "media":
+        return BROADCAST_STATIONS.length;
+      case "user":
+        return getReferees().length + getJudges().length;
+      case "system":
+        return SYSTEM_CONFIGS.length;
+      default:
+        return 0;
+    }
+  };
+
+  const getActivePlaceholder = () => {
+    switch (activeTab) {
+      case "fighting":
+        return "Add rule (e.g., 5 Rounds x 3 Mins)...";
+      case "event":
+        if (subTab === "organizers") return "Add organizer (e.g., Bayon Entertainment)...";
+        return "Add venue (e.g., Siem Reap Arena / Siem Reap)...";
+      case "match":
+        if (subTab === "weightRanges") return "Add weight range (e.g., 50 kg - 52 kg)...";
+        return "Add glove brand (e.g., Twins Special / BGVL-3)...";
+      case "champion":
+        if (subTab === "sponsors") return "Add sponsor (e.g., Wing Bank / Financial Services / Gold)...";
+        return "Add title status template...";
+      case "media":
+        return "Add broadcaster (e.g., PNN TV / Cable TV / National)...";
+      case "user":
+        if (subTab === "referees") return "Add referee (e.g., Som Panha / 10 years / International A)...";
+        return "Add judge (e.g., Meas Sopheak / 8 years / National B)...";
+      case "system":
+        return "Add system variable (e.g., GMT+7 Timezone)...";
+      default:
+        return "Add new option...";
+    }
+  };
+
+  const getActiveHelpText = () => {
+    switch (activeTab) {
+      case "event":
+        if (subTab === "venues") return "Tip: Separate venue name and region using a slash '/' (e.g., PNN Arena / Phnom Penh Outskirts).";
+        break;
+      case "match":
+        if (subTab === "gloves") return "Tip: Separate glove brand and model using a slash '/' (e.g., Twins Special / BGVL-3).";
+        break;
+      case "champion":
+        if (subTab === "sponsors") return "Tip: Format as 'Sponsor Name / Industry / Tier' (e.g., Wing Bank / Financial Services / Gold). Tiers: Platinum, Gold, Silver, Bronze.";
+        break;
+      case "media":
+        return "Tip: Format as 'Broadcaster Name / Type / Reach' (e.g., CNC / Cable TV / National). Types: National TV, Cable TV, Digital Platform, Radio.";
+        break;
+      case "user":
+        return "Tip: Format as 'Full Name / Experience / Grade' (e.g., Som Panha / 10 years / International A).";
+    }
+    return "Tip: Enter the configuration value (e.g. Lightweight (60kg)).";
+  };
+
+  // CRUD actions
+  const handleAddOption = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputValue.trim()) return;
+
+    if (!canManage) {
+      toast.error("🔒 You do not have permissions to modify system settings.");
+      return;
+    }
+
+    const value = inputValue.trim();
+
+    try {
+      if (activeTab === "fighting") {
+        FIGHTING_RULES.push({
+          id: `f-${Date.now()}`,
+          kh: "",
+          en: value
+        });
+        localStorage.setItem("kkf_fighting_rules", JSON.stringify(FIGHTING_RULES));
+      } 
+      else if (activeTab === "event") {
+        if (subTab === "organizers") {
+          ORGANIZERS.push(value);
+          localStorage.setItem("kkf_event_organizers", JSON.stringify(ORGANIZERS));
+        } else {
+          const parts = value.split("/");
+          const name = parts[0]?.trim() || value;
+          const region = parts[1]?.trim() || "Phnom Penh";
+          const newVenue: Venue = {
+            name,
+            region,
+            x: 50,
+            y: 50,
+            lat: 11.5564,
+            lng: 104.9282,
+            description: `Sanctioned Arena in ${region}`
+          };
+          VENUES.push(newVenue);
+          localStorage.setItem("kkf_venues", JSON.stringify(VENUES));
+        }
+      } 
+      else if (activeTab === "match") {
+        if (subTab === "weightRanges") {
+          WEIGHT_RANGES.push(value);
+          // Sort weight ranges if they are numeric ranges (e.g. "50 kg - 52 kg")
+          localStorage.setItem("kkf_weight_ranges", JSON.stringify(WEIGHT_RANGES));
+        } else {
+          const parts = value.split("/");
+          GLOVE_TYPES.push({
+            id: `gt-${Date.now()}`,
+            brand: parts[0]?.trim() || value,
+            model: parts[1]?.trim() || "Standard Model",
+            approved: true
+          });
+          localStorage.setItem("kkf_glove_types", JSON.stringify(GLOVE_TYPES));
+        }
+      } 
+      else if (activeTab === "champion") {
+        if (subTab === "sponsors") {
+          const parts = value.split("/");
+          const name = parts[0]?.trim() || value;
+          const industry = parts[1]?.trim() || "Beverages";
+          const tier = (parts[2]?.trim() as any) || "Gold";
+          SPONSORS.push({
+            id: `sp-${Date.now()}`,
+            name,
+            logo: "🤝",
+            industry,
+            tier,
+            active: true
+          });
+          localStorage.setItem("kkf_sponsors", JSON.stringify(SPONSORS));
+        } else {
+          toast.info("Title templates are core system properties. Standard templates loaded.");
+          return;
+        }
+      } 
+      else if (activeTab === "media") {
+        const parts = value.split("/");
+        const name = parts[0]?.trim() || value;
+        const type = (parts[1]?.trim() as any) || "Cable TV";
+        const reach = parts[2]?.trim() || "National";
+        BROADCAST_STATIONS.push({
+          id: `bs-${Date.now()}`,
+          name,
+          logo: "📺",
+          type,
+          reach,
+          active: true
+        });
+        localStorage.setItem("kkf_broadcast_stations", JSON.stringify(BROADCAST_STATIONS));
+      } 
+      else if (activeTab === "user") {
+        const parts = value.split("/");
+        const name = parts[0]?.trim() || value;
+        const experience = parts[1]?.trim() || "5 years";
+        const grade = parts[2]?.trim() || "National A";
+        
+        const newOfficial: Official = {
+          id: `${subTab === "referees" ? "R" : "J"}-${Date.now()}`,
+          name,
+          experience,
+          grade,
+          status: "Available"
+        };
+
+        if (subTab === "referees") {
+          addReferee(newOfficial);
+        } else {
+          addJudge(newOfficial);
+        }
+      } 
+      else if (activeTab === "system") {
+        SYSTEM_CONFIGS.push({
+          id: `s-${Date.now()}`,
+          kh: "",
+          en: value
+        });
+        localStorage.setItem("kkf_system_configs", JSON.stringify(SYSTEM_CONFIGS));
+      }
+
+      setInputValue("");
+      forceUpdate();
+      toast.success(`✅ Option successfully added!`);
+    } catch (err) {
+      console.error(err);
+      toast.error("❌ Failed to add option. Make sure format is correct.");
+    }
+  };
+
+  const handleDeleteOption = (id: string, name?: string) => {
+    if (!canManage) {
+      toast.error("🔒 You do not have permissions to modify system settings.");
+      return;
+    }
+
+    try {
+      if (activeTab === "fighting") {
+        const idx = FIGHTING_RULES.findIndex(item => item.id === id);
+        if (idx !== -1) FIGHTING_RULES.splice(idx, 1);
+        localStorage.setItem("kkf_fighting_rules", JSON.stringify(FIGHTING_RULES));
+      } 
+      else if (activeTab === "event") {
+        if (subTab === "organizers") {
+          const idx = ORGANIZERS.indexOf(name || "");
+          if (idx !== -1) ORGANIZERS.splice(idx, 1);
+          localStorage.setItem("kkf_event_organizers", JSON.stringify(ORGANIZERS));
+        } else {
+          const idx = VENUES.findIndex(v => v.name === name);
+          if (idx !== -1) VENUES.splice(idx, 1);
+          localStorage.setItem("kkf_venues", JSON.stringify(VENUES));
+        }
+      } 
+      else if (activeTab === "match") {
+        if (subTab === "weightRanges") {
+          const idx = WEIGHT_RANGES.indexOf(name || "");
+          if (idx !== -1) WEIGHT_RANGES.splice(idx, 1);
+          localStorage.setItem("kkf_weight_ranges", JSON.stringify(WEIGHT_RANGES));
+        } else {
+          const idx = GLOVE_TYPES.findIndex(gt => gt.id === id);
+          if (idx !== -1) GLOVE_TYPES.splice(idx, 1);
+          localStorage.setItem("kkf_glove_types", JSON.stringify(GLOVE_TYPES));
+        }
+      } 
+      else if (activeTab === "champion") {
+        if (subTab === "sponsors") {
+          const idx = SPONSORS.findIndex(sp => sp.id === id);
+          if (idx !== -1) SPONSORS.splice(idx, 1);
+          localStorage.setItem("kkf_sponsors", JSON.stringify(SPONSORS));
+        } else {
+          toast.warning("Title templates are core system properties and cannot be deleted.");
+          return;
+        }
+      } 
+      else if (activeTab === "media") {
+        const idx = BROADCAST_STATIONS.findIndex(bs => bs.id === id);
+        if (idx !== -1) BROADCAST_STATIONS.splice(idx, 1);
+        localStorage.setItem("kkf_broadcast_stations", JSON.stringify(BROADCAST_STATIONS));
+      } 
+      else if (activeTab === "user") {
+        if (subTab === "referees") {
+          deleteReferee(id);
+        } else {
+          deleteJudge(id);
+        }
+      } 
+      else if (activeTab === "system") {
+        const idx = SYSTEM_CONFIGS.findIndex(item => item.id === id);
+        if (idx !== -1) SYSTEM_CONFIGS.splice(idx, 1);
+        localStorage.setItem("kkf_system_configs", JSON.stringify(SYSTEM_CONFIGS));
+      }
+
+      forceUpdate();
+      toast.success("🗑️ Option removed successfully.");
+    } catch (err) {
+      console.error(err);
+      toast.error("❌ Failed to delete option.");
+    }
+  };
+
+  const renderSubTabs = () => {
+    if (activeTab === "event") {
+      return (
+        <div className="flex gap-2 mb-5">
+          <button
+            type="button"
+            onClick={() => setSubTab("organizers")}
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all border ${
+              subTab === "organizers" 
+                ? "bg-primary border-primary text-white shadow-sm" 
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+            }`}
+          >
+            Promoters & Organizers ({ORGANIZERS.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setSubTab("venues")}
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all border ${
+              subTab === "venues" 
+                ? "bg-primary border-primary text-white shadow-sm" 
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+            }`}
+          >
+            Sanctioned Venues ({VENUES.length})
+          </button>
+        </div>
+      );
+    }
+    if (activeTab === "match") {
+      return (
+        <div className="flex gap-2 mb-5">
+          <button
+            type="button"
+            onClick={() => setSubTab("weightRanges")}
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all border ${
+              subTab === "weightRanges" 
+                ? "bg-primary border-primary text-white shadow-sm" 
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+            }`}
+          >
+            Weight Ranges ({WEIGHT_RANGES.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setSubTab("gloves")}
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all border ${
+              subTab === "gloves" 
+                ? "bg-primary border-primary text-white shadow-sm" 
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+            }`}
+          >
+            Approved Gloves ({GLOVE_TYPES.length})
+          </button>
+        </div>
+      );
+    }
+    if (activeTab === "champion") {
+      return (
+        <div className="flex gap-2 mb-5">
+          <button
+            type="button"
+            onClick={() => setSubTab("sponsors")}
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all border ${
+              subTab === "sponsors" 
+                ? "bg-primary border-primary text-white shadow-sm" 
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+            }`}
+          >
+            Sponsors ({SPONSORS.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setSubTab("titles")}
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all border ${
+              subTab === "titles" 
+                ? "bg-primary border-primary text-white shadow-sm" 
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+            }`}
+          >
+            Title Statuses (3)
+          </button>
+        </div>
+      );
+    }
+    if (activeTab === "user") {
+      return (
+        <div className="flex gap-2 mb-5">
+          <button
+            type="button"
+            onClick={() => setSubTab("referees")}
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all border ${
+              subTab === "referees" 
+                ? "bg-primary border-primary text-white shadow-sm" 
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+            }`}
+          >
+            Certified Referees ({getReferees().length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setSubTab("judges")}
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all border ${
+              subTab === "judges" 
+                ? "bg-primary border-primary text-white shadow-sm" 
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+            }`}
+          >
+            Certified Judges ({getJudges().length})
+          </button>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const activeItems = getActiveItems();
 
   return (
-    <div className="flex min-h-screen bg-[#F4F5F8]">
-      {/* Left Sidebar */}
-      <div className="w-80 bg-white border-r border-[#E0E0E0] flex flex-col">
-        {/* Sidebar Header */}
-        <div className="p-8 border-b border-[#E0E0E0]">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-[#0A3D91] to-[#1A1A24] rounded-xl flex items-center justify-center">
-              <Settings className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black text-[#1A1A24]">Settings</h1>
-              <p className="text-xs text-[#707070] font-bold">System Configuration</p>
-            </div>
-          </div>
-          
-          {!canManage && (
-            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-              <p className="text-xs text-amber-700 font-bold">🔒 Read-only access</p>
-            </div>
-          )}
+    <div className="flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto items-start w-full animate-fadeIn">
+      
+      {/* Sidebar Panel */}
+      <aside className="w-full lg:w-80 bg-white border border-border rounded-2xl flex flex-col relative overflow-hidden shrink-0 shadow-sm">
+        
+        {/* Subtle Corner Watermarks inside Sidebar */}
+        <KbachWatermark />
+        
+        {/* Sidebar Navigation Header */}
+        <div className="p-5 border-b border-border relative z-10 bg-slate-50/50">
+          <p className="text-[10px] text-muted-foreground font-extrabold uppercase tracking-widest px-1 select-none">
+            Configure Categories
+          </p>
         </div>
 
         {/* Navigation Menu */}
-        <nav className="flex-1 p-4">
-          <p className="text-[10px] font-black uppercase tracking-widest text-[#B0B0B0] mb-3 px-3">Menu</p>
-          <div className="space-y-1">
-            {settingsTabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${
-                    isActive
-                      ? "bg-[#0A3D91] text-white shadow-lg"
-                      : "text-[#707070] hover:bg-[#F4F5F8]"
-                  }`}
-                >
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
-                    isActive ? "bg-white/20" : "bg-[#F4F5F8] group-hover:bg-white"
+        <nav className="flex-1 p-4 space-y-1.5 relative z-10 overflow-y-auto max-h-[400px] lg:max-h-none">
+          {CATEGORIES_CONFIG.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            const itemCount = getCategoryCount(tab.id);
+            
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setInputValue("");
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all group border ${
+                  isActive
+                    ? "bg-primary/10 border-primary/20 text-primary shadow-sm"
+                    : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                    isActive ? "bg-primary/15 text-primary" : "bg-slate-100 text-slate-500 group-hover:bg-slate-200"
                   }`}>
-                    <Icon className="w-5 h-5" />
+                    <Icon className="w-[18px] h-[18px] shrink-0" />
                   </div>
-                  <div className="flex-1 text-left">
-                    <p className={`text-sm font-black ${isActive ? "text-white" : "text-[#1A1A24]"}`}>
+                  
+                  <div className="flex flex-col text-left min-w-0">
+                    <span className={`text-xs font-bold leading-normal font-sans tracking-wide uppercase ${
+                      isActive ? "text-primary" : "text-slate-700"
+                    }`}>
                       {tab.label}
-                    </p>
-                    <p className={`text-xs font-medium ${isActive ? "text-white/70" : "text-[#707070]"}`}>
-                      {tab.count} items
-                    </p>
+                    </span>
                   </div>
-                  {isActive && (
-                    <div className="w-1.5 h-8 bg-[#F2C94C] rounded-full" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                </div>
+
+                {/* Count Badges */}
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold leading-none transition-all ${
+                  isActive
+                    ? "bg-primary text-white"
+                    : "bg-slate-100 text-slate-500 group-hover:bg-slate-200"
+                }`}>
+                  {itemCount}
+                </span>
+              </button>
+            );
+          })}
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-6 border-t border-[#E0E0E0]">
-          <div className="p-4 bg-gradient-to-br from-[#F4F5F8] to-white rounded-xl border border-[#E0E0E0]">
-            <p className="text-xs font-black text-[#707070] mb-1">Need Help?</p>
-            <p className="text-[10px] text-[#B0B0B0] leading-relaxed">Contact system administrator for assistance</p>
+        <div className="p-5 border-t border-border bg-slate-50/50 relative z-10">
+          <div className="p-4 bg-white rounded-xl border border-border shadow-sm">
+            <p className="text-xs font-black text-slate-800 mb-1 uppercase tracking-wide">League Rules</p>
+            <p className="text-[10px] text-muted-foreground leading-relaxed font-semibold">
+              Bilingual options configured here dynamically update across athlete entry and booking cards.
+            </p>
           </div>
         </div>
-      </div>
+      </aside>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Top Bar */}
-        <div className="bg-white border-b border-[#E0E0E0] px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-3xl font-black text-[#1A1A24] mb-1">{activeTabConfig?.label}</h2>
-              <p className="text-sm text-[#707070] font-medium">{activeTabConfig?.description}</p>
+      {/* Main Workspace */}
+      <div className="flex-1 flex flex-col relative min-w-0 w-full">
+        
+        {/* Traditional Cambodian line-art watermarks in corners of workspace */}
+        <AngkorWatWatermark />
+        <FighterWatermark />
+
+        <div className="w-full relative z-10 flex-1 flex flex-col">
+          
+          {/* Header Structure */}
+          <div className="mb-6 bg-white p-6 rounded-2xl border border-border shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-primary"></div>
+            <h2 className="text-lg md:text-xl font-bold text-foreground leading-tight">
+              {activeTabConfig.title}
+            </h2>
+            <p className="text-sm text-muted-foreground mt-2 max-w-3xl leading-relaxed">
+              {activeTabConfig.desc}
+            </p>
+          </div>
+
+          {/* Render sub-tabs if present */}
+          {renderSubTabs()}
+
+          {/* Interactive Form Box */}
+          {(!activeTabConfig.id.includes("champion") || subTab === "sponsors") && (
+            <div className="mb-6 bg-white p-5 rounded-2xl border border-border shadow-sm">
+              <form onSubmit={handleAddOption} className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1 min-w-0">
+                  <input
+                    type="text"
+                    required
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder={getActivePlaceholder()}
+                    className="w-full px-4 py-3 bg-white border border-border rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all text-foreground text-sm font-medium"
+                  />
+                  <p className="text-[10px] text-muted-foreground font-semibold mt-1.5 px-1 leading-normal">
+                    {getActiveHelpText()}
+                  </p>
+                </div>
+                
+                <button
+                  type="submit"
+                  className="sm:h-[46px] px-6 bg-primary hover:bg-[#082E6E] text-white rounded-xl font-bold text-sm tracking-wide transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4 shrink-0" />
+                  <span>Add Option</span>
+                </button>
+              </form>
             </div>
-            {canManage && activeTab !== "rules" && (
-              <div className="flex items-center gap-3">
-                {activeTab === "broadcast" && (
-                  <BroadcastAddButton />
-                )}
-                {activeTab === "sponsors" && (
-                  <SponsorAddButton />
-                )}
-                {activeTab === "gloves" && (
-                  <button className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-5 py-3 rounded-xl font-bold text-sm hover:shadow-lg transition-all">
-                    <Plus className="w-4 h-4" />
-                    Add Equipment
-                  </button>
-                )}
+          )}
+
+          {/* Dynamic Tag Grid */}
+          <div className="flex-1 flex flex-col bg-white p-6 rounded-2xl border border-border shadow-sm min-h-[300px]">
+            <div className="flex items-center justify-between pb-4 mb-4 border-b border-border">
+              <h3 className="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                <span className="w-1.5 h-3 bg-primary rounded-full"></span>
+                Bilingual Option Catalog
+              </h3>
+              <span className="text-xs text-muted-foreground font-bold">
+                {activeItems.length} items configured
+              </span>
+            </div>
+
+            {activeItems.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-16 h-16 bg-muted/40 border border-border rounded-full flex items-center justify-center text-muted-foreground mb-3">
+                  <Settings className="w-6 h-6" />
+                </div>
+                <h4 className="text-foreground font-bold text-sm">No options found</h4>
+                <p className="text-muted-foreground text-xs mt-1 max-w-xs leading-normal">
+                  Add a new item using the input panel above to populate this catalog.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {activeItems.map((item) => (
+                  <div 
+                    key={item.id}
+                    className="bg-muted/15 border border-border/80 rounded-xl p-4 flex items-center justify-between hover:bg-muted/30 hover:shadow-sm hover:border-primary/30 transition-all duration-200 group animate-fadeIn"
+                  >
+                    {/* Bilingual text block with Khmer script line-height clipping prevention */}
+                    <div className="flex flex-col min-w-0 pr-2 py-0.5">
+                      <span className="text-sm font-bold text-slate-800 font-sans tracking-wide leading-relaxed truncate">
+                        {item.title}
+                      </span>
+                      {item.subtitle && (
+                        <span className="text-xs font-semibold text-slate-400 leading-normal truncate mt-0.5">
+                          {item.subtitle}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* CRUD Delete Action */}
+                    {(!activeTab.includes("champion") || subTab === "sponsors") && (
+                      <button
+                        onClick={() => handleDeleteOption(item.id, item.title)}
+                        className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all shrink-0 cursor-pointer animate-pulse"
+                        title="Delete option"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
-            {canManage && activeTab === "rules" && (
-              <button className="inline-flex items-center gap-2 bg-gradient-to-r from-[#C8102E] to-[#A00D24] text-white px-5 py-3 rounded-xl font-bold text-sm hover:shadow-lg transition-all">
-                <Plus className="w-4 h-4" />
-                Add Rule
-              </button>
-            )}
           </div>
-        </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-8">
-          {activeTab === "broadcast" && <BroadcastSettings canManage={canManage} />}
-          {activeTab === "sponsors" && <SponsorsSettings canManage={canManage} />}
-          {activeTab === "rules" && <RulesSettings canManage={canManage} />}
-          {activeTab === "gloves" && <GlovesSettings canManage={canManage} />}
         </div>
       </div>
-    </div>
-  );
-}
 
-// Broadcast Add Button Component
-function BroadcastAddButton() {
-  const [isAddingNew, setIsAddingNew] = useState(false);
-
-  if (!isAddingNew) {
-    return (
-      <button 
-        onClick={() => setIsAddingNew(true)}
-        className="inline-flex items-center gap-2 bg-gradient-to-r from-[#0A3D91] to-[#1A1A24] text-white px-5 py-3 rounded-xl font-bold text-sm hover:shadow-lg transition-all"
-      >
-        <Plus className="w-4 h-4" />
-        Add Station
-      </button>
-    );
-  }
-
-  return null;
-}
-
-// Sponsor Add Button Component
-function SponsorAddButton() {
-  const [isAddingNew, setIsAddingNew] = useState(false);
-
-  if (!isAddingNew) {
-    return (
-      <button 
-        onClick={() => setIsAddingNew(true)}
-        className="inline-flex items-center gap-2 bg-gradient-to-r from-[#F2C94C] to-[#E09F1F] text-[#1A1A24] px-5 py-3 rounded-xl font-bold text-sm hover:shadow-lg transition-all"
-      >
-        <Plus className="w-4 h-4" />
-        Add Sponsor
-      </button>
-    );
-  }
-
-  return null;
-}
-
-// Broadcast Settings Component
-function BroadcastSettings({ canManage }: { canManage: boolean }) {
-  const [isAddingNew, setIsAddingNew] = useState(false);
-  const [selectedStation, setSelectedStation] = useState<any>(null);
-  const [editingStation, setEditingStation] = useState<any>(null);
-  const [formData, setFormData] = useState<BroadcastFormData>({
-    name: "",
-    type: "",
-    contactEmail: "",
-    contactPhone: "",
-    website: "",
-    country: "",
-    city: "",
-    language: "",
-    coverage: "",
-    frequency: "",
-    active: false
-  });
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-  };
-
-  const handleAddBroadcast = () => {
-    toast.success("✅ Broadcast station added successfully!");
-    setIsAddingNew(false);
-    setFormData({
-      name: "",
-      type: "",
-      contactEmail: "",
-      contactPhone: "",
-      website: "",
-      country: "",
-      city: "",
-      language: "",
-      coverage: "",
-      frequency: "",
-      active: false
-    });
-    // Add logic to save the new broadcast station to the database
-  };
-
-  const handleEditBroadcast = () => {
-    toast.success("✅ Broadcast station updated successfully!");
-    setEditingStation(null);
-    setFormData({
-      name: "",
-      type: "",
-      contactEmail: "",
-      contactPhone: "",
-      website: "",
-      country: "",
-      city: "",
-      language: "",
-      coverage: "",
-      frequency: "",
-      active: false
-    });
-    // Add logic to update the broadcast station in the database
-  };
-
-  const startEdit = (station: any) => {
-    setEditingStation(station);
-    setFormData({
-      name: station.name || "",
-      type: "TV",
-      contactEmail: station.contactEmail || "",
-      contactPhone: "+855 23 123 456",
-      website: `https://www.${station.name.toLowerCase().replace(' ', '')}.com`,
-      country: "Cambodia",
-      city: "Phnom Penh",
-      language: "Khmer, English",
-      coverage: "National",
-      frequency: "Weekly",
-      active: station.active || false
-    });
-    setSelectedStation(null); // Close detail modal if open
-  };
-
-  const cancelEdit = () => {
-    setEditingStation(null);
-    setIsAddingNew(false);
-    setFormData({
-      name: "",
-      type: "",
-      contactEmail: "",
-      contactPhone: "",
-      website: "",
-      country: "",
-      city: "",
-      language: "",
-      coverage: "",
-      frequency: "",
-      active: false
-    });
-  };
-
-  return (
-    <div className="max-w-5xl">
-      {(isAddingNew || editingStation) && canManage && (
-        <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl p-8 border-2 border-[#0A3D91] mb-6 shadow-xl">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-[#0A3D91] to-[#1A1A24] rounded-xl flex items-center justify-center">
-                <Tv className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h3 className="text-xl font-black text-[#1A1A24]">
-                  {editingStation ? "Edit Broadcast Station" : "Add New Broadcast Station"}
-                </h3>
-                <p className="text-xs text-[#707070] font-medium">
-                  {editingStation ? "Update the information below" : "Fill in the details below"}
-                </p>
-              </div>
-            </div>
-            <button 
-              onClick={cancelEdit}
-              className="p-2 hover:bg-white rounded-lg transition-all"
-            >
-              <X className="w-5 h-5 text-[#707070]" />
-            </button>
-          </div>
-
-          {/* Station Information Section */}
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Building2 className="w-4 h-4 text-[#0A3D91]" />
-              <h4 className="text-sm font-black text-[#0A3D91] uppercase tracking-wider">Station Information</h4>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-[#707070] mb-2 uppercase tracking-wider flex items-center gap-1">
-                  <Radio className="w-3 h-3" />
-                  Station Name *
-                </label>
-                <input 
-                  type="text" 
-                  placeholder="e.g., Bayon TV" 
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl font-medium focus:border-[#0A3D91] focus:outline-none transition-all bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-[#707070] mb-2 uppercase tracking-wider flex items-center gap-1">
-                  <Video className="w-3 h-3" />
-                  Type *
-                </label>
-                <select 
-                  name="type"
-                  value={formData.type}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl font-medium focus:border-[#0A3D91] focus:outline-none transition-all bg-white"
-                >
-                  <option value="">Select Type</option>
-                  <option value="TV">📺 TV Broadcast</option>
-                  <option value="Streaming">📱 Streaming Platform</option>
-                  <option value="Radio">📻 Radio Station</option>
-                  <option value="Digital">💻 Digital Media</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Contact Information Section */}
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Phone className="w-4 h-4 text-[#0A3D91]" />
-              <h4 className="text-sm font-black text-[#0A3D91] uppercase tracking-wider">Contact Information</h4>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-[#707070] mb-2 uppercase tracking-wider flex items-center gap-1">
-                  <Mail className="w-3 h-3" />
-                  Contact Email *
-                </label>
-                <input 
-                  type="email" 
-                  placeholder="contact@station.com" 
-                  name="contactEmail"
-                  value={formData.contactEmail}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl font-medium focus:border-[#0A3D91] focus:outline-none transition-all bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-[#707070] mb-2 uppercase tracking-wider flex items-center gap-1">
-                  <Phone className="w-3 h-3" />
-                  Contact Phone *
-                </label>
-                <input 
-                  type="tel" 
-                  placeholder="+855 12 345 678" 
-                  name="contactPhone"
-                  value={formData.contactPhone}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl font-medium focus:border-[#0A3D91] focus:outline-none transition-all bg-white"
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="block text-xs font-bold text-[#707070] mb-2 uppercase tracking-wider flex items-center gap-1">
-                  <Globe className="w-3 h-3" />
-                  Website
-                </label>
-                <input 
-                  type="url" 
-                  placeholder="https://station.com" 
-                  name="website"
-                  value={formData.website}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl font-medium focus:border-[#0A3D91] focus:outline-none transition-all bg-white"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Location & Coverage Section */}
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <MapPin className="w-4 h-4 text-[#0A3D91]" />
-              <h4 className="text-sm font-black text-[#0A3D91] uppercase tracking-wider">Location & Coverage</h4>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-[#707070] mb-2 uppercase tracking-wider">Country</label>
-                <input 
-                  type="text" 
-                  placeholder="Cambodia" 
-                  name="country"
-                  value={formData.country}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl font-medium focus:border-[#0A3D91] focus:outline-none transition-all bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-[#707070] mb-2 uppercase tracking-wider">City</label>
-                <input 
-                  type="text" 
-                  placeholder="Phnom Penh" 
-                  name="city"
-                  value={formData.city}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl font-medium focus:border-[#0A3D91] focus:outline-none transition-all bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-[#707070] mb-2 uppercase tracking-wider">Language</label>
-                <input 
-                  type="text" 
-                  placeholder="Khmer, English" 
-                  name="language"
-                  value={formData.language}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl font-medium focus:border-[#0A3D91] focus:outline-none transition-all bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-[#707070] mb-2 uppercase tracking-wider">Coverage Area</label>
-                <select 
-                  name="coverage"
-                  value={formData.coverage}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl font-medium focus:border-[#0A3D91] focus:outline-none transition-all bg-white"
-                >
-                  <option value="">Select Coverage</option>
-                  <option value="International">🌍 International</option>
-                  <option value="National">🗺️ National</option>
-                  <option value="Regional">📍 Regional</option>
-                  <option value="Local">🏘️ Local</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Broadcasting Details Section */}
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Wifi className="w-4 h-4 text-[#0A3D91]" />
-              <h4 className="text-sm font-black text-[#0A3D91] uppercase tracking-wider">Broadcasting Details</h4>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-[#707070] mb-2 uppercase tracking-wider">Broadcast Frequency</label>
-                <select 
-                  name="frequency"
-                  value={formData.frequency}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl font-medium focus:border-[#0A3D91] focus:outline-none transition-all bg-white"
-                >
-                  <option value="">Select Frequency</option>
-                  <option value="Daily">📅 Daily</option>
-                  <option value="Weekly">📆 Weekly</option>
-                  <option value="Monthly">🗓️ Monthly</option>
-                  <option value="Event-based">🎯 Event-based</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-[#707070] mb-2 uppercase tracking-wider">Status</label>
-                <select 
-                  name="active"
-                  value={formData.active ? "true" : "false"}
-                  onChange={(e) => setFormData({ ...formData, active: e.target.value === "true" })}
-                  className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl font-medium focus:border-[#0A3D91] focus:outline-none transition-all bg-white"
-                >
-                  <option value="">Select Status</option>
-                  <option value="true">✅ Active</option>
-                  <option value="false">⏸️ Inactive</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Info Box */}
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-[#0A3D91] flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold text-[#0A3D91] mb-1">Important Information</p>
-                <p className="text-xs text-[#707070] leading-relaxed">
-                  Fields marked with * are required. Make sure all contact information is accurate for partnership communications.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <button 
-              onClick={editingStation ? handleEditBroadcast : handleAddBroadcast}
-              className="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-6 py-4 rounded-xl font-bold hover:shadow-xl transition-all flex items-center justify-center gap-2 hover:scale-[1.02]"
-            >
-              <Check className="w-5 h-5" />
-              {editingStation ? "Save Changes" : "Save Broadcast Station"}
-            </button>
-            <button 
-              onClick={cancelEdit}
-              className="px-8 py-4 border-2 border-[#E0E0E0] rounded-xl font-bold hover:bg-white hover:border-[#707070] transition-all"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {!isAddingNew && canManage && (
-        <button 
-          onClick={() => setIsAddingNew(true)}
-          className="w-full mb-6 p-5 border-2 border-dashed border-[#E0E0E0] rounded-xl hover:border-[#0A3D91] hover:bg-[#F9FAFB] transition-all font-bold text-[#707070] hover:text-[#0A3D91] flex items-center justify-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Add New Broadcast Station
-        </button>
-      )}
-
-      <div className="grid gap-4">
-        {BROADCAST_STATIONS.map((station) => (
-          <div key={station.id}>
-            <div 
-              onClick={() => setSelectedStation(station)}
-              className="bg-gradient-to-r from-white to-blue-50 rounded-2xl p-6 border-2 border-[#E0E0E0] hover:border-[#0A3D91] hover:shadow-xl transition-all group cursor-pointer"
-            >
-              <div className="flex items-start gap-5">
-                <div className="w-16 h-16 bg-gradient-to-br from-[#0A3D91] to-[#1A1A24] rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-lg">
-                  <Tv className="w-8 h-8 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-black text-xl text-[#1A1A24] mb-1">{station.name}</h3>
-                      <p className="text-xs text-[#707070] font-medium uppercase tracking-wider">📺 TV Broadcast Partner</p>
-                    </div>
-                    <span className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 ${
-                      station.active 
-                        ? "bg-emerald-500 text-white" 
-                        : "bg-gray-300 text-gray-600"
-                    }`}>
-                      {station.active ? '✓ ACTIVE' : '⏸ INACTIVE'}
-                    </span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-[#0A3D91]" />
-                      <span className="text-sm text-[#707070] font-medium truncate">{station.contactEmail || 'No email'}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-[#0A3D91]" />
-                      <span className="text-sm text-[#707070] font-medium">+855 23 123 456</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-[#0A3D91]" />
-                      <span className="text-sm text-[#707070] font-medium">Phnom Penh, Cambodia</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Globe className="w-4 h-4 text-[#0A3D91]" />
-                      <span className="text-sm text-[#707070] font-medium">www.{station.name.toLowerCase().replace(' ', '')}.com</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-black">
-                      🗺️ NATIONAL COVERAGE
-                    </span>
-                    <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-black">
-                      📅 WEEKLY BROADCASTS
-                    </span>
-                    <button className="ml-auto text-xs font-black text-[#0A3D91] flex items-center gap-1 group-hover:gap-2 transition-all">
-                      VIEW DETAILS <Eye className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-                {canManage && (
-                  <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        startEdit(station);
-                      }}
-                      className="p-2.5 hover:bg-blue-100 rounded-lg transition-all"
-                    >
-                      <Edit className="w-4 h-4 text-[#0A3D91]" />
-                    </button>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toast.error("Delete functionality requires confirmation");
-                      }}
-                      className="p-2.5 hover:bg-red-100 rounded-lg transition-all"
-                    >
-                      <Trash2 className="w-4 h-4 text-[#C8102E]" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Detail Modal */}
-      {selectedStation && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => setSelectedStation(null)}>
-          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
-            <div className="sticky top-0 bg-gradient-to-r from-[#0A3D91] to-[#1A1A24] text-white p-8 rounded-t-3xl">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-4">
-                  <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center flex-shrink-0">
-                    <Tv className="w-8 h-8 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-black mb-1">{selectedStation.name}</h2>
-                    <p className="text-sm text-white/70 font-medium">Broadcast Partner Details</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setSelectedStation(null)}
-                  className="p-2 hover:bg-white/20 rounded-lg transition-all"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="p-8 space-y-6">
-              {/* Status Banner */}
-              <div className={`p-4 rounded-xl ${
-                selectedStation.active 
-                  ? "bg-emerald-50 border-2 border-emerald-200" 
-                  : "bg-gray-100 border-2 border-gray-300"
-              }`}>
-                <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                    selectedStation.active ? "bg-emerald-500" : "bg-gray-400"
-                  }`}>
-                    {selectedStation.active ? <Check className="w-6 h-6 text-white" /> : <AlertCircle className="w-6 h-6 text-white" />}
-                  </div>
-                  <div>
-                    <p className={`text-sm font-black ${
-                      selectedStation.active ? "text-emerald-700" : "text-gray-600"
-                    }`}>
-                      {selectedStation.active ? "ACTIVE PARTNERSHIP" : "INACTIVE PARTNERSHIP"}
-                    </p>
-                    <p className={`text-xs font-medium ${
-                      selectedStation.active ? "text-emerald-600" : "text-gray-500"
-                    }`}>
-                      {selectedStation.active ? "Currently broadcasting KKF events" : "Partnership temporarily paused"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Station Information */}
-              <div>
-                <h3 className="text-sm font-black text-[#1A1A24] uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-[#0A3D91]" />
-                  Station Information
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-4 rounded-xl">
-                    <p className="text-xs font-bold text-[#707070] mb-1 uppercase">Type</p>
-                    <p className="text-sm font-black text-[#1A1A24]">📺 TV Broadcast</p>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-xl">
-                    <p className="text-xs font-bold text-[#707070] mb-1 uppercase">Coverage</p>
-                    <p className="text-sm font-black text-[#1A1A24]">🗺️ National</p>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-xl">
-                    <p className="text-xs font-bold text-[#707070] mb-1 uppercase">Frequency</p>
-                    <p className="text-sm font-black text-[#1A1A24]">📆 Weekly</p>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-xl">
-                    <p className="text-xs font-bold text-[#707070] mb-1 uppercase">Languages</p>
-                    <p className="text-sm font-black text-[#1A1A24]">🌐 Khmer, English</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Information */}
-              <div>
-                <h3 className="text-sm font-black text-[#1A1A24] uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-[#0A3D91]" />
-                  Contact Information
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                    <Mail className="w-5 h-5 text-[#0A3D91] flex-shrink-0" />
-                    <div>
-                      <p className="text-xs font-bold text-[#707070] uppercase">Email</p>
-                      <p className="text-sm font-black text-[#1A1A24]">{selectedStation.contactEmail || 'contact@station.com'}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                    <Phone className="w-5 h-5 text-[#0A3D91] flex-shrink-0" />
-                    <div>
-                      <p className="text-xs font-bold text-[#707070] uppercase">Phone</p>
-                      <p className="text-sm font-black text-[#1A1A24]">+855 23 123 456</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                    <Globe className="w-5 h-5 text-[#0A3D91] flex-shrink-0" />
-                    <div>
-                      <p className="text-xs font-bold text-[#707070] uppercase">Website</p>
-                      <a href={`https://www.${selectedStation.name.toLowerCase().replace(' ', '')}.com`} target="_blank" rel="noopener noreferrer" className="text-sm font-black text-[#0A3D91] hover:underline flex items-center gap-1">
-                        www.{selectedStation.name.toLowerCase().replace(' ', '')}.com
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Location */}
-              <div>
-                <h3 className="text-sm font-black text-[#1A1A24] uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-[#0A3D91]" />
-                  Location
-                </h3>
-                <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
-                  <p className="text-sm font-black text-[#1A1A24] mb-1">Phnom Penh, Cambodia</p>
-                  <p className="text-xs text-[#707070]">Headquarters &middot; Main Broadcasting Center</p>
-                </div>
-              </div>
-
-              {/* Partnership Details */}
-              <div>
-                <h3 className="text-sm font-black text-[#1A1A24] uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <Info className="w-4 h-4 text-[#0A3D91]" />
-                  Partnership Details
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
-                    <p className="text-xs font-bold text-[#707070] mb-1 uppercase">Partnered Since</p>
-                    <p className="text-sm font-black text-[#1A1A24]">January 2024</p>
-                  </div>
-                  <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
-                    <p className="text-xs font-bold text-[#707070] mb-1 uppercase">Events Broadcast</p>
-                    <p className="text-sm font-black text-[#1A1A24]">47 Events</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              {canManage && (
-                <div className="flex gap-3 pt-4 border-t border-[#E0E0E0]">
-                  <button 
-                    onClick={() => startEdit(selectedStation)}
-                    className="flex-1 bg-gradient-to-r from-[#0A3D91] to-[#1A1A24] text-white px-5 py-3 rounded-xl font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                  >
-                    <Edit className="w-5 h-5" />
-                    Edit Station
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setSelectedStation(null);
-                      toast.error("Delete functionality requires confirmation");
-                    }}
-                    className="px-6 py-3 border-2 border-[#C8102E] text-[#C8102E] rounded-xl font-bold hover:bg-red-50 transition-all flex items-center gap-2"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                    Delete
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Sponsors Settings Component
-function SponsorsSettings({ canManage }: { canManage: boolean }) {
-  const [isAddingNew, setIsAddingNew] = useState(false);
-  const [selectedSponsor, setSelectedSponsor] = useState<any>(null);
-  const [editingSponsor, setEditingSponsor] = useState<any>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    tier: "",
-    contactEmail: "",
-    contactPhone: "",
-    website: "",
-    industry: "",
-    country: "",
-    city: "",
-    partnershipType: "",
-    contractStart: "",
-    contractEnd: "",
-    active: false
-  });
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-  };
-
-  const handleAddSponsor = () => {
-    toast.success("✅ Sponsor added successfully!");
-    setIsAddingNew(false);
-    resetForm();
-  };
-
-  const handleEditSponsor = () => {
-    toast.success("✅ Sponsor updated successfully!");
-    setEditingSponsor(null);
-    resetForm();
-  };
-
-  const startEdit = (sponsor: any) => {
-    setEditingSponsor(sponsor);
-    setFormData({
-      name: sponsor.name || "",
-      tier: sponsor.tier || "",
-      contactEmail: "contact@sponsor.com",
-      contactPhone: "+855 23 456 789",
-      website: `https://www.${sponsor.name.toLowerCase().replace(' ', '')}.com`,
-      industry: "Financial Services",
-      country: "Cambodia",
-      city: "Phnom Penh",
-      partnershipType: "Title Sponsor",
-      contractStart: "2024-01-01",
-      contractEnd: "2025-12-31",
-      active: sponsor.active || false
-    });
-    setSelectedSponsor(null);
-  };
-
-  const cancelEdit = () => {
-    setEditingSponsor(null);
-    setIsAddingNew(false);
-    resetForm();
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      tier: "",
-      contactEmail: "",
-      contactPhone: "",
-      website: "",
-      industry: "",
-      country: "",
-      city: "",
-      partnershipType: "",
-      contractStart: "",
-      contractEnd: "",
-      active: false
-    });
-  };
-
-  return (
-    <div className="max-w-5xl">
-      {(isAddingNew || editingSponsor) && canManage && (
-        <div className="bg-gradient-to-br from-white to-amber-50 rounded-2xl p-8 border-2 border-[#F2C94C] mb-6 shadow-xl">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-[#F2C94C] to-[#E09F1F] rounded-xl flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h3 className="text-xl font-black text-[#1A1A24]">
-                  {editingSponsor ? "Edit Sponsor" : "Add New Sponsor"}
-                </h3>
-                <p className="text-xs text-[#707070] font-medium">
-                  {editingSponsor ? "Update the information below" : "Fill in the details below"}
-                </p>
-              </div>
-            </div>
-            <button onClick={cancelEdit} className="p-2 hover:bg-white rounded-lg transition-all">
-              <X className="w-5 h-5 text-[#707070]" />
-            </button>
-          </div>
-
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Building2 className="w-4 h-4 text-[#F2C94C]" />
-              <h4 className="text-sm font-black text-[#F2C94C] uppercase tracking-wider">Company Information</h4>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-[#707070] mb-2 uppercase tracking-wider">Sponsor Name *</label>
-                <input type="text" placeholder="e.g., ABA Bank" name="name" value={formData.name} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl font-medium focus:border-[#F2C94C] focus:outline-none transition-all bg-white"/>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-[#707070] mb-2 uppercase tracking-wider">Tier Level *</label>
-                <select name="tier" value={formData.tier} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl font-medium focus:border-[#F2C94C] focus:outline-none transition-all bg-white">
-                  <option value="">Select Tier</option>
-                  <option value="Platinum">💎 Platinum</option>
-                  <option value="Gold">🥇 Gold</option>
-                  <option value="Silver">🥈 Silver</option>
-                  <option value="Bronze">🥉 Bronze</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Phone className="w-4 h-4 text-[#F2C94C]" />
-              <h4 className="text-sm font-black text-[#F2C94C] uppercase tracking-wider">Contact Information</h4>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-[#707070] mb-2 uppercase tracking-wider">Contact Email *</label>
-                <input type="email" placeholder="contact@sponsor.com" name="contactEmail" value={formData.contactEmail} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl font-medium focus:border-[#F2C94C] focus:outline-none transition-all bg-white"/>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-[#707070] mb-2 uppercase tracking-wider">Contact Phone *</label>
-                <input type="tel" placeholder="+855 12 345 678" name="contactPhone" value={formData.contactPhone} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl font-medium focus:border-[#F2C94C] focus:outline-none transition-all bg-white"/>
-              </div>
-              <div className="col-span-2">
-                <label className="block text-xs font-bold text-[#707070] mb-2 uppercase tracking-wider">Website</label>
-                <input type="url" placeholder="https://sponsor.com" name="website" value={formData.website} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl font-medium focus:border-[#F2C94C] focus:outline-none transition-all bg-white"/>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <button onClick={editingSponsor ? handleEditSponsor : handleAddSponsor} className="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-6 py-4 rounded-xl font-bold hover:shadow-xl transition-all flex items-center justify-center gap-2 hover:scale-[1.02]">
-              <Check className="w-5 h-5" />
-              {editingSponsor ? "Save Changes" : "Save Sponsor"}
-            </button>
-            <button onClick={cancelEdit} className="px-8 py-4 border-2 border-[#E0E0E0] rounded-xl font-bold hover:bg-white hover:border-[#707070] transition-all">Cancel</button>
-          </div>
-        </div>
-      )}
-
-      {!isAddingNew && !editingSponsor && canManage && (
-        <button onClick={() => setIsAddingNew(true)} className="w-full mb-6 p-5 border-2 border-dashed border-[#E0E0E0] rounded-xl hover:border-[#F2C94C] hover:bg-amber-50 transition-all font-bold text-[#707070] hover:text-[#F2C94C] flex items-center justify-center gap-2">
-          <Plus className="w-5 h-5" />
-          Add New Sponsor
-        </button>
-      )}
-
-      <div className="grid gap-4">
-        {SPONSORS.map((sponsor) => (
-          <div key={sponsor.id}>
-            <div onClick={() => setSelectedSponsor(sponsor)} className="bg-gradient-to-r from-white to-amber-50 rounded-2xl p-6 border-2 border-[#E0E0E0] hover:border-[#F2C94C] hover:shadow-xl transition-all group cursor-pointer">
-              <div className="flex items-start gap-5">
-                <div className="w-16 h-16 bg-gradient-to-br from-[#F2C94C] to-[#E09F1F] rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-lg">
-                  <DollarSign className="w-8 h-8 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-black text-xl text-[#1A1A24] mb-1">{sponsor.name}</h3>
-                      <p className="text-xs text-[#707070] font-medium uppercase tracking-wider">💼 Official Partner</p>
-                    </div>
-                    <span className={`px-3 py-1.5 rounded-xl text-xs font-black ${sponsor.tier === "Platinum" ? "bg-gray-300 text-gray-800" : sponsor.tier === "Gold" ? "bg-yellow-400 text-yellow-900" : sponsor.tier === "Silver" ? "bg-gray-200 text-gray-700" : "bg-orange-300 text-orange-900"}`}>
-                      {sponsor.tier === "Platinum" ? "💎" : sponsor.tier === "Gold" ? "🥇" : sponsor.tier === "Silver" ? "🥈" : "🥉"} {sponsor.tier.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 rounded-lg text-xs font-black ${sponsor.active ? "bg-emerald-500 text-white" : "bg-gray-300 text-gray-600"}`}>
-                      {sponsor.active ? '✓ ACTIVE' : '⏸ INACTIVE'}
-                    </span>
-                    <button className="ml-auto text-xs font-black text-[#F2C94C] flex items-center gap-1 group-hover:gap-2 transition-all">
-                      VIEW DETAILS <Eye className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-                {canManage && (
-                  <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={(e) => { e.stopPropagation(); startEdit(sponsor); }} className="p-2.5 hover:bg-amber-100 rounded-lg transition-all">
-                      <Edit className="w-4 h-4 text-[#F2C94C]" />
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); toast.error("Delete functionality requires confirmation"); }} className="p-2.5 hover:bg-red-100 rounded-lg transition-all">
-                      <Trash2 className="w-4 h-4 text-[#C8102E]" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {selectedSponsor && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => setSelectedSponsor(null)}>
-          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-gradient-to-r from-[#F2C94C] to-[#E09F1F] text-white p-8 rounded-t-3xl">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-4">
-                  <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center flex-shrink-0">
-                    <DollarSign className="w-8 h-8 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-black mb-1">{selectedSponsor.name}</h2>
-                    <p className="text-sm text-white/70 font-medium">Partnership Details</p>
-                  </div>
-                </div>
-                <button onClick={() => setSelectedSponsor(null)} className="p-2 hover:bg-white/20 rounded-lg transition-all">
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-            <div className="p-8 space-y-6">
-              <div className={`p-4 rounded-xl ${selectedSponsor.active ? "bg-emerald-50 border-2 border-emerald-200" : "bg-gray-100 border-2 border-gray-300"}`}>
-                <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${selectedSponsor.active ? "bg-emerald-500" : "bg-gray-400"}`}>
-                    {selectedSponsor.active ? <Check className="w-6 h-6 text-white" /> : <AlertCircle className="w-6 h-6 text-white" />}
-                  </div>
-                  <div>
-                    <p className={`text-sm font-black ${selectedSponsor.active ? "text-emerald-700" : "text-gray-600"}`}>
-                      {selectedSponsor.active ? "ACTIVE PARTNERSHIP" : "INACTIVE PARTNERSHIP"}
-                    </p>
-                    <p className={`text-xs font-medium ${selectedSponsor.active ? "text-emerald-600" : "text-gray-500"}`}>
-                      {selectedSponsor.active ? "Currently sponsoring KKF events" : "Partnership temporarily paused"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <h3 className="text-sm font-black text-[#1A1A24] uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-[#F2C94C]" />
-                  Sponsor Information
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-4 rounded-xl">
-                    <p className="text-xs font-bold text-[#707070] mb-1 uppercase">Tier Level</p>
-                    <p className="text-sm font-black text-[#1A1A24]">{selectedSponsor.tier === "Platinum" ? "💎" : selectedSponsor.tier === "Gold" ? "🥇" : selectedSponsor.tier === "Silver" ? "🥈" : "🥉"} {selectedSponsor.tier}</p>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-xl">
-                    <p className="text-xs font-bold text-[#707070] mb-1 uppercase">Events Sponsored</p>
-                    <p className="text-sm font-black text-[#1A1A24]">32 Events</p>
-                  </div>
-                </div>
-              </div>
-              {canManage && (
-                <div className="flex gap-3 pt-4 border-t border-[#E0E0E0]">
-                  <button onClick={() => startEdit(selectedSponsor)} className="flex-1 bg-gradient-to-r from-[#F2C94C] to-[#E09F1F] text-white px-5 py-3 rounded-xl font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2">
-                    <Edit className="w-5 h-5" />
-                    Edit Sponsor
-                  </button>
-                  <button onClick={() => { setSelectedSponsor(null); toast.error("Delete functionality requires confirmation"); }} className="px-6 py-3 border-2 border-[#C8102E] text-[#C8102E] rounded-xl font-bold hover:bg-red-50 transition-all flex items-center gap-2">
-                    <Trash2 className="w-5 h-5" />
-                    Delete
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Rules Settings Component
-function RulesSettings({ canManage }: { canManage: boolean }) {
-  const rules = [
-    { id: "1", title: "General Competition Rules", category: "Competition", lastUpdated: "2026-01-15", version: "v3.2" },
-    { id: "2", title: "Weight Agreement Protocol", category: "Safety", lastUpdated: "2026-02-20", version: "v2.1" },
-    { id: "3", title: "Glove Safety Standards", category: "Equipment", lastUpdated: "2026-03-10", version: "v4.0" },
-    { id: "4", title: "Referee Guidelines", category: "Officials", lastUpdated: "2026-01-05", version: "v2.8" },
-    { id: "5", title: "Judging Criteria", category: "Scoring", lastUpdated: "2026-02-15", version: "v3.1" },
-    { id: "6", title: "Medical Requirements", category: "Safety", lastUpdated: "2026-03-01", version: "v1.5" },
-    { id: "7", title: "Venue Standards", category: "Infrastructure", lastUpdated: "2026-01-20", version: "v2.0" },
-    { id: "8", title: "Fighter Conduct Code", category: "Discipline", lastUpdated: "2026-02-10", version: "v3.0" },
-    { id: "9", title: "Anti-Doping Policy", category: "Safety", lastUpdated: "2026-03-15", version: "v5.0" },
-    { id: "10", title: "Championship Rules", category: "Competition", lastUpdated: "2026-01-25", version: "v2.5" },
-    { id: "11", title: "Event Approval Process", category: "Administration", lastUpdated: "2026-03-20", version: "v1.2" },
-    { id: "12", title: "Club Registration Standards", category: "Administration", lastUpdated: "2026-02-05", version: "v1.8" },
-  ];
-
-  return (
-    <div className="max-w-5xl">
-      <div className="grid gap-3">
-        {rules.map((rule) => (
-          <div key={rule.id} className="bg-white rounded-xl p-5 border border-[#E0E0E0] hover:border-[#C8102E] hover:shadow-md transition-all group">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-[#C8102E] to-[#A00D24] rounded-lg flex items-center justify-center flex-shrink-0">
-                <BookOpen className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-black text-base text-[#1A1A24] mb-2">{rule.title}</h3>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className="px-2.5 py-1 bg-red-100 text-red-700 rounded-md text-xs font-black uppercase">
-                    {rule.category}
-                  </span>
-                  <span className="px-2.5 py-1 bg-[#0A3D91] text-white rounded-md text-xs font-black">
-                    {rule.version}
-                  </span>
-                  <span className="text-xs text-[#707070] font-medium">
-                    Updated: {rule.lastUpdated}
-                  </span>
-                </div>
-              </div>
-              {canManage && (
-                <button className="opacity-0 group-hover:opacity-100 transition-opacity p-2.5 hover:bg-red-50 rounded-lg">
-                  <Edit className="w-4 h-4 text-[#C8102E]" />
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// Gloves Settings Component
-function GlovesSettings({ canManage }: { canManage: boolean }) {
-  return (
-    <div className="max-w-5xl">
-      <div className="grid gap-3">
-        {GLOVE_TYPES.map((glove) => (
-          <div key={glove.id} className="bg-white rounded-xl p-5 border border-emerald-200 hover:border-emerald-400 hover:shadow-md transition-all group">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Shield className="w-7 h-7 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-black text-lg text-[#1A1A24] mb-1">
-                  {glove.brand} {glove.model}
-                </h3>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-[#707070] font-medium">
-                    All sizes: 6oz, 8oz, 10oz
-                  </span>
-                  <span className="text-[#E0E0E0]">•</span>
-                  <span className={`px-2.5 py-1 rounded-md text-xs font-black ${
-                    glove.approved 
-                      ? "bg-emerald-100 text-emerald-700" 
-                      : "bg-gray-200 text-gray-600"
-                  }`}>
-                    {glove.approved ? 'KKF APPROVED' : 'PENDING'}
-                  </span>
-                </div>
-              </div>
-              {canManage && (
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button className="p-2.5 hover:bg-emerald-50 rounded-lg transition-all">
-                    <Edit className="w-4 h-4 text-emerald-600" />
-                  </button>
-                  <button className="p-2.5 hover:bg-red-50 rounded-lg transition-all">
-                    <Trash2 className="w-4 h-4 text-[#C8102E]" />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

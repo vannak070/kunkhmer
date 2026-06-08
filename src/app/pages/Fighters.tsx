@@ -6,6 +6,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import { FighterStatusBadge } from "../components/FighterStatusBadge";
 import type { FighterStatus } from "../data/fighterStatuses";
 import unknownFighterImg from "figma:asset/b9f2c3f9c8bd58ed74f9c92de40fb83809a138b3.png";
+import { WEIGHT_RANGES, getWeightRangeCategory } from "../data/masterData";
 
 // Helper function to derive advanced fighter status based on matches and mock rules
 const getFighterStatus = (fighter: any) => {
@@ -40,6 +41,10 @@ const getFighterStatus = (fighter: any) => {
   return { label: 'Available', style: 'bg-emerald-100 text-emerald-700 border-emerald-200', upcoming: null };
 };
 
+const getWeightRangeBilingual = (weight: number) => {
+  return getWeightRangeCategory(weight);
+};
+
 export function Fighters() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -53,6 +58,7 @@ export function Fighters() {
   // Dropdown Filter States
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterAvailability, setFilterAvailability] = useState<string>('all');
+  const [filterWeightRange, setFilterWeightRange] = useState<string>('all');
 
   // Filter fighters based on nationality
   let fighters = MOCK_FIGHTERS;
@@ -67,6 +73,7 @@ export function Fighters() {
                           f.alias.toLowerCase().includes(search.toLowerCase()) ||
                           f.gym.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = filterStatus === 'all' || f.status === filterStatus;
+    const matchesWeightRange = filterWeightRange === 'all' || getWeightRangeCategory(f.weight) === filterWeightRange;
 
     // Availability filter
     let matchesAvailability = true;
@@ -75,7 +82,7 @@ export function Fighters() {
       matchesAvailability = status.label === filterAvailability;
     }
 
-    return matchesSearch && matchesStatus && matchesAvailability;
+    return matchesSearch && matchesStatus && matchesAvailability && matchesWeightRange;
   });
   
   // Determine the correct "Register Fighter" route
@@ -91,7 +98,7 @@ export function Fighters() {
   };
 
   // Active filter count
-  const activeFilterCount = [filterStatus, filterAvailability].filter(f => f !== 'all').length;
+  const activeFilterCount = [filterStatus, filterAvailability, filterWeightRange].filter(f => f !== 'all').length;
 
   const getAvailabilityBadgeVariant = (label: string) => {
     switch (label) {
@@ -146,7 +153,7 @@ export function Fighters() {
         </div>
 
         {/* Dropdown Filters Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Fighter Status Filter */}
           <div className="relative">
             <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
@@ -189,6 +196,27 @@ export function Fighters() {
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             </div>
           </div>
+
+          {/* Weight Range Filter */}
+          <div className="relative">
+            <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+              <Weight className="w-3.5 h-3.5 text-emerald-600" />
+              Weight Range
+            </label>
+            <div className="relative">
+              <select
+                value={filterWeightRange}
+                onChange={(e) => setFilterWeightRange(e.target.value)}
+                className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm text-foreground font-medium appearance-none focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm cursor-pointer hover:border-slate-300 transition-all"
+              >
+                <option value="all">All Weight Ranges</option>
+                {WEIGHT_RANGES.map(range => (
+                  <option key={range} value={range}>{range}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            </div>
+          </div>
         </div>
 
         {/* Active Filters Indicator */}
@@ -204,6 +232,7 @@ export function Fighters() {
               onClick={() => {
                 setFilterStatus('all');
                 setFilterAvailability('all');
+                setFilterWeightRange('all');
               }}
               className="ml-auto text-xs font-bold text-secondary hover:underline"
             >
@@ -222,6 +251,7 @@ export function Fighters() {
               onClick={() => {
                 setFilterStatus('all');
                 setFilterAvailability('all');
+                setFilterWeightRange('all');
               }}
               className="mt-3 text-sm text-primary font-bold hover:underline"
             >
@@ -322,12 +352,16 @@ export function Fighters() {
                 {/* Stats Grid */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-muted/20 rounded-xl p-2.5 border border-border/40 flex flex-col gap-0.5">
-                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Weight</span>
-                    <span className="text-sm font-bold text-slate-800">{fighter.weight} <span className="text-[10px] font-semibold text-muted-foreground">kg</span></span>
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Weight Range</span>
+                    <span className="text-xs font-bold text-slate-800 truncate" title={getWeightRangeBilingual(fighter.weight)}>
+                      {getWeightRangeCategory(fighter.weight)}
+                    </span>
+                    <span className="text-[10px] font-semibold text-muted-foreground leading-none">{fighter.weight} kg</span>
                   </div>
                   <div className="bg-muted/20 rounded-xl p-2.5 border border-border/40 flex flex-col gap-0.5">
                     <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Record</span>
-                    <span className="text-sm font-bold text-primary">{fighter.record || '0-0-0'}</span>
+                    <span className="text-sm font-bold text-primary leading-tight">{fighter.record || '0-0-0'}</span>
+                    <span className="text-[10px] font-semibold text-muted-foreground leading-none">W-L-D</span>
                   </div>
                 </div>
 

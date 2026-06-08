@@ -46,6 +46,7 @@ import { CategoriesSetting } from "./pages/CategoriesSetting";
 import { StoreSettings } from "./pages/StoreSettings";
 import { News } from "./pages/News";
 import { Video } from "./pages/Video";
+import { StrategicPartners } from "./pages/StrategicPartners";
 
 export const router = createBrowserRouter([
   {
@@ -221,6 +222,10 @@ export const router = createBrowserRouter([
       { path: "store-settings", element: <StoreSettings /> },
       { path: "media/news", element: <News /> },
       { path: "media/video", element: <Video /> },
+      { path: "strategic-partners/:partnerType/new", element: <StrategicPartners /> },
+      { path: "strategic-partners/:partnerType/:partnerId/edit", element: <StrategicPartners /> },
+      { path: "strategic-partners/:partnerType", element: <StrategicPartners /> },
+      { path: "strategic-partners", element: <Navigate to="/home/strategic-partners/broadcasters" replace /> },
       { path: "*", element: <NotFound /> },
     ],
   },

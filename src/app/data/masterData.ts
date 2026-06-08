@@ -9,6 +9,8 @@ export interface BroadcastStation {
   reach: string;
   contactPerson?: string;
   contactEmail?: string;
+  contactPhone?: string;
+  websiteUrl?: string;
   active: boolean;
 }
 
@@ -21,6 +23,8 @@ export interface Sponsor {
   tier: 'Platinum' | 'Gold' | 'Silver' | 'Bronze';
   contactPerson?: string;
   contactEmail?: string;
+  contactPhone?: string;
+  websiteUrl?: string;
   active: boolean;
 }
 
@@ -436,4 +440,198 @@ export function getApprovedGloveTypes(): GloveType[] {
 
 export function getGloveSizeById(id: string): GloveSize | undefined {
   return GLOVE_SIZES.find(gs => gs.id === id);
+}
+
+// Dynamic Weight Ranges Configuration
+export const WEIGHT_RANGES: string[] = [
+  "Under 45 kg",
+  "45 kg - 47 kg",
+  "48 kg - 49 kg",
+  "50 kg - 52 kg",
+  "53 kg - 55 kg",
+  "56 kg - 58 kg",
+  "59 kg - 61 kg",
+  "62 kg - 64 kg",
+  "65 kg - 67 kg",
+  "68 kg - 70 kg",
+  "71 kg - 73 kg",
+  "74 kg - 76 kg",
+  "77 kg - 80 kg",
+  "Over 80 kg"
+];
+
+// Dynamic Event Organizers Configuration
+export const ORGANIZERS: string[] = [
+  "Kun Khmer Federation (KKF)",
+  "Bayon Entertainment Group",
+  "PNN Media Group",
+  "Town HDTV Arena Promotions",
+  "Royal Khmer Promotions",
+  "Cambodia Fight Sports Association",
+  "Kun Khmer Legends Association"
+];
+
+// Dynamic Venues Configuration
+export interface Venue {
+  name: string;
+  region: string;
+  x: number;
+  y: number;
+  lat: number;
+  lng: number;
+  description: string;
+}
+
+export const VENUES: Venue[] = [
+  {
+    name: "Morodok Techo National Stadium",
+    region: "Phnom Penh (National)",
+    x: 52,
+    y: 58,
+    lat: 11.6970,
+    lng: 104.9125,
+    description: "Main national stadium with 75,000 capacity"
+  },
+  {
+    name: "Olympic Stadium Arena",
+    region: "Phnom Penh",
+    x: 68,
+    y: 62,
+    lat: 11.5564,
+    lng: 104.9282,
+    description: "Historic indoor and outdoor national sports complex"
+  },
+  {
+    name: "Town Full HDTV Arena",
+    region: "Phnom Penh",
+    x: 63,
+    y: 50,
+    lat: 11.5725,
+    lng: 104.8988,
+    description: "State-of-the-art modern Kun Khmer broadcast arena"
+  },
+  {
+    name: "Bayon TV Arena (Steung Meanchey)",
+    region: "Phnom Penh",
+    x: 72,
+    y: 69,
+    lat: 11.5301,
+    lng: 104.8950,
+    description: "Famous arena hosting weekend championship tournaments"
+  },
+  {
+    name: "PNN Arena (Prek Pnov)",
+    region: "Phnom Penh Outskirts",
+    x: 48,
+    y: 40,
+    lat: 11.6611,
+    lng: 104.8814,
+    description: "Premium television broadcast stadium"
+  },
+  {
+    name: "Siem Reap Boxing Stadium",
+    region: "Siem Reap",
+    x: 42,
+    y: 28,
+    lat: 13.3671,
+    lng: 103.8566,
+    description: "Popular stadium hosting fights for domestic and international fans"
+  },
+  {
+    name: "Battambang Indoor Stadium",
+    region: "Battambang",
+    x: 25,
+    y: 35,
+    lat: 13.0957,
+    lng: 103.2022,
+    description: "Provincial stadium hosting major regional galas"
+  }
+];
+
+// Fighting Rules and System Config Items
+export interface RuleItem {
+  id: string;
+  kh: string;
+  en: string;
+}
+
+export const FIGHTING_RULES: RuleItem[] = [
+  { id: "f-1", kh: "ប្រាំទឹក (៥ ទឹក x ៣ នាទី)", en: "Standard (5 Rounds x 3 Mins)" },
+  { id: "f-2", kh: "ពិន្ទុរួម (១០-៩)", en: "10-Point Must System" },
+  { id: "f-3", kh: "ការប្រកួតលក្ខណៈមិត្តភាព", en: "Exhibition Rules" }
+];
+
+export const SYSTEM_CONFIGS: RuleItem[] = [
+  { id: "s-1", kh: "ភាសាខ្មែរ (លំនាំដើម)", en: "Khmer Language Default UTF-8" },
+  { id: "s-2", kh: "ម៉ោងតំបន់ភ្នំពេញ", en: "Asia/Phnom_Penh Time Synchronization" },
+  { id: "s-3", kh: "ប្រព័ន្ធបម្រុងទិន្នន័យ", en: "Automated Cloud Database Backup" }
+];
+
+// Helper to determine weight range category dynamically
+export function getWeightRangeCategory(weight: number): string {
+  for (const range of WEIGHT_RANGES) {
+    const underMatch = range.match(/under\s*(\d+)/i);
+    if (underMatch) {
+      const maxVal = parseFloat(underMatch[1]);
+      if (weight <= maxVal) return range;
+    }
+
+    const overMatch = range.match(/over\s*(\d+)/i);
+    if (overMatch) {
+      const minVal = parseFloat(overMatch[1]);
+      if (weight >= minVal) return range;
+    }
+
+    const rangeMatch = range.match(/(\d+(?:\.\d+)?)\s*(?:kg)?\s*-\s*(\d+(?:\.\d+)?)/i);
+    if (rangeMatch) {
+      const minVal = parseFloat(rangeMatch[1]);
+      const maxVal = parseFloat(rangeMatch[2]);
+      if (weight >= minVal && weight <= maxVal) return range;
+    }
+  }
+
+  // Fallback defaults
+  if (weight <= 45) return "Under 45 kg";
+  if (weight <= 47) return "45 kg - 47 kg";
+  if (weight <= 49) return "48 kg - 49 kg";
+  if (weight <= 52) return "50 kg - 52 kg";
+  if (weight <= 55) return "53 kg - 55 kg";
+  if (weight <= 58) return "56 kg - 58 kg";
+  if (weight <= 61) return "59 kg - 61 kg";
+  if (weight <= 64) return "62 kg - 64 kg";
+  if (weight <= 67) return "65 kg - 67 kg";
+  if (weight <= 70) return "68 kg - 70 kg";
+  if (weight <= 73) return "71 kg - 73 kg";
+  if (weight <= 76) return "74 kg - 76 kg";
+  if (weight <= 80) return "77 kg - 80 kg";
+  return "Over 80 kg";
+}
+
+// In-place localStorage synchronization at import/runtime
+if (typeof window !== "undefined") {
+  const loadList = (key: string, targetArray: any[]) => {
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          targetArray.length = 0;
+          targetArray.push(...parsed);
+        }
+      } catch (e) {
+        console.error("Failed to parse localStorage key:", key, e);
+      }
+    } else {
+      localStorage.setItem(key, JSON.stringify(targetArray));
+    }
+  };
+
+  loadList("kkf_broadcast_stations", BROADCAST_STATIONS);
+  loadList("kkf_sponsors", SPONSORS);
+  loadList("kkf_glove_types", GLOVE_TYPES);
+  loadList("kkf_weight_ranges", WEIGHT_RANGES);
+  loadList("kkf_event_organizers", ORGANIZERS);
+  loadList("kkf_venues", VENUES);
+  loadList("kkf_fighting_rules", FIGHTING_RULES);
+  loadList("kkf_system_configs", SYSTEM_CONFIGS);
 }

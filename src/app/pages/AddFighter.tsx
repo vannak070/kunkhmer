@@ -8,6 +8,7 @@ import {
 import { MOCK_FIGHTERS, MOCK_CLUBS } from "../data/mock";
 import { addWorkflowRequest } from "../data/workflow";
 import { usePermissions } from "../hooks/usePermissions";
+import { WEIGHT_RANGES, getWeightRangeCategory } from "../data/masterData";
 import { toast } from "sonner";
 
 const NATIONALITIES = [
@@ -131,7 +132,16 @@ export function AddFighter() {
   };
 
   const updateField = (field: string, value: any) => {
-    setFighter((p) => ({ ...p, [field]: value }));
+    setFighter((p) => {
+      const nextFighter = { ...p, [field]: value };
+      if (field === "weight") {
+        const wt = parseFloat(value);
+        if (!isNaN(wt) && wt > 0) {
+          nextFighter.weightClass = getWeightRangeCategory(wt);
+        }
+      }
+      return nextFighter;
+    });
     if (errors[field]) setErrors((p) => { const n = { ...p }; delete n[field]; return n; });
   };
 
@@ -690,11 +700,11 @@ export function AddFighter() {
                 ))}
               </div>
 
-              {/* Weight Class & Record */}
+              {/* Weight Range & Record */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Weight Class
+                    Weight Range
                   </label>
                   <div className="relative">
                     <select
@@ -702,18 +712,10 @@ export function AddFighter() {
                       onChange={(e) => updateField("weightClass", e.target.value)}
                       className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none"
                     >
-                      <option value="">Select Weight Class</option>
-                      <option>Mini Flyweight (under 48 kg)</option>
-                      <option>Light Flyweight (48 kg)</option>
-                      <option>Flyweight (51 kg)</option>
-                      <option>Super Flyweight (52 kg)</option>
-                      <option>Bantamweight (54 kg)</option>
-                      <option>Featherweight (57 kg)</option>
-                      <option>Lightweight (61 kg)</option>
-                      <option>Welterweight (67 kg)</option>
-                      <option>Middleweight (72 kg)</option>
-                      <option>Light Heavyweight (79 kg)</option>
-                      <option>Heavyweight (over 79 kg)</option>
+                      <option value="">Select Weight Range</option>
+                      {WEIGHT_RANGES.map(range => (
+                        <option key={range} value={range}>{range}</option>
+                      ))}
                     </select>
                     <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   </div>
@@ -976,7 +978,7 @@ export function AddFighter() {
                   { label: "Name", val: fighter.nameEN || fighter.nameKH || "—" },
                   { label: "Age", val: fighter.dob ? `${calculateAge(fighter.dob)} yrs` : "—" },
                   { label: "Weight", val: fighter.weight ? `${fighter.weight} kg` : "—" },
-                  { label: "Class", val: fighter.weightClass || "—" },
+                  { label: "Range", val: fighter.weightClass || "—" },
                   { label: "Record", val: fighter.record || "—" },
                   { label: "Club", val: fighter.gym || "—" },
                   { label: "Styles", val: fighter.styles.length ? `${fighter.styles.length} selected` : "—" },

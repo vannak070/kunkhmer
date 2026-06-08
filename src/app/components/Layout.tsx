@@ -2,7 +2,7 @@ import { Home, CalendarDays, ShieldAlert, Dumbbell, Gavel, Award, LineChart, Che
 import { Outlet, NavLink, useLocation, useNavigate, Link } from "react-router";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePermissions } from "../hooks/usePermissions";
 import { logoutUser } from "../data/users";
 import logoImg from "../../assets/modern_logo.png";
@@ -29,6 +29,16 @@ const navItems = [
     label: "Clubs", 
     path: "/home/clubs",
     permission: "fighters.view"
+  },
+  {
+    emoji: "🤝",
+    label: "Strategic Partners",
+    path: "/home/strategic-partners",
+    permission: null,
+    submenu: [
+      { emoji: "📺", label: "Broadcasters", path: "/home/strategic-partners/broadcasters", permission: null },
+      { emoji: "🏆", label: "Sponsors", path: "/home/strategic-partners/sponsors", permission: null }
+    ]
   },
   { 
     emoji: "🧑‍🤝‍🧑",
@@ -72,6 +82,15 @@ export function Layout() {
   const location = useLocation();
   const [openSubmenu, setOpenSubmenu] = useState<string | null>("Program");
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  useEffect(() => {
+    const activeItem = navItems.find(item => 
+      item.submenu && item.submenu.some(sub => location.pathname.startsWith(sub.path))
+    );
+    if (activeItem) {
+      setOpenSubmenu(activeItem.label);
+    }
+  }, [location.pathname]);
 
   const toggleSubmenu = (label: string) => {
     setOpenSubmenu(openSubmenu === label ? null : label);
@@ -187,7 +206,7 @@ export function Layout() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white truncate">{permissions.currentUser?.fullName || "Guest"}</p>
-              <p className="text-xs text-white/60 truncate capitalize">{permissions.currentUser?.role.replace('_', ' ') || ""}</p>
+              <p className="text-xs text-white/60 truncate capitalize">{permissions.currentUser?.role?.replace('_', ' ') || ""}</p>
             </div>
             <button
               onClick={handleLogout}
