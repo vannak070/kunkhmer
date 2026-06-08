@@ -8,8 +8,8 @@ export interface User {
   email: string;
   password: string; // In production, this would be hashed
   fullName: string;
-  role: UserRole;
-  avatar?: string;
+  role: UserRole; // Primary role (deprecated, kept for backward compatibility)
+  roles: UserRole[]; // Multiple roles per user  avatar?: string;
   phone?: string;
   organization?: string; // Broadcast station, KKF chapter, Gym/Club name, etc.
   status: 'active' | 'inactive' | 'suspended';
@@ -306,6 +306,8 @@ export const MOCK_USERS: User[] = [
     password: 'admin123',
     fullName: 'System Administrator',
     role: 'kkf_super_admin',
+    roles: ['kkf_super_admin'],
+
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150',
     phone: '+855 12 345 678',
     organization: 'Kun Khmer Federation HQ',
@@ -323,6 +325,8 @@ export const MOCK_USERS: User[] = [
     password: 'officer123',
     fullName: 'Sreymom Keo',
     role: 'kkf_officer',
+    roles: ['kkf_officer'],
+
     avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=150',
     phone: '+855 16 789 123',
     organization: 'KKF Operations Division',
@@ -340,6 +344,8 @@ export const MOCK_USERS: User[] = [
     password: 'org123',
     fullName: 'Town Full HDTV',
     role: 'organizer',
+    roles: ['organizer'],
+
     avatar: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&q=80&w=150',
     phone: '+855 12 111 222',
     organization: 'Town Full HDTV',
@@ -357,6 +363,8 @@ export const MOCK_USERS: User[] = [
     password: 'man123',
     fullName: 'Chey Rithy',
     role: 'kkf_manager',
+    roles: ['kkf_manager'],
+
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150',
     phone: '+855 12 333 444',
     organization: 'KKF Approvals',
@@ -374,6 +382,8 @@ export const MOCK_USERS: User[] = [
     password: 'club123',
     fullName: 'Kiry Sak',
     role: 'club',
+    roles: ['club'],
+
     avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=150',
     phone: '+855 12 555 666',
     organization: 'Kiry Sokun',

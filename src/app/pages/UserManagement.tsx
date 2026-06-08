@@ -174,6 +174,56 @@ export function UserManagement() {
   const [selectedDrawerUser, setSelectedDrawerUser] = useState<UserType | null>(null);
   const [selectedRole, setSelectedRole] = useState<string>("kkf_officer");
 
+  // Routing flags for sub-routes
+  const { userId } = useParams();
+  const location = useLocation();
+  const isCreatePage = location.pathname.endsWith("/user-management/new");
+  const isEditPage = !!userId && location.pathname.endsWith("/edit");
+  const isDetailPage = !!userId && !isEditPage;
+
+  const [lastPath, setLastPath] = useState("");
+
+  useEffect(() => {
+    if (isCreatePage && location.pathname !== lastPath) {
+      const defaultRole = roleFilter !== "all" ? roleFilter : "kkf_officer";
+      setFormData({
+        username: "",
+        email: "",
+        password: "",
+        fullName: "",
+        role: defaultRole as any,
+        phone: "",
+        organization: "",
+        status: "active",
+        permissions: [...(rolePermissionsState[defaultRole] || [])],
+      });
+      setLastPath(location.pathname);
+    } else if (isEditPage && location.pathname !== lastPath) {
+      const foundUser = users.find(u => u.id === userId);
+      if (foundUser) {
+        setSelectedUser(foundUser);
+        setFormData({
+          username: foundUser.username,
+          email: foundUser.email,
+          password: foundUser.password,
+          fullName: foundUser.fullName,
+          role: foundUser.role,
+          phone: foundUser.phone || "",
+          organization: foundUser.organization || "",
+          status: foundUser.status,
+          permissions: foundUser.permissions ? [...foundUser.permissions] : [...(rolePermissionsState[foundUser.role] || [])],
+        });
+      }
+      setLastPath(location.pathname);
+    } else if (isDetailPage && location.pathname !== lastPath) {
+      const foundUser = users.find(u => u.id === userId);
+      if (foundUser) {
+        setSelectedDrawerUser(foundUser);
+      }
+      setLastPath(location.pathname);
+    }
+  }, [location.pathname, userId, isCreatePage, isEditPage, isDetailPage, users, roleFilter, rolePermissionsState, lastPath]);
+
   // Custom Role Form state
   const [showAddRoleModal, setShowAddRoleModal] = useState(false);
   const [newRoleData, setNewRoleData] = useState({ key: "", label: "", description: "", copyTemplate: "kkf_officer" });
@@ -523,38 +573,14 @@ export function UserManagement() {
     });
   };
 
-  // Open Add User Modal
+  // Open Add User Modal (toggles state)
   const openAddModal = () => {
-    const defaultRole = roleFilter !== "all" ? roleFilter : "kkf_officer";
-    setFormData({
-      username: "",
-      email: "",
-      password: "",
-      fullName: "",
-      role: defaultRole as any,
-      phone: "",
-      organization: "",
-      status: "active",
-      permissions: [...(rolePermissionsState[defaultRole] || [])],
-    });
-    setShowAddModal(true);
+    setShowAddModal(prev => !prev);
   };
 
-  // Open edit modal
+  // Open edit modal (now navigates)
   const openEditModal = (user: UserType) => {
-    setSelectedUser(user);
-    setFormData({
-      username: user.username,
-      email: user.email,
-      password: user.password,
-      fullName: user.fullName,
-      role: user.role,
-      phone: user.phone,
-      organization: user.organization,
-      status: user.status,
-      permissions: user.permissions ? [...user.permissions] : [...(rolePermissionsState[user.role] || [])],
-    });
-    setShowEditModal(true);
+    navigate(`/home/user-management/${user.id}/edit`);
   };
 
   // Handle toggle custom permissions
@@ -898,26 +924,38 @@ export function UserManagement() {
         )}
 
         {/* Inline Add User Form */}
-        {activeTab === "users" && showAddModal && (
-          <div className="card-premium p-6 mb-6 shadow-sm border border-slate-200/80 bg-white animate-in slide-in-from-top duration-250">
-            {/* Header */}
-            <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <UserPlus className="w-5 h-5 text-primary" />
+                  {activeTab === "users" && (showAddModal || isCreatePage || isEditPage) && (
+            <div className="card-premium p-6 mb-6 shadow-sm border border-slate-200/80 bg-white animate-in slide-in-from-top duration-250">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <UserPlus className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900">{isEditPage ? "Edit User" : "Add New User"}</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">{isEditPage ? "Modify user details." : "Create a new system user profile. The role filter determines default permissions."}</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-base font-bold text-slate-900">Add New User</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Create a new system user profile. The role filter determines default permissions.</p>
-                </div>
+                <button
+                  onClick={() => {
+                    // Close modal or navigate back if on route page
+                    if (isCreatePage || isEditPage) {
+                      navigate("/home/user-management");
+                    } else {
+                      setShowAddModal(false);
+                    }
+                  }}
+                  className="text-slate-400 hover:bg-slate-50 hover:text-slate-600 p-1.5 rounded-lg transition-all cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:bg-slate-50 hover:text-slate-600 p-1.5 rounded-lg transition-all cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+
+          
+
+
+  
 
             {/* Content */}
             <div className="space-y-5">
