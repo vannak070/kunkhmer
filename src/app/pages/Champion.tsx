@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { toast } from "sonner";
+import { MOCK_FIGHTERS } from "../data/mock";
 import {
   Trophy, Plus, Award, Crown, Star, Shield,
   Search, Filter, Calendar, MapPin, TrendingUp, Swords,
@@ -11,23 +13,32 @@ import {
   CHAMPION_TYPE_CONFIG,
   CHAMPION_STATUS_CONFIG,
   WEIGHT_CLASSES,
-  getChampionsByType,
   getActiveChampions,
   type ChampionType,
   type ChampionStatus
 } from "../data/champion";
 import { usePermissions } from "../hooks/usePermissions";
+import { clsx } from "clsx";
 
 export function Champion() {
   const navigate = useNavigate();
   const permissions = usePermissions();
   const [search, setSearch] = useState("");
+
+  const getFighterPhoto = (champ: any) => {
+    if (champ.currentHolderPhoto) return champ.currentHolderPhoto;
+    if (champ.currentHolderId) {
+      const fighter = MOCK_FIGHTERS.find(f => f.id === champ.currentHolderId);
+      if (fighter?.image) return fighter.image;
+    }
+    return null;
+  };
+
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterWeight, setFilterWeight] = useState<string>("all");
   const [filterOrganization, setFilterOrganization] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"recent" | "defenses" | "weight" | "reign">("recent");
-  const [viewMode, setViewMode] = useState<"grid" | "compact">("grid");
   const [showVacateModal, setShowVacateModal] = useState(false);
   const [selectedChampion, setSelectedChampion] = useState<any>(null);
   const [vacateReason, setVacateReason] = useState("");
@@ -35,7 +46,7 @@ export function Champion() {
   const handleVacateTitle = () => {
     if (!selectedChampion) return;
     console.log("Vacating title:", selectedChampion.id, "Reason:", vacateReason);
-    alert(`${selectedChampion.titleName} has been vacated. Reason: ${vacateReason || "Not specified"}`);
+    toast.success(`Title vacated: ${selectedChampion.weightClass}kg ${selectedChampion.championType}`);
     setShowVacateModal(false);
     setSelectedChampion(null);
     setVacateReason("");
@@ -75,7 +86,6 @@ export function Champion() {
     } else if (sortBy === "defenses") {
       return b.defenseCount - a.defenseCount;
     } else if (sortBy === "reign") {
-      // Calculate days as champion
       const daysA = a.dateAwarded ? Math.floor((new Date().getTime() - new Date(a.dateAwarded).getTime()) / (1000 * 60 * 60 * 24)) : 0;
       const daysB = b.dateAwarded ? Math.floor((new Date().getTime() - new Date(b.dateAwarded).getTime()) / (1000 * 60 * 60 * 24)) : 0;
       return daysB - daysA;
@@ -112,603 +122,609 @@ export function Champion() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F4F5F8] via-white to-[#F9FAFB]">
-      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
-        {/* Enhanced Header */}
-        <header className="bg-white rounded-3xl shadow-lg border-2 border-[#E0E0E0] p-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-[#F2C94C] to-[#E6B800] rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
-                <Trophy className="w-9 h-9 text-[#1A1A24]" />
-              </div>
-              <div>
-                <h1 className="text-4xl md:text-5xl font-black tracking-tight text-[#1A1A24] uppercase leading-none mb-2">
-                  CHAMPIONS
-                </h1>
-                <p className="text-[#707070] font-bold text-base mb-3">
-                  {getActiveChampions().length} Title Holders & Award Winners
-                </p>
-                <div className="flex items-center gap-4 text-sm font-bold">
-                  <div className="flex items-center gap-1.5 text-[#0A3D91]">
-                    <Trophy className="w-4 h-4" />
-                    <span>{sortedChampions.length} Total</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-green-600">
-                    <CheckCircle className="w-4 h-4" />
-                    <span>{getActiveChampions().length} Active</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-red-600">
-                    <XCircle className="w-4 h-4" />
-                    <span>{vacantTitles.length} Vacant</span>
-                  </div>
-                </div>
-              </div>
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn">
+      {/* Header */}
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Championships</h1>
+          <p className="text-sm text-muted-foreground mt-0.5 font-medium">
+            {getActiveChampions().length} Active Title Holders & Special Awards
+          </p>
+          <div className="flex items-center gap-3.5 mt-2.5 text-xs font-semibold">
+            <div className="flex items-center gap-1 text-primary">
+              <Trophy className="w-3.5 h-3.5" />
+              <span>{sortedChampions.length} Total</span>
             </div>
+            <div className="w-1 h-1 rounded-full bg-slate-300" />
+            <div className="flex items-center gap-1 text-emerald-600">
+              <CheckCircle className="w-3.5 h-3.5" />
+              <span>{getActiveChampions().length} Active</span>
+            </div>
+            <div className="w-1 h-1 rounded-full bg-slate-300" />
+            <div className="flex items-center gap-1 text-rose-600">
+              <XCircle className="w-3.5 h-3.5" />
+              <span>{vacantTitles.length} Vacant</span>
+            </div>
+          </div>
+        </div>
 
-            {permissions.hasPermission('events.create') && (
+        {permissions.hasPermission('events.create') && (
+          <Link
+            to="/home/champion/new"
+            className="btn-primary py-2.5 px-5 uppercase text-xs tracking-wider"
+          >
+            <Crown className="w-4 h-4" />
+            Create Championship
+          </Link>
+        )}
+      </header>
+
+      {/* Enhanced Top Champions Section */}
+      {topChampions.length > 0 && (
+        <div className="bg-gradient-to-br from-amber-50 to-amber-100/30 border border-amber-200/60 rounded-xl p-5 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <Star className="w-5 h-5 text-amber-600" />
+            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Top Champions</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {topChampions.map((champ, index) => (
               <Link
-                to="/home/champion/new"
-                className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-[#F2C94C] to-[#E6B800] hover:from-[#E6B800] hover:to-[#D4A000] text-[#1A1A24] px-6 py-3.5 rounded-xl font-black uppercase tracking-wide transition-all shadow-md hover:shadow-xl hover:scale-105"
+                key={champ.id}
+                to={`/home/champion/${champ.id}`}
+                className="bg-white/95 backdrop-blur-sm rounded-xl p-4 hover:shadow-md transition-all border border-amber-200/40 hover:border-amber-400 group"
               >
-                <Crown className="w-5 h-5" />
-                Create Championship
-              </Link>
-            )}
-          </div>
-        </header>
-
-        {/* Enhanced Top Champions Section */}
-        {topChampions.length > 0 && (
-          <div className="bg-gradient-to-br from-[#FFB81C] via-[#F2C94C] to-[#FFB81C] rounded-3xl p-6 shadow-xl border-2 border-[#E6B800]">
-            <div className="flex items-center gap-2 mb-5">
-              <Star className="w-6 h-6 text-[#1A1A24]" />
-              <h2 className="text-2xl font-black text-[#1A1A24] uppercase tracking-tight">Top Champions</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {topChampions.map((champ, index) => (
-                <Link
-                  key={champ.id}
-                  to={`/home/champion/${champ.id}`}
-                  className="bg-white rounded-2xl p-5 hover:shadow-lg transition-all group border-2 border-white hover:border-[#E6B800]"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="relative flex-shrink-0">
-                      {champ.currentHolderPhoto ? (
-                        <img
-                          src={champ.currentHolderPhoto}
-                          alt={champ.currentHolderName || ""}
-                          className="w-16 h-16 rounded-xl object-cover border-2 border-[#E0E0E0]"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-[#0A3D91] to-[#051C42] flex items-center justify-center border-2 border-[#E0E0E0]">
-                          <Trophy className="w-8 h-8 text-white" />
-                        </div>
-                      )}
-                      <div className="absolute -top-2 -right-2 w-7 h-7 bg-gradient-to-br from-[#1A1A24] to-[#3A3A44] text-white rounded-full flex items-center justify-center text-sm font-black shadow-md border-2 border-white">
-                        {index + 1}
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-shrink-0">
+                    {getFighterPhoto(champ) ? (
+                      <img
+                        src={getFighterPhoto(champ) || ""}
+                        alt={champ.currentHolderName || ""}
+                        className="w-12 h-12 rounded-lg object-cover border border-slate-200"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary to-[#051C42] flex items-center justify-center border border-slate-200">
+                        <Trophy className="w-6 h-6 text-white" />
                       </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-base font-black text-[#1A1A24] truncate group-hover:text-[#0A3D91] transition-colors">
-                        {champ.currentHolderName || "Vacant"}
-                      </div>
-                      <div className="text-xs font-bold text-[#707070] truncate mb-2">
-                        {champ.weightClass}kg {champ.championType}
-                      </div>
-                      <div className="inline-flex items-center gap-1.5 bg-green-100 text-green-700 px-2.5 py-1 rounded-lg text-xs font-black border border-green-200">
-                        <CheckCircle className="w-3 h-3" />
-                        {champ.defenseCount} Defenses
-                      </div>
+                    )}
+                    <div className="absolute -top-1.5 -right-1.5 w-5.5 h-5.5 bg-slate-900 text-white rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm border border-white">
+                      {index + 1}
                     </div>
                   </div>
-                </Link>
-              ))}
-            </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-slate-900 truncate group-hover:text-primary transition-colors">
+                      {champ.currentHolderName || "Vacant"}
+                    </div>
+                    <div className="text-[10px] font-semibold text-muted-foreground truncate mb-1">
+                      {champ.weightClass}kg • {champ.championType}
+                    </div>
+                    <div className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-md text-[9px] font-semibold border border-emerald-200/50">
+                      <CheckCircle className="w-2.5 h-2.5" />
+                      {champ.defenseCount} Defenses
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Enhanced Vacant Titles Alert */}
+      {/* Insights Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {/* Vacant Titles Card */}
         {vacantTitles.length > 0 && (
-          <div className="bg-white border-2 border-red-200 rounded-2xl p-5 shadow-md">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-red-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-                <AlertCircle className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-black text-[#1A1A24] mb-2">
-                  {vacantTitles.length} Vacant Title{vacantTitles.length > 1 ? 's' : ''} Available
+          <div className="bg-red-50/20 border border-red-100 rounded-xl p-5 shadow-sm flex flex-col justify-between space-y-4">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 bg-red-100 text-red-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <AlertCircle className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+                  {vacantTitles.length} Vacant Title{vacantTitles.length > 1 ? 's' : ''}
                 </h3>
-                <p className="text-sm font-bold text-[#707070] mb-4">
-                  These championships are up for grabs. Schedule title fights to crown new champions!
-                </p>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {vacantTitles.slice(0, 2).map(title => (
-                    <Link
-                      key={title.id}
-                      to={`/home/match/new?championId=${title.id}`}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl text-sm font-black border-2 border-red-200 transition-all hover:scale-105"
-                    >
-                      <Trophy className="w-4 h-4" />
-                      {title.weightClass}kg {title.championType}
-                    </Link>
-                  ))}
-                  {vacantTitles.length > 2 && (
-                    <span className="inline-flex items-center px-4 py-2 bg-gray-100 text-[#707070] rounded-xl text-sm font-black border-2 border-gray-200">
-                      +{vacantTitles.length - 2} more
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link
-                    to="/home/match/new"
-                    className="inline-flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-xl text-sm font-black transition-all hover:scale-105 shadow-md"
-                  >
-                    <Swords className="w-4 h-4" />
-                    Setup International Belt
-                  </Link>
-                  <Link
-                    to="/home/match/new"
-                    className="inline-flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-xl text-sm font-black transition-all hover:scale-105 shadow-md"
-                  >
-                    <Swords className="w-4 h-4" />
-                    Setup National Belt
-                  </Link>
-                </div>
               </div>
+              <p className="text-xs text-muted-foreground font-medium">
+                Belts currently up for grabs. Schedule a title match to crown a new champion.
+              </p>
+              <div className="flex flex-wrap gap-1.5 mt-3.5">
+                {vacantTitles.slice(0, 3).map(title => (
+                  <Link
+                    key={title.id}
+                    to={`/home/match/new?championId=${title.id}`}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-red-50 text-red-700 border border-red-200 rounded-lg text-xs font-bold transition-all shadow-xs"
+                  >
+                    <Trophy className="w-3.5 h-3.5" />
+                    {title.weightClass}kg
+                  </Link>
+                ))}
+                {vacantTitles.length > 3 && (
+                  <span className="inline-flex items-center px-2.5 py-1 bg-white text-muted-foreground rounded-lg text-xs font-bold border border-slate-200">
+                    +{vacantTitles.length - 3}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Link
+                to="/home/match/new"
+                className="flex-1 btn-outline py-1.5 text-xs text-red-700 border-red-200 hover:bg-red-50/50 justify-center text-center uppercase tracking-wider"
+              >
+                Int'l Belt
+              </Link>
+              <Link
+                to="/home/match/new"
+                className="flex-1 btn-outline py-1.5 text-xs text-red-700 border-red-200 hover:bg-red-50/50 justify-center text-center uppercase tracking-wider"
+              >
+                Nat'l Belt
+              </Link>
             </div>
           </div>
         )}
 
-        {/* Enhanced Scheduled Defenses Alert */}
+        {/* Scheduled Defenses Card */}
         {scheduledDefenses.length > 0 && (
-          <div className="bg-white border-2 border-yellow-300 rounded-2xl p-5 shadow-md">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-                <CalendarClock className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-black text-[#1A1A24] mb-2">
-                  {scheduledDefenses.length} Title Defense{scheduledDefenses.length > 1 ? 's' : ''} Scheduled
-                </h3>
-                <p className="text-sm font-bold text-[#707070] mb-4">
-                  These championships have upcoming title defenses. Ensure the events are planned and executed.
-                </p>
-                <Link
-                  to="/home/events"
-                  className="inline-flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2.5 rounded-xl text-sm font-black transition-all hover:scale-105 shadow-md"
-                >
+          <div className="bg-amber-50/20 border border-amber-100 rounded-xl p-5 shadow-sm flex flex-col justify-between space-y-4">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center flex-shrink-0">
                   <CalendarClock className="w-4 h-4" />
-                  View All Upcoming Defenses
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Enhanced Longest Reign Section */}
-        {longestReign && (
-          <div className="bg-white border-2 border-blue-200 rounded-2xl p-5 shadow-md">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-                <Crown className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-black text-[#1A1A24] mb-2">
-                  Longest Reign: {longestReign.currentHolderName}
+                </div>
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+                  {scheduledDefenses.length} Defenses Scheduled
                 </h3>
-                <p className="text-sm font-bold text-[#707070] mb-4">
-                  {longestReign.currentHolderName} has held the {longestReign.weightClass}kg {longestReign.championType} title for {getDaysAsChampion(longestReign.dateAwarded)} days.
-                </p>
-                <Link
-                  to={`/home/champion/${longestReign.id}`}
-                  className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl text-sm font-black transition-all hover:scale-105 shadow-md"
-                >
-                  <Trophy className="w-4 h-4" />
-                  {longestReign.weightClass}kg {longestReign.championType}
-                </Link>
               </div>
+              <p className="text-xs text-muted-foreground font-medium">
+                Championship belts with upcoming title matches already scheduled.
+              </p>
             </div>
+            <Link
+              to="/home/events"
+              className="w-full btn-outline py-1.5 text-xs text-amber-700 border-amber-250 hover:bg-amber-50/50 justify-center text-center uppercase tracking-wider"
+            >
+              View Event Defenses
+            </Link>
           </div>
         )}
 
-        {/* Enhanced Search & Filters */}
-        <div className="bg-white rounded-2xl p-6 shadow-lg border-2 border-[#E0E0E0]">
-          {/* Search Bar */}
-          <div className="relative mb-5">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#707070]" />
-            <input
-              type="text"
-              placeholder="Search by champion name, title, or event..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl pl-12 pr-4 py-3.5 text-[#1A1A24] font-bold focus:ring-2 focus:ring-[#0A3D91] focus:border-[#0A3D91] transition-all placeholder:text-[#B0B0B0]"
-            />
-          </div>
-
-          {/* Enhanced Filter Chips */}
-          <div className="flex flex-wrap gap-2.5 mb-5">
-            <button
-              onClick={() => setFilterType("all")}
-              className={`px-5 py-2.5 rounded-xl text-sm font-black uppercase tracking-wide transition-all shadow-sm hover:shadow-md ${
-                filterType === "all"
-                  ? "bg-gradient-to-r from-[#0A3D91] to-[#082F6E] text-white scale-105"
-                  : "bg-[#F4F5F8] text-[#707070] hover:bg-[#E0E0E0] border-2 border-[#E0E0E0]"
-              }`}
+        {/* Longest Reign Card */}
+        {longestReign && (
+          <div className="bg-blue-50/20 border border-blue-100 rounded-xl p-5 shadow-sm flex flex-col justify-between space-y-4">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Crown className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+                  Longest Reign
+                </h3>
+              </div>
+              <p className="text-xs text-slate-805 font-bold truncate mb-0.5">
+                {longestReign.currentHolderName}
+              </p>
+              <p className="text-xs text-muted-foreground font-medium">
+                Has held the {longestReign.weightClass}kg {longestReign.championType} title for {getDaysAsChampion(longestReign.dateAwarded)} days.
+              </p>
+            </div>
+            <Link
+              to={`/home/champion/${longestReign.id}`}
+              className="w-full btn-outline py-1.5 text-xs text-primary border-blue-250 hover:bg-blue-50/50 justify-center text-center uppercase tracking-wider"
             >
-              All Types
-            </button>
-            {Object.entries(CHAMPION_TYPE_CONFIG).slice(0, 6).map(([key, config]) => (
+              View Belt Detail
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* Search & Filters */}
+      <div className="card-premium p-5 sm:p-6 space-y-4">
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search by champion name, title, or event..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="input-premium pl-10 py-2.5"
+          />
+        </div>
+
+        {/* Filter Chips */}
+        <div className="flex flex-wrap gap-1.5 pb-2 border-b border-border/60">
+          <button
+            onClick={() => setFilterType("all")}
+            className={clsx(
+              "px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all",
+              filterType === "all"
+                ? "bg-primary text-white shadow-xs"
+                : "bg-muted text-muted-foreground hover:bg-muted/80 border border-border/40"
+            )}
+          >
+            All Types
+          </button>
+          {Object.entries(CHAMPION_TYPE_CONFIG).slice(0, 6).map(([key, config]) => {
+            const isSelected = filterType === key;
+            return (
               <button
                 key={key}
                 onClick={() => setFilterType(key)}
-                className={`px-5 py-2.5 rounded-xl text-sm font-black uppercase tracking-wide transition-all shadow-sm hover:shadow-md ${
-                  filterType === key
-                    ? `${config.bgColor} ${config.color} border-2 border-current scale-105`
-                    : "bg-[#F4F5F8] text-[#707070] hover:bg-[#E0E0E0] border-2 border-[#E0E0E0]"
-                }`}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all border",
+                  isSelected
+                    ? `${config.bgColor} ${config.color} border-current shadow-xs`
+                    : "bg-muted text-muted-foreground hover:bg-muted/80 border-border/40"
+                )}
               >
                 {config.icon} {config.label.replace(" Champion", "").replace(" Belt", "")}
               </button>
+            );
+          })}
+        </div>
+
+        {/* Advanced Filters Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="input-premium py-2.5 cursor-pointer"
+          >
+            <option value="all">All Statuses</option>
+            {Object.entries(CHAMPION_STATUS_CONFIG).map(([key, config]) => (
+              <option key={key} value={key}>
+                {config.label}
+              </option>
             ))}
-          </div>
+          </select>
 
-          {/* Enhanced Advanced Filters Row */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3.5 text-sm text-[#1A1A24] font-black focus:ring-2 focus:ring-[#0A3D91] focus:border-[#0A3D91] transition-all hover:border-[#0A3D91]/50 cursor-pointer"
-            >
-              <option value="all">All Statuses</option>
-              {Object.entries(CHAMPION_STATUS_CONFIG).map(([key, config]) => (
-                <option key={key} value={key}>
-                  {config.label}
-                </option>
-              ))}
-            </select>
+          <select
+            value={filterWeight}
+            onChange={(e) => setFilterWeight(e.target.value)}
+            className="input-premium py-2.5 cursor-pointer"
+          >
+            <option value="all">All Weights</option>
+            {WEIGHT_CLASSES.map(weight => (
+              <option key={weight} value={weight}>
+                {weight}kg
+              </option>
+            ))}
+          </select>
 
-            <select
-              value={filterWeight}
-              onChange={(e) => setFilterWeight(e.target.value)}
-              className="bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3.5 text-sm text-[#1A1A24] font-black focus:ring-2 focus:ring-[#0A3D91] focus:border-[#0A3D91] transition-all hover:border-[#0A3D91]/50 cursor-pointer"
-            >
-              <option value="all">All Weights</option>
-              {WEIGHT_CLASSES.map(weight => (
-                <option key={weight} value={weight}>
-                  {weight}kg
-                </option>
-              ))}
-            </select>
+          <select
+            value={filterOrganization}
+            onChange={(e) => setFilterOrganization(e.target.value)}
+            className="input-premium py-2.5 cursor-pointer"
+          >
+            <option value="all">All Organizations</option>
+            {Array.from(new Set(MOCK_CHAMPIONS.map(c => c.organization))).map(org => (
+              <option key={org} value={org}>
+                {org}
+              </option>
+            ))}
+          </select>
 
-            <select
-              value={filterOrganization}
-              onChange={(e) => setFilterOrganization(e.target.value)}
-              className="bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3.5 text-sm text-[#1A1A24] font-black focus:ring-2 focus:ring-[#0A3D91] focus:border-[#0A3D91] transition-all hover:border-[#0A3D91]/50 cursor-pointer"
-            >
-              <option value="all">All Organizations</option>
-              {Array.from(new Set(MOCK_CHAMPIONS.map(c => c.organization))).map(org => (
-                <option key={org} value={org}>
-                  {org}
-                </option>
-              ))}
-            </select>
-
+          <div className="flex gap-2">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3.5 text-sm text-[#1A1A24] font-black focus:ring-2 focus:ring-[#0A3D91] focus:border-[#0A3D91] transition-all hover:border-[#0A3D91]/50 cursor-pointer"
+              className="input-premium py-2.5 cursor-pointer flex-1"
             >
-              <option value="recent">Sort: Most Recent</option>
-              <option value="defenses">Sort: Most Defenses</option>
-              <option value="weight">Sort: Weight Class</option>
-              <option value="reign">Sort: Longest Reign</option>
+              <option value="recent">Sort: Recent</option>
+              <option value="defenses">Sort: Defenses</option>
+              <option value="weight">Sort: Weight</option>
+              <option value="reign">Sort: Reign</option>
             </select>
 
             {activeFiltersCount > 0 && (
               <button
                 onClick={clearFilters}
-                className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-3.5 rounded-xl text-sm font-black transition-all shadow-md hover:shadow-lg hover:scale-105"
+                className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-semibold transition-all shadow-xs flex items-center justify-center"
+                title="Clear Filters"
               >
                 <X className="w-4 h-4" />
-                Clear ({activeFiltersCount})
               </button>
             )}
           </div>
         </div>
+      </div>
 
-        {/* Champions List */}
-        {sortedChampions.length === 0 ? (
-          <div className="bg-white rounded-3xl p-16 text-center shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-[#E0E0E0]/50">
-            <Trophy className="w-20 h-20 text-[#E0E0E0] mx-auto mb-6" />
-            <h3 className="text-2xl font-black text-[#1A1A24] mb-3">No Champions Found</h3>
-            <p className="text-[#707070] font-medium text-lg mb-8">
-              No champions match your current filters. Try adjusting your search.
-            </p>
-            {activeFiltersCount > 0 && (
-              <button
-                onClick={clearFilters}
-                className="inline-flex items-center gap-2 bg-[#0A3D91] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#082F6E] transition-all"
+      {/* Champions List */}
+      {sortedChampions.length === 0 ? (
+        <div className="card-premium p-16 text-center space-y-4">
+          <Trophy className="w-16 h-16 text-muted-foreground/30 mx-auto" />
+          <h3 className="text-xl font-bold text-slate-900">No Champions Found</h3>
+          <p className="text-muted-foreground text-sm max-w-md mx-auto">
+            No champions match your current filters. Try adjusting your search term or filter parameters.
+          </p>
+          {activeFiltersCount > 0 && (
+            <button
+              onClick={clearFilters}
+              className="btn-primary inline-flex py-2 px-5 text-xs uppercase tracking-wider mt-2"
+            >
+              <X className="w-4 h-4" />
+              Clear All Filters
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {sortedChampions.map((champion) => {
+            const typeConfig = CHAMPION_TYPE_CONFIG[champion.championType];
+            const statusConfig = CHAMPION_STATUS_CONFIG[champion.status];
+
+            return (
+              <Link
+                key={champion.id}
+                to={`/home/champion/${champion.id}`}
+                className="block card-premium bg-white hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 group overflow-hidden"
               >
-                <X className="w-5 h-5" />
-                Clear All Filters
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {sortedChampions.map((champion) => {
-              const typeConfig = CHAMPION_TYPE_CONFIG[champion.championType];
-              const statusConfig = CHAMPION_STATUS_CONFIG[champion.status];
-
-              return (
-                <Link
-                  key={champion.id}
-                  to={`/home/champion/${champion.id}`}
-                  className="block bg-white rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-[#E0E0E0]/50 hover:shadow-[0_12px_40px_rgba(0,0,0,0.12)] transition-all group hover:scale-[1.01]"
-                >
-                  <div className="p-5">
-                    {/* Header Row */}
-                    <div className="flex items-start gap-4 mb-4">
-                      {/* Champion Photo */}
-                      <div className="relative flex-shrink-0">
-                        {champion.currentHolderPhoto ? (
-                          <img
-                            src={champion.currentHolderPhoto}
-                            alt={champion.currentHolderName || "Vacant"}
-                            className="w-20 h-20 rounded-xl object-cover border-2 border-[#E0E0E0]"
-                          />
-                        ) : (
-                          <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center border-2 border-[#E0E0E0]">
-                            <Trophy className="w-10 h-10 text-gray-400" />
-                          </div>
-                        )}
-                        {champion.status === "Active" && champion.currentHolderName && (
-                          <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-gradient-to-br from-[#F2C94C] to-[#E6B800] rounded-full flex items-center justify-center border-2 border-white">
-                            <Crown className="w-4 h-4 text-[#1A1A24]" />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Champion Info */}
-                      <div className="flex-1 min-w-0">
-                        {/* Name */}
-                        <h2 className="text-2xl font-black text-[#1A1A24] mb-1 leading-tight group-hover:text-[#0A3D91] transition-colors truncate">
-                          {champion.currentHolderName || "VACANT"}
-                        </h2>
-                        
-                        {/* Title - Rewritten Format */}
-                        <div className="text-sm font-black text-[#707070] mb-2 leading-tight">
-                          {champion.weightClass}kg {champion.championType}
+                <div>
+                  {/* Header Row */}
+                  <div className="flex items-start gap-4 mb-4">
+                    {/* Champion Photo */}
+                    <div className="relative flex-shrink-0">
+                      {getFighterPhoto(champion) ? (
+                        <img
+                          src={getFighterPhoto(champion) || ""}
+                          alt={champion.currentHolderName || "Vacant"}
+                          className="w-16 h-16 rounded-xl object-cover border border-slate-200"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-xl bg-muted border border-slate-200 flex items-center justify-center">
+                          <Trophy className="w-7 h-7 text-muted-foreground/50" />
                         </div>
-
-                        {/* Status & Type Badges */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${statusConfig.bgColor} ${statusConfig.color}`}>
-                            {statusConfig.label}
-                          </span>
-                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${typeConfig.bgColor} ${typeConfig.color}`}>
-                            {typeConfig.icon} {typeConfig.label.split(" ")[0]}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Key Info Row - Weight, Organization, Won Date */}
-                    <div className="grid grid-cols-3 gap-2 mb-4">
-                      <div className="bg-gradient-to-r from-blue-50 to-white rounded-lg p-2.5 border border-blue-100">
-                        <div className="flex items-center gap-1.5">
-                          <Weight className="w-3.5 h-3.5 text-[#0A3D91] flex-shrink-0" />
-                          <div className="min-w-0">
-                            <div className="text-[9px] font-black text-[#B0B0B0] uppercase tracking-wider">Weight</div>
-                            <div className="text-xs font-black text-[#1A1A24]">{champion.weightClass}kg</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-gradient-to-r from-red-50 to-white rounded-lg p-2.5 border border-red-100">
-                        <div className="flex items-center gap-1.5">
-                          <Shield className="w-3.5 h-3.5 text-[#C8102E] flex-shrink-0" />
-                          <div className="min-w-0">
-                            <div className="text-[9px] font-black text-[#B0B0B0] uppercase tracking-wider">Org</div>
-                            <div className="text-xs font-black text-[#1A1A24] truncate">{champion.organization}</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-gradient-to-r from-amber-50 to-white rounded-lg p-2.5 border border-amber-100">
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-[#F2C94C] flex-shrink-0" />
-                          <div className="min-w-0">
-                            <div className="text-[9px] font-black text-[#B0B0B0] uppercase tracking-wider">Won</div>
-                            <div className="text-xs font-black text-[#1A1A24]">
-                              {champion.dateAwarded ? new Date(champion.dateAwarded).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) : 'N/A'}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Title Won At Section */}
-                    <div className="bg-gradient-to-r from-[#F4F5F8] to-white rounded-xl p-3 mb-4 border border-[#E0E0E0]">
-                      <div className="text-[10px] font-black text-[#B0B0B0] uppercase tracking-wider mb-1.5">
-                        🏆 Title Won At
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-3.5 h-3.5 text-[#0A3D91] flex-shrink-0" />
-                          <span className="text-sm font-black text-[#1A1A24] truncate">
-                            {champion.eventName}
-                          </span>
-                        </div>
-                        {champion.nationality && (
-                          <div className="flex items-center gap-2">
-                            <User className="w-3.5 h-3.5 text-[#707070] flex-shrink-0" />
-                            <span className="text-xs font-bold text-[#707070]">
-                              {champion.nationality}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Stats Row */}
-                    <div className="grid grid-cols-3 gap-3 mb-4 pb-4 border-b-2 border-[#E0E0E0]">
-                      <div className="text-center">
-                        <div className="flex items-center justify-center gap-1 mb-1">
-                          <CheckCircle className="w-3.5 h-3.5 text-green-600" />
-                          <span className="text-lg font-black text-[#1A1A24]">{champion.defenseCount}</span>
-                        </div>
-                        <div className="text-[9px] font-black text-[#B0B0B0] uppercase tracking-wider">Defenses</div>
-                      </div>
-
-                      <div className="text-center">
-                        <div className="flex items-center justify-center gap-1 mb-1">
-                          <Flame className="w-3.5 h-3.5 text-orange-500" />
-                          <span className="text-lg font-black text-[#1A1A24]">
-                            {champion.defenseCount > 0 ? champion.defenseCount : '-'}
-                          </span>
-                        </div>
-                        <div className="text-[9px] font-black text-[#B0B0B0] uppercase tracking-wider">Win Streak</div>
-                      </div>
-
-                      <div className="text-center">
-                        <div className="flex items-center justify-center gap-1 mb-1">
-                          <Star className="w-3.5 h-3.5 text-amber-500" />
-                          <span className="text-lg font-black text-[#1A1A24]">
-                            {champion.specialTitles?.length || 0}
-                          </span>
-                        </div>
-                        <div className="text-[9px] font-black text-[#B0B0B0] uppercase tracking-wider">Awards</div>
-                      </div>
-                    </div>
-
-                    {/* Quick Actions */}
-                    <div className="grid grid-cols-4 gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          navigate(`/home/champion/${champion.id}`);
-                        }}
-                        className="flex items-center justify-center gap-1.5 bg-[#F4F5F8] hover:bg-[#0A3D91] text-[#707070] hover:text-white px-3 py-2 rounded-lg text-xs font-bold transition-all group/btn"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">View</span>
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          navigate(`/home/champion/${champion.id}/history`);
-                        }}
-                        className="flex items-center justify-center gap-1.5 bg-[#F4F5F8] hover:bg-[#0A3D91] text-[#707070] hover:text-white px-3 py-2 rounded-lg text-xs font-bold transition-all group/btn"
-                      >
-                        <History className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">History</span>
-                      </button>
-                      {champion.status === "Active" && permissions.hasPermission('events.create') && (
-                        <>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              navigate(`/home/champion/${champion.id}/schedule-defense`);
-                            }}
-                            className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-[#F2C94C] to-[#E6B800] hover:from-[#E6B800] hover:to-[#D4A000] text-[#1A1A24] px-3 py-2 rounded-lg text-xs font-bold transition-all"
-                          >
-                            <CalendarClock className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Defense</span>
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setSelectedChampion(champion);
-                              setShowVacateModal(true);
-                            }}
-                            className="flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-bold transition-all"
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Vacate</span>
-                          </button>
-                        </>
                       )}
-                      {champion.status === "Vacant" && permissions.hasPermission('events.create') && (
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            navigate(`/home/match/new?championId=${champion.id}`);
-                          }}
-                          className="col-span-2 flex items-center justify-center gap-1.5 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-3 py-2 rounded-lg text-xs font-bold transition-all"
-                        >
-                          <Target className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Schedule Title Fight</span>
-                        </button>
+                      {champion.status === "Active" && champion.currentHolderName && (
+                        <div className="absolute -bottom-1 -right-1 w-5.5 h-5.5 bg-gradient-to-br from-amber-400 to-amber-500 rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+                          <Crown className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Champion Info */}
+                    <div className="flex-1 min-w-0">
+                      <h2 className="text-lg font-bold text-slate-900 leading-tight group-hover:text-primary transition-colors truncate">
+                        {champion.currentHolderName || "VACANT"}
+                      </h2>
+                      
+                      <div className="text-xs font-semibold text-muted-foreground mt-0.5 mb-2">
+                        {champion.weightClass}kg • {champion.championType}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`badge-premium text-[9px] py-0.5 px-2 ${
+                          champion.status === 'Active' ? 'badge-blue' :
+                          champion.status === 'Title Defense Scheduled' ? 'badge-amber' :
+                          'bg-slate-100 text-slate-700 border-slate-200'
+                        }`}>
+                          <span className={`badge-dot ${
+                            champion.status === 'Active' ? 'bg-blue-500' :
+                            champion.status === 'Title Defense Scheduled' ? 'bg-amber-500' :
+                            'bg-slate-400'
+                          }`} />
+                          {statusConfig.label}
+                        </span>
+                        <span className={`badge-premium text-[9px] py-0.5 px-2 bg-slate-50 text-slate-650 border-slate-200`}>
+                          {typeConfig.icon} {typeConfig.label.split(" ")[0]}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Key Info Row - Weight, Organization, Won Date */}
+                  <div className="grid grid-cols-3 gap-2 mb-3.5">
+                    <div className="bg-blue-50/20 rounded-lg p-2 border border-blue-100/50">
+                      <div className="flex items-center gap-1.5">
+                        <Weight className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                        <div className="min-w-0">
+                          <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider leading-none">Weight</div>
+                          <div className="text-xs font-bold text-slate-800 mt-0.5">{champion.weightClass}kg</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-red-50/20 rounded-lg p-2 border border-red-100/50">
+                      <div className="flex items-center gap-1.5">
+                        <Shield className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
+                        <div className="min-w-0">
+                          <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider leading-none">Org</div>
+                          <div className="text-xs font-bold text-slate-800 mt-0.5 truncate">{champion.organization}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-amber-50/20 rounded-lg p-2 border border-amber-100/50">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-amber-505 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider leading-none">Won</div>
+                          <div className="text-xs font-bold text-slate-800 mt-0.5">
+                            {champion.dateAwarded ? new Date(champion.dateAwarded).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) : 'N/A'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Title Won At Section */}
+                  <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-3 mb-3.5">
+                    <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 block">
+                      🏆 Title Won At
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                        <span className="text-xs font-bold text-slate-850 truncate">
+                          {champion.eventName}
+                        </span>
+                      </div>
+                      {champion.nationality && (
+                        <div className="flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                          <span className="text-[11px] font-medium text-muted-foreground">
+                            {champion.nationality}
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
-                </Link>
-              );
-            })}
-          </div>
-        )}
 
-        {/* Vacate Title Modal */}
-        {showVacateModal && selectedChampion && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8">
-              <div className="flex items-start gap-4 mb-6">
-                <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center flex-shrink-0">
-                  <AlertTriangle className="w-7 h-7 text-red-600" />
+                  {/* Stats Row */}
+                  <div className="grid grid-cols-3 gap-3 mb-4 pb-3.5 border-b border-border/80">
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 mb-0.5">
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="text-base font-bold text-slate-800">{champion.defenseCount}</span>
+                      </div>
+                      <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Defenses</div>
+                    </div>
+
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 mb-0.5">
+                        <Flame className="w-3.5 h-3.5 text-orange-500" />
+                        <span className="text-base font-bold text-slate-800">
+                          {champion.defenseCount > 0 ? champion.defenseCount : '-'}
+                        </span>
+                      </div>
+                      <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Win Streak</div>
+                    </div>
+
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 mb-0.5">
+                        <Star className="w-3.5 h-3.5 text-amber-500" />
+                        <span className="text-base font-bold text-slate-800">
+                          {champion.specialTitles?.length || 0}
+                        </span>
+                      </div>
+                      <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Awards</div>
+                    </div>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className="grid grid-cols-4 gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        navigate(`/home/champion/${champion.id}`);
+                      }}
+                      className="btn-outline py-1.5 px-2 text-xs text-slate-700 hover:text-primary transition-colors flex items-center justify-center gap-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">View</span>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        navigate(`/home/champion/${champion.id}/history`);
+                      }}
+                      className="btn-outline py-1.5 px-2 text-xs text-slate-700 hover:text-primary transition-colors flex items-center justify-center gap-1"
+                    >
+                      <History className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">History</span>
+                    </button>
+                    {champion.status === "Active" && permissions.hasPermission('events.create') && (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigate(`/home/champion/${champion.id}/schedule-defense`);
+                          }}
+                          className="inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 text-white hover:from-amber-600 hover:to-amber-700 text-xs font-semibold transition-all active:scale-[0.98] shadow-xs"
+                        >
+                          <CalendarClock className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Defense</span>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setSelectedChampion(champion);
+                            setShowVacateModal(true);
+                          }}
+                          className="inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-gradient-to-br from-red-600 to-rose-600 text-white hover:from-red-700 hover:to-rose-755 text-xs font-semibold transition-all active:scale-[0.98]"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Vacate</span>
+                        </button>
+                      </>
+                    )}
+                    {champion.status === "Vacant" && permissions.hasPermission('events.create') && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          navigate(`/home/match/new?championId=${champion.id}`);
+                        }}
+                        className="col-span-2 inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-700 text-white hover:from-emerald-700 hover:to-emerald-800 text-xs font-semibold transition-all active:scale-[0.98]"
+                      >
+                        <Target className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Schedule Fight</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-2xl font-black text-[#1A1A24] mb-2">
-                    Vacate Championship Title
-                  </h3>
-                  <p className="text-[#707070] font-medium">
-                    This will mark the <strong>{selectedChampion.weightClass}kg {selectedChampion.championType}</strong> title as vacant and remove {selectedChampion.currentHolderName} as the current holder.
-                  </p>
-                </div>
-              </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
-              <div className="mb-6">
-                <label className="block text-sm font-black text-[#1A1A24] mb-2 uppercase tracking-wider">
-                  Reason for Vacancy (Optional)
-                </label>
-                <select
-                  value={vacateReason}
-                  onChange={(e) => setVacateReason(e.target.value)}
-                  className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3 text-[#1A1A24] font-semibold focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all"
-                >
-                  <option value="">Select reason...</option>
-                  <option value="Champion Retired">Champion Retired</option>
-                  <option value="Champion Vacated Voluntarily">Champion Vacated Voluntarily</option>
-                  <option value="Stripped by KKF">Stripped by KKF</option>
-                  <option value="Failed to Defend">Failed to Defend Within Deadline</option>
-                  <option value="Medical Reasons">Medical Reasons</option>
-                  <option value="Weight Class Change">Weight Class Change</option>
-                  <option value="Other">Other</option>
-                </select>
+      {/* Vacate Title Modal */}
+      {showVacateModal && selectedChampion && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-border/80">
+            <div className="flex items-start gap-3.5 mb-5">
+              <div className="w-10 h-10 bg-red-50 text-red-600 rounded-lg flex items-center justify-center flex-shrink-0 border border-red-100">
+                <AlertTriangle className="w-5 h-5" />
               </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowVacateModal(false);
-                    setSelectedChampion(null);
-                    setVacateReason("");
-                  }}
-                  className="flex-1 px-6 py-3 bg-[#F4F5F8] hover:bg-[#E0E0E0] text-[#1A1A24] rounded-xl font-bold transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleVacateTitle}
-                  className="flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-all"
-                >
-                  Confirm Vacancy
-                </button>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 mb-1">
+                  Vacate Championship Title
+                </h3>
+                <p className="text-xs text-muted-foreground leading-normal">
+                  This will mark the <strong className="text-slate-800">{selectedChampion.weightClass}kg {selectedChampion.championType}</strong> title as vacant and remove {selectedChampion.currentHolderName} as the current holder.
+                </p>
               </div>
             </div>
+
+            <div className="mb-6">
+              <label className="block text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+                Reason for Vacancy (Optional)
+              </label>
+              <select
+                value={vacateReason}
+                onChange={(e) => setVacateReason(e.target.value)}
+                className="input-premium py-2.5 cursor-pointer"
+              >
+                <option value="">Select reason...</option>
+                <option value="Champion Retired">Champion Retired</option>
+                <option value="Champion Vacated Voluntarily">Champion Vacated Voluntarily</option>
+                <option value="Stripped by KKF">Stripped by KKF</option>
+                <option value="Failed to Defend">Failed to Defend Within Deadline</option>
+                <option value="Medical Reasons">Medical Reasons</option>
+                <option value="Weight Class Change">Weight Class Change</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => {
+                  setShowVacateModal(false);
+                  setSelectedChampion(null);
+                  setVacateReason("");
+                }}
+                className="btn-outline px-5 py-2 text-xs uppercase tracking-wider"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleVacateTitle}
+                className="inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-lg bg-gradient-to-br from-red-600 to-rose-600 text-white hover:from-red-700 hover:to-rose-755 text-xs font-semibold uppercase tracking-wider transition-all shadow-sm"
+              >
+                Confirm Vacancy
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

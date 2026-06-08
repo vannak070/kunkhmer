@@ -6,6 +6,9 @@ import {
   Crown, Info, ChevronDown
 } from "lucide-react";
 import { MOCK_FIGHTERS, MOCK_CLUBS } from "../data/mock";
+import { addWorkflowRequest } from "../data/workflow";
+import { usePermissions } from "../hooks/usePermissions";
+import { toast } from "sonner";
 
 const NATIONALITIES = [
   "Thai", "Vietnamese", "Lao", "Myanmar", "Indonesian", "Malaysian", "Filipino",
@@ -26,6 +29,8 @@ export function AddFighter() {
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
+  const permissions = usePermissions();
+  const currentUser = permissions.currentUser;
   const photoInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
 
@@ -170,14 +175,62 @@ export function AddFighter() {
       weightClass: fighter.weightClass,
       record: fighter.record || "0-0-0",
       style: fighter.styles.join(", "),
-      image: finalImage, status: fighter.status,
+      image: finalImage,
+      status: isEditMode && existingFighter ? fighter.status : "Inactive",
+      approvalStatus: isEditMode && existingFighter ? (existingFighter as any).approvalStatus || "approved" : "pending" as const,
     };
     if (isEditMode && existingFighter) {
       const idx = MOCK_FIGHTERS.findIndex((f) => f.id === existingFighter.id);
-      if (idx !== -1) MOCK_FIGHTERS[idx] = fighterData;
+      if (idx !== -1) MOCK_FIGHTERS[idx] = fighterData as any;
       navigate(`/home/fighters/${existingFighter.id}`);
     } else {
-      MOCK_FIGHTERS.push(fighterData);
+      MOCK_FIGHTERS.push(fighterData as any);
+      
+      // Generate workflow request
+      addWorkflowRequest({
+        type: "fighter",
+        title: `Register Fighter: ${fighterData.name}`,
+        createdBy: currentUser?.id || "u3",
+        data: {
+          fighterName: fighterData.name,
+          nameKH: fighter.nameKH,
+          alias: fighterData.alias,
+          dob: fighter.dob,
+          pob: fighter.pob,
+          nationality: fighter.nationality,
+          gender: fighter.gender,
+          idType: fighter.idType,
+          idNumber: fighter.idNumber,
+          idExpiry: fighter.idExpiry,
+          phone: fighter.phone1,
+          email: fighter.email,
+          address: fighter.address,
+          city: fighter.city,
+          emergencyName: fighter.emergencyName,
+          emergencyRelation: fighter.emergencyRelation,
+          emergencyPhone: fighter.emergencyPhone,
+          bloodType: fighter.bloodType,
+          lastMedicalCheck: fighter.lastMedicalCheck,
+          medicalExpiry: fighter.medicalExpiry,
+          medicalConditions: fighter.medicalConditions,
+          allergies: fighter.allergies,
+          weight: fighterData.weight,
+          height: fighter.height ? `${fighter.height} cm` : undefined,
+          reach: fighter.reach ? `${fighter.reach} cm` : undefined,
+          experience: `${fighter.experience} years`,
+          styles: fighter.styles,
+          type: fighterData.type,
+          grade: fighterData.grade,
+          origin: fighterData.origin,
+          club: fighterData.gym,
+          clubId: fighterData.clubId,
+          trainer: fighter.trainer,
+          promoter: fighter.promoter,
+          documents: ["National ID Card", "Medical Certificate"]
+        }
+      });
+      
+      toast.success("Fighter registration submitted for KKF approval!");
       navigate("/home/fighters");
     }
   };

@@ -63,17 +63,6 @@ const navItems = [
       { icon: Video, label: "Video", path: "/home/media/video", permission: null }
     ]
   },
-  {
-    icon: ShoppingBag,
-    label: "Store",
-    path: "/home/product-management",
-    permission: null,
-    submenu: [
-      { icon: Package, label: "Products", path: "/home/product-management", permission: "users.view" },
-      { icon: Tag, label: "Categories", path: "/home/categories-setting", permission: "users.view" },
-      { icon: Settings, label: "Settings", path: "/home/store-settings", permission: "users.view" }
-    ]
-  },
   { icon: Users, label: "Users", path: "/home/user-management", permission: "users.view" },
   { icon: FileText, label: "Process Flow", path: "/home/process-flow", permission: null },
   { icon: Settings, label: "System Settings", path: "/home/settings", permission: null },

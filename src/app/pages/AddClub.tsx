@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Save, Upload, Building2, MapPin, X, ChevronDown, Search } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { MOCK_CLUBS } from "../data/mock";
+import { addWorkflowRequest } from "../data/workflow";
+import { usePermissions } from "../hooks/usePermissions";
+import { toast } from "sonner";
 import mapPickerImg from "../../assets/phnom_penh_map_picker.png";
 
 const QUICK_HUBS = [
@@ -69,6 +72,8 @@ const QUICK_HUBS = [
 
 export function AddClub() {
   const navigate = useNavigate();
+  const permissions = usePermissions();
+  const currentUser = permissions.currentUser;
   const [formData, setFormData] = useState({
     name: "",
     location: "",
@@ -283,12 +288,30 @@ export function AddClub() {
       headCoach: formData.headCoach,
       activeFighters: 0,
       rating: 5.0,
-      status: formData.status,
+      status: "pending",
       image: formData.image || "https://images.unsplash.com/photo-1540206351-d6465b3ac5c1?q=80&w=2940&auto=format&fit=crop"
     };
 
     MOCK_CLUBS.push(clubData);
-    console.log("Club saved successfully:", clubData);
+    
+    // Generate workflow request
+    addWorkflowRequest({
+      type: "club",
+      title: `Register Club: ${clubData.name}`,
+      createdBy: currentUser?.id || "u5",
+      data: {
+        clubName: clubData.name,
+        headCoach: clubData.headCoach,
+        location: clubData.location,
+        phone: formData.phone,
+        email: formData.email,
+        established: formData.established,
+        description: formData.description,
+        verificationDocs: ["Business License", "Facility Photos"]
+      }
+    });
+
+    toast.success("Club registration submitted for KKF approval!");
     navigate("/home/clubs");
   };
 

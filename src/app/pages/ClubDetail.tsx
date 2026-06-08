@@ -641,7 +641,7 @@ export function ClubDetail() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {clubFighters.map((fighter) => {
                   const availability = getFighterStatus(fighter);
-                  const approvalStatus: FighterApprovalStatus = ['f1', 'f2', 'f5'].includes(fighter.id) ? 'approved' : 'pending';
+                  const approvalStatus: FighterApprovalStatus = fighter.approvalStatus || 'approved';
                   const isApproved = approvalStatus === 'approved';
                   
                   return (

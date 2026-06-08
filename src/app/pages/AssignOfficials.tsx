@@ -12,17 +12,22 @@ export default function AssignOfficials() {
   const { batchId } = useParams();
   const navigate = useNavigate();
   
-  const batch = MOCK_BATCHES.find(b => b.id === batchId);
+  // Find the batch
+  let batch = MOCK_BATCHES.find(b => b.id === batchId) || MOCK_BATCHES.find(b => b.batchNumber === batchId);
+  
+  if (!batch && (batchId === "batch-detail" || !batchId)) {
+    batch = MOCK_BATCHES[0];
+  }
   
   const [selectedReferee, setSelectedReferee] = useState<string>("");
   const [selectedJudges, setSelectedJudges] = useState<string[]>([]);
 
   if (!batch) {
     return (
-      <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900">Batch not found</h2>
+          <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4 animate-bounce" />
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Batch not found</h2>
         </div>
       </div>
     );
@@ -56,7 +61,7 @@ export default function AssignOfficials() {
 
     // In real app, this would update the batch with officials and submit
     toast.success(`✅ Officials assigned successfully!`);
-    navigate(`/home/batches/${batchId}`);
+    navigate(`/home/batches/${batch.id}`);
   };
 
   const handleCancel = () => {
@@ -66,40 +71,42 @@ export default function AssignOfficials() {
   const canSubmit = selectedReferee && selectedJudges.length === 3;
 
   return (
-    <div className="min-h-screen bg-[#F4F5F8] py-8">
+    <div className="min-h-screen bg-background py-8 animate-fadeIn">
       <div className="max-w-3xl mx-auto px-6">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <button
             onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 text-[#707070] hover:text-[#0A3D91] font-bold mb-4 transition-colors"
+            className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 font-semibold uppercase tracking-wider text-xs transition-colors"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" />
             Back
           </button>
           
           {/* Modal-Style Card */}
-          <div className="bg-white rounded-3xl shadow-2xl border border-[#E0E0E0] overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
             {/* Header */}
-            <div className="p-8 pb-6">
-              <h1 className="text-3xl font-black text-[#0A3D91] uppercase tracking-tight mb-2">
+            <div className="p-6 md:p-8 pb-4">
+              <h1 className="text-2xl font-extrabold text-slate-900 uppercase tracking-tighter mb-4">
                 Assign Officials
               </h1>
-              <p className="text-sm text-[#0A3D91] font-bold bg-blue-50 rounded-xl px-4 py-3 border border-blue-200">
-                Assigning officials to specific match
-              </p>
+              
+              <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl text-xs font-semibold text-primary flex items-center gap-2.5">
+                <Shield className="w-4 h-4 text-primary shrink-0" />
+                <span>Assigning officials to matches in {batch.batchNumber}</span>
+              </div>
             </div>
 
             {/* Main Referee Section */}
-            <div className="px-8 pb-6">
-              <div className="mb-2">
-                <label className="block text-sm font-bold text-[#707070] uppercase mb-2">
+            <div className="px-6 md:px-8 pb-6">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
                   Main Referee
                 </label>
                 <select
                   value={selectedReferee}
                   onChange={(e) => setSelectedReferee(e.target.value)}
-                  className="w-full bg-white border-2 border-[#E0E0E0] rounded-xl px-4 py-3 text-[#1A1A24] font-bold focus:outline-none focus:border-[#0A3D91] appearance-none cursor-pointer"
+                  className="input-premium font-medium text-slate-700 rounded-xl px-4 py-2.5 appearance-none cursor-pointer"
                 >
                   <option value="">Select referee...</option>
                   {availableReferees.map(referee => (
@@ -112,14 +119,14 @@ export default function AssignOfficials() {
             </div>
 
             {/* Judges Section */}
-            <div className="px-8 pb-6">
-              <div className="mb-2">
-                <label className="block text-sm font-bold text-[#707070] uppercase mb-2">
+            <div className="px-6 md:px-8 pb-6">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
                   Judges (3 Required)
                 </label>
-                <div className="bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl p-4 min-h-[200px]">
+                <div className="bg-slate-50/50 border border-slate-200/80 rounded-xl p-4 min-h-[200px]">
                   {availableJudges.length === 0 ? (
-                    <div className="text-center py-8 text-[#B0B0B0]">
+                    <div className="text-center py-8 text-slate-400">
                       <Users className="w-12 h-12 mx-auto mb-2 opacity-30" />
                       <p className="font-medium">No available judges</p>
                     </div>
@@ -130,21 +137,22 @@ export default function AssignOfficials() {
                         return (
                           <button
                             key={judge.id}
+                            type="button"
                             onClick={() => handleToggleJudge(judge.id)}
-                            className={`w-full text-left p-3 rounded-lg border-2 transition-all flex items-center justify-between ${
+                            className={`w-full text-left p-3.5 rounded-xl border transition-all duration-200 flex items-center justify-between ${
                               isSelected
-                                ? "bg-[#0A3D91] border-[#0A3D91] text-white"
-                                : "bg-white border-[#E0E0E0] hover:border-[#0A3D91] text-[#1A1A24]"
+                                ? "bg-primary border-primary text-white shadow-sm shadow-primary/20"
+                                : "bg-white border-slate-200 hover:border-slate-350 text-slate-800"
                             }`}
                           >
                             <div className="flex-1">
-                              <div className="font-bold">{judge.name}</div>
-                              <div className="text-xs mt-1 opacity-80">
+                              <div className="font-semibold text-sm">{judge.name}</div>
+                              <div className={`text-xs mt-1 font-medium ${isSelected ? "text-white/90" : "text-slate-500"}`}>
                                 {judge.grade} • {judge.experience}
                               </div>
                             </div>
                             {isSelected && (
-                              <Check className="w-5 h-5 flex-shrink-0 ml-2" />
+                              <Check className="w-4 h-4 flex-shrink-0 ml-2" />
                             )}
                           </button>
                         );
@@ -152,15 +160,12 @@ export default function AssignOfficials() {
                     </div>
                   )}
                   
-                  <div className="mt-3 text-xs text-[#707070] font-medium text-center">
-                    Hold Ctrl/Cmd to select multiple judges
-                  </div>
-                  
                   {/* Selected Count */}
-                  <div className="mt-3 text-center">
-                    <span className={`text-sm font-bold ${
-                      selectedJudges.length === 3 ? "text-green-600" : "text-[#707070]"
-                    }`}>
+                  <div className="mt-4 text-center">
+                    <span className={clsx(
+                      "text-xs uppercase tracking-wider font-bold",
+                      selectedJudges.length === 3 ? "text-emerald-600" : "text-slate-500"
+                    )}>
                       {selectedJudges.length} / 3 judges selected
                     </span>
                   </div>
@@ -169,22 +174,23 @@ export default function AssignOfficials() {
             </div>
 
             {/* Action Buttons */}
-            <div className="px-8 pb-8 flex items-center gap-4">
+            <div className="px-6 md:px-8 pb-8 flex items-center gap-3.5">
               <button
                 onClick={handleSubmit}
                 disabled={!canSubmit}
-                className={`flex-1 py-4 rounded-xl font-bold text-base transition-all ${
+                className={clsx(
+                  "flex-1 py-3 rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow-sm hover:shadow active:scale-[0.98] hover:-translate-y-[0.5px]",
                   canSubmit
-                    ? "bg-[#5B4FFF] hover:bg-[#4A3FDD] text-white shadow-lg hover:shadow-xl"
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                }`}
+                    ? "bg-primary hover:bg-primary/95 text-white"
+                    : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                )}
               >
                 Assign Officials
               </button>
               
               <button
                 onClick={handleCancel}
-                className="flex-1 py-4 bg-white border-2 border-[#E0E0E0] text-[#1A1A24] hover:border-[#707070] rounded-xl font-bold text-base transition-all"
+                className="flex-1 py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl font-semibold uppercase tracking-wider text-xs border border-slate-200 transition-all active:scale-[0.98] hover:-translate-y-[0.5px]"
               >
                 Cancel
               </button>

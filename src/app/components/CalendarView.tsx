@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { 
   format, 
@@ -7,14 +7,37 @@ import {
   endOfMonth, 
   eachDayOfInterval, 
   isSameMonth, 
-  isSameDay, 
   addMonths, 
   subMonths,
   parseISO,
   isToday
 } from 'date-fns';
-import type { MatchBatch } from '../data/batches';
+import { clsx } from 'clsx';
+import type { MatchBatch, BatchStatus } from '../data/batches';
 import { BATCH_STATUS_CONFIG } from '../data/batches';
+
+// Helper function to get premium badge colors
+const getStatusBadgeClass = (status: BatchStatus): string => {
+  switch (status) {
+    case "Draft":
+    case "Complete":
+      return "bg-slate-50 text-slate-600 border-slate-200/60";
+    case "Pending KKF":
+      return "bg-amber-50 text-amber-705 border-amber-200/60";
+    case "Approved":
+      return "bg-emerald-50 text-emerald-700 border-emerald-200/60";
+    case "Rejected":
+      return "bg-red-50 text-red-700 border-red-200/60";
+    case "Weight-In":
+      return "bg-orange-50 text-orange-700 border-orange-200/60";
+    case "Ready":
+      return "bg-blue-50 text-[#0A3D91] border-blue-200/60";
+    case "Live":
+      return "bg-purple-50 text-purple-700 border-purple-200/60";
+    default:
+      return "bg-slate-50 text-slate-600 border-slate-200/60";
+  }
+};
 
 interface CalendarViewProps {
   batches: MatchBatch[];
@@ -69,9 +92,9 @@ export function CalendarView({ batches }: CalendarViewProps) {
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-[#E0E0E0] overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-border overflow-hidden">
       {/* Calendar Header */}
-      <div className="bg-gradient-to-r from-[#0A3D91] to-[#1557B0] text-white p-6">
+      <div className="bg-gradient-to-r from-primary to-[#1557B0] text-white p-6">
         <div className="flex items-center justify-between mb-4">
           <button
             onClick={goToPreviousMonth}
@@ -81,7 +104,7 @@ export function CalendarView({ batches }: CalendarViewProps) {
           </button>
           
           <div className="text-center">
-            <h2 className="text-2xl font-bold">
+            <h2 className="text-xl md:text-2xl font-extrabold uppercase tracking-tighter">
               {format(currentDate, 'MMMM yyyy')}
             </h2>
           </div>
@@ -97,7 +120,7 @@ export function CalendarView({ batches }: CalendarViewProps) {
         <div className="flex justify-center">
           <button
             onClick={goToToday}
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors"
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-semibold uppercase tracking-wider transition-colors"
           >
             Today
           </button>
@@ -111,7 +134,7 @@ export function CalendarView({ batches }: CalendarViewProps) {
           {weekDays.map((day) => (
             <div
               key={day}
-              className="text-center text-sm font-bold text-[#707070] py-2"
+              className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest py-2"
             >
               {day}
             </div>
@@ -133,21 +156,20 @@ export function CalendarView({ batches }: CalendarViewProps) {
             return (
               <div
                 key={day.toISOString()}
-                className={`
-                  aspect-square border rounded-lg p-2 transition-all
-                  ${isCurrentDay 
-                    ? 'border-[#D4AF37] bg-[#D4AF37]/5 shadow-md' 
-                    : 'border-[#E0E0E0] hover:border-[#0A3D91]/30'
-                  }
-                  ${dayBatches.length > 0 ? 'bg-blue-50/50' : 'bg-white'}
-                `}
+                className={clsx(
+                  "aspect-square border rounded-xl p-2 transition-all",
+                  isCurrentDay 
+                    ? 'border-accent bg-accent/5 shadow-md' 
+                    : 'border-border hover:border-primary/35',
+                  dayBatches.length > 0 ? 'bg-primary/5' : 'bg-white'
+                )}
               >
                 {/* Day Number */}
                 <div
-                  className={`
-                    text-sm font-bold mb-1
-                    ${isCurrentDay ? 'text-[#D4AF37]' : 'text-[#404040]'}
-                  `}
+                  className={clsx(
+                    "text-sm font-semibold mb-1",
+                    isCurrentDay ? 'text-accent-foreground font-bold' : 'text-foreground/80'
+                  )}
                 >
                   {format(day, 'd')}
                 </div>
@@ -156,20 +178,18 @@ export function CalendarView({ batches }: CalendarViewProps) {
                 {dayBatches.length > 0 && (
                   <div className="space-y-1">
                     {dayBatches.slice(0, 2).map((batch) => {
-                      const statusConfig = BATCH_STATUS_CONFIG[batch.status] || BATCH_STATUS_CONFIG["Draft"];
+                      const config = BATCH_STATUS_CONFIG[batch.status] || BATCH_STATUS_CONFIG["Draft"];
                       return (
                         <button
                           key={batch.id}
-                          onClick={() => navigate(`/matches/batch/${batch.id}`)}
-                          className={`
-                            w-full text-left px-1.5 py-1 rounded text-[10px] font-medium
-                            ${statusConfig.bgColor} ${statusConfig.color}
-                            hover:opacity-80 transition-opacity
-                            flex items-center gap-1
-                          `}
+                          onClick={() => navigate(`/batches/${batch.id}`)}
+                          className={clsx(
+                            "w-full text-left px-2 py-1 rounded-lg text-[9px] font-semibold uppercase tracking-wider border transition-opacity hover:opacity-85 flex items-center gap-1",
+                            getStatusBadgeClass(batch.status)
+                          )}
                           title={`${batch.batchNumber} - ${batch.eventName}`}
                         >
-                          <span className="text-[8px]">{statusConfig.icon}</span>
+                          <span className="text-[10px]">{config.icon}</span>
                           <span className="truncate flex-1">{batch.batchNumber}</span>
                         </button>
                       );
@@ -177,7 +197,7 @@ export function CalendarView({ batches }: CalendarViewProps) {
                     
                     {/* Show "+X more" if there are more than 2 batches */}
                     {dayBatches.length > 2 && (
-                      <div className="text-[10px] text-[#0A3D91] font-bold px-1.5">
+                      <div className="text-[9px] text-primary font-semibold px-1.5 uppercase tracking-wider">
                         +{dayBatches.length - 2} more
                       </div>
                     )}
@@ -190,13 +210,16 @@ export function CalendarView({ batches }: CalendarViewProps) {
       </div>
 
       {/* Legend */}
-      <div className="border-t border-[#E0E0E0] p-6 bg-gray-50">
-        <h3 className="text-sm font-bold text-[#404040] mb-3">Status Legend</h3>
+      <div className="border-t border-border p-6 bg-muted/10">
+        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Status Legend</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {Object.entries(BATCH_STATUS_CONFIG).map(([status, config]) => (
             <div key={status} className="flex items-center gap-2">
-              <div className={`px-2 py-1 rounded text-xs font-medium ${config.bgColor} ${config.color}`}>
-                {config.icon} {config.label}
+              <div className={clsx(
+                "badge-premium uppercase tracking-wider text-[9px] py-1 px-2.5 font-semibold",
+                getStatusBadgeClass(status as BatchStatus)
+              )}>
+                <span className="text-xs">{config.icon}</span> {config.label}
               </div>
             </div>
           ))}
@@ -204,10 +227,10 @@ export function CalendarView({ batches }: CalendarViewProps) {
       </div>
 
       {/* Summary Stats */}
-      <div className="border-t border-[#E0E0E0] p-6 bg-white">
+      <div className="border-t border-border p-6 bg-white">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="text-center">
-            <div className="text-2xl font-bold text-[#0A3D91]">
+            <div className="text-2xl font-extrabold tracking-tighter text-primary">
               {batches.filter(b => {
                 try {
                   const batchDate = parseISO(b.date);
@@ -217,11 +240,11 @@ export function CalendarView({ batches }: CalendarViewProps) {
                 }
               }).length}
             </div>
-            <div className="text-sm text-[#707070] font-medium">Total Batches</div>
+            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">Total Batches</div>
           </div>
           
           <div className="text-center">
-            <div className="text-2xl font-bold text-gray-600">
+            <div className="text-2xl font-extrabold tracking-tighter text-slate-500">
               {batches.filter(b => {
                 try {
                   const batchDate = parseISO(b.date);
@@ -231,11 +254,11 @@ export function CalendarView({ batches }: CalendarViewProps) {
                 }
               }).length}
             </div>
-            <div className="text-sm text-[#707070] font-medium">Draft</div>
+            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">Draft</div>
           </div>
           
           <div className="text-center">
-            <div className="text-2xl font-bold text-orange-600">
+            <div className="text-2xl font-extrabold tracking-tighter text-orange-600">
               {batches.filter(b => {
                 try {
                   const batchDate = parseISO(b.date);
@@ -245,11 +268,11 @@ export function CalendarView({ batches }: CalendarViewProps) {
                 }
               }).length}
             </div>
-            <div className="text-sm text-[#707070] font-medium">Weight-In</div>
+            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">Weight-In</div>
           </div>
           
           <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">
+            <div className="text-2xl font-extrabold tracking-tighter text-purple-600">
               {batches.filter(b => {
                 try {
                   const batchDate = parseISO(b.date);
@@ -259,11 +282,11 @@ export function CalendarView({ batches }: CalendarViewProps) {
                 }
               }).length}
             </div>
-            <div className="text-sm text-[#707070] font-medium">Live</div>
+            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">Live</div>
           </div>
           
           <div className="text-center">
-            <div className="text-2xl font-bold text-gray-600">
+            <div className="text-2xl font-extrabold tracking-tighter text-slate-500">
               {batches.filter(b => {
                 try {
                   const batchDate = parseISO(b.date);
@@ -273,7 +296,7 @@ export function CalendarView({ batches }: CalendarViewProps) {
                 }
               }).length}
             </div>
-            <div className="text-sm text-[#707070] font-medium">Complete</div>
+            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">Complete</div>
           </div>
         </div>
       </div>

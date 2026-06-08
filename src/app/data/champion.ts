@@ -69,6 +69,7 @@ export interface Champion {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  approvalStatus?: "pending" | "approved" | "rejected";
 }
 
 export interface ChampionDefense {
@@ -458,3 +459,10 @@ export function hasActiveChampionInWeightClass(type: ChampionType, weight: numbe
          (c.status === "Active" || c.status === "Title Defense Scheduled")
   );
 }
+
+// Ensure all initial mock champions have an approvalStatus
+MOCK_CHAMPIONS.forEach((c: any) => {
+  if (!c.hasOwnProperty('approvalStatus')) {
+    c.approvalStatus = 'approved';
+  }
+});

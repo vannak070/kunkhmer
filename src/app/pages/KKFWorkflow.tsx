@@ -14,288 +14,14 @@ import { toast } from "sonner";
 import { MOCK_CHAMPIONS } from "../data/champion";
 import { KKFDetailModal } from "../components/KKFDetailModal";
 import { KKFEnhancedDetailModal } from "../components/KKFEnhancedDetailModal";
-
-type WorkflowType = "event" | "match" | "fighter" | "club" | "champion";
-type WorkflowStatus = "draft" | "submitted" | "under_review" | "approved" | "rejected" | "info_requested";
-
-interface ValidationCheck {
-  label: string;
-  status: "valid" | "invalid" | "missing";
-  message?: string;
-}
-
-interface WorkflowRequest {
-  id: string;
-  type: WorkflowType;
-  title: string;
-  status: WorkflowStatus;
-  createdBy: string;
-  createdDate: string;
-  submittedDate?: string;
-  reviewedBy?: string;
-  reviewedDate?: string;
-  comments?: string;
-  data: any;
-  validation?: ValidationCheck[];
-  healthStatus?: "valid" | "expired" | "missing";
-  auditTrail?: Array<{
-    action: string;
-    by: string;
-    date: string;
-    comment?: string;
-  }>;
-}
-
-// Mock workflow requests data
-const MOCK_WORKFLOW_REQUESTS: WorkflowRequest[] = [
-  {
-    id: "wf-001",
-    type: "fighter",
-    title: "Register Fighter: Sok Bunthoeun",
-    status: "pending",
-    createdBy: "u3",
-    createdDate: "2025-03-20",
-    submittedDate: "2025-03-22",
-    data: {
-      fighterName: "Sok Bunthoeun",
-      club: "Tiger Kun Khmer",
-      weight: 67.5,
-      type: "Professional",
-      origin: "Local",
-      documents: ["ID Card", "Medical Certificate"]
-    }
-  },
-  {
-    id: "wf-002",
-    type: "club",
-    title: "Register Club: Dragon Fight Academy",
-    status: "pending",
-    createdBy: "u5",
-    createdDate: "2025-03-18",
-    submittedDate: "2025-03-20",
-    data: {
-      clubName: "Dragon Fight Academy",
-      headCoach: "Master Vong Sarath",
-      location: "Siem Reap",
-      fightersCount: 0,
-      verificationDocs: ["Business License", "Facility Photos"]
-    }
-  },
-  {
-    id: "wf-007",
-    type: "match",
-    title: "Match Batch: Sorn Seavmey vs Chan Rothana",
-    status: "pending",
-    createdBy: "u3",
-    createdDate: "2025-03-21",
-    submittedDate: "2025-03-22",
-    data: {
-      matchId: "m1",
-      eventName: "Kun Khmer Championship 2026",
-      eventDate: "2026-04-12",
-      fighterA: "Sorn Seavmey (The Tiger)",
-      fighterB: "Chan Rothana (Dragon)",
-      fighterARecord: "34-5-2",
-      fighterBRecord: "28-8-0",
-      agreedWeight: 66.0,
-      rounds: 5,
-      gloveSize: "8oz",
-      gloveType: "Twins Special",
-      status: "Ready to Fight",
-      weighInWeightA: 65.9,
-      weighInWeightB: 65.8,
-      weighInDate: "2026-04-11"
-    }
-  },
-  {
-    id: "wf-008",
-    type: "match",
-    title: "Match Batch: Nou Srey Pov vs Kem Sitha",
-    status: "pending",
-    createdBy: "u3",
-    createdDate: "2025-03-19",
-    submittedDate: "2025-03-20",
-    data: {
-      matchId: "m2",
-      eventName: "Kun Khmer Championship 2026",
-      eventDate: "2026-04-12",
-      fighterA: "Nou Srey Pov (Iron Hands)",
-      fighterB: "Kem Sitha (Thunder Kick)",
-      fighterARecord: "19-3-1",
-      fighterBRecord: "31-12-3",
-      agreedWeight: 58.0,
-      rounds: 3,
-      gloveSize: "6oz",
-      gloveType: "Fairtex BGV1",
-      status: "Weigh-In Complete",
-      weighInWeightA: 52.3,
-      weighInWeightB: 57.6,
-      weighInDate: "2026-02-28"
-    }
-  },
-  {
-    id: "wf-009",
-    type: "match",
-    title: "Match Batch: John Doe vs Prak Sophea",
-    status: "approved",
-    createdBy: "u3",
-    createdDate: "2025-03-15",
-    submittedDate: "2025-03-16",
-    reviewedBy: "u2",
-    reviewedDate: "2025-03-17",
-    data: {
-      matchId: "m3",
-      eventName: "Kun Khmer Championship 2026",
-      eventDate: "2026-04-12",
-      fighterA: "John Doe (The Eagle)",
-      fighterB: "Prak Sophea (The Elbow King)",
-      fighterARecord: "3-1-0",
-      fighterBRecord: "42-7-1",
-      agreedWeight: 70.0,
-      rounds: 5,
-      gloveSize: "10oz",
-      gloveType: "Twins Special",
-      status: "Club Confirmed"
-    }
-  },
-  {
-    id: "wf-003",
-    type: "champion",
-    title: "Title Fight: KKF National Champion 70kg",
-    status: "pending",
-    createdBy: "u2",
-    createdDate: "2025-03-15",
-    submittedDate: "2025-03-17",
-    data: {
-      championId: "champ-001",
-      titleName: "KKF National Champion 70kg",
-      championType: "KKF National",
-      weightClass: 70,
-      organization: "KKF",
-      champion: "Sok Thy",
-      championRecord: "45-8-2",
-      challenger: "Kim Sovannak",
-      challengerRecord: "38-6-1",
-      defenseCount: 3,
-      lastDefenseDate: "2026-03-15",
-      nextDefenseDeadline: "2026-06-15",
-      eventName: "KUN KHMER Championship 2026",
-      rounds: 5,
-      weightLimit: 70,
-      ranking: "Both fighters ranked Top 5 in KKF"
-    }
-  },
-  {
-    id: "wf-010",
-    type: "champion",
-    title: "Title Fight: ISKA Cambodia Champion 60kg",
-    status: "pending",
-    createdBy: "u2",
-    createdDate: "2025-03-18",
-    submittedDate: "2025-03-19",
-    data: {
-      championId: "champ-002",
-      titleName: "ISKA Cambodia Champion 60kg",
-      championType: "ISKA Cambodia",
-      weightClass: 60,
-      organization: "KKF",
-      champion: "Kimsan Vorn",
-      championRecord: "28-4-1",
-      challenger: "Chantha Pov",
-      challengerRecord: "32-7-2",
-      defenseCount: 2,
-      lastDefenseDate: "2026-02-28",
-      nextDefenseDeadline: "2026-05-28",
-      eventName: "New Year Fight Night",
-      rounds: 5,
-      weightLimit: 60,
-      ranking: "Challenger is #1 contender"
-    }
-  },
-  {
-    id: "wf-011",
-    type: "champion",
-    title: "Title Fight: IPCC International Champion 65kg",
-    status: "approved",
-    createdBy: "u2",
-    createdDate: "2025-03-10",
-    submittedDate: "2025-03-11",
-    reviewedBy: "u1",
-    reviewedDate: "2025-03-12",
-    data: {
-      championId: "champ-003",
-      titleName: "IPCC International Champion 65kg",
-      championType: "IPCC International",
-      weightClass: 65,
-      organization: "WMC",
-      champion: "Chantha Pov",
-      championRecord: "32-5-1",
-      challenger: "Ratanak Seng",
-      challengerRecord: "29-8-0",
-      defenseCount: 1,
-      lastDefenseDate: "2026-02-05",
-      eventName: "WMC World Championship 2025",
-      rounds: 5,
-      weightLimit: 65,
-      ranking: "International title defense"
-    }
-  },
-  {
-    id: "wf-006",
-    type: "fighter",
-    title: "Register Fighter: Chan Virak",
-    status: "pending",
-    createdBy: "u3",
-    createdDate: "2025-03-23",
-    submittedDate: "2025-03-24",
-    data: {
-      fighterName: "Chan Virak",
-      club: "Phnom Penh Warriors",
-      weight: 58.3,
-      type: "Amateur",
-      origin: "Local",
-      documents: ["ID Card", "Medical Certificate", "Parental Consent"]
-    }
-  },
-  {
-    id: "wf-004",
-    type: "fighter",
-    title: "Register Fighter: Nget Daravuth",
-    status: "approved",
-    createdBy: "u4",
-    createdDate: "2025-03-10",
-    submittedDate: "2025-03-11",
-    reviewedBy: "u1",
-    reviewedDate: "2025-03-12",
-    data: {
-      fighterName: "Nget Daravuth",
-      club: "Angkor Warriors",
-      weight: 70.0,
-      type: "Professional",
-      origin: "Local",
-      documents: ["ID Card", "Medical Certificate", "Fight Record"]
-    }
-  },
-  {
-    id: "wf-005",
-    type: "club",
-    title: "Register Club: Phnom Penh Fight Club",
-    status: "rejected",
-    createdBy: "u6",
-    createdDate: "2025-03-08",
-    submittedDate: "2025-03-09",
-    reviewedBy: "u1",
-    reviewedDate: "2025-03-10",
-    comments: "Incomplete documentation - missing facility license",
-    data: {
-      clubName: "Phnom Penh Fight Club",
-      headCoach: "Master Kim Virak",
-      location: "Phnom Penh",
-      fightersCount: 0,
-      verificationDocs: ["Business License"]
-    }
-  }
-];
+import { 
+  type WorkflowType, 
+  type WorkflowStatus, 
+  type ValidationCheck, 
+  type WorkflowRequest, 
+  MOCK_WORKFLOW_REQUESTS,
+  updateWorkflowStatus
+} from "../data/workflow";
 
 export function KKFWorkflow() {
   const navigate = useNavigate();
@@ -313,6 +39,7 @@ export function KKFWorkflow() {
   const [approvalAction, setApprovalAction] = useState<"approve" | "reject" | null>(null);
   const [reviewComments, setReviewComments] = useState("");
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   if (!currentUser || !permissions.hasPermission('federation.view')) {
     return (
@@ -328,6 +55,7 @@ export function KKFWorkflow() {
 
   // Role-based data filtering
   const getVisibleRequests = () => {
+    const trigger = refreshTrigger;
     let visibleRequests = [...MOCK_WORKFLOW_REQUESTS];
 
     // 🏛️ Club: Only see their own submissions
@@ -374,16 +102,20 @@ export function KKFWorkflow() {
 
   // Filter events by KKF status
   const getEventsByStatus = (status: string) => {
+    const trigger = refreshTrigger;
     return MOCK_EVENTS.filter(e => {
-      const matchesStatus = status === "all" || e.kkfStatus === status;
+      const matchesStatus = status === "all" || 
+                            (status === "pending" && (e.kkfStatus === "pending" || e.kkfStatus === "Pending KKF Approval")) ||
+                            (status === "approved" && (e.kkfStatus === "approved" || e.kkfStatus === "Approved")) ||
+                            (status === "rejected" && (e.kkfStatus === "rejected" || (e.kkfStatus === "Draft" && e.kkfComments)));
       const matchesSearch = !searchQuery || e.name.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesStatus && matchesSearch;
     });
   };
 
-  const pendingEvents = MOCK_EVENTS.filter(e => e.kkfStatus === "pending");
-  const approvedEvents = MOCK_EVENTS.filter(e => e.kkfStatus === "approved");
-  const rejectedEvents = MOCK_EVENTS.filter(e => e.kkfStatus === "rejected");
+  const pendingEvents = MOCK_EVENTS.filter(e => e.kkfStatus === "pending" || e.kkfStatus === "Pending KKF Approval");
+  const approvedEvents = MOCK_EVENTS.filter(e => e.kkfStatus === "approved" || e.kkfStatus === "Approved");
+  const rejectedEvents = MOCK_EVENTS.filter(e => e.kkfStatus === "rejected" || (e.kkfStatus === "Draft" && e.kkfComments));
   
   // Filter events for Event Approvals tab
   const filteredEvents = selectedTab === "event" ? getEventsByStatus(filterStatus) : [];
@@ -448,6 +180,28 @@ export function KKFWorkflow() {
     const actionText = approvalAction === "approve" ? "approved" : "rejected";
     const targetName = selectedEvent ? selectedEvent.name : selectedRequest?.title;
 
+    if (selectedRequest) {
+      updateWorkflowStatus(selectedRequest.id, approvalAction, currentUser?.id || "u1", reviewComments);
+    } else if (selectedEvent) {
+      // Find event in MOCK_EVENTS
+      const idx = MOCK_EVENTS.findIndex(e => e.id === selectedEvent.id);
+      if (idx !== -1) {
+        MOCK_EVENTS[idx].kkfStatus = approvalAction === "approve" ? "Approved" : "Draft";
+        MOCK_EVENTS[idx].status = approvalAction === "approve" ? "Published" : "Draft";
+        MOCK_EVENTS[idx].kkfComments = reviewComments;
+      }
+      
+      // Update any matching workflow request
+      const req = MOCK_WORKFLOW_REQUESTS.find(r => r.type === "event" && r.data.eventId === selectedEvent.id && r.status === "pending");
+      if (req) {
+        req.status = approvalAction === "approve" ? "approved" : "rejected";
+        req.reviewedBy = currentUser?.id || "u1";
+        req.reviewedDate = new Date().toISOString().split('T')[0];
+        req.comments = reviewComments;
+      }
+    }
+
+    setRefreshTrigger(prev => prev + 1);
     toast.success(`Successfully ${actionText} ${targetName}`);
 
     // Close modal and reset state

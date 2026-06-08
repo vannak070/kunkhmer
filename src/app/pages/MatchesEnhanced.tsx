@@ -27,16 +27,34 @@ const getStatusBorderColor = (status: BatchStatus): string => {
     case "Weight-In":
       return "border-l-orange-500";
     case "Ready":
-      return "border-l-blue-500";
+      return "border-l-primary";
     case "Live":
       return "border-l-purple-500";
     case "Complete":
-      return "border-l-gray-500";
+      return "border-l-slate-400";
     case "Draft":
     default:
-      return "border-l-gray-400";
+      return "border-l-slate-300";
   }
 };
+
+// Helper function to get premium badge colors
+const getStatusBadgeClass = (status: BatchStatus): string => {
+  switch (status) {
+    case "Draft":
+    case "Complete":
+      return "bg-slate-50 text-slate-600 border-slate-200/60";
+    case "Weight-In":
+      return "bg-orange-50 text-orange-700 border-orange-200/60";
+    case "Ready":
+      return "bg-blue-50 text-[#0A3D91] border-blue-200/60";
+    case "Live":
+      return "bg-purple-50 text-purple-700 border-purple-200/60";
+    default:
+      return "bg-slate-50 text-slate-600 border-slate-200/60";
+  }
+};
+
 
 export function MatchesEnhanced() {
   const permissions = usePermissions();
@@ -57,23 +75,6 @@ export function MatchesEnhanced() {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
   // Helper functions
-  const isReadyForSubmission = (batch: MatchBatch): boolean => {
-    // Check if all required data is complete
-    const hasMatches = batch.matches.length > 0;
-    const allMatchesComplete = batch.matches.every(m => m.fighterA && m.fighterB && m.rounds);
-    const hasVenue = !!batch.venue;
-    const hasDate = !!batch.date;
-    return hasMatches && allMatchesComplete && hasVenue && hasDate;
-  };
-
-  const canDelete = (status: BatchStatus): boolean => {
-    return status === "Draft";
-  };
-
-  const canSubmitToKKF = (batch: MatchBatch): boolean => {
-    return batch.status === "Draft" && isReadyForSubmission(batch);
-  };
-
   const handleDuplicateBatch = (batchId: string) => {
     const batch = batches.find(b => b.id === batchId);
     if (!batch) return;
@@ -104,47 +105,17 @@ export function MatchesEnhanced() {
     toast.success(`🗑️ ${batchNumber} deleted`);
   };
 
-  const handleSubmitToKKF = (batchId: string) => {
-    // Navigate to assign officials page before submitting
-    navigate(`/matches/${batchId}/assign-officials`);
+  const canDelete = (status: BatchStatus): boolean => {
+    return status === "Draft";
   };
 
-  const handleApprove = (batchId: string) => {
-    setBatches(prev => prev.map(b => {
-      if (b.id === batchId) {
-        toast.success(`✅ Batch ${b.batchNumber} approved!`);
-        return {
-          ...b,
-          status: "Approved" as BatchStatus,
-          reviewedDate: new Date().toISOString().split('T')[0],
-          reviewedBy: "KKF Admin",
-        };
-      }
-      return b;
-    }));
-  };
 
-  const handleReject = (batchId: string) => {
-    const reason = prompt("Rejection reason:");
-    if (!reason) return;
-
-    setBatches(prev => prev.map(b => {
-      if (b.id === batchId) {
-        toast.error(`❌ Batch ${b.batchNumber} rejected`);
-        return {
-          ...b,
-          status: "Rejected" as BatchStatus,
-          rejectionReason: reason,
-          reviewedDate: new Date().toISOString().split('T')[0],
-          reviewedBy: "KKF Admin",
-        };
-      }
-      return b;
-    }));
-  };
-
-  // Filter batches
-  let filteredBatches = batches;
+  // Filter batches and sort by createdDate descending (newest first)
+  let filteredBatches = [...batches].sort((a, b) => {
+    const dateA = a.createdDate ? new Date(a.createdDate).getTime() : 0;
+    const dateB = b.createdDate ? new Date(b.createdDate).getTime() : 0;
+    return dateB - dateA;
+  });
 
   if (filterStatus !== "all") {
     filteredBatches = filteredBatches.filter(b => b.status === filterStatus);
@@ -211,9 +182,9 @@ export function MatchesEnhanced() {
   // Calculate summary stats
   const stats = {
     total: batches.length,
-    published: batches.filter(b => b.status === "Published").length,
-    inProgress: batches.filter(b => b.status === "In Progress").length,
     draft: batches.filter(b => b.status === "Draft").length,
+    approved: batches.filter(b => b.status === "Weight-In" || b.status === "Ready").length,
+    active: batches.filter(b => b.status === "Live" || b.status === "Complete").length,
   };
 
   // Get unique locations for filter
@@ -235,27 +206,27 @@ export function MatchesEnhanced() {
   const clubs = Array.from(clubsSet).sort();
 
   return (
-    <div className="min-h-screen bg-[#F4F5F8] p-4 md:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-8 animate-fadeIn">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <header className="flex items-start justify-between gap-4">
           <div className="flex-1">
-            <h1 className="text-4xl md:text-5xl font-black text-[#1A1A24] uppercase tracking-tight">
+            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tighter font-sans">
               Match Batches
             </h1>
-            <p className="text-sm text-[#707070] font-medium mt-2">
-              {stats.total} total • {stats.published} published • {stats.inProgress} in progress • {stats.draft} draft
+            <p className="text-xs md:text-sm text-slate-500 font-normal mt-1">
+              Manage fight cards, match details, and scheduling
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mt-1">
             {/* View Mode Toggle */}
-            <div className="flex items-center gap-1 bg-white rounded-xl p-1 shadow-sm border border-[#E0E0E0]">
+            <div className="flex items-center gap-1 bg-white rounded-xl p-1 shadow-sm border border-border">
               <button
                 onClick={() => setViewMode('list')}
                 className={clsx(
                   "p-2.5 rounded-lg transition-all",
-                  viewMode === 'list' ? "bg-[#0A3D91] text-white shadow-md" : "text-[#707070] hover:bg-gray-100"
+                  viewMode === 'list' ? "bg-primary text-white shadow-md" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                 )}
                 title="List View"
               >
@@ -265,7 +236,7 @@ export function MatchesEnhanced() {
                 onClick={() => setViewMode('calendar')}
                 className={clsx(
                   "p-2.5 rounded-lg transition-all",
-                  viewMode === 'calendar' ? "bg-[#0A3D91] text-white shadow-md" : "text-[#707070] hover:bg-gray-100"
+                  viewMode === 'calendar' ? "bg-primary text-white shadow-md" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                 )}
                 title="Calendar View"
               >
@@ -276,7 +247,7 @@ export function MatchesEnhanced() {
             {permissions.hasPermission('matches.create') && (
               <button
                 onClick={handleCreateBatch}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold uppercase tracking-wide transition-all shadow-lg hover:shadow-xl bg-gradient-to-r from-[#C8102E] to-[#A00D24] text-white hover:opacity-90"
+                className="btn-secondary px-5 py-2.5 font-semibold uppercase tracking-wider text-xs rounded-xl shadow hover:-translate-y-[1px]"
               >
                 <ListPlus className="w-5 h-5" />
                 Create Batch
@@ -285,25 +256,45 @@ export function MatchesEnhanced() {
           </div>
         </header>
 
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="card-premium border-l-4 border-l-primary hover:border-l-primary p-4 shadow-sm">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Total Batches</span>
+            <span className="text-3xl font-extrabold tracking-tighter text-primary">{stats.total}</span>
+          </div>
+          <div className="card-premium border-l-4 border-l-slate-400 hover:border-l-slate-400 p-4 shadow-sm">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Drafts</span>
+            <span className="text-3xl font-extrabold tracking-tighter text-slate-600">{stats.draft}</span>
+          </div>
+          <div className="card-premium border-l-4 border-l-green-500 hover:border-l-green-500 p-4 shadow-sm">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Scheduled</span>
+            <span className="text-3xl font-extrabold tracking-tighter text-emerald-600">{stats.approved}</span>
+          </div>
+          <div className="card-premium border-l-4 border-l-purple-500 hover:border-l-purple-500 p-4 shadow-sm">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Live / Complete</span>
+            <span className="text-3xl font-extrabold tracking-tighter text-purple-600">{stats.active}</span>
+          </div>
+        </div>
+
         {/* Filters */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E0E0E0]">
+        <div className="card-premium bg-white border border-border rounded-xl p-6 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             {/* Search */}
-            <div className="relative md:col-span-2">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#707070]" />
+            <div className="relative md:col-span-2 group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <input
                 type="text"
                 placeholder="Search by batch ID, event, location, or fighter..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl pl-12 pr-4 py-3.5 text-[#1A1A24] font-semibold focus:outline-none focus:border-[#0A3D91]"
+                className="input-premium rounded-xl pl-11 pr-10 py-2.5 text-sm font-medium border border-border focus:border-primary text-slate-800"
               />
               {search && (
                 <button
                   onClick={() => setSearch("")}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#707070] hover:text-[#1A1A24]"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  <XCircle className="w-5 h-5" />
+                  <XCircle className="w-4 h-4" />
                 </button>
               )}
             </div>
@@ -312,7 +303,7 @@ export function MatchesEnhanced() {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3.5 text-[#1A1A24] font-bold focus:outline-none focus:border-[#0A3D91]"
+              className="input-premium rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 border border-border focus:border-primary cursor-pointer"
             >
               <option value="all">All Status</option>
               <option value="Draft">Draft</option>
@@ -326,12 +317,12 @@ export function MatchesEnhanced() {
           {/* Active Filters as Chips */}
           {(filterStatus !== "all" || filterLocation !== "all" || filterEvent !== "all" || filterClub !== "all" || filterFighter || filterDateFrom || filterDateTo) && (
             <div className="flex items-center gap-2 flex-wrap mb-4">
-              <span className="text-xs font-bold text-[#707070] uppercase">Active Filters:</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Filters:</span>
               
               {filterStatus !== "all" && (
                 <button
                   onClick={() => setFilterStatus("all")}
-                  className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-200 transition-colors"
+                  className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-[11px] font-semibold tracking-wide hover:bg-blue-200 transition-colors"
                 >
                   Status: {filterStatus}
                   <X className="w-3 h-3" />
@@ -341,7 +332,7 @@ export function MatchesEnhanced() {
               {filterLocation !== "all" && (
                 <button
                   onClick={() => setFilterLocation("all")}
-                  className="inline-flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold hover:bg-purple-200 transition-colors"
+                  className="inline-flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-[11px] font-semibold tracking-wide hover:bg-purple-200 transition-colors"
                 >
                   Location: {filterLocation}
                   <X className="w-3 h-3" />
@@ -351,7 +342,7 @@ export function MatchesEnhanced() {
               {filterEvent !== "all" && (
                 <button
                   onClick={() => setFilterEvent("all")}
-                  className="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold hover:bg-green-200 transition-colors"
+                  className="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-lg text-[11px] font-semibold tracking-wide hover:bg-green-200 transition-colors"
                 >
                   Event: {filterEvent}
                   <X className="w-3 h-3" />
@@ -361,7 +352,7 @@ export function MatchesEnhanced() {
               {filterClub !== "all" && (
                 <button
                   onClick={() => setFilterClub("all")}
-                  className="inline-flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-bold hover:bg-amber-200 transition-colors"
+                  className="inline-flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-[11px] font-semibold tracking-wide hover:bg-amber-200 transition-colors"
                 >
                   Club: {filterClub}
                   <X className="w-3 h-3" />
@@ -371,7 +362,7 @@ export function MatchesEnhanced() {
               {filterFighter && (
                 <button
                   onClick={() => setFilterFighter("")}
-                  className="inline-flex items-center gap-2 px-3 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-bold hover:bg-red-200 transition-colors"
+                  className="inline-flex items-center gap-2 px-3 py-1 bg-red-100 text-red-700 rounded-lg text-[11px] font-semibold tracking-wide hover:bg-red-200 transition-colors"
                 >
                   Fighter: {filterFighter}
                   <X className="w-3 h-3" />
@@ -384,7 +375,7 @@ export function MatchesEnhanced() {
                     setFilterDateFrom("");
                     setFilterDateTo("");
                   }}
-                  className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold hover:bg-indigo-200 transition-colors"
+                  className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-[11px] font-semibold tracking-wide hover:bg-indigo-200 transition-colors"
                 >
                   Date Range
                   <X className="w-3 h-3" />
@@ -401,7 +392,7 @@ export function MatchesEnhanced() {
                   setFilterDateFrom("");
                   setFilterDateTo("");
                 }}
-                className="text-xs font-bold text-[#C8102E] hover:text-[#A00D24] underline"
+                className="text-xs font-semibold text-secondary hover:text-secondary/80 hover:underline ml-1"
               >
                 Clear All
               </button>
@@ -411,21 +402,21 @@ export function MatchesEnhanced() {
           {/* Advanced Filters Toggle */}
           <button
             onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            className="text-sm font-bold text-[#0A3D91] hover:text-[#082F6E] flex items-center gap-2"
+            className="text-sm font-semibold text-primary hover:text-primary/80 flex items-center gap-2"
           >
             {showAdvancedFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             Advanced Filters
           </button>
 
           {showAdvancedFilters && (
-            <div className="mt-4 pt-4 border-t border-[#E0E0E0] grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="mt-4 pt-4 border-t border-border grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Location Filter */}
               <div>
-                <label className="block text-xs font-bold text-[#707070] uppercase mb-2">Location</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Location</label>
                 <select
                   value={filterLocation}
                   onChange={(e) => setFilterLocation(e.target.value)}
-                  className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3 text-[#1A1A24] font-bold focus:outline-none focus:border-[#0A3D91]"
+                  className="input-premium rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 border border-border focus:border-primary cursor-pointer"
                 >
                   <option value="all">All Locations</option>
                   {locations.map(loc => (
@@ -436,11 +427,11 @@ export function MatchesEnhanced() {
 
               {/* Event Filter */}
               <div>
-                <label className="block text-xs font-bold text-[#707070] uppercase mb-2">Event</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Event</label>
                 <select
                   value={filterEvent}
                   onChange={(e) => setFilterEvent(e.target.value)}
-                  className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3 text-[#1A1A24] font-bold focus:outline-none focus:border-[#0A3D91]"
+                  className="input-premium rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 border border-border focus:border-primary cursor-pointer"
                 >
                   <option value="all">All Events</option>
                   {events.map(event => (
@@ -451,11 +442,11 @@ export function MatchesEnhanced() {
 
               {/* Club Filter */}
               <div>
-                <label className="block text-xs font-bold text-[#707070] uppercase mb-2">Club</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Club</label>
                 <select
                   value={filterClub}
                   onChange={(e) => setFilterClub(e.target.value)}
-                  className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3 text-[#1A1A24] font-bold focus:outline-none focus:border-[#0A3D91]"
+                  className="input-premium rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 border border-border focus:border-primary cursor-pointer"
                 >
                   <option value="all">All Clubs</option>
                   {clubs.map(club => (
@@ -466,34 +457,34 @@ export function MatchesEnhanced() {
 
               {/* Fighter Filter */}
               <div>
-                <label className="block text-xs font-bold text-[#707070] uppercase mb-2">Fighter</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Fighter</label>
                 <input
                   type="text"
                   placeholder="Search by fighter name..."
                   value={filterFighter}
                   onChange={(e) => setFilterFighter(e.target.value)}
-                  className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3 text-[#1A1A24] font-bold focus:outline-none focus:border-[#0A3D91]"
+                  className="input-premium rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 border border-border focus:border-primary"
                 />
               </div>
 
               {/* Date Range Filter */}
               <div>
-                <label className="block text-xs font-bold text-[#707070] uppercase mb-2">Date From</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Date From</label>
                 <input
                   type="date"
                   value={filterDateFrom}
                   onChange={(e) => setFilterDateFrom(e.target.value)}
-                  className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3 text-[#1A1A24] font-bold focus:outline-none focus:border-[#0A3D91]"
+                  className="input-premium rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 border border-border focus:border-primary"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#707070] uppercase mb-2">Date To</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Date To</label>
                 <input
                   type="date"
                   value={filterDateTo}
                   onChange={(e) => setFilterDateTo(e.target.value)}
-                  className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3 text-[#1A1A24] font-bold focus:outline-none focus:border-[#0A3D91]"
+                  className="input-premium rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 border border-border focus:border-primary"
                 />
               </div>
             </div>
@@ -506,10 +497,10 @@ export function MatchesEnhanced() {
         {viewMode === 'list' && (
           <div className="space-y-5">
             {filteredBatches.length === 0 ? (
-              <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-[#E0E0E0]">
-                <Box className="w-16 h-16 text-[#B0B0B0] mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-[#707070] mb-2">No Batches Found</h3>
-                <p className="text-[#B0B0B0] font-medium">
+              <div className="card-premium bg-white border border-border rounded-xl p-12 text-center shadow-sm">
+                <Box className="w-16 h-16 text-muted-foreground/60 mx-auto mb-4" />
+                <h3 className="text-lg font-bold uppercase tracking-wider text-primary mb-2">No Batches Found</h3>
+                <p className="text-muted-foreground font-medium">
                   {search || filterStatus !== "all" 
                     ? "Try adjusting your filters" 
                     : "Create your first batch to get started"}
@@ -525,7 +516,10 @@ export function MatchesEnhanced() {
                 return (
                   <div
                     key={batch.id}
-                    className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden transition-all hover:shadow-md hover:border-[#0A3D91]/20"
+                    className={clsx(
+                      "bg-white rounded-xl shadow-sm border border-border border-l-4 overflow-hidden transition-all hover:shadow-md hover:border-primary/20",
+                      borderColor
+                    )}
                   >
                     {/* Batch Header */}
                     <div className="p-6">
@@ -534,69 +528,69 @@ export function MatchesEnhanced() {
                         <div className="flex-1 min-w-0">
                           {/* Batch ID + Status + Championship Badge */}
                           <div className="flex items-center gap-2.5 mb-3 flex-wrap">
-                            <h2 className="text-2xl font-bold text-[#111827]">
+                            <h2 className="text-lg md:text-xl font-extrabold text-slate-900 tracking-tight uppercase">
                               {batch.batchNumber}
                             </h2>
                             <span
-                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold ${statusConfig.bgColor} ${statusConfig.color}`}
+                              className={clsx("badge-premium uppercase tracking-wider text-[9px] font-semibold py-1 px-2.5 shadow-sm", getStatusBadgeClass(batch.status))}
                             >
-                              <span className="text-sm">{statusConfig.icon}</span>
+                              <span className="text-xs">{statusConfig.icon}</span>
                               {statusConfig.label}
                             </span>
                             {hasChampionship && (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-lg text-xs font-semibold border border-amber-200">
-                                <Trophy className="w-3.5 h-3.5" />
+                              <span className="badge-premium bg-amber-50 text-amber-700 border-amber-200/50 uppercase tracking-wider text-[9px] font-semibold py-1 px-2.5">
+                                <Trophy className="w-3 h-3 text-amber-500" />
                                 Championship
                               </span>
                             )}
                           </div>
 
                           {/* Event Name */}
-                          <h3 className="text-lg font-semibold text-[#374151] mb-4">
+                          <h3 className="text-sm md:text-base font-bold text-slate-800 mb-3">
                             {batch.eventName}
                           </h3>
 
                           {/* Metadata Grid - Clean & Minimal */}
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <div className="flex items-center gap-2.5 p-3 bg-gray-50 rounded-lg">
-                              <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                                <Calendar className="w-4.5 h-4.5 text-blue-600" />
+                            <div className="flex items-center gap-2.5 p-3 bg-muted/40 rounded-xl border border-border/40 hover:bg-muted/60 transition-all duration-200">
+                              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                <Calendar className="w-4 h-4 text-primary" />
                               </div>
                               <div className="min-w-0 flex-1">
-                                <div className="text-[10px] text-gray-500 font-medium uppercase tracking-wide mb-0.5">Date</div>
-                                <div className="font-semibold text-gray-900 text-sm truncate">{formatDisplayDate(batch.date)}</div>
+                                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Date</div>
+                                <div className="font-semibold text-slate-900 text-sm truncate">{formatDisplayDate(batch.date)}</div>
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2.5 p-3 bg-gray-50 rounded-lg">
-                              <div className="w-9 h-9 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
-                                <MapPin className="w-4.5 h-4.5 text-red-600" />
+                            <div className="flex items-center gap-2.5 p-3 bg-muted/40 rounded-xl border border-border/40 hover:bg-muted/60 transition-all duration-200">
+                              <div className="w-9 h-9 rounded-lg bg-secondary/10 flex items-center justify-center flex-shrink-0">
+                                <MapPin className="w-4 h-4 text-secondary" />
                               </div>
                               <div className="min-w-0 flex-1">
-                                <div className="text-[10px] text-gray-500 font-medium uppercase tracking-wide mb-0.5">Venue</div>
-                                <div className="font-semibold text-gray-900 text-sm truncate">{batch.location}</div>
+                                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Venue</div>
+                                <div className="font-semibold text-slate-900 text-sm truncate">{batch.location}</div>
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2.5 p-3 bg-gray-50 rounded-lg">
-                              <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-                                <Users className="w-4.5 h-4.5 text-green-600" />
+                            <div className="flex items-center gap-2.5 p-3 bg-muted/40 rounded-xl border border-border/40 hover:bg-muted/60 transition-all duration-200">
+                              <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                                <Users className="w-4 h-4 text-emerald-600" />
                               </div>
                               <div className="min-w-0 flex-1">
-                                <div className="text-[10px] text-gray-500 font-medium uppercase tracking-wide mb-0.5">Matches</div>
-                                <div className="font-semibold text-gray-900 text-sm">
+                                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Matches</div>
+                                <div className="font-semibold text-slate-900 text-sm">
                                   {batch.totalMatches} {batch.totalMatches === 1 ? 'Fight' : 'Fights'}
                                 </div>
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2.5 p-3 bg-gray-50 rounded-lg">
-                              <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
-                                <Building2 className="w-4.5 h-4.5 text-purple-600" />
+                            <div className="flex items-center gap-2.5 p-3 bg-muted/40 rounded-xl border border-border/40 hover:bg-muted/60 transition-all duration-200">
+                              <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                                <Building2 className="w-4 h-4 text-purple-600" />
                               </div>
                               <div className="min-w-0 flex-1">
-                                <div className="text-[10px] text-gray-500 font-medium uppercase tracking-wide mb-0.5">Organizer</div>
-                                <div className="font-semibold text-gray-900 text-sm truncate">
+                                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Organizer</div>
+                                <div className="font-semibold text-slate-900 text-sm truncate">
                                   {batch.organizerClub || batch.createdBy}
                                 </div>
                               </div>
@@ -606,31 +600,31 @@ export function MatchesEnhanced() {
 
                         {/* More Menu */}
                         <div className="relative group">
-                          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                            <MoreVertical className="w-5 h-5 text-gray-400" />
+                          <button className="p-2 hover:bg-muted rounded-lg transition-colors border border-transparent hover:border-border">
+                            <MoreVertical className="w-5 h-5 text-muted-foreground" />
                           </button>
 
                           {/* Dropdown Menu */}
-                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-border py-1.5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
                             <button
                               onClick={() => handleDuplicateBatch(batch.id)}
-                              className="w-full px-4 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+                              className="w-full px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
                             >
-                              <Copy className="w-4 h-4 text-gray-500" />
+                              <Copy className="w-3.5 h-3.5 text-muted-foreground" />
                               Duplicate
                             </button>
                             <button
                               onClick={() => navigate(`/batches/${batch.id}/share`)}
-                              className="w-full px-4 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+                              className="w-full px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
                             >
-                              <Share2 className="w-4 h-4 text-gray-500" />
+                              <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
                               Share
                             </button>
                             <button
                               onClick={() => {/* Export functionality */}}
-                              className="w-full px-4 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+                              className="w-full px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
                             >
-                              <Download className="w-4 h-4 text-gray-500" />
+                              <Download className="w-3.5 h-3.5 text-muted-foreground" />
                               Export PDF
                             </button>
                           </div>
@@ -639,17 +633,17 @@ export function MatchesEnhanced() {
 
                       {/* Special Badges */}
                       {(batch.broadcastStation || batch.mainSponsor) && (
-                        <div className="flex items-center gap-2 flex-wrap mt-4 pt-4 border-t border-gray-100">
+                        <div className="flex items-center gap-2 flex-wrap mt-4 pt-4 border-t border-border/50">
                           {batch.broadcastStation && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 text-purple-700 rounded-md text-xs font-medium border border-purple-200">
-                              <Radio className="w-3.5 h-3.5" />
+                            <span className="badge-premium bg-purple-50/60 text-purple-700 border-purple-200/50 uppercase tracking-wider text-[9px] font-semibold py-1 px-2.5">
+                              <Radio className="w-3.5 h-3.5 text-purple-500" />
                               {batch.broadcastStation}
                             </span>
                           )}
 
                           {batch.mainSponsor && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-700 rounded-md text-xs font-medium border border-amber-200">
-                              <Award className="w-3.5 h-3.5" />
+                            <span className="badge-premium bg-amber-50/60 text-amber-700 border-amber-200/50 uppercase tracking-wider text-[9px] font-semibold py-1 px-2.5">
+                              <Award className="w-3.5 h-3.5 text-amber-500" />
                               {batch.mainSponsor}
                             </span>
                           )}
@@ -661,7 +655,7 @@ export function MatchesEnhanced() {
                         {/* Primary Action */}
                         <button
                           onClick={() => handleViewDetails(batch.id)}
-                          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0A3D91] hover:bg-[#082F6E] text-white rounded-lg font-semibold transition-all text-sm"
+                          className="btn-primary px-4 py-2 font-semibold uppercase tracking-wider text-xs rounded-xl shadow-sm"
                         >
                           <Eye className="w-4 h-4" />
                           {batch.status === "Draft"
@@ -673,7 +667,7 @@ export function MatchesEnhanced() {
                         {batch.status === "Draft" && permissions.hasPermission('matches.edit') && (
                           <button
                             onClick={() => navigate(`/matches/${batch.id}/edit`)}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg font-semibold transition-all text-sm"
+                            className="btn-outline px-4 py-2 font-semibold uppercase tracking-wider text-xs rounded-xl shadow-sm"
                           >
                             <Edit2 className="w-4 h-4" />
                             Edit
@@ -684,36 +678,11 @@ export function MatchesEnhanced() {
                         {batch.status !== "Complete" && permissions.hasPermission('officials.assign') && (
                           <button
                             onClick={() => navigate(`/batches/${batch.id}/officials`)}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-all text-sm"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow hover:shadow-md active:scale-[0.98]"
                           >
                             <Shield className="w-4 h-4" />
                             Officials
                           </button>
-                        )}
-
-                        {/* Workflow Actions */}
-                        {permissions.hasPermission('federation.submit') && (
-                          <div className="relative group">
-                            <button
-                              onClick={() => handleSubmitToKKF(batch.id)}
-                              disabled={!canSubmitToKKF(batch)}
-                              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition-all text-sm ${
-                                canSubmitToKKF(batch)
-                                  ? "bg-green-600 hover:bg-green-700 text-white"
-                                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                              }`}
-                            >
-                              <Send className="w-4 h-4" />
-                              Submit
-                            </button>
-                            {!canSubmitToKKF(batch) && (
-                              <div className="absolute bottom-full left-0 mb-2 w-44 bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 shadow-lg">
-                                {batch.status !== "Draft" && batch.status !== "Ready"
-                                  ? "Already submitted"
-                                  : "Complete requirements"}
-                              </div>
-                            )}
-                          </div>
                         )}
 
                         {/* Delete Button */}
@@ -722,17 +691,18 @@ export function MatchesEnhanced() {
                             <button
                               onClick={() => handleDeleteBatch(batch.id, batch.batchNumber)}
                               disabled={!canDelete(batch.status)}
-                              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition-all text-sm ${
+                              className={clsx(
+                                "inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow-sm",
                                 canDelete(batch.status)
-                                  ? "bg-red-600 hover:bg-red-700 text-white"
-                                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                              }`}
+                                  ? "bg-gradient-to-br from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white active:scale-[0.98]"
+                                  : "bg-slate-100 text-slate-400 border border-slate-200/60 cursor-not-allowed"
+                              )}
                             >
                               <Trash2 className="w-4 h-4" />
                               Delete
                             </button>
                             {!canDelete(batch.status) && (
-                              <div className="absolute bottom-full left-0 mb-2 w-40 bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 shadow-lg">
+                              <div className="absolute bottom-full left-0 mb-2 w-40 bg-slate-900 text-white text-[10px] font-semibold uppercase tracking-wider rounded-lg px-2.5 py-1.5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 shadow-lg">
                                 Cannot delete after submission
                               </div>
                             )}
@@ -742,7 +712,7 @@ export function MatchesEnhanced() {
                         {/* Expand Toggle */}
                         <button
                           onClick={() => toggleBatch(batch.id)}
-                          className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg font-semibold transition-all text-sm ml-auto"
+                          className="btn-outline px-4 py-2 font-semibold uppercase tracking-wider text-xs rounded-xl shadow-sm ml-auto"
                         >
                           {isExpanded ? (
                             <>
@@ -761,11 +731,11 @@ export function MatchesEnhanced() {
 
                     {/* Expanded Content - Match List */}
                     {isExpanded && (
-                      <div className="border-t border-gray-200 bg-gray-50 p-5">
+                      <div className="border-t border-border bg-muted/20 p-5">
                         <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-sm font-semibold text-gray-900">Match Details</h4>
-                          <span className="text-xs text-gray-500">
-                            Total Weight: {batch.matches.reduce((sum, m) => sum + (m.agreedWeight || 0), 0)} kg
+                          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Match Details</h4>
+                          <span className="text-xs font-semibold text-slate-500">
+                            Total Weight: {batch.matches.reduce((sum, m) => sum + (m.agreedWeight || m.fighterA.weight || 0), 0)} kg
                           </span>
                         </div>
 
@@ -773,89 +743,105 @@ export function MatchesEnhanced() {
                           {batch.matches.map((match, idx) => (
                             <div
                               key={match.id}
-                              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm hover:border-gray-300 transition-all"
+                              className="bg-white border border-border rounded-xl p-4 hover:shadow-md hover:border-slate-300 transition-all duration-200"
                             >
-                              <div className="flex items-center gap-4">
-                                {/* Match Number */}
-                                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                                  <span className="text-lg font-bold text-white">{idx + 1}</span>
-                                </div>
-
-                                {/* Fighters */}
-                                <div className="flex-1 flex items-center gap-4">
-                                  <div className="flex-1 text-right">
-                                    <div className="font-semibold text-gray-900 text-sm mb-1">{match.fighterA.name}</div>
-                                    <div className="flex items-center justify-end gap-1.5">
-                                      <span className="text-xs text-gray-500">{match.fighterA.clubName}</span>
-                                      <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">
-                                        {match.fighterA.grade}
-                                      </span>
-                                    </div>
-                                    <div className="text-xs text-gray-500 mt-0.5">{match.fighterA.weight} kg • {match.fighterA.record}</div>
-                                  </div>
-
-                                  <div className="px-3 py-1.5 bg-red-600 rounded-md">
-                                    <span className="text-white font-semibold text-sm">VS</span>
-                                  </div>
-
-                                  <div className="flex-1">
-                                    <div className="font-semibold text-gray-900 text-sm mb-1">{match.fighterB.name}</div>
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-xs font-medium">
-                                        {match.fighterB.grade}
-                                      </span>
-                                      <span className="text-xs text-gray-500">{match.fighterB.clubName}</span>
-                                    </div>
-                                    <div className="text-xs text-gray-500 mt-0.5">{match.fighterB.weight} kg • {match.fighterB.record}</div>
-                                  </div>
-                                </div>
-
-                                {/* Match Metadata */}
+                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                {/* Match Order Badge */}
                                 <div className="flex items-center gap-3">
-                                  <div className="text-center px-3 py-1.5 bg-gray-50 rounded-md border border-gray-200">
-                                    <div className="text-[10px] text-gray-500 font-medium uppercase mb-0.5">Weight</div>
-                                    <div className="font-semibold text-gray-900 text-xs">{match.agreedWeight || match.weightClass}</div>
+                                  <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-extrabold text-sm tracking-tight shadow-sm">
+                                    #{idx + 1}
+                                  </div>
+                                  <div>
+                                    <div className="font-bold text-slate-800 text-[13px] uppercase tracking-wider">{match.matchType}</div>
+                                    <div className="text-xs text-slate-500 font-medium">{match.weightClass} • {match.rounds} Rounds</div>
+                                  </div>
+                                </div>
+
+                                {/* Fighters Comparison Row */}
+                                <div className="flex-1 grid grid-cols-1 md:grid-cols-7 items-center gap-4">
+                                  {/* Fighter A */}
+                                  <div className="md:col-span-3 flex items-center gap-3 bg-secondary/5 p-2.5 rounded-xl border border-secondary/15 hover:bg-secondary/10 transition-colors">
+                                    <img
+                                      src={match.fighterA.image || "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=100"}
+                                      alt={match.fighterA.name}
+                                      className="w-10 h-10 rounded-lg object-cover border-2 border-secondary/30 flex-shrink-0"
+                                    />
+                                    <div className="min-w-0 flex-1">
+                                      <div className="font-bold text-slate-900 text-sm truncate flex items-center gap-1.5">
+                                        {match.fighterA.name}
+                                        <span className="badge-premium bg-secondary/10 text-secondary border-secondary/20 text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">
+                                          {match.fighterA.grade}
+                                        </span>
+                                      </div>
+                                      <div className="text-xs text-slate-500 truncate font-medium">{match.fighterA.clubName}</div>
+                                    </div>
                                   </div>
 
-                                  <div className="text-center px-3 py-1.5 bg-gray-50 rounded-md border border-gray-200">
-                                    <div className="text-[10px] text-gray-500 font-medium uppercase mb-0.5">Rounds</div>
-                                    <div className="font-semibold text-gray-900 text-xs">{match.rounds}</div>
+                                  {/* VS Badge */}
+                                  <div className="text-center md:col-span-1 flex justify-center">
+                                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-900 text-white font-extrabold text-[10px] tracking-tight shadow-sm border-2 border-white">
+                                      VS
+                                    </span>
+                                  </div>
+
+                                  {/* Fighter B */}
+                                  <div className="md:col-span-3 flex items-center gap-3 bg-primary/5 p-2.5 rounded-xl border border-primary/15 hover:bg-primary/10 transition-colors">
+                                    <img
+                                      src={match.fighterB.image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100"}
+                                      alt={match.fighterB.name}
+                                      className="w-10 h-10 rounded-lg object-cover border-2 border-primary/30 flex-shrink-0"
+                                    />
+                                    <div className="min-w-0 flex-1">
+                                      <div className="font-bold text-slate-900 text-sm truncate flex items-center gap-1.5">
+                                        {match.fighterB.name}
+                                        <span className="badge-premium bg-primary/10 text-primary border-primary/20 text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">
+                                          {match.fighterB.grade}
+                                        </span>
+                                      </div>
+                                      <div className="text-xs text-slate-500 truncate font-medium">{match.fighterB.clubName}</div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Eligibility Checks */}
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <div className="badge-premium bg-emerald-50 text-emerald-700 border-emerald-200/50 text-[9px] uppercase tracking-wider py-1 font-semibold shadow-sm" title="Medical Clearance check complete">
+                                    <CheckCircle className="w-3.5 h-3.5" />
+                                    Medical
+                                  </div>
+                                  <div className="badge-premium bg-emerald-50 text-emerald-700 border-emerald-200/50 text-[9px] uppercase tracking-wider py-1 font-semibold shadow-sm" title="Resting period validation ok">
+                                    <CheckCircle className="w-3.5 h-3.5" />
+                                    Rest Period
+                                  </div>
+                                  <div className="badge-premium bg-emerald-50 text-emerald-700 border-emerald-200/50 text-[9px] uppercase tracking-wider py-1 font-semibold shadow-sm" title="Grades are compatible for matchmaking">
+                                    <CheckCircle className="w-3.5 h-3.5" />
+                                    Matchup OK
                                   </div>
 
                                   {match.isChampionshipBout && (
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-700 rounded-md text-xs font-medium border border-amber-200">
+                                    <span className="badge-premium bg-amber-50 text-amber-700 border-amber-200/50 text-[9px] uppercase tracking-wider py-1 font-semibold shadow-sm">
                                       <Trophy className="w-3.5 h-3.5" />
                                       Title
                                     </span>
                                   )}
                                 </div>
 
-                                {/* View Match */}
-                                <Link
-                                  to={`/match/${match.id}`}
-                                  className="p-2 hover:bg-blue-50 text-blue-600 rounded-md transition-all"
-                                  title="View Details"
-                                >
-                                  <Eye className="w-5 h-5" />
-                                </Link>
-                              </div>
-
-                              {/* Officials Info */}
-                              {match.refereeId && (
-                                <div className="mt-3 pt-3 border-t border-gray-200 flex items-center gap-4 text-xs">
-                                  <div className="flex items-center gap-1.5">
-                                    <Shield className="w-3.5 h-3.5 text-indigo-600" />
-                                    <span className="text-gray-500">Referee:</span>
-                                    <span className="font-medium text-gray-900">{match.refereeName}</span>
-                                  </div>
-                                  {match.judgeNames && match.judgeNames.length > 0 && (
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="font-bold text-[#707070]">Judges:</span>
-                                      <span className="font-black text-[#1A1A24]">{match.judgeNames.join(", ")}</span>
-                                    </div>
+                                {/* View Detail Action */}
+                                <div className="flex items-center justify-end gap-2">
+                                  {match.refereeName && (
+                                    <span className="hidden lg:inline-flex items-center gap-1.5 text-[9px] bg-slate-100 text-slate-600 border border-slate-200/60 px-2 py-1 rounded-lg font-semibold uppercase tracking-wider">
+                                      👤 Ref: {match.refereeName}
+                                    </span>
                                   )}
+                                  <Link
+                                    to={`/match/${match.id}`}
+                                    className="p-2 bg-muted/45 hover:bg-primary/10 text-muted-foreground hover:text-primary rounded-xl transition-all border border-border shadow-sm"
+                                    title="View Detailed Match Page"
+                                  >
+                                    <Eye className="w-5 h-5" />
+                                  </Link>
                                 </div>
-                              )}
+                              </div>
                             </div>
                           ))}
                         </div>

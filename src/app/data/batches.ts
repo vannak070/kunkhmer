@@ -9,6 +9,9 @@ import posterImage2 from 'figma:asset/76de12a848bf50a1769fa454bf2dab5cb85ea354.p
 
 export type BatchStatus = 
   | "Draft"           // Being created
+  | "Pending KKF"     // Submitted to KKF, awaiting review
+  | "Approved"        // Sanctioned by KKF
+  | "Rejected"        // Rejected by KKF
   | "Weight-In"       // Weight-in ceremony happening
   | "Ready"           // Weight-in complete, ready for matches
   | "Live"            // Event is happening
@@ -148,6 +151,24 @@ export const BATCH_STATUS_CONFIG: Record<BatchStatus, {
     color: "text-gray-700",
     bgColor: "bg-gray-100",
     icon: "✏️"
+  },
+  "Pending KKF": {
+    label: "Pending KKF",
+    color: "text-amber-700",
+    bgColor: "bg-amber-100",
+    icon: "⏳"
+  },
+  "Approved": {
+    label: "Approved",
+    color: "text-green-700",
+    bgColor: "bg-green-100",
+    icon: "✅"
+  },
+  "Rejected": {
+    label: "Rejected",
+    color: "text-red-700",
+    bgColor: "bg-red-100",
+    icon: "❌"
   },
   "Weight-In": {
     label: "Weight-In",

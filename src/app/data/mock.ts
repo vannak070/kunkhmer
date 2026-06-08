@@ -2903,3 +2903,17 @@ export const MOCK_VIDEOS: VideoItem[] = [
     tags: ["Charity", "Event", "Recap"]
   }
 ];
+
+// Ensure all initial mock fighters have an approvalStatus
+MOCK_FIGHTERS.forEach((f: any) => {
+  if (!f.hasOwnProperty('approvalStatus')) {
+    f.approvalStatus = 'approved';
+  }
+});
+
+// Ensure all initial mock clubs have a status
+MOCK_CLUBS.forEach((c: any) => {
+  if (!c.hasOwnProperty('status')) {
+    c.status = 'active';
+  }
+});

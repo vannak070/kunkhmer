@@ -1,4 +1,4 @@
-import { X, CheckCircle, XCircle, Users, Calendar, CheckSquare, AlertTriangle, Info, Clock, FileText, Activity, Shield, Upload } from "lucide-react";
+import { X, CheckCircle, XCircle, Users, Calendar, CheckSquare, AlertTriangle, Info, Clock, FileText, Activity, Shield, Upload, Crown, Trophy } from "lucide-react";
 import { MOCK_USERS } from "../data/users";
 import { useState } from "react";
 import idCardImage from "figma:asset/9930c85cadfdb2498375e16d0d3df531f49fbecd.png";
@@ -299,29 +299,121 @@ export function KKFEnhancedDetailModal({
                         <span className="text-sm text-[#707070] font-medium block mb-1">Event</span>
                         <span className="text-xl text-[#1A1A24] font-bold block">{request.data.eventName}</span>
                       </div>
-                      <div className="p-4 bg-white rounded-xl border-2 border-[#0A3D91]">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <span className="text-lg font-bold text-[#0A3D91] block">{request.data.fighterA}</span>
-                            <span className="text-sm text-[#707070] font-medium">Record: {request.data.fighterARecord}</span>
+                      
+                      {request.data.matches && Array.isArray(request.data.matches) ? (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-3 mb-2">
+                            <div className="bg-[#F8F9FA] border border-[#E0E0E0] rounded-xl p-3">
+                              <span className="text-xs text-[#707070] font-medium block mb-0.5">Batch Number</span>
+                              <span className="text-sm font-bold text-[#0A3D91]">{request.data.batchNumber}</span>
+                            </div>
+                            <div className="bg-[#F8F9FA] border border-[#E0E0E0] rounded-xl p-3">
+                              <span className="text-xs text-[#707070] font-medium block mb-0.5">Category</span>
+                              <span className="text-sm font-bold text-[#0A3D91]">{request.data.category || "Professional"}</span>
+                            </div>
+                            <div className="bg-[#F8F9FA] border border-[#E0E0E0] rounded-xl p-3">
+                              <span className="text-xs text-[#707070] font-medium block mb-0.5">Total Matches</span>
+                              <span className="text-sm font-bold text-[#1A1A24]">{request.data.matchCount}</span>
+                            </div>
+                            <div className="bg-[#F8F9FA] border border-[#E0E0E0] rounded-xl p-3">
+                              <span className="text-xs text-[#707070] font-medium block mb-0.5">Total Fighters</span>
+                              <span className="text-sm font-bold text-[#1A1A24]">{request.data.totalFighters}</span>
+                            </div>
                           </div>
-                          <span className="text-2xl font-black text-[#C8102E] px-6">VS</span>
-                          <div className="flex-1 text-right">
-                            <span className="text-lg font-bold text-[#0A3D91] block">{request.data.fighterB}</span>
-                            <span className="text-sm text-[#707070] font-medium">Record: {request.data.fighterBRecord}</span>
+
+                          <div className="pb-2 border-b border-[#E0E0E0]">
+                            <h5 className="text-xs font-black uppercase tracking-wider text-[#0A3D91] flex items-center gap-1.5">
+                              <Shield className="w-4 h-4" />
+                              Match Details ({request.data.matchCount} Matches)
+                            </h5>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[40vh] overflow-y-auto pr-1">
+                            {request.data.matches.map((match: any, idx: number) => (
+                              <div key={idx} className="bg-white border-2 border-[#E0E0E0] rounded-xl p-4 hover:border-[#0A3D91] transition-all">
+                                <div className="flex items-center justify-between mb-3">
+                                  <span className="text-xs font-black uppercase tracking-wider text-[#0A3D91]">Match #{match.matchNumber}</span>
+                                  {match.isMainEvent && (
+                                    <span className="text-[10px] font-bold inline-block px-2.5 py-0.5 rounded bg-amber-500 text-white shadow-sm">
+                                      ⭐ MAIN EVENT
+                                    </span>
+                                  )}
+                                </div>
+
+                                {match.titleFight && (
+                                  <div className="mb-2 bg-gradient-to-r from-amber-500/10 to-amber-500/20 border border-amber-300 rounded-lg p-2 flex items-center gap-1.5">
+                                    <Crown className="w-3.5 h-3.5 text-amber-600" />
+                                    <span className="text-[10px] font-black text-amber-800 uppercase tracking-wide">{match.titleFight}</span>
+                                  </div>
+                                )}
+
+                                <div className="space-y-2 mb-3">
+                                  {/* Red Corner */}
+                                  <div className="bg-red-50/50 border-l-4 border-[#C8102E] rounded p-2 text-xs">
+                                    <div className="flex justify-between font-bold text-gray-900 mb-0.5">
+                                      <span>{match.fighterA.name}</span>
+                                      <span className="bg-red-100 text-red-800 px-1 rounded text-[9px]">Grade {match.fighterA.grade}</span>
+                                    </div>
+                                    <div className="text-[10px] text-gray-500">
+                                      {match.fighterA.weight} kg • {match.fighterA.record} • {match.fighterA.club}
+                                    </div>
+                                  </div>
+
+                                  <div className="text-center text-[10px] font-bold text-gray-400">VS</div>
+
+                                  {/* Blue Corner */}
+                                  <div className="bg-blue-50/50 border-l-4 border-[#0A3D91] rounded p-2 text-xs">
+                                    <div className="flex justify-between font-bold text-gray-900 mb-0.5">
+                                      <span>{match.fighterB.name}</span>
+                                      <span className="bg-blue-100 text-blue-800 px-1 rounded text-[9px]">Grade {match.fighterB.grade}</span>
+                                    </div>
+                                    <div className="text-[10px] text-gray-500">
+                                      {match.fighterB.weight} kg • {match.fighterB.record} • {match.fighterB.club}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100 text-center text-[10px]">
+                                  <div>
+                                    <div className="text-gray-400 font-medium">Agreement</div>
+                                    <div className="font-bold text-gray-800">{match.weightAgreement} kg</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-gray-400 font-medium">Rounds</div>
+                                    <div className="font-bold text-gray-800">{match.rounds}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <span className="text-sm text-[#707070] font-medium block mb-1">Agreed Weight</span>
-                          <span className="text-lg text-[#1A1A24] font-bold block">{request.data.agreedWeight} kg</span>
-                        </div>
-                        <div>
-                          <span className="text-sm text-[#707070] font-medium block mb-1">Rounds</span>
-                          <span className="text-lg text-[#1A1A24] font-bold block">{request.data.rounds}</span>
-                        </div>
-                      </div>
+                      ) : (
+                        <>
+                          <div className="p-4 bg-white rounded-xl border-2 border-[#0A3D91]">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <span className="text-lg font-bold text-[#0A3D91] block">{request.data.fighterA}</span>
+                                <span className="text-sm text-[#707070] font-medium">Record: {request.data.fighterARecord}</span>
+                              </div>
+                              <span className="text-2xl font-black text-[#C8102E] px-6">VS</span>
+                              <div className="flex-1 text-right">
+                                <span className="text-lg font-bold text-[#0A3D91] block">{request.data.fighterB}</span>
+                                <span className="text-sm text-[#707070] font-medium">Record: {request.data.fighterBRecord}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <span className="text-sm text-[#707070] font-medium block mb-1">Agreed Weight</span>
+                              <span className="text-lg text-[#1A1A24] font-bold block">{request.data.agreedWeight} kg</span>
+                            </div>
+                            <div>
+                              <span className="text-sm text-[#707070] font-medium block mb-1">Rounds</span>
+                              <span className="text-lg text-[#1A1A24] font-bold block">{request.data.rounds}</span>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
 
