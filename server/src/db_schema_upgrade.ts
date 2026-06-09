@@ -37,6 +37,9 @@ async function upgrade() {
       ADD COLUMN IF NOT EXISTS batch_number VARCHAR(100),
       ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id) ON DELETE SET NULL
     `);
+    await query(`
+      ALTER TABLE sub_events ALTER COLUMN status TYPE VARCHAR(50);
+    `);
     console.log("- Sub_events table updated.");
 
     // 4. Alter matches table

@@ -1,24 +1,65 @@
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, Trophy, Calendar, Swords, CheckCircle, XCircle, Crown } from "lucide-react";
-import { getChampionById } from "../data/champion";
-import { MOCK_FIGHTERS } from "../data/mock";
+import { api } from "../utils/api";
 import { clsx } from "clsx";
 
 export function ChampionHistory() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [champion, setChampion] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const champion = getChampionById(id || "");
+  useEffect(() => {
+    async function loadChampion() {
+      try {
+        setLoading(true);
+        const champData = await api.champions.get(id || "");
+        if (champData) {
+          setChampion({
+            ...champData,
+            titleName: champData.title_name,
+            championType: champData.champion_type,
+            weightClass: parseFloat(champData.weight_class) || 0,
+            organization: champData.organization,
+            batchId: champData.batch_id,
+            eventName: champData.event_name || "KKF Event",
+            currentHolderId: champData.current_holder_id,
+            currentHolderPhoto: champData.current_holder_photo_db,
+            currentHolderName: champData.current_holder_name_db || champData.current_holder_name || "Vacant",
+            nationality: champData.current_holder_nationality_db || champData.nationality || "Cambodian",
+            dateCreated: champData.date_created || champData.created_at,
+            dateAwarded: champData.date_awarded,
+            status: champData.status,
+            defenseCount: parseInt(champData.defense_count) || 0,
+            notes: champData.notes,
+            defenses: champData.defenses || []
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load champion details", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadChampion();
+  }, [id]);
 
   const getFighterPhoto = (champ: any) => {
     if (!champ) return null;
-    if (champ.currentHolderPhoto) return champ.currentHolderPhoto;
-    if (champ.currentHolderId) {
-      const fighter = MOCK_FIGHTERS.find(f => f.id === champ.currentHolderId);
-      if (fighter?.image) return fighter.image;
-    }
-    return null;
+    return champ.currentHolderPhoto || "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&q=80&w=100";
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8 min-h-[60vh] animate-fadeIn">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto"></div>
+          <p className="text-sm text-muted-foreground mt-4 font-semibold">Loading title history...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!champion) {
     return (
@@ -43,36 +84,15 @@ export function ChampionHistory() {
 
   const champPhoto = getFighterPhoto(champion);
 
-  // Mock defense history data - in real app this would come from API
-  const defenseHistory = [
-    {
-      id: "def-1",
-      date: "2026-03-15",
-      eventName: "KUN KHMER Championship 2026 - Defense #3",
-      opponent: "Piseth Chea",
-      result: "Won" as const,
-      method: "KO Round 3",
-      location: "Phnom Penh"
-    },
-    {
-      id: "def-2",
-      date: "2026-01-20",
-      eventName: "New Year Fight Night - Defense #2",
-      opponent: "Sovann Rath",
-      result: "Won" as const,
-      method: "Decision",
-      location: "Siem Reap"
-    },
-    {
-      id: "def-3",
-      date: "2025-11-10",
-      eventName: "Year End Championship - Defense #1",
-      opponent: "Kosal Meas",
-      result: "Won" as const,
-      method: "TKO Round 4",
-      location: "Phnom Penh"
-    }
-  ];
+  const defenseHistory = (champion.defenses || []).map((def: any) => ({
+    id: def.id,
+    date: def.date,
+    eventName: def.event_name,
+    opponent: def.opponent,
+    result: def.result,
+    method: def.method,
+    location: def.location || "Phnom Penh"
+  }));
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6 animate-fadeIn">

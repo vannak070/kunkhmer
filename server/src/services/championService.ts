@@ -39,7 +39,16 @@ export class ChampionService {
       LEFT JOIN fighters f ON c.current_holder_id = f.id
       WHERE c.id = $1
     `, [id]);
-    return result.rows[0] || null;
+    const champion = result.rows[0];
+    if (champion) {
+      const defenses = await query(`
+        SELECT * FROM champion_defenses 
+        WHERE champion_id = $1 
+        ORDER BY date DESC
+      `, [id]);
+      champion.defenses = defenses.rows;
+    }
+    return champion || null;
   }
 
   static async create(input: ChampionInput) {

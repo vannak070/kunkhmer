@@ -4,6 +4,8 @@ import { ArrowLeft, Calendar, MapPin, Award, Sparkles, Info, Box } from "lucide-
 import { toast } from "sonner";
 import { clsx } from "clsx";
 import { api } from "../utils/api";
+import mapPickerImg from "../../assets/phnom_penh_map_picker.png";
+import { VENUES } from "../data/masterData";
 
 export function CreateBatch() {
   const navigate = useNavigate();
@@ -19,6 +21,61 @@ export function CreateBatch() {
     date: "",
     location: "",
   });
+  const [pin, setPin] = useState<{ x: number; y: number } | null>(null);
+
+  // Sync map pinpoint when location changes
+  useEffect(() => {
+    if (formData.location) {
+      const matchedVenue = VENUES.find(v => 
+        v.name.toLowerCase().includes(formData.location.toLowerCase()) || 
+        formData.location.toLowerCase().includes(v.name.toLowerCase())
+      );
+      if (matchedVenue) {
+        setPin({ x: matchedVenue.x, y: matchedVenue.y });
+      } else {
+        setPin(null);
+      }
+    } else {
+      setPin(null);
+    }
+  }, [formData.location]);
+
+  const handleVenueSelect = (venue: any) => {
+    setPin({ x: venue.x, y: venue.y });
+    setFormData(prev => ({
+      ...prev,
+      location: venue.name
+    }));
+  };
+
+  const handleStaticMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setPin({ x, y });
+
+    let derivedLocation = "";
+    if (x > 67 && y > 58) {
+      derivedLocation = "Olympic Stadium Arena, Phnom Penh";
+    } else if (x > 43 && x < 57 && y > 53 && y < 65) {
+      derivedLocation = "Morodok Techo National Stadium";
+    } else if (x < 35 && y < 45) {
+      derivedLocation = "Battambang Indoor Stadium";
+    } else if (x > 35 && x < 50 && y < 35) {
+      derivedLocation = "Siem Reap Boxing Stadium";
+    } else if (x > 60 && x < 65 && y > 48 && y < 52) {
+      derivedLocation = "Town Full HDTV Arena, Phnom Penh";
+    } else if (x > 70 && y > 65) {
+      derivedLocation = "Bayon TV Arena (Steung Meanchey), Phnom Penh";
+    } else {
+      derivedLocation = `Custom Venue Location (${Math.round(100 - y)}°N, ${Math.round(x)}°E)`;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      location: derivedLocation
+    }));
+  };
 
   useEffect(() => {
     const loadData = async () => {
