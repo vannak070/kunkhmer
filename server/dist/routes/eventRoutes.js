@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const eventController_1 = require("../controllers/eventController");
+const validation_1 = require("../middlewares/validation");
+const router = (0, express_1.Router)();
+router.get("/", eventController_1.EventController.getAll);
+router.get("/:id", eventController_1.EventController.getById);
+router.post("/", validation_1.authenticateJWT, (0, validation_1.requireRole)(["Super Admin", "KKF Officer", "Organizer"]), eventController_1.EventController.create);
+router.put("/:id", validation_1.authenticateJWT, (0, validation_1.requireRole)(["Super Admin", "KKF Officer", "Organizer"]), eventController_1.EventController.update);
+router.delete("/:id", validation_1.authenticateJWT, (0, validation_1.requireRole)(["Super Admin"]), eventController_1.EventController.delete);
+exports.default = router;

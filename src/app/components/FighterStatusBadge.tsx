@@ -1,5 +1,50 @@
 import { FIGHTER_STATUS_CONFIG, type FighterStatus, checkFighterEligibility } from "../data/fighterStatuses";
-import { AlertCircle, CheckCircle, Clock, AlertTriangle, Ban, XCircle, UserX } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, AlertTriangle, Ban, XCircle, UserX, ShieldCheck } from "lucide-react";
+
+export const FEDERATION_STATUS_CONFIG: Record<string, { label: string; bgColor: string; color: string; borderColor: string }> = {
+  draft: {
+    label: "Draft",
+    bgColor: "bg-slate-100",
+    color: "text-slate-700",
+    borderColor: "border-slate-300",
+  },
+  "pending kkf verification": {
+    label: "Pending KKF",
+    bgColor: "bg-amber-50",
+    color: "text-amber-700",
+    borderColor: "border-amber-200",
+  },
+  active: {
+    label: "Active",
+    bgColor: "bg-emerald-50",
+    color: "text-emerald-700",
+    borderColor: "border-emerald-200",
+  },
+  suspended: {
+    label: "Suspended",
+    bgColor: "bg-red-50",
+    color: "text-red-700",
+    borderColor: "border-red-200",
+  },
+  inactive: {
+    label: "Inactive",
+    bgColor: "bg-slate-50",
+    color: "text-slate-500",
+    borderColor: "border-slate-200",
+  },
+  retired: {
+    label: "Retired",
+    bgColor: "bg-gray-100",
+    color: "text-gray-500",
+    borderColor: "border-gray-300",
+  },
+  banned: {
+    label: "Banned",
+    bgColor: "bg-red-100",
+    color: "text-red-700",
+    borderColor: "border-red-300",
+  },
+};
 
 interface FighterStatusBadgeProps {
   status: FighterStatus;
@@ -8,7 +53,51 @@ interface FighterStatusBadgeProps {
 }
 
 export function FighterStatusBadge({ status, showIcon = true, size = 'md' }: FighterStatusBadgeProps) {
-  const config = FIGHTER_STATUS_CONFIG[status];
+  const s = (status || '').toLowerCase();
+  const fedConfig = FEDERATION_STATUS_CONFIG[s];
+  
+  if (fedConfig) {
+    const sizeClasses = {
+      sm: 'px-2 py-0.5 text-xs',
+      md: 'px-3 py-1 text-sm',
+      lg: 'px-4 py-1.5 text-base',
+    };
+    
+    const iconSizes = {
+      sm: 'w-3 h-3',
+      md: 'w-4 h-4',
+      lg: 'w-5 h-5',
+    };
+    
+    let StatusIcon = ShieldCheck;
+    if (s === 'draft') StatusIcon = AlertCircle;
+    if (s === 'pending kkf verification') StatusIcon = Clock;
+    if (s === 'suspended' || s === 'banned') StatusIcon = Ban;
+    if (s === 'inactive' || s === 'retired') StatusIcon = UserX;
+
+    return (
+      <div className={`inline-flex items-center gap-1.5 ${fedConfig.bgColor} ${fedConfig.color} ${fedConfig.borderColor} border-2 rounded-lg font-bold uppercase tracking-wide ${sizeClasses[size]}`}>
+        {showIcon && <StatusIcon className={iconSizes[size]} />}
+        <span>{fedConfig.label}</span>
+      </div>
+    );
+  }
+
+  const normalizeStatus = (s: string): FighterStatus => {
+    const lower = (s || '').toLowerCase();
+    if (lower === 'active') return 'available';
+    if (lower === 'suspended') return 'suspended';
+    if (lower === 'retired') return 'retired';
+    if (lower === 'draft') return 'not_eligible';
+    if (lower === 'pending kkf verification') return 'not_eligible';
+    if (lower === 'inactive') return 'not_eligible';
+    if (lower === 'banned') return 'suspended';
+    if (lower === 'injured') return 'injured';
+    return (lower as FighterStatus) in FIGHTER_STATUS_CONFIG ? (lower as FighterStatus) : 'available';
+  };
+
+  const normalized = normalizeStatus(status);
+  const config = FIGHTER_STATUS_CONFIG[normalized] || FIGHTER_STATUS_CONFIG.available;
   
   const sizeClasses = {
     sm: 'px-2 py-0.5 text-xs',
@@ -22,7 +111,7 @@ export function FighterStatusBadge({ status, showIcon = true, size = 'md' }: Fig
     lg: 'w-5 h-5',
   };
   
-  const StatusIcon = getStatusIcon(status);
+  const StatusIcon = getStatusIcon(normalized);
   
   return (
     <div className={`inline-flex items-center gap-1.5 ${config.bgColor} ${config.color} ${config.borderColor} border-2 rounded-lg font-bold uppercase tracking-wide ${sizeClasses[size]}`}>
@@ -33,6 +122,7 @@ export function FighterStatusBadge({ status, showIcon = true, size = 'md' }: Fig
 }
 
 function getStatusIcon(status: FighterStatus) {
+  const normalized = (status || '').toLowerCase() as FighterStatus;
   const icons: Record<FighterStatus, any> = {
     available: CheckCircle,
     scheduled: Clock,
@@ -42,13 +132,27 @@ function getStatusIcon(status: FighterStatus) {
     not_eligible: XCircle,
     retired: UserX,
   };
-  return icons[status];
+  return icons[normalized] || CheckCircle;
 }
 
 // Full status card with description
 export function FighterStatusCard({ status }: { status: FighterStatus }) {
-  const config = FIGHTER_STATUS_CONFIG[status];
-  const StatusIcon = getStatusIcon(status);
+  const normalizeStatus = (s: string): FighterStatus => {
+    const lower = (s || '').toLowerCase();
+    if (lower === 'active') return 'available';
+    if (lower === 'suspended') return 'suspended';
+    if (lower === 'retired') return 'retired';
+    if (lower === 'draft') return 'not_eligible';
+    if (lower === 'pending kkf verification') return 'not_eligible';
+    if (lower === 'inactive') return 'not_eligible';
+    if (lower === 'banned') return 'suspended';
+    if (lower === 'injured') return 'injured';
+    return (lower as FighterStatus) in FIGHTER_STATUS_CONFIG ? (lower as FighterStatus) : 'available';
+  };
+
+  const normalized = normalizeStatus(status);
+  const config = FIGHTER_STATUS_CONFIG[normalized] || FIGHTER_STATUS_CONFIG.available;
+  const StatusIcon = getStatusIcon(normalized);
   
   return (
     <div className={`p-4 rounded-xl border-2 ${config.bgColor} ${config.borderColor}`}>

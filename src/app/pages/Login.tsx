@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { LogIn, Shield, AlertCircle, Crown, Search, Settings, Tv, Dumbbell, Gavel } from "lucide-react";
-import { loginUser, MOCK_USERS } from "../data/users";
+import { api } from "../utils/api";
 import logoImg from "../../assets/modern_logo.png";
 
 export function Login() {
@@ -11,24 +11,20 @@ export function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    // Simulate network delay
-    setTimeout(() => {
-      const user = loginUser(username, password);
-      
-      if (user) {
-        // Successful login
-        navigate("/");
-      } else {
-        setError("Invalid username or password");
-      }
-      
+    try {
+      await api.auth.login(username, password);
+      // Successful login
+      navigate("/");
+    } catch (err: any) {
+      setError(err.message || "Invalid username or password");
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   const fillCredentials = (user: string, pass: string) => {

@@ -5,8 +5,9 @@ import {
 } from "lucide-react";
 import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
+import { api } from "../utils/api";
 import { 
-  BROADCAST_STATIONS, SPONSORS, GLOVE_TYPES, WEIGHT_RANGES, ORGANIZERS, VENUES, 
+  BROADCAST_STATIONS, GLOVE_TYPES, WEIGHT_RANGES, ORGANIZERS, VENUES, 
   FIGHTING_RULES, SYSTEM_CONFIGS, type Venue 
 } from "../data/masterData";
 import { 
@@ -127,8 +128,22 @@ export function SystemSettings() {
   const [subTab, setSubTab] = useState("");
   const [inputValue, setInputValue] = useState("");
   const [trigger, setTrigger] = useState(0);
+  const [sponsors, setSponsors] = useState<any[]>([]);
 
   const forceUpdate = () => setTrigger(t => t + 1);
+
+  const loadSettingsData = async () => {
+    try {
+      const spData = await api.settings.listSponsors();
+      setSponsors(spData || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    loadSettingsData();
+  }, []);
 
   // Set default sub-tabs when changing active category
   useEffect(() => {
@@ -164,7 +179,7 @@ export function SystemSettings() {
         }
       case "champion":
         if (subTab === "sponsors") {
-          return SPONSORS.map(sp => ({ id: sp.id, title: sp.name, subtitle: `${sp.tier} Sponsor · ${sp.industry}` }));
+          return sponsors.map(sp => ({ id: sp.id, title: sp.name, subtitle: `${sp.tier} Sponsor · ${sp.industry}` }));
         } else {
           return [
             { id: "t-1", title: "World Federation Champion", subtitle: "Official Title Status" },
@@ -195,7 +210,7 @@ export function SystemSettings() {
       case "match":
         return WEIGHT_RANGES.length + GLOVE_TYPES.length;
       case "champion":
-        return SPONSORS.length + 3; // sponsors + titles
+        return sponsors.length + 3; // sponsors + titles
       case "user":
         return getReferees().length + getJudges().length;
       case "system":
@@ -246,7 +261,7 @@ export function SystemSettings() {
   };
 
   // CRUD actions
-  const handleAddOption = (e: React.FormEvent) => {
+  const handleAddOption = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
 
@@ -309,15 +324,15 @@ export function SystemSettings() {
           const name = parts[0]?.trim() || value;
           const industry = parts[1]?.trim() || "Beverages";
           const tier = (parts[2]?.trim() as any) || "Gold";
-          SPONSORS.push({
-            id: `sp-${Date.now()}`,
+          
+          await api.settings.createSponsor({
             name,
-            logo: "🤝",
             industry,
             tier,
-            active: true
+            active: true,
+            logoUrl: "🤝"
           });
-          localStorage.setItem("kkf_sponsors", JSON.stringify(SPONSORS));
+          await loadSettingsData();
         } else {
           toast.info("Title templates are core system properties. Standard templates loaded.");
           return;
@@ -361,7 +376,7 @@ export function SystemSettings() {
     }
   };
 
-  const handleDeleteOption = (id: string, name?: string) => {
+  const handleDeleteOption = async (id: string, name?: string) => {
     if (!canManage) {
       toast.error("🔒 You do not have permissions to modify system settings.");
       return;
@@ -397,9 +412,8 @@ export function SystemSettings() {
       } 
       else if (activeTab === "champion") {
         if (subTab === "sponsors") {
-          const idx = SPONSORS.findIndex(sp => sp.id === id);
-          if (idx !== -1) SPONSORS.splice(idx, 1);
-          localStorage.setItem("kkf_sponsors", JSON.stringify(SPONSORS));
+          await api.settings.deleteSponsor(id);
+          await loadSettingsData();
         } else {
           toast.warning("Title templates are core system properties and cannot be deleted.");
           return;
@@ -495,7 +509,7 @@ export function SystemSettings() {
                 : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
             }`}
           >
-            Sponsors ({SPONSORS.length})
+            Sponsors ({sponsors.length})
           </button>
           <button
             type="button"

@@ -873,7 +873,9 @@ export function getBatchWarnings(batch: MatchBatch): string[] {
 
 // Format date for display (e.g., "Apr 15, 2026")
 export function formatDisplayDate(dateStr: string): string {
+  if (!dateStr) return "N/A";
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "N/A";
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
 }

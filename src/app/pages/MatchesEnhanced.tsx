@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router";
 import { 
   Eye, Plus, Search, ChevronDown, ChevronUp, Edit3,
@@ -10,7 +10,6 @@ import {
   PlayCircle, PauseCircle, XCircle
 } from "lucide-react";
 import { 
-  MOCK_BATCHES, 
   BATCH_STATUS_CONFIG, 
   formatDisplayDate
 } from "../data/batches";
@@ -20,6 +19,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
 import { clsx } from "clsx";
 import { CalendarView } from "../components/CalendarView";
+import { api } from "../utils/api";
 
 // Helper function to get status border color
 const getStatusBorderColor = (status: BatchStatus): string => {
@@ -59,7 +59,8 @@ const getStatusBadgeClass = (status: BatchStatus): string => {
 export function MatchesEnhanced() {
   const permissions = usePermissions();
   const navigate = useNavigate();
-  const [batches, setBatches] = useState<MatchBatch[]>(MOCK_BATCHES);
+  const [batches, setBatches] = useState<MatchBatch[]>([]);
+  const [loading, setLoading] = useState(true);
   const [expandedBatchId, setExpandedBatchId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -74,35 +75,80 @@ export function MatchesEnhanced() {
   // New state for enhanced features
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const list = await api.batches.list();
+      const allMatches = await api.matches.list();
+      
+      const mappedBatches = list.map((b: any) => {
+        const batchMatches = allMatches.filter((m: any) => m.sub_event_id === b.id).map((m: any) => {
+          return {
+            id: m.id,
+            status: m.status,
+            rounds: m.rounds,
+            weightClass: m.agreed_weight ? `${m.agreed_weight} kg` : "Catchweight",
+            agreedWeight: m.agreed_weight,
+            matchType: "Ranking Fight",
+            winner: m.winner_id,
+            fighterA: {
+              id: m.fighter_a_id,
+              name: m.fighter_a_name,
+              image: m.fighter_a_image,
+              clubName: m.club_a_name,
+              grade: m.fighter_a_grade || "C"
+            },
+            fighterB: {
+              id: m.fighter_b_id,
+              name: m.fighter_b_name,
+              image: m.fighter_b_image,
+              clubName: m.club_b_name,
+              grade: m.fighter_b_grade || "C"
+            }
+          };
+        });
+
+        return {
+          id: b.id,
+          batchNumber: b.batch_number || `BATCH-${b.week_number}`,
+          eventName: b.event_name || "Weekly Fight Card",
+          location: b.location || "Olympic Stadium Arena",
+          date: b.date ? b.date.split("T")[0] : "",
+          createdDate: b.created_at ? b.created_at.split("T")[0] : "",
+          status: b.status as BatchStatus,
+          totalMatches: batchMatches.length,
+          matches: batchMatches,
+          organizerClub: b.creator_name,
+          createdBy: b.creator_name
+        };
+      });
+
+      setBatches(mappedBatches);
+    } catch (err: any) {
+      toast.error("Failed to load batches: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // Helper functions
   const handleDuplicateBatch = (batchId: string) => {
-    const batch = batches.find(b => b.id === batchId);
-    if (!batch) return;
-
-    const newBatch: MatchBatch = {
-      ...batch,
-      id: `batch-${Date.now()}`,
-      batchNumber: `${batch.batchNumber}-COPY`,
-      status: "Draft" as BatchStatus,
-      createdDate: new Date().toISOString().split('T')[0],
-      submittedDate: undefined,
-      reviewedDate: undefined,
-      matches: batch.matches.map(m => ({
-        ...m,
-        id: `match-${Date.now()}-${Math.random()}`,
-        status: "Draft" as MatchStatus
-      }))
-    };
-
-    setBatches(prev => [newBatch, ...prev]);
-    toast.success(`✅ Batch duplicated as ${newBatch.batchNumber}`);
+    toast.error("Duplication is currently only supported in drafting mode");
   };
 
-  const handleDeleteBatch = (batchId: string, batchNumber: string) => {
+  const handleDeleteBatch = async (batchId: string, batchNumber: string) => {
     if (!confirm(`Are you sure you want to delete ${batchNumber}?`)) return;
-    
-    setBatches(prev => prev.filter(b => b.id !== batchId));
-    toast.success(`🗑️ ${batchNumber} deleted`);
+    try {
+      await api.batches.delete(batchId);
+      toast.success(`🗑️ ${batchNumber} deleted`);
+      loadData();
+    } catch (err: any) {
+      toast.error("Failed to delete batch: " + err.message);
+    }
   };
 
   const canDelete = (status: BatchStatus): boolean => {
@@ -496,7 +542,12 @@ export function MatchesEnhanced() {
         {/* Batches List */}
         {viewMode === 'list' && (
           <div className="space-y-5">
-            {filteredBatches.length === 0 ? (
+            {loading ? (
+              <div className="card-premium p-12 text-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto"></div>
+                <p className="text-sm text-slate-500 font-semibold mt-4">Loading batches...</p>
+              </div>
+            ) : filteredBatches.length === 0 ? (
               <div className="card-premium bg-white border border-border rounded-xl p-12 text-center shadow-sm">
                 <Box className="w-16 h-16 text-muted-foreground/60 mx-auto mb-4" />
                 <h3 className="text-lg font-bold uppercase tracking-wider text-primary mb-2">No Batches Found</h3>
@@ -617,7 +668,7 @@ export function MatchesEnhanced() {
                             {/* Dropdown Menu */}
                             <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-border py-1.5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
                               <button
-                                onClick={() => navigate(`/batches/${batch.id}/share`)}
+                                onClick={() => navigate(`/home/batches/${batch.id}/share`)}
                                 className="w-full px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 flex items-center gap-2 transition-colors"
                               >
                                 <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
@@ -664,7 +715,7 @@ export function MatchesEnhanced() {
                         {/* Secondary Actions */}
                         {batch.status === "Draft" && permissions.hasPermission('matches.edit') && (
                           <button
-                            onClick={() => navigate(`/matches/${batch.id}/edit`)}
+                            onClick={() => navigate(`/home/matches/${batch.id}/edit`)}
                             className="btn-outline px-4 py-2 font-semibold uppercase tracking-wider text-xs rounded-xl shadow-sm"
                           >
                             <Edit2 className="w-4 h-4" />
@@ -675,7 +726,7 @@ export function MatchesEnhanced() {
                         {/* Assign Officials - Available for all non-Complete batches */}
                         {batch.status !== "Complete" && permissions.hasPermission('officials.assign') && (
                           <button
-                            onClick={() => navigate(`/batches/${batch.id}/officials`)}
+                            onClick={() => navigate(`/home/matches/${batch.id}/assign-officials`)}
                             className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow hover:shadow-md active:scale-[0.98]"
                           >
                             <Shield className="w-4 h-4" />
@@ -832,7 +883,7 @@ export function MatchesEnhanced() {
                                     </span>
                                   )}
                                   <Link
-                                    to={`/match/${match.id}`}
+                                    to={`/home/match/${match.id}`}
                                     className="p-2 bg-muted/45 hover:bg-primary/10 text-muted-foreground hover:text-primary rounded-xl transition-all border border-border shadow-sm"
                                     title="View Detailed Match Page"
                                   >

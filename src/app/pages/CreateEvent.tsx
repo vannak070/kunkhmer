@@ -5,8 +5,8 @@ import {
   CalendarRange, Trophy, Users, Target, Flame, Shield, ArrowRight,
   Search, X, ChevronDown
 } from "lucide-react";
-import { MOCK_EVENTS, MOCK_CLUBS } from "../data/mock";
-import { BROADCAST_STATIONS, SPONSORS, getActiveBroadcastStations, getActiveSponsors, ORGANIZERS, VENUES } from "../data/masterData";
+import { api } from "../utils/api";
+import { ORGANIZERS, VENUES } from "../data/masterData";
 import {
   EVENT_TYPE_CONFIG, type EventType,
   TOURNAMENT_FORMAT_CONFIG, type TournamentFormat,
@@ -40,12 +40,30 @@ export function CreateEvent() {
     expectedParticipants: 8,
   });
 
-  const standardOrganizers = ORGANIZERS;
+  const [activeBroadcastStations, setActiveBroadcastStations] = useState<any[]>([]);
+  const [activeSponsors, setActiveSponsors] = useState<any[]>([]);
+  const [organizerList, setOrganizerList] = useState<string[]>(ORGANIZERS);
 
-  const organizerList = [
-    ...standardOrganizers,
-    ...MOCK_CLUBS.filter(club => club.status === "active").map(club => club.name)
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const stations = await api.settings.listBroadcastStations();
+        setActiveBroadcastStations(stations);
+        
+        const sp = await api.settings.listSponsors();
+        setActiveSponsors(sp);
+        
+        const clubsList = await api.clubs.list();
+        setOrganizerList([
+          ...ORGANIZERS,
+          ...clubsList.map((c: any) => c.name)
+        ]);
+      } catch (err: any) {
+        console.error("Failed to load settings master data:", err);
+      }
+    };
+    fetchData();
+  }, []);
 
   // Interactive Map States
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -284,61 +302,41 @@ export function CreateEvent() {
     }
   };
 
-  const activeBroadcastStations = getActiveBroadcastStations();
-  const activeSponsors = getActiveSponsors();
-
   const isTournamentEvent = newEvent.eventCategory === "National Tournament" ||
                            newEvent.eventCategory === "Club Tournament" ||
                            newEvent.eventCategory === "Regional";
 
-  const handleCreateEvent = (e: React.FormEvent) => {
+  const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Get selected broadcast station and sponsor for fallback names
-    const selectedStation = BROADCAST_STATIONS.find(bs => bs.id === newEvent.broadcastStationId);
-    const selectedSponsor = SPONSORS.find(sp => sp.id === newEvent.mainSponsorId);
-
     const finalImage = newEvent.image || "https://images.unsplash.com/photo-1574629810360-7efbc5eca0aa?auto=format&fit=crop&q=80&w=1200";
+    const currentUser = api.auth.getCurrentUser();
 
-    const eventId = `e${Date.now()}`;
-    const eventWithId = {
-      id: eventId,
+    const payload = {
       name: newEvent.name,
-      eventCategory: newEvent.eventCategory,
-      // Use startDate as main date for compatibility
       date: newEvent.startDate,
-      // Add endDate if multi-week
-      endDate: newEvent.eventType === "multi-week" ? newEvent.endDate : undefined,
+      endDate: newEvent.eventType === "multi-week" ? newEvent.endDate : null,
       location: newEvent.location,
-      organizer: newEvent.organizer,
-      broadcastStationId: newEvent.broadcastStationId,
-      mainSponsorId: newEvent.mainSponsorId,
       status: "Draft",
-      kkfStatus: "Draft",
+      organizerId: currentUser?.id || "e9f0d14b-22ab-4bb3-b541-6ea88102eb92",
+      broadcastStationId: newEvent.broadcastStationId || null,
+      description: newEvent.description || "",
       image: finalImage,
-      description: newEvent.description,
-      // Keep backward compatibility with old field names
-      station: selectedStation?.name || "",
-      sponsor: selectedSponsor?.name || "",
-      hasSubEvents: newEvent.eventType === "multi-week",
-      matchesCount: 0,
-      // Tournament fields
-      isTournament: isTournamentEvent,
-      tournamentFormat: isTournamentEvent ? newEvent.tournamentFormat : undefined,
-      tournamentWeightClass: isTournamentEvent ? newEvent.tournamentWeightClass : undefined,
-      expectedParticipants: isTournamentEvent ? newEvent.expectedParticipants : undefined,
+      mainSponsorId: newEvent.mainSponsorId || null,
+      sponsorIds: newEvent.mainSponsorId ? [newEvent.mainSponsorId] : []
     };
 
-    MOCK_EVENTS.unshift(eventWithId as any);
-
-    // Show success message
-    if (isTournamentEvent) {
-      toast.success(`✅ ${newEvent.tournamentFormat} tournament created successfully!`);
-    } else {
-      toast.success(`✅ Event created successfully!`);
+    try {
+      const created = await api.events.create(payload);
+      if (isTournamentEvent) {
+        toast.success(`✅ Tournament created successfully!`);
+      } else {
+        toast.success(`✅ Event created successfully!`);
+      }
+      navigate(`/home/events/${created.id}`);
+    } catch (err: any) {
+      toast.error("Failed to create event: " + err.message);
     }
-
-    navigate(`/home/events/${eventId}`);
   };
 
   const eventCategories: EventType[] = [
@@ -650,7 +648,7 @@ export function CreateEvent() {
                     <option value="">Select Broadcast Station...</option>
                     {activeBroadcastStations.map((station) => (
                       <option key={station.id} value={station.id}>
-                        {station.logo} {station.name} ({station.type})
+                        {station.name}
                       </option>
                     ))}
                   </select>
@@ -669,7 +667,7 @@ export function CreateEvent() {
                     <option value="">Select Main Sponsor...</option>
                     {activeSponsors.map((sponsor) => (
                       <option key={sponsor.id} value={sponsor.id}>
-                        {sponsor.logo} {sponsor.name} ({sponsor.tier})
+                        {sponsor.name}
                       </option>
                     ))}
                   </select>

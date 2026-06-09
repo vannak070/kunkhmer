@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
-import { MOCK_FIGHTERS } from "../data/mock";
+import { api } from "../utils/api";
 import {
   Trophy, Plus, Award, Crown, Star, Shield,
   Search, Filter, Calendar, MapPin, TrendingUp, Swords,
@@ -9,11 +9,9 @@ import {
   CalendarClock, Target, Flame, XCircle, Zap, AlertCircle, AlertTriangle
 } from "lucide-react";
 import {
-  MOCK_CHAMPIONS,
   CHAMPION_TYPE_CONFIG,
   CHAMPION_STATUS_CONFIG,
   WEIGHT_CLASSES,
-  getActiveChampions,
   type ChampionType,
   type ChampionStatus
 } from "../data/champion";
@@ -24,11 +22,50 @@ export function Champion() {
   const navigate = useNavigate();
   const permissions = usePermissions();
   const [search, setSearch] = useState("");
+  const [champions, setChampions] = useState<any[]>([]);
+  const [fighters, setFighters] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const champsData = await api.champions.list();
+        const fightersData = await api.fighters.list();
+        
+        // Map database champions
+        const mappedChamps = (champsData || []).map((c: any) => ({
+          ...c,
+          titleName: c.title_name,
+          championType: c.champion_type,
+          weightClass: parseFloat(c.weight_class) || 0,
+          organization: c.organization,
+          batchId: c.batch_id,
+          eventName: c.event_name || "KKF Event",
+          currentHolderId: c.current_holder_id,
+          currentHolderName: c.current_holder_name_db || c.current_holder_name || "Vacant",
+          nationality: c.current_holder_nationality_db || c.nationality || "Cambodian",
+          dateCreated: c.date_created || c.created_at,
+          dateAwarded: c.date_awarded,
+          status: c.status, // Active, Title Defense Scheduled, Inactive, Vacant
+          defenseCount: parseInt(c.defense_count) || 0,
+          notes: c.notes,
+        }));
+        setChampions(mappedChamps);
+        setFighters(fightersData || []);
+      } catch (err: any) {
+        console.error(err);
+        toast.error("Failed to load champions from database");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const getFighterPhoto = (champ: any) => {
-    if (champ.currentHolderPhoto) return champ.currentHolderPhoto;
+    if (champ.belt_image_url) return champ.belt_image_url;
     if (champ.currentHolderId) {
-      const fighter = MOCK_FIGHTERS.find(f => f.id === champ.currentHolderId);
+      const fighter = fighters.find(f => f.id === champ.currentHolderId);
       if (fighter?.image) return fighter.image;
     }
     return null;
@@ -43,17 +80,49 @@ export function Champion() {
   const [selectedChampion, setSelectedChampion] = useState<any>(null);
   const [vacateReason, setVacateReason] = useState("");
 
-  const handleVacateTitle = () => {
+  const handleVacateTitle = async () => {
     if (!selectedChampion) return;
-    console.log("Vacating title:", selectedChampion.id, "Reason:", vacateReason);
-    toast.success(`Title vacated: ${selectedChampion.weightClass}kg ${selectedChampion.championType}`);
-    setShowVacateModal(false);
-    setSelectedChampion(null);
-    setVacateReason("");
+    try {
+      await api.champions.update(selectedChampion.id, {
+        currentHolderId: null,
+        currentHolderName: null,
+        nationality: null,
+        status: "Vacant",
+        notes: vacateReason ? `Vacated: ${vacateReason}` : selectedChampion.notes
+      });
+      toast.success(`Title vacated: ${selectedChampion.weightClass}kg ${selectedChampion.championType}`);
+      setShowVacateModal(false);
+      
+      // Refresh list
+      const champsData = await api.champions.list();
+      const mappedChamps = (champsData || []).map((c: any) => ({
+        ...c,
+        titleName: c.title_name,
+        championType: c.champion_type,
+        weightClass: parseFloat(c.weight_class) || 0,
+        organization: c.organization,
+        batchId: c.batch_id,
+        eventName: c.event_name || "KKF Event",
+        currentHolderId: c.current_holder_id,
+        currentHolderName: c.current_holder_name_db || c.current_holder_name || "Vacant",
+        nationality: c.current_holder_nationality_db || c.nationality || "Cambodian",
+        dateCreated: c.date_created || c.created_at,
+        dateAwarded: c.date_awarded,
+        status: c.status,
+        defenseCount: parseInt(c.defense_count) || 0,
+        notes: c.notes,
+      }));
+      setChampions(mappedChamps);
+      setSelectedChampion(null);
+      setVacateReason("");
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to vacate championship title");
+    }
   };
 
   // Filter champions
-  let filteredChampions = MOCK_CHAMPIONS;
+  let filteredChampions = champions;
 
   if (filterType !== "all") {
     filteredChampions = filteredChampions.filter(c => c.championType === filterType);
@@ -101,14 +170,14 @@ export function Champion() {
   };
 
   // Get insights
-  const vacantTitles = MOCK_CHAMPIONS.filter(c => c.status === "Vacant");
-  const scheduledDefenses = MOCK_CHAMPIONS.filter(c => c.status === "Title Defense Scheduled");
-  const topChampions = [...MOCK_CHAMPIONS]
+  const vacantTitles = champions.filter(c => c.status === "Vacant");
+  const scheduledDefenses = champions.filter(c => c.status === "Title Defense Scheduled");
+  const topChampions = [...champions]
     .filter(c => c.status === "Active")
     .sort((a, b) => b.defenseCount - a.defenseCount)
     .slice(0, 3);
   
-  const longestReign = [...MOCK_CHAMPIONS]
+  const longestReign = [...champions]
     .filter(c => c.currentHolderName && c.dateAwarded)
     .sort((a, b) => getDaysAsChampion(b.dateAwarded) - getDaysAsChampion(a.dateAwarded))[0];
 
@@ -121,6 +190,8 @@ export function Champion() {
     setFilterOrganization("all");
   };
 
+  const activeChampionsCount = champions.filter(c => c.status === "Active" || c.status === "Title Defense Scheduled").length;
+
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn">
       {/* Header */}
@@ -128,7 +199,7 @@ export function Champion() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Championships</h1>
           <p className="text-sm text-muted-foreground mt-0.5 font-medium">
-            {getActiveChampions().length} Active Title Holders & Special Awards
+            {activeChampionsCount} Active Title Holders & Special Awards
           </p>
           <div className="flex items-center gap-3.5 mt-2.5 text-xs font-semibold">
             <div className="flex items-center gap-1 text-primary">
@@ -138,7 +209,7 @@ export function Champion() {
             <div className="w-1 h-1 rounded-full bg-slate-300" />
             <div className="flex items-center gap-1 text-emerald-600">
               <CheckCircle className="w-3.5 h-3.5" />
-              <span>{getActiveChampions().length} Active</span>
+              <span>{activeChampionsCount} Active</span>
             </div>
             <div className="w-1 h-1 rounded-full bg-slate-300" />
             <div className="flex items-center gap-1 text-rose-600">
@@ -395,7 +466,7 @@ export function Champion() {
             className="input-premium py-2.5 cursor-pointer"
           >
             <option value="all">All Organizations</option>
-            {Array.from(new Set(MOCK_CHAMPIONS.map(c => c.organization))).map(org => (
+            {Array.from(new Set(champions.map(c => c.organization))).map(org => (
               <option key={org} value={org}>
                 {org}
               </option>

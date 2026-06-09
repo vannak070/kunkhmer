@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const clubController_1 = require("../controllers/clubController");
+const validation_1 = require("../middlewares/validation");
+const router = (0, express_1.Router)();
+router.get("/", clubController_1.ClubController.getAll);
+router.get("/:id", clubController_1.ClubController.getById);
+router.post("/", validation_1.authenticateJWT, (0, validation_1.requireRole)(["Super Admin", "KKF Officer"]), clubController_1.ClubController.create);
+router.put("/:id", validation_1.authenticateJWT, (0, validation_1.requireRole)(["Super Admin", "KKF Officer"]), clubController_1.ClubController.update);
+router.delete("/:id", validation_1.authenticateJWT, (0, validation_1.requireRole)(["Super Admin"]), clubController_1.ClubController.delete);
+exports.default = router;

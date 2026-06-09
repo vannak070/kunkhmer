@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router";
 import {
   ArrowLeft, Users, CheckCircle, AlertCircle, Box, Scale,
   ChevronRight, ChevronLeft, Crown, Trophy, FileText
 } from "lucide-react";
-import { MOCK_EVENTS, MOCK_FIGHTERS, MOCK_MATCHES } from "../data/mock";
+import { api } from "../utils/api";
 import { GLOVE_SIZES, getApprovedGloveTypes } from "../data/masterData";
-import { WEIGHT_CLASSES, getWeightClassName, MOCK_CHAMPIONS } from "../data/champion";
+import { WEIGHT_CLASSES, getWeightClassName } from "../data/champion";
 import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
 import { clsx } from "clsx";
@@ -16,11 +16,12 @@ export function AddMatchToEvent() {
   const { eventId, subEventId } = useParams();
   const permissions = usePermissions();
 
-  const event = MOCK_EVENTS.find(e => e.id === eventId);
-  const subEvent = subEventId
-    ? MOCK_EVENTS.find(e => e.subEvents?.some(se => se.id === subEventId))
-        ?.subEvents?.find(se => se.id === subEventId)
-    : null;
+  const [event, setEvent] = useState<any>(null);
+  const [subEvent, setSubEvent] = useState<any>(null);
+  const [fighters, setFighters] = useState<any[]>([]);
+  const [champions, setChampions] = useState<any[]>([]);
+  const [batches, setBatches] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Multi-step state
   const [currentStep, setCurrentStep] = useState(1); // 1: Match Details, 2: Fighter Selection, 3: Review & Confirm
@@ -48,18 +49,66 @@ export function AddMatchToEvent() {
   // ── Derived data ─────────────────────────────────────────────────
   const approvedGloves = getApprovedGloveTypes();
 
-  const getFilteredFighters = () => {
+  useEffect(() => {
+    const loadData = async () => {
+      if (!eventId) return;
+      try {
+        const eventData = await api.events.get(eventId);
+        const fightersData = await api.fighters.list();
+        const championsData = await api.champions.list();
+        const batchesData = await api.batches.list();
+
+        setEvent(eventData);
+
+        // Map fighters from DB schema columns
+        const mappedFighters = (fightersData || []).map((f: any) => ({
+          ...f,
+          weight: parseFloat(f.current_weight) || 0,
+          gym: f.club_name || "Independent",
+        }));
+        setFighters(mappedFighters);
+
+        // Map champions from DB schema columns
+        const mappedChampions = (championsData || []).map((c: any) => ({
+          ...c,
+          titleName: c.title_name,
+          weightClass: parseFloat(c.weight_class) || 0,
+          currentHolderName: c.current_holder_name_db || c.current_holder_name || "Vacant",
+          status: c.status,
+        }));
+        setChampions(mappedChampions);
+
+        const eventBatches = (batchesData || []).filter((b: any) => b.event_id === eventId);
+        setBatches(eventBatches);
+
+        if (subEventId) {
+          const se = eventBatches.find((b: any) => b.id === subEventId);
+          setSubEvent(se);
+        } else if (eventBatches.length > 0) {
+          // Use first batch as default
+          setSubEvent(eventBatches[0]);
+        }
+      } catch (err: any) {
+        console.error(err);
+        toast.error("Failed to load match creation data from database");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, [eventId, subEventId]);
+
+  const availableFighters = useMemo(() => {
     const selectedWeight = matchData.weightClass;
-    return MOCK_FIGHTERS.filter(f => {
+    return fighters.filter(f => {
       const diff = Math.abs(f.weight - selectedWeight);
       return diff <= 3 && f.status === "Active";
     });
-  };
-  const availableFighters = getFilteredFighters();
+  }, [fighters, matchData.weightClass]);
 
   const isFighterAvailable = (fighterId: string): { available: boolean; reason?: string } => {
     if (!fighterId) return { available: true };
-    const fighter = MOCK_FIGHTERS.find(f => f.id === fighterId);
+    const fighter = fighters.find(f => f.id === fighterId);
     if (!fighter) return { available: false, reason: "Fighter not found" };
     if (fighter.status === "Injured")   return { available: false, reason: "Currently injured" };
     if (fighter.status === "Suspended") return { available: false, reason: "Suspended" };
@@ -68,11 +117,11 @@ export function AddMatchToEvent() {
     return { available: true };
   };
 
-  const championsForWeight = MOCK_CHAMPIONS.filter(
+  const championsForWeight = champions.filter(
     c => c.weightClass === matchData.weightClass && c.status === "Active"
   );
 
-  const getFighterById = (id: string) => MOCK_FIGHTERS.find(f => f.id === id);
+  const getFighterById = (id: string) => fighters.find(f => f.id === id);
   const fighterA = getFighterById(matchData.fighterAId);
   const fighterB = getFighterById(matchData.fighterBId);
 
@@ -114,46 +163,56 @@ export function AddMatchToEvent() {
   const handlePrevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
   // ── Submit ────────────────────────────────────────────────────────
-  const handleCreateMatch = () => {
+  const handleCreateMatch = async () => {
     if (!canSubmit) {
       toast.error("Please complete all required fields and confirm glove agreement");
       return;
     }
-    if (!fighterA || !fighterB) return;
+    if (!fighterA || !fighterB || !event) return;
 
-    const newMatch = {
-      id: `m${Date.now()}`,
-      eventId,
-      subEventId: subEventId || null,
-      fighterA,
-      fighterB,
-      agreedWeight: matchData.weightClass,
-      rounds: matchData.rounds,
-      roundTime: matchData.roundTime,
-      knockdownLimit: matchData.knockdownLimit,
-      gloveAgreement: {
+    try {
+      let finalSubEventId = subEvent?.id;
+      
+      if (!finalSubEventId) {
+        // Create a default batch first
+        const defaultBatch = await api.batches.create({
+          eventId: eventId,
+          name: "Main Card",
+          weekNumber: 1,
+          date: event.date ? new Date(event.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          location: event.location || "Olympic Stadium, Phnom Penh",
+          phase: "Final",
+          status: "Draft",
+          batchNumber: `BATCH-${Date.now().toString().slice(-6)}`,
+        });
+        finalSubEventId = defaultBatch.id;
+      }
+      
+      await api.matches.create({
+        eventId: eventId,
+        subEventId: finalSubEventId,
+        fighterAId: matchData.fighterAId,
+        fighterBId: matchData.fighterBId,
+        rounds: matchData.rounds,
+        roundTime: matchData.roundTime,
+        knockdownLimit: matchData.knockdownLimit,
+        agreedWeight: matchData.weightClass,
         gloveSize: matchData.gloveSize,
-        gloveType: matchData.gloveType,
-        fighterAConfirmed: matchData.fighterAConfirmed,
-        fighterBConfirmed: matchData.fighterBConfirmed,
-        refereeConfirmed: false,
-        confirmedDate: new Date().toISOString(),
-        checkPhotoUrl: null,
-      },
-      status: "Draft",
-      date: event?.date || "",
-      proposalStatus: "draft",
-      clubAResponse: "pending",
-      clubBResponse: "pending",
-      proposedBy: permissions.currentUser?.fullName || "Organizer",
-      proposedDate: new Date().toISOString().split("T")[0],
-      notes: matchData.notes,
-      isChampionshipBout: matchData.isChampionshipMatch,
-    };
+        gloveBrand: matchData.gloveType,
+        status: "Draft",
+        proposalStatus: "draft",
+        clubAResponse: "pending",
+        clubBResponse: "pending",
+        refereeId: null,
+        judgeIds: null,
+      });
 
-    MOCK_MATCHES.unshift(newMatch as any);
-    toast.success(`✅ Match created: ${fighterA.name} vs ${fighterB.name}`);
-    goBack();
+      toast.success(`✅ Match created: ${fighterA.name} vs ${fighterB.name}`);
+      goBack();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to create match in database");
+    }
   };
 
   // ── Steps config ──────────────────────────────────────────────────
@@ -162,6 +221,15 @@ export function AddMatchToEvent() {
     { number: 2, title: "Fighter Selection", icon: Users },
     { number: 3, title: "Review & Confirm",  icon: CheckCircle },
   ];
+
+  if (loading) {
+    return (
+      <div className="text-center py-16">
+        <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-sm text-muted-foreground font-semibold">Loading details from database...</p>
+      </div>
+    );
+  }
 
   if (!event) {
     return (

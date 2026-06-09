@@ -182,6 +182,7 @@ export const router = createBrowserRouter([
       { path: "clubs/new", element: <AddClub /> },
       { path: "clubs", element: <Clubs /> },
       { path: "matches/new", element: <CreateBatch /> },
+      { path: "matches/:batchId/edit", element: <CreateBatch /> },
       { path: "matches/:batchId/create-match", element: <CreateMatchFromBatch /> },
       { path: "matches/:batchId/assign-officials", element: <AssignOfficials /> },
       { path: "matches/created", element: <MatchCreatedSuccess /> },

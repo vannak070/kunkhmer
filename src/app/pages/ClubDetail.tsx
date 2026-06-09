@@ -1,373 +1,48 @@
 import { useParams, Link } from "react-router";
 import { ArrowLeft, MapPin, Dumbbell, Star, Phone, Mail, Trophy, Users, ShieldAlert, Weight, Activity, Clock, Calendar, TrendingUp, Shield, ChevronDown } from "lucide-react";
-import { MOCK_FIGHTERS, MOCK_MATCHES, MOCK_CLUBS } from "../data/mock";
 import { FighterApprovalBadge } from "../components/FighterApprovalBadge";
 import type { FighterApprovalStatus } from "../data/fighterApproval";
 import unknownFighterImg from "figma:asset/b9f2c3f9c8bd58ed74f9c92de40fb83809a138b3.png";
-import { useState } from "react";
-
-// Helper function to derive advanced fighter status based on matches and mock rules
-const getFighterStatus = (fighter: any) => {
-  if (fighter.status === 'Injured') return { label: 'Not Eligible', style: 'badge-red', dot: 'bg-red-500', upcoming: null };
-  
-  // Find matches for this fighter
-  const fighterMatches = MOCK_MATCHES.filter(m => m && m.fighterA && m.fighterB && (m.fighterA.id === fighter.id || m.fighterB.id === fighter.id));
-  
-  // Check for upcoming scheduled fights
-  const upcomingFight = fighterMatches.find(m => m.status === 'Scheduled');
-  if (upcomingFight) {
-    const opponent = upcomingFight.fighterA.id === fighter.id ? upcomingFight.fighterB : upcomingFight.fighterA;
-    return { 
-      label: 'Scheduled', 
-      style: 'badge-blue',
-      dot: 'bg-blue-500',
-      upcoming: { date: upcomingFight.date, opponent: opponent.name, eventId: upcomingFight.eventId } 
-    };
-  }
-
-  // Check resting period (10 days from last completed fight)
-  const completedFights = fighterMatches.filter(m => m.status === 'Completed').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  if (completedFights.length > 0) {
-    const lastFightDate = new Date(completedFights[0].date);
-    const today = new Date("2026-03-19"); // System date
-    const daysSince = Math.floor((today.getTime() - lastFightDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (daysSince < 10 && daysSince >= 0) {
-      return { label: 'Resting', style: 'badge-amber', dot: 'bg-amber-500', upcoming: null, daysLeft: 10 - daysSince };
-    }
-  }
-
-  return { label: 'Available', style: 'badge-emerald', dot: 'bg-emerald-500', upcoming: null };
-};
-
-// Mock Data for Club Details
-const MOCK_CLUBS_DATA: Record<string, any> = {
-  c1: {
-    id: "c1",
-    name: "Phnom Penh Top Team",
-    location: "Phnom Penh, Cambodia",
-    headCoach: "Chan Reach",
-    activeFighters: 24,
-    rating: 4.8,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2940&auto=format&fit=crop",
-    description: "One of the premier Kun Khmer training facilities in the capital city, known for producing top-tier champions and providing elite training for both local and international fighters.",
-    phone: "+855 12 345 678",
-    email: "contact@pptt-kunkhmer.com",
-    established: "2010",
-    champions: 5
-  },
-  c2: {
-    id: "c2",
-    name: "Siem Reap Warriors",
-    location: "Siem Reap, Cambodia",
-    headCoach: "Sok Rith",
-    activeFighters: 15,
-    rating: 4.5,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1555597673-b21d5c935865?q=80&w=2940&auto=format&fit=crop",
-    description: "A traditional Kun Khmer camp located near the historic temples of Angkor, blending ancient techniques with modern combat sports training methodologies.",
-    phone: "+855 63 987 654",
-    email: "info@srwarriors.com",
-    established: "2015",
-    champions: 2
-  },
-  c3: {
-    id: "c3",
-    name: "Battambang Strikers",
-    location: "Battambang, Cambodia",
-    headCoach: "Meas Chanta",
-    activeFighters: 18,
-    rating: 4.2,
-    status: "inactive",
-    image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2940&auto=format&fit=crop",
-    description: "Known for their aggressive striking style, this camp has a long history of producing fighters with devastating elbow and knee strikes.",
-    phone: "+855 53 111 222",
-    email: "striker@battambang-kk.com",
-    established: "2008",
-    champions: 8
-  },
-  c4: {
-    id: "c4",
-    name: "Kampot Fight Club",
-    location: "Kampot, Cambodia",
-    headCoach: "Heng Virak",
-    activeFighters: 12,
-    rating: 4.3,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?q=80&w=2940&auto=format&fit=crop",
-    description: "Specialized in technical striking and counter-fighting techniques, this coastal gym is renowned for developing smart, tactical fighters.",
-    phone: "+855 33 123 456",
-    email: "info@kampotfc.com",
-    established: "2017",
-    champions: 1
-  },
-  c5: {
-    id: "c5",
-    name: "Angkor Elite Academy",
-    location: "Siem Reap, Cambodia",
-    headCoach: "Vann Dara",
-    activeFighters: 28,
-    rating: 4.9,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1552196563-55cd4e45efb3?q=80&w=2940&auto=format&fit=crop",
-    description: "The highest-rated facility in Cambodia, combining ancient Kun Khmer wisdom with cutting-edge sports science and conditioning programs.",
-    phone: "+855 63 555 777",
-    email: "academy@angkorelite.com",
-    established: "2012",
-    champions: 7
-  },
-  c6: {
-    id: "c6",
-    name: "Mekong Combat Sports",
-    location: "Phnom Penh, Cambodia",
-    headCoach: "Sarath Kim",
-    activeFighters: 20,
-    rating: 4.6,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?q=80&w=2940&auto=format&fit=crop",
-    description: "Modern training facility focusing on cross-training multiple martial arts disciplines while maintaining authentic Kun Khmer principles.",
-    phone: "+855 12 888 999",
-    email: "contact@mekongcombat.com",
-    established: "2014",
-    champions: 3
-  },
-  c7: {
-    id: "c7",
-    name: "Koh Kong Warriors",
-    location: "Koh Kong, Cambodia",
-    headCoach: "Pich Samnang",
-    activeFighters: 10,
-    rating: 4.0,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1571902943202-507ec2618e8f?q=80&w=2940&auto=format&fit=crop",
-    description: "A grassroots gym in the coastal province, dedicated to training young fighters from rural communities with traditional methods.",
-    phone: "+855 35 222 333",
-    email: "warriors@kohkong.com",
-    established: "2018",
-    champions: 0
-  },
-  c8: {
-    id: "c8",
-    name: "Royal Khmer Gym",
-    location: "Phnom Penh, Cambodia",
-    headCoach: "Sok Piseth",
-    activeFighters: 32,
-    rating: 4.7,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2940&auto=format&fit=crop",
-    description: "Elite training center with royal patronage, offering world-class facilities and coaching to develop national champions.",
-    phone: "+855 12 777 888",
-    email: "info@royalkhmer.com",
-    established: "2009",
-    champions: 6
-  },
-  c9: {
-    id: "c9",
-    name: "Preah Vihear Legends",
-    location: "Preah Vihear, Cambodia",
-    headCoach: "Tep Bunthoeun",
-    activeFighters: 8,
-    rating: 3.8,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1549476464-37392f717541?q=80&w=2940&auto=format&fit=crop",
-    description: "Small but passionate training camp in the northern province, preserving ancient Khmer martial arts traditions.",
-    phone: "+855 64 111 222",
-    email: "legends@pv.com",
-    established: "2019",
-    champions: 0
-  },
-  c10: {
-    id: "c10",
-    name: "Tonle Sap Tigers",
-    location: "Siem Reap, Cambodia",
-    headCoach: "Lim Sokha",
-    activeFighters: 16,
-    rating: 4.4,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2940&auto=format&fit=crop",
-    description: "Lakeside training facility known for intensive conditioning programs and producing fighters with exceptional endurance.",
-    phone: "+855 63 444 555",
-    email: "tigers@tonlesap.com",
-    established: "2016",
-    champions: 2
-  },
-  c11: {
-    id: "c11",
-    name: "Bayon Fight Academy",
-    location: "Phnom Penh, Cambodia",
-    headCoach: "Chea Sovann",
-    activeFighters: 22,
-    rating: 4.5,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2940&auto=format&fit=crop",
-    description: "Well-established academy focusing on technical excellence and tactical fight strategies for competitive fighters.",
-    phone: "+855 12 333 444",
-    email: "academy@bayon.com",
-    established: "2013",
-    champions: 4
-  },
-  c12: {
-    id: "c12",
-    name: "Kratie Combat Club",
-    location: "Kratie, Cambodia",
-    headCoach: "Yim Chanra",
-    activeFighters: 14,
-    rating: 4.1,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?q=80&w=2940&auto=format&fit=crop",
-    description: "Community-focused gym providing affordable training to local youth, emphasizing discipline and traditional values.",
-    phone: "+855 72 555 666",
-    email: "combat@kratie.com",
-    established: "2017",
-    champions: 1
-  },
-  c13: {
-    id: "c13",
-    name: "Cardamom Mountain Fighters",
-    location: "Pursat, Cambodia",
-    headCoach: "Khem Sopheak",
-    activeFighters: 11,
-    rating: 3.9,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1552196563-55cd4e45efb3?q=80&w=2940&auto=format&fit=crop",
-    description: "Unique mountain training camp utilizing natural terrain for strength and conditioning workouts.",
-    phone: "+855 52 777 888",
-    email: "fighters@cardamom.com",
-    established: "2018",
-    champions: 0
-  },
-  c14: {
-    id: "c14",
-    name: "Takeo Thunder",
-    location: "Takeo, Cambodia",
-    headCoach: "Mao Reaksmey",
-    activeFighters: 13,
-    rating: 4.2,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?q=80&w=2940&auto=format&fit=crop",
-    description: "High-energy gym specializing in explosive striking techniques and powerful knockout training.",
-    phone: "+855 32 999 000",
-    email: "thunder@takeo.com",
-    established: "2016",
-    champions: 2
-  },
-  c15: {
-    id: "c15",
-    name: "Prey Veng Champions",
-    location: "Prey Veng, Cambodia",
-    headCoach: "Suon Borey",
-    activeFighters: 9,
-    rating: 3.7,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1571902943202-507ec2618e8f?q=80&w=2940&auto=format&fit=crop",
-    description: "Emerging training center developing the next generation of fighters from the eastern provinces.",
-    phone: "+855 43 111 333",
-    email: "champions@preyveng.com",
-    established: "2020",
-    champions: 0
-  },
-  c16: {
-    id: "c16",
-    name: "Stung Treng Warriors",
-    location: "Stung Treng, Cambodia",
-    headCoach: "Horn Vibol",
-    activeFighters: 7,
-    rating: 3.6,
-    status: "inactive",
-    image: "https://images.unsplash.com/photo-1549476464-37392f717541?q=80&w=2940&auto=format&fit=crop",
-    description: "Currently undergoing renovation and restructuring to return with improved facilities and training programs.",
-    phone: "+855 74 222 444",
-    email: "warriors@stungtreng.com",
-    established: "2015",
-    champions: 1
-  },
-  c17: {
-    id: "c17",
-    name: "Banteay Meanchey Elite",
-    location: "Banteay Meanchey, Cambodia",
-    headCoach: "Nget Sambath",
-    activeFighters: 19,
-    rating: 4.4,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2940&auto=format&fit=crop",
-    description: "Border region powerhouse known for producing tough, resilient fighters with exceptional fighting spirit.",
-    phone: "+855 54 666 777",
-    email: "elite@banteaymeanchey.com",
-    established: "2014",
-    champions: 3
-  },
-  c18: {
-    id: "c18",
-    name: "Kampong Cham Dragons",
-    location: "Kampong Cham, Cambodia",
-    headCoach: "Try Darith",
-    activeFighters: 21,
-    rating: 4.6,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2940&auto=format&fit=crop",
-    description: "Provincial powerhouse combining traditional Khmer techniques with modern training methodologies.",
-    phone: "+855 42 888 999",
-    email: "dragons@kampongcham.com",
-    established: "2011",
-    champions: 4
-  },
-  c19: {
-    id: "c19",
-    name: "Svay Rieng Gladiators",
-    location: "Svay Rieng, Cambodia",
-    headCoach: "Oeun Sopheap",
-    activeFighters: 10,
-    rating: 4.0,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?q=80&w=2940&auto=format&fit=crop",
-    description: "Compact gym focusing on quality over quantity, providing personalized attention to each fighter.",
-    phone: "+855 44 555 666",
-    email: "gladiators@svayrieng.com",
-    established: "2017",
-    champions: 1
-  },
-  c20: {
-    id: "c20",
-    name: "Mondulkiri Mountain Lions",
-    location: "Mondulkiri, Cambodia",
-    headCoach: "Thol Sophoan",
-    activeFighters: 6,
-    rating: 3.5,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1552196563-55cd4e45efb3?q=80&w=2940&auto=format&fit=crop",
-    description: "Remote highland training camp offering unique altitude training advantages for conditioning.",
-    phone: "+855 73 333 555",
-    email: "lions@mondulkiri.com",
-    established: "2019",
-    champions: 0
-  }
-};
+import { useState, useEffect } from "react";
+import { api } from "../utils/api";
 
 type TabType = 'overview' | 'fighters' | 'champions' | 'matches';
 
 export function ClubDetail() {
   const { id } = useParams();
-  
-  // Find in detailed mock data first
-  let club = id ? MOCK_CLUBS_DATA[id] : null;
-  
-  // If not found in detailed records, check the main MOCK_CLUBS array (for newly added clubs)
-  if (!club && id) {
-    const mainClub = MOCK_CLUBS.find(c => c.id === id);
-    if (mainClub) {
-      club = {
-        ...mainClub,
-        description: mainClub.description || "No description provided for this new club.",
-        phone: mainClub.phone || "No phone number",
-        email: mainClub.email || "No email address",
-        established: mainClub.established || "2026",
-        champions: mainClub.champions || 0
-      };
-    }
-  }
-  
+  const [club, setClub] = useState<any>(null);
+  const [clubFighters, setClubFighters] = useState<any[]>([]);
+  const [clubMatches, setClubMatches] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+
+  useEffect(() => {
+    if (id) {
+      loadClubData();
+    }
+  }, [id]);
+
+  const loadClubData = async () => {
+    setLoading(true);
+    try {
+      const clubData = await api.clubs.get(id!);
+      setClub(clubData);
+      
+      const fightersData = await api.fighters.list(undefined, id!);
+      setClubFighters(fightersData);
+
+      const allMatches = await api.matches.list();
+      const fighterIds = fightersData.map((f: any) => f.id);
+      const matchesInvolving = allMatches.filter((m: any) => 
+        fighterIds.includes(m.fighter_a_id) || fighterIds.includes(m.fighter_b_id)
+      );
+      setClubMatches(matchesInvolving);
+    } catch (err: any) {
+      console.error("Failed to load club details:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
@@ -379,27 +54,51 @@ export function ClubDetail() {
     }
   };
 
-  // Filter fighters by club ID
-  const clubFighters = MOCK_FIGHTERS.filter(fighter => fighter.clubId === id);
+  // Helper function to derive advanced fighter status based on matches and rules
+  const getFighterStatus = (fighter: any) => {
+    if (fighter.status === 'Injured') return { label: 'Not Eligible', style: 'badge-red', dot: 'bg-red-500', upcoming: null };
+    
+    const upcomingFight = clubMatches.find(m => m.status === 'Scheduled');
+    if (upcomingFight) {
+      const opponentName = upcomingFight.fighter_a_id === fighter.id ? upcomingFight.fighter_b_name : upcomingFight.fighter_a_name;
+      return { 
+        label: 'Scheduled', 
+        style: 'badge-blue',
+        dot: 'bg-blue-500',
+        upcoming: { date: upcomingFight.date, opponent: opponentName, eventId: upcomingFight.event_id } 
+      };
+    }
 
-  // Filter matches involving fighters from this club
-  const clubFighterIds = clubFighters.map(f => f.id);
-  const clubMatches = MOCK_MATCHES.filter(match => 
-    match && match.fighterA && match.fighterB && (
-      clubFighterIds.includes(match.fighterA.id) || clubFighterIds.includes(match.fighterB.id)
-    )
-  ).sort((a, b) => {
-    if (!a.date || !b.date) return 0;
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
-  });
+    const completedFights = clubMatches.filter(m => m.status === 'Completed').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    if (completedFights.length > 0) {
+      const lastFightDate = new Date(completedFights[0].date);
+      const today = new Date();
+      const daysSince = Math.floor((today.getTime() - lastFightDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysSince < 10 && daysSince >= 0) {
+        return { label: 'Resting', style: 'badge-amber', dot: 'bg-amber-500', upcoming: null, daysLeft: 10 - daysSince };
+      }
+    }
 
-  // Mock champions from this club
-  const clubChampions = clubFighters.filter(f => ['f1', 'f2'].includes(f.id)).map(fighter => ({
+    return { label: 'Available', style: 'badge-emerald', dot: 'bg-emerald-500', upcoming: null };
+  };
+
+  // Mock champions from this club based on dynamic grade
+  const clubChampions = clubFighters.filter(f => f.grade === 'A').map(fighter => ({
     ...fighter,
-    beltTitle: fighter.id === 'f1' ? 'Middleweight Champion' : 'Welterweight Champion',
-    defenses: fighter.id === 'f1' ? 3 : 1,
-    wonDate: fighter.id === 'f1' ? '2025-11-15' : '2026-01-20'
+    beltTitle: 'Welterweight Champion',
+    defenses: 2,
+    wonDate: '2026-01-20'
   }));
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-8 min-h-full">
+        <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-sm text-muted-foreground font-semibold">Loading club details from database...</p>
+      </div>
+    );
+  }
 
   if (!club) {
     return (
@@ -466,24 +165,24 @@ export function ClubDetail() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 max-w-3xl">
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-3 text-center shadow-sm">
               <div className="text-[10px] font-bold text-white/70 uppercase tracking-wider mb-0.5">Head Coach</div>
-              <div className="text-sm font-semibold text-white truncate">{club.headCoach}</div>
+              <div className="text-sm font-semibold text-white truncate">{club.head_coach || "N/A"}</div>
             </div>
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-3 text-center shadow-sm">
               <div className="text-[10px] font-bold text-white/70 uppercase tracking-wider mb-0.5">Active Fighters</div>
               <div className="flex items-center justify-center gap-1">
                 <Dumbbell className="w-3.5 h-3.5 text-amber-300" />
-                <div className="text-sm font-semibold text-white">{club.activeFighters}</div>
+                <div className="text-sm font-semibold text-white">{clubFighters.length}</div>
               </div>
             </div>
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-3 text-center shadow-sm">
               <div className="text-[10px] font-bold text-white/70 uppercase tracking-wider mb-0.5">Established Since</div>
-              <div className="text-sm font-semibold text-white">{club.established}</div>
+              <div className="text-sm font-semibold text-white">{club.established || "2026"}</div>
             </div>
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-3 text-center shadow-sm">
               <div className="text-[10px] font-bold text-white/70 uppercase tracking-wider mb-0.5">Champions</div>
               <div className="flex items-center justify-center gap-1">
                 <Trophy className="w-3.5 h-3.5 text-amber-300" />
-                <div className="text-sm font-semibold text-white">{club.champions}</div>
+                <div className="text-sm font-semibold text-white">{clubChampions.length}</div>
               </div>
             </div>
           </div>

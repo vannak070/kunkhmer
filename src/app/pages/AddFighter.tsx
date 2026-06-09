@@ -5,8 +5,7 @@ import {
   Dumbbell, Shield, Activity, CheckCircle2, AlertCircle, FileCheck,
   Crown, Info, ChevronDown
 } from "lucide-react";
-import { MOCK_FIGHTERS, MOCK_CLUBS } from "../data/mock";
-import { addWorkflowRequest } from "../data/workflow";
+import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { WEIGHT_RANGES, getWeightRangeCategory } from "../data/masterData";
 import { toast } from "sonner";
@@ -37,22 +36,22 @@ export function AddFighter() {
 
   const isKunKhmer = location.pathname.includes("/kunkhmer");
   const isEditMode = !!id;
-  const existingFighter = isEditMode ? MOCK_FIGHTERS.find((f) => f.id === id) : null;
 
+  const [clubs, setClubs] = useState<any[]>([]);
   const [fighter, setFighter] = useState({
     nameEN: "", nameKH: "", alias: "", dob: "", pob: "",
-    nationality: isKunKhmer ? "Cambodia" : "", gender: "Male",
+    nationality: isKunKhmer ? "Cambodian" : "", gender: "Male",
     idType: "National ID", idNumber: "", idExpiry: "", idDocumentUrl: "",
     phone1: "", email: "", address: "", city: "",
     emergencyName: "", emergencyRelation: "", emergencyPhone: "",
     bloodType: "O+", lastMedicalCheck: "", medicalExpiry: "",
     medicalConditions: "None", allergies: "None",
     weight: "", height: "", reach: "", experience: "0",
-    styles: [] as string[], type: "Amateur", grade: "D",
-    weightClass: "", record: existingFighter?.record || "0-0-0",
+    styles: [] as string[], type: "Professional", grade: "D",
+    weightClass: "", record: "0-0-0",
     origin: isKunKhmer ? "Local" : "Foreigner",
     gym: "", clubId: "", trainer: "", promoter: "",
-    image: "", status: "Active",
+    image: "", status: "Draft",
     termsAccepted: false, consentCompete: false, medicalFitness: false,
   });
 
@@ -62,35 +61,59 @@ export function AddFighter() {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (isEditMode && existingFighter) {
-      setFighter({
-        nameEN: existingFighter.name || "",
-        nameKH: "",
-        alias: existingFighter.alias || "",
-        dob: "", pob: "",
-        nationality: existingFighter.origin === "Local" ? "Cambodia" : "",
-        gender: "Male",
-        idType: "National ID", idNumber: "", idExpiry: "", idDocumentUrl: "",
-        phone1: "", email: "", address: "", city: "",
-        emergencyName: "", emergencyRelation: "", emergencyPhone: "",
-        bloodType: "O+", lastMedicalCheck: "", medicalExpiry: "",
-        medicalConditions: "None", allergies: "None",
-        weight: existingFighter.weight?.toString() || "",
-        height: "", reach: "", experience: "0",
-        styles: existingFighter.style ? [existingFighter.style.toLowerCase()] : [],
-        type: existingFighter.type || "Amateur",
-        grade: existingFighter.grade || "D",
-        origin: existingFighter.origin || "Local",
-        gym: existingFighter.gym || "",
-        clubId: existingFighter.clubId || "",
-        trainer: "", promoter: "",
-        image: existingFighter.image || "",
-        status: existingFighter.status || "Active",
-        termsAccepted: true, consentCompete: true, medicalFitness: true,
-        record: existingFighter.record || "0-0-0",
-        weightClass: existingFighter.weightClass || "",
-      });
-      if (existingFighter.image) setPhotoPreview(existingFighter.image);
+    const fetchClubs = async () => {
+      try {
+        const list = await api.clubs.list();
+        setClubs(list);
+      } catch (err: any) {
+        toast.error("Failed to load clubs: " + err.message);
+      }
+    };
+    fetchClubs();
+  }, []);
+
+  useEffect(() => {
+    if (isEditMode && id) {
+      const fetchFighter = async () => {
+        try {
+          const f = await api.fighters.get(id);
+          if (f) {
+            setFighter({
+              nameEN: f.name || "",
+              nameKH: f.name_khmer || "",
+              alias: f.alias || "",
+              dob: f.date_of_birth ? f.date_of_birth.split("T")[0] : "",
+              pob: f.province || "",
+              nationality: f.nationality || "",
+              gender: f.gender || "Male",
+              idType: "National ID", idNumber: "", idExpiry: "", idDocumentUrl: "",
+              phone1: "", email: "", address: "", city: "",
+              emergencyName: "", emergencyRelation: "", emergencyPhone: "",
+              bloodType: "O+", lastMedicalCheck: "", medicalExpiry: "",
+              medicalConditions: "None", allergies: "None",
+              weight: f.current_weight?.toString() || "",
+              height: f.height?.toString() || "",
+              reach: "", experience: "0",
+              styles: f.style ? f.style.split(", ").map((s: string) => s.toLowerCase()) : [],
+              type: "Professional",
+              grade: f.grade || "D",
+              origin: f.nationality === "Cambodian" ? "Local" : "Foreigner",
+              gym: f.club_name || "",
+              clubId: f.club_id || "",
+              trainer: "", promoter: "",
+              image: f.image || "",
+              status: f.status || "Draft",
+              termsAccepted: true, consentCompete: true, medicalFitness: true,
+              record: f.record || "0-0-0",
+              weightClass: f.current_weight ? getWeightRangeCategory(parseFloat(f.current_weight)) : "",
+            });
+            if (f.image) setPhotoPreview(f.image);
+          }
+        } catch (err: any) {
+          toast.error("Failed to load fighter data: " + err.message);
+        }
+      };
+      fetchFighter();
     }
   }, [isEditMode, id]);
 
@@ -168,80 +191,40 @@ export function AddFighter() {
     if (error) setErrors((p) => ({ ...p, [field]: error }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fighter.clubId) { alert("Please select a Training Camp / Gym."); return; }
+    if (!fighter.clubId) { toast.error("Please select a Training Camp / Gym."); return; }
     if (!fighter.termsAccepted || !fighter.consentCompete || !fighter.medicalFitness) {
-      alert("Please accept all legal & compliance terms before saving."); return;
+      toast.error("Please accept all legal & compliance terms before saving."); return;
     }
     const finalImage = fighter.image || "https://images.unsplash.com/photo-1601039834001-7d32a613c60d?auto=format&fit=crop&q=80&w=600";
-    const fighterData = {
-      id: isEditMode && existingFighter ? existingFighter.id : `f${Date.now()}`,
-      name: fighter.nameEN || fighter.nameKH,
-      alias: fighter.alias || "The Warrior",
-      weight: parseFloat(fighter.weight) || 0,
-      gym: fighter.gym, clubId: fighter.clubId, origin: fighter.origin,
-      type: fighter.type, grade: fighter.grade,
-      weightClass: fighter.weightClass,
-      record: fighter.record || "0-0-0",
+    const payload = {
+      name: fighter.nameEN,
+      nameKhmer: fighter.nameKH,
+      alias: fighter.alias || null,
+      dateOfBirth: fighter.dob,
+      nationality: fighter.nationality || (isKunKhmer ? 'Cambodian' : 'Other'),
+      province: fighter.pob || null,
+      gender: fighter.gender as 'Male' | 'Female',
+      currentWeight: parseFloat(fighter.weight) || 0,
+      height: parseFloat(fighter.height) || 0,
+      clubId: fighter.clubId || null,
       style: fighter.styles.join(", "),
-      image: finalImage,
-      status: isEditMode && existingFighter ? fighter.status : "Inactive",
-      approvalStatus: isEditMode && existingFighter ? (existingFighter as any).approvalStatus || "approved" : "pending" as const,
+      grade: fighter.grade as 'A' | 'B' | 'C' | 'D'
     };
-    if (isEditMode && existingFighter) {
-      const idx = MOCK_FIGHTERS.findIndex((f) => f.id === existingFighter.id);
-      if (idx !== -1) MOCK_FIGHTERS[idx] = fighterData as any;
-      navigate(`/home/fighters/${existingFighter.id}`);
-    } else {
-      MOCK_FIGHTERS.push(fighterData as any);
-      
-      // Generate workflow request
-      addWorkflowRequest({
-        type: "fighter",
-        title: `Register Fighter: ${fighterData.name}`,
-        createdBy: currentUser?.id || "u3",
-        data: {
-          fighterName: fighterData.name,
-          nameKH: fighter.nameKH,
-          alias: fighterData.alias,
-          dob: fighter.dob,
-          pob: fighter.pob,
-          nationality: fighter.nationality,
-          gender: fighter.gender,
-          idType: fighter.idType,
-          idNumber: fighter.idNumber,
-          idExpiry: fighter.idExpiry,
-          phone: fighter.phone1,
-          email: fighter.email,
-          address: fighter.address,
-          city: fighter.city,
-          emergencyName: fighter.emergencyName,
-          emergencyRelation: fighter.emergencyRelation,
-          emergencyPhone: fighter.emergencyPhone,
-          bloodType: fighter.bloodType,
-          lastMedicalCheck: fighter.lastMedicalCheck,
-          medicalExpiry: fighter.medicalExpiry,
-          medicalConditions: fighter.medicalConditions,
-          allergies: fighter.allergies,
-          weight: fighterData.weight,
-          height: fighter.height ? `${fighter.height} cm` : undefined,
-          reach: fighter.reach ? `${fighter.reach} cm` : undefined,
-          experience: `${fighter.experience} years`,
-          styles: fighter.styles,
-          type: fighterData.type,
-          grade: fighterData.grade,
-          origin: fighterData.origin,
-          club: fighterData.gym,
-          clubId: fighterData.clubId,
-          trainer: fighter.trainer,
-          promoter: fighter.promoter,
-          documents: ["National ID Card", "Medical Certificate"]
-        }
-      });
-      
-      toast.success("Fighter registration submitted for KKF approval!");
-      navigate("/home/fighters");
+
+    try {
+      if (isEditMode && id) {
+        await api.fighters.update(id, payload);
+        toast.success("Fighter updated successfully!");
+        navigate(`/home/fighters/${id}`);
+      } else {
+        await api.fighters.create(payload);
+        toast.success("Fighter registered successfully!");
+        navigate("/home/fighters");
+      }
+    } catch (err: any) {
+      toast.error("Failed to save fighter: " + err.message);
     }
   };
 
@@ -747,13 +730,13 @@ export function AddFighter() {
                     <select
                       value={fighter.clubId}
                       onChange={(e) => {
-                        const club = MOCK_CLUBS.find((c) => c.id === e.target.value);
+                        const club = clubs.find((c) => c.id === e.target.value);
                         setFighter((p) => ({
                           ...p,
                           clubId: e.target.value,
                           gym: club ? club.name : "",
-                          trainer: club ? club.headCoach : "",
-                          promoter: p.promoter || (club ? club.headCoach : ""),
+                          trainer: club ? club.head_coach || club.headCoach : "",
+                          promoter: p.promoter || (club ? club.head_coach || club.headCoach : ""),
                         }));
                         setTouched((p) => ({ ...p, clubId: true }));
                       }}
@@ -761,7 +744,7 @@ export function AddFighter() {
                       className={`input-premium font-semibold text-slate-800 cursor-pointer appearance-none ${errors.clubId && touched.clubId ? "border-secondary!" : ""}`}
                     >
                       <option value="" disabled>Select Club / Gym</option>
-                      {MOCK_CLUBS.map((c) => (
+                      {clubs.map((c) => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
                     </select>

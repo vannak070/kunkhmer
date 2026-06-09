@@ -1,95 +1,141 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router";
 import { 
   ArrowLeft, Calendar, MapPin, Users, Shield, Award, 
   Trophy, Video, Save, CheckCircle, Clock, Edit2, X,
   User, Weight, Activity, FileText, Target, AlertCircle
 } from "lucide-react";
-import { MOCK_BATCHES, updateBatchStatusIfAllMatchesCompleted } from "../data/batches";
-import { MOCK_MATCHES } from "../data/mock";
+import { api } from "../utils/api";
 import { toast } from "sonner";
 
 export function MatchDetailView() {
   const { id } = useParams();
   const navigate = useNavigate();
   
-  // First try to find the match from MOCK_MATCHES (new data structure)
-  let foundMatch: any = MOCK_MATCHES.find(m => m.id === id);
-  let foundBatch: any = null;
-  let isFromMockMatches = !!foundMatch;
+  const [match, setMatch] = useState<any>(null);
+  const [batch, setBatch] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   
-  // If not found, try to find from batches (old data structure)
-  if (!foundMatch) {
-    for (const batch of MOCK_BATCHES) {
-      const match = batch.matches.find(m => m.id === id);
-      if (match) {
-        foundMatch = match;
-        foundBatch = batch;
-        break;
-      }
-    }
-  }
-
   const [isEditingResult, setIsEditingResult] = useState(false);
   const [result, setResult] = useState({
-    winner: foundMatch?.winner || "",
-    method: foundMatch?.winnerMethod || "",
-    round: foundMatch?.winnerRound || "",
-    highlightVideo: foundMatch?.highlightVideo || "",
+    winner: "",
+    method: "",
+    round: "",
+    highlightVideo: "",
   });
 
-  if (!foundMatch) {
-    return (
-      <div className="min-h-screen bg-[#F4F5F8] p-8 flex items-center justify-center">
-        <div className="bg-white rounded-2xl p-12 text-center shadow-lg">
-          <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-black text-[#1A1A24] mb-2">Match Not Found</h2>
-          <p className="text-[#707070] mb-6">The match you're looking for doesn't exist.</p>
-          <Link
-            to="/home/matches"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#0A3D91] text-white rounded-xl font-bold hover:bg-[#051C42] transition-all"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Matches
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    const loadData = async () => {
+      if (!id) return;
+      try {
+        const data = await api.matches.get(id);
+        if (data) {
+          const mappedMatch = {
+            ...data,
+            matchNumber: `MATCH-${data.id.slice(-6).toUpperCase()}`,
+            matchType: data.is_championship_bout ? "🏆 Championship" : "Standard Card",
+            rounds: data.rounds,
+            agreedWeight: data.agreed_weight,
+            fighterA: {
+              id: data.fighter_a_id,
+              name: data.fighter_a_name,
+              grade: data.fighter_a_grade,
+              weight: data.agreed_weight,
+              record: data.fighter_a_record,
+              clubName: data.club_a_name || "Independent",
+              image: data.fighter_a_image
+            },
+            fighterB: {
+              id: data.fighter_b_id,
+              name: data.fighter_b_name,
+              grade: data.fighter_b_grade,
+              weight: data.agreed_weight,
+              record: data.fighter_b_record,
+              clubName: data.club_b_name || "Independent",
+              image: data.fighter_b_image
+            },
+            refereeName: data.referee_name || null,
+            judgeNames: data.judge_names || [],
+            status: data.status,
+            winner: data.winner_id === data.fighter_a_id 
+              ? data.fighter_a_name 
+              : data.winner_id === data.fighter_b_id 
+              ? data.fighter_b_name 
+              : data.winner_method === "Draw" || data.winner_method === "No Contest"
+              ? data.winner_method
+              : "",
+            winnerId: data.winner_id,
+            winnerMethod: data.winner_method,
+            winnerRound: data.winner_round,
+            highlightVideo: data.highlight_video || ""
+          };
+          setMatch(mappedMatch);
+          
+          setResult({
+            winner: mappedMatch.winnerId || (mappedMatch.winner === "Draw" || mappedMatch.winner === "No Contest" ? mappedMatch.winner : ""),
+            method: mappedMatch.winnerMethod || "",
+            round: mappedMatch.winnerRound ? String(mappedMatch.winnerRound) : "",
+            highlightVideo: mappedMatch.highlightVideo || "",
+          });
 
-  const match = foundMatch;
-  const batch = foundBatch;
-
-  const handleSaveResult = () => {
-    // Update the match with new result data
-    match.winner = result.winner;
-    match.winnerMethod = result.method;
-    match.winnerRound = result.round ? parseInt(result.round) : undefined;
-    match.highlightVideo = result.highlightVideo;
-    match.status = result.winner ? "Completed" : match.status;
-    
-    toast.success("✅ Match result updated successfully!");
-    setIsEditingResult(false);
-    
-    // Check if all matches in batch are completed (only for batch matches)
-    if (batch) {
-      const wasAutoCompleted = updateBatchStatusIfAllMatchesCompleted(batch);
-      if (wasAutoCompleted) {
-        toast.success(`🏆 Batch ${batch.batchNumber} automatically marked as Completed!`, {
-          duration: 5000
-        });
+          if (data.sub_event_id) {
+            const batchData = await api.batches.get(data.sub_event_id);
+            setBatch(batchData);
+          }
+        }
+      } catch (err: any) {
+        console.error(err);
+        toast.error("Failed to load match details from database");
+      } finally {
+        setLoading(false);
       }
+    };
+    loadData();
+  }, [id]);
+
+  const handleSaveResult = async () => {
+    if (!id || !match) return;
+
+    try {
+      let winnerId: string | null = null;
+      let winnerMethod = result.method;
+      
+      if (result.winner === match.fighterA.id) {
+        winnerId = match.fighterA.id;
+      } else if (result.winner === match.fighterB.id) {
+        winnerId = match.fighterB.id;
+      } else if (result.winner === "Draw" || result.winner === "No Contest") {
+        winnerId = null;
+        winnerMethod = result.winner;
+      }
+
+      await api.matches.saveResult(id, {
+        winnerId,
+        method: winnerMethod || "Decision",
+        round: result.round ? parseInt(result.round) : 0,
+        duration: "0:00",
+      });
+
+      if (result.highlightVideo !== match.highlightVideo) {
+        await api.matches.update(id, { highlightVideo: result.highlightVideo });
+      }
+
+      toast.success("✅ Match result updated successfully!");
+      setIsEditingResult(false);
+      
+      // Navigate back to match detail
+      navigate(`/home/match/${id}`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to save match result");
     }
-    
-    // Navigate back to match detail
-    navigate(`/match/${match.id}`);
   };
 
   const handleCancelEdit = () => {
     setResult({
-      winner: match?.winner || "",
+      winner: match?.winnerId || (match?.winner === "Draw" || match?.winner === "No Contest" ? match?.winner : ""),
       method: match?.winnerMethod || "",
-      round: match?.winnerRound || "",
+      round: match?.winnerRound ? String(match?.winnerRound) : "",
       highlightVideo: match?.highlightVideo || "",
     });
     setIsEditingResult(false);
@@ -107,8 +153,36 @@ export function MatchDetailView() {
       "Completed": { bg: "bg-green-50", text: "text-green-700", icon: "✓", label: "COMPLETED" },
       "Scheduled": { bg: "bg-blue-50", text: "text-blue-800", icon: "📅", label: "SCHEDULED" },
     };
-    return configs[status] || { bg: "bg-gray-50", text: "text-gray-600", icon: "", label: status.toUpperCase() };
+    return configs[status] || { bg: "bg-gray-50", text: "text-gray-600", icon: "", label: (status || "").toUpperCase() };
   };
+
+  if (loading) {
+    return (
+      <div className="text-center py-16">
+        <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-sm text-muted-foreground font-semibold">Loading details from database...</p>
+      </div>
+    );
+  }
+
+  if (!match) {
+    return (
+      <div className="min-h-screen bg-[#F4F5F8] p-8 flex items-center justify-center">
+        <div className="bg-white rounded-2xl p-12 text-center shadow-lg">
+          <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-black text-[#1A1A24] mb-2">Match Not Found</h2>
+          <p className="text-[#707070] mb-6">The match you're looking for doesn't exist.</p>
+          <Link
+            to="/home/matches"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#0A3D91] text-white rounded-xl font-bold hover:bg-[#051C42] transition-all"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Matches
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const statusConfig = getStatusConfig(match.status);
 
@@ -385,8 +459,8 @@ export function MatchDetailView() {
                       className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl font-bold text-[#1A1A24] focus:border-[#0A3D91] focus:outline-none"
                     >
                       <option value="">Select Winner</option>
-                      <option value={match.fighterA.name}>{match.fighterA.name} (Red Corner)</option>
-                      <option value={match.fighterB.name}>{match.fighterB.name} (Blue Corner)</option>
+                      <option value={match.fighterA.id}>{match.fighterA.name} (Red Corner)</option>
+                      <option value={match.fighterB.id}>{match.fighterB.name} (Blue Corner)</option>
                       <option value="Draw">Draw</option>
                       <option value="No Contest">No Contest</option>
                     </select>

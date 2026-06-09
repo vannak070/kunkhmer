@@ -1,54 +1,193 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router";
 import { 
   ArrowLeft, Calendar, MapPin, Activity, FileText, 
-  Trophy, Users, Shield, Edit2, Save, X, Video, Clock
+  Trophy, Users, Shield, Edit2, Save, X, Video, Clock, AlertCircle
 } from "lucide-react";
-import { MOCK_MATCHES } from "../data/mock";
-import { MOCK_JUDGES, MOCK_REFEREES } from "../data/officials";
+import { api } from "../utils/api";
+import { MOCK_REFEREES, MOCK_JUDGES } from "../data/officials";
 import { toast } from "sonner";
+import { clsx } from "clsx";
 
 export function MatchDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const match = MOCK_MATCHES.find((m) => m.id === id) || MOCK_MATCHES[0];
-
-  // Mock data: In real app, these would come from match.referee and match.judges
-  // Check if match has officials assigned (in real app: match.referee and match.judges)
-  const hasOfficials = true; // Set to false to show "no officials" state
-  const assignedReferee = hasOfficials ? MOCK_REFEREES[0] : null;
-  const assignedJudges = hasOfficials ? [MOCK_JUDGES[0], MOCK_JUDGES[1], MOCK_JUDGES[2]] : [];
+  const [match, setMatch] = useState<any>(null);
+  const [batch, setBatch] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   // Result editing state
   const [isEditingResult, setIsEditingResult] = useState(false);
   const [result, setResult] = useState({
-    winner: match.result?.winner || "",
-    method: match.result?.method || "",
-    round: match.result?.round?.toString() || "",
+    winner: "",
+    method: "",
+    round: "",
     highlightVideo: "",
   });
 
-  // Get match type badge
+  useEffect(() => {
+    const loadData = async () => {
+      if (!id) return;
+      try {
+        const data = await api.matches.get(id);
+        if (data) {
+          const mappedMatch = {
+            ...data,
+            matchNumber: `MATCH-${data.id.slice(-6).toUpperCase()}`,
+            matchType: data.is_championship_bout ? "🏆 Championship" : "Standard Card",
+            rounds: data.rounds,
+            agreedWeight: data.agreed_weight,
+            fighterA: {
+              id: data.fighter_a_id,
+              name: data.fighter_a_name,
+              grade: data.fighter_a_grade,
+              weight: data.agreed_weight,
+              record: data.fighter_a_record,
+              clubName: data.club_a_name || "Independent",
+              image: data.fighter_a_image
+            },
+            fighterB: {
+              id: data.fighter_b_id,
+              name: data.fighter_b_name,
+              grade: data.fighter_b_grade,
+              weight: data.agreed_weight,
+              record: data.fighter_b_record,
+              clubName: data.club_b_name || "Independent",
+              image: data.fighter_b_image
+            },
+            refereeName: data.referee_name || null,
+            judgeNames: data.judge_names || [],
+            status: data.status,
+            result: data.winner_id || data.winner_method ? {
+              winner: data.winner_id === data.fighter_a_id 
+                ? data.fighter_a_name 
+                : data.winner_id === data.fighter_b_id 
+                ? data.fighter_b_name 
+                : data.winner_method === "Draw" || data.winner_method === "No Contest"
+                ? data.winner_method
+                : "",
+              winnerId: data.winner_id,
+              method: data.winner_method,
+              round: data.winner_round,
+            } : null,
+            highlightVideo: data.highlight_video || ""
+          };
+          setMatch(mappedMatch);
+          
+          setResult({
+            winner: mappedMatch.result?.winnerId || (mappedMatch.result?.winner === "Draw" || mappedMatch.result?.winner === "No Contest" ? mappedMatch.result?.winner : ""),
+            method: mappedMatch.result?.method || "",
+            round: mappedMatch.result?.round ? String(mappedMatch.result?.round) : "",
+            highlightVideo: mappedMatch.highlightVideo || "",
+          });
+
+          if (data.sub_event_id) {
+            const batchData = await api.batches.get(data.sub_event_id);
+            setBatch(batchData);
+          }
+        }
+      } catch (err: any) {
+        console.error(err);
+        toast.error("Failed to load match details from database");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, [id]);
+
+  const assignedReferee = match?.referee_id 
+    ? MOCK_REFEREES.find(r => r.id === match.referee_id) || { name: match.refereeName || "Assigned Referee", grade: "Class A", experience: "50+ fights" }
+    : match?.refereeName 
+    ? { name: match.refereeName, grade: "Class A", experience: "50+ fights" }
+    : null;
+
+  const assignedJudges = match?.judge_ids && match.judge_ids.length > 0
+    ? match.judge_ids.map((jid: string, idx: number) => 
+        MOCK_JUDGES.find(j => j.id === jid) || { id: jid, name: `Judge ${idx + 1}`, grade: "Class A", experience: "30+ fights" }
+      )
+    : [MOCK_JUDGES[0], MOCK_JUDGES[1], MOCK_JUDGES[2]];
+
   const getMatchTypeBadge = () => {
-    if (match.status === "Completed") return "Championship";
+    if (match?.is_championship_bout) return "Championship";
     return "Ranking Fight";
   };
 
-  const handleSaveResult = () => {
-    // Update the match with new result data (in real app, this would be an API call)
-    toast.success("✅ Match result updated successfully!");
-    setIsEditingResult(false);
+  const handleSaveResult = async () => {
+    if (!id || !match) return;
+
+    try {
+      let winnerId: string | null = null;
+      let winnerMethod = result.method;
+      
+      if (result.winner === match.fighterA.id) {
+        winnerId = match.fighterA.id;
+      } else if (result.winner === match.fighterB.id) {
+        winnerId = match.fighterB.id;
+      } else if (result.winner === "Draw" || result.winner === "No Contest") {
+        winnerId = null;
+        winnerMethod = result.winner;
+      }
+
+      await api.matches.saveResult(id, {
+        winnerId,
+        method: winnerMethod || "Decision",
+        round: result.round ? parseInt(result.round) : 0,
+        duration: "0:00",
+      });
+
+      if (result.highlightVideo !== match.highlightVideo) {
+        await api.matches.update(id, { highlightVideo: result.highlightVideo });
+      }
+
+      toast.success("✅ Match result updated successfully!");
+      setIsEditingResult(false);
+      
+      // Reload match details
+      window.location.reload();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to save match result");
+    }
   };
 
   const handleCancelEdit = () => {
     setResult({
-      winner: match.result?.winner || "",
-      method: match.result?.method || "",
-      round: match.result?.round?.toString() || "",
-      highlightVideo: "",
+      winner: match?.result?.winnerId || (match?.result?.winner === "Draw" || match?.result?.winner === "No Contest" ? match?.result?.winner : ""),
+      method: match?.result?.method || "",
+      round: match?.result?.round ? String(match?.result?.round) : "",
+      highlightVideo: match?.highlightVideo || "",
     });
     setIsEditingResult(false);
   };
+
+  if (loading) {
+    return (
+      <div className="text-center py-16">
+        <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-sm text-muted-foreground font-semibold">Loading match details from database...</p>
+      </div>
+    );
+  }
+
+  if (!match) {
+    return (
+      <div className="min-h-screen bg-[#F4F5F8] p-8 flex items-center justify-center">
+        <div className="bg-white rounded-2xl p-12 text-center shadow-lg">
+          <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-black text-[#1A1A24] mb-2">Match Not Found</h2>
+          <p className="text-[#707070] mb-6">The match you're looking for doesn't exist.</p>
+          <Link
+            to="/home/matches"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#0A3D91] text-white rounded-xl font-bold hover:bg-[#051C42] transition-all"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Matches
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 animate-fadeIn">
@@ -327,8 +466,8 @@ export function MatchDetail() {
                       className="input-premium font-semibold text-slate-700"
                     >
                       <option value="">Select Winner</option>
-                      <option value={match.fighterA.name}>{match.fighterA.name} (Red Corner)</option>
-                      <option value={match.fighterB.name}>{match.fighterB.name} (Blue Corner)</option>
+                      <option value={match.fighterA.id}>{match.fighterA.name} (Red Corner)</option>
+                      <option value={match.fighterB.id}>{match.fighterB.name} (Blue Corner)</option>
                       <option value="Draw">Draw</option>
                       <option value="No Contest">No Contest</option>
                     </select>

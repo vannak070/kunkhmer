@@ -5,9 +5,7 @@ import {
   Mail, ArrowLeft, Save, User, Phone
 } from "lucide-react";
 import { toast } from "sonner";
-import { 
-  BROADCAST_STATIONS, SPONSORS, type BroadcastStation, type Sponsor 
-} from "../data/masterData";
+import { api } from "../utils/api";
 
 // Angkor Wat watermark for premium branding
 const AngkorWatWatermark = () => (
@@ -201,8 +199,10 @@ export function StrategicPartners() {
   const isEditView = pathname.endsWith("/edit");
   const isFormView = isCreateView || isEditView;
 
-  const [trigger, setTrigger] = useState(0);
-  const forceUpdate = () => setTrigger(t => t + 1);
+  // State arrays for database records
+  const [sponsors, setSponsors] = useState<any[]>([]);
+  const [broadcastStations, setBroadcastStations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Form states
   const [partnerName, setPartnerName] = useState("");
@@ -229,33 +229,73 @@ export function StrategicPartners() {
   const isBroadcasterView = partnerType === "broadcasters";
   const type: PartnerType = isBroadcasterView ? "BROADCAST_PARTNERS" : "OFFICIAL_SPONSORS";
 
+  const loadData = async () => {
+    try {
+      const sponsorsData = await api.settings.listSponsors();
+      const stationsData = await api.settings.listBroadcastStations();
+      
+      const mappedSponsors = (sponsorsData || []).map((s: any) => ({
+        ...s,
+        logoUrl: s.logo_url || "",
+        contactPerson: s.contact_person || "",
+        contactEmail: s.contact_email || "",
+        contactPhone: s.contact_phone || "",
+        websiteUrl: s.website_url || "",
+        active: s.active !== false
+      }));
+
+      const mappedStations = (stationsData || []).map((b: any) => ({
+        ...b,
+        logoUrl: b.logo_url || "",
+        streamUrl: b.stream_url || "",
+        contactPerson: b.contact_person || "",
+        contactEmail: b.contact_email || "",
+        contactPhone: b.contact_phone || "",
+        websiteUrl: b.website_url || "",
+        active: b.active !== false
+      }));
+
+      setSponsors(mappedSponsors);
+      setBroadcastStations(mappedStations);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load partners data from database");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
   // Compute metric stats
-  const totalBroadcasters = BROADCAST_STATIONS.length;
-  const nationalBroadcasters = BROADCAST_STATIONS.filter(b => b.reach === "National").length;
-  const digitalBroadcasters = BROADCAST_STATIONS.filter(b => b.type === "Digital Platform").length;
+  const totalBroadcasters = broadcastStations.length;
+  const nationalBroadcasters = broadcastStations.filter(b => b.reach === "National").length;
+  const digitalBroadcasters = broadcastStations.filter(b => b.type === "Digital Platform").length;
   
-  const totalSponsors = SPONSORS.length;
-  const platinumSponsors = SPONSORS.filter(s => s.tier === "Platinum").length;
-  const goldSponsors = SPONSORS.filter(s => s.tier === "Gold").length;
+  const totalSponsors = sponsors.length;
+  const platinumSponsors = sponsors.filter(s => s.tier === "Platinum").length;
+  const goldSponsors = sponsors.filter(s => s.tier === "Gold").length;
 
   useEffect(() => {
     if (partnerId) {
-      const list = isBroadcasterView ? BROADCAST_STATIONS : SPONSORS;
+      const list = isBroadcasterView ? broadcastStations : sponsors;
       const found = list.find(p => p.id === partnerId);
       if (found) {
         setPartnerName(found.name);
-        setLogoUrl(found.image || found.logoUrl || "");
+        setLogoUrl(found.image || found.logoUrl || found.logo_url || "");
         setContactPerson(found.contactPerson || "");
         setContactEmail(found.contactEmail || "");
         setContactPhone(found.contactPhone || "");
         setWebsiteUrl(found.websiteUrl || "");
         setPartnerActive(found.active !== false);
         if (isBroadcasterView) {
-          setBroadcasterType((found as BroadcastStation).type);
-          setBroadcasterReach((found as BroadcastStation).reach);
+          setBroadcasterType(found.type || "Cable TV");
+          setBroadcasterReach(found.reach || "National");
         } else {
-          setSponsorIndustry((found as Sponsor).industry);
-          setSponsorTier((found as Sponsor).tier);
+          setSponsorIndustry(found.industry || "");
+          setSponsorTier(found.tier || "Gold");
         }
       }
     } else {
@@ -271,81 +311,37 @@ export function StrategicPartners() {
       setSponsorIndustry("");
       setSponsorTier("Gold");
     }
-  }, [partnerId, isBroadcasterView]);
+  }, [partnerId, isBroadcasterView, sponsors, broadcastStations]);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm(`⚠️ Are you sure you want to delete this ${isBroadcasterView ? "broadcaster" : "sponsor"}?`)) return;
-    
-    if (isBroadcasterView) {
-      const idx = BROADCAST_STATIONS.findIndex(bs => bs.id === id);
-      if (idx !== -1) {
-        BROADCAST_STATIONS.splice(idx, 1);
-        localStorage.setItem("kkf_broadcast_stations", JSON.stringify(BROADCAST_STATIONS));
+    try {
+      if (isBroadcasterView) {
+        await api.settings.deleteBroadcastStation(id);
         toast.success("🗑️ Broadcast station deleted successfully.");
-      }
-    } else {
-      const idx = SPONSORS.findIndex(sp => sp.id === id);
-      if (idx !== -1) {
-        SPONSORS.splice(idx, 1);
-        localStorage.setItem("kkf_sponsors", JSON.stringify(SPONSORS));
+      } else {
+        await api.settings.deleteSponsor(id);
         toast.success("🗑️ Sponsor deleted successfully.");
       }
+      loadData();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete partner");
     }
-    forceUpdate();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!partnerName.trim()) return;
 
     const isEditMode = !!partnerId;
 
-    if (!isEditMode) {
-      if (isBroadcasterView) {
-        const newStation: BroadcastStation = {
-          id: `bs-${Date.now()}`,
-          name: partnerName.trim(),
-          logo: "📺",
-          image: logoUrl.trim() || undefined,
-          type: broadcasterType,
-          reach: broadcasterReach,
-          contactPerson: contactPerson.trim() || undefined,
-          contactEmail: contactEmail.trim() || undefined,
-          contactPhone: contactPhone.trim() || undefined,
-          websiteUrl: websiteUrl.trim() || undefined,
-          active: partnerActive
-        };
-        BROADCAST_STATIONS.unshift(newStation);
-        localStorage.setItem("kkf_broadcast_stations", JSON.stringify(BROADCAST_STATIONS));
-        toast.success("✅ New broadcasting partner added!");
-      } else {
-        const newSponsor: Sponsor = {
-          id: `sp-${Date.now()}`,
-          name: partnerName.trim(),
-          logo: "🤝",
-          image: logoUrl.trim() || undefined,
-          industry: sponsorIndustry.trim() || "Corporate Partner",
-          tier: sponsorTier,
-          contactPerson: contactPerson.trim() || undefined,
-          contactEmail: contactEmail.trim() || undefined,
-          contactPhone: contactPhone.trim() || undefined,
-          websiteUrl: websiteUrl.trim() || undefined,
-          active: partnerActive
-        };
-        SPONSORS.unshift(newSponsor);
-        localStorage.setItem("kkf_sponsors", JSON.stringify(SPONSORS));
-        toast.success("✅ New official sponsor added!");
-      }
-    } else {
-      // EDIT MODE
-      const targetId = partnerId;
-      if (isBroadcasterView) {
-        const idx = BROADCAST_STATIONS.findIndex(bs => bs.id === targetId);
-        if (idx !== -1) {
-          BROADCAST_STATIONS[idx] = {
-            ...BROADCAST_STATIONS[idx],
+    try {
+      if (!isEditMode) {
+        if (isBroadcasterView) {
+          await api.settings.createBroadcastStation({
             name: partnerName.trim(),
-            image: logoUrl.trim() || undefined,
+            logoUrl: logoUrl.trim() || undefined,
             type: broadcasterType,
             reach: broadcasterReach,
             contactPerson: contactPerson.trim() || undefined,
@@ -353,17 +349,12 @@ export function StrategicPartners() {
             contactPhone: contactPhone.trim() || undefined,
             websiteUrl: websiteUrl.trim() || undefined,
             active: partnerActive
-          };
-          localStorage.setItem("kkf_broadcast_stations", JSON.stringify(BROADCAST_STATIONS));
-          toast.success("✅ Broadcaster details updated successfully.");
-        }
-      } else {
-        const idx = SPONSORS.findIndex(sp => sp.id === targetId);
-        if (idx !== -1) {
-          SPONSORS[idx] = {
-            ...SPONSORS[idx],
+          });
+          toast.success("✅ New broadcasting partner added!");
+        } else {
+          await api.settings.createSponsor({
             name: partnerName.trim(),
-            image: logoUrl.trim() || undefined,
+            logoUrl: logoUrl.trim() || undefined,
             industry: sponsorIndustry.trim() || "Corporate Partner",
             tier: sponsorTier,
             contactPerson: contactPerson.trim() || undefined,
@@ -371,15 +362,45 @@ export function StrategicPartners() {
             contactPhone: contactPhone.trim() || undefined,
             websiteUrl: websiteUrl.trim() || undefined,
             active: partnerActive
-          };
-          localStorage.setItem("kkf_sponsors", JSON.stringify(SPONSORS));
+          });
+          toast.success("✅ New official sponsor added!");
+        }
+      } else {
+        // EDIT MODE
+        if (isBroadcasterView) {
+          await api.settings.updateBroadcastStation(partnerId, {
+            name: partnerName.trim(),
+            logoUrl: logoUrl.trim() || undefined,
+            type: broadcasterType,
+            reach: broadcasterReach,
+            contactPerson: contactPerson.trim() || undefined,
+            contactEmail: contactEmail.trim() || undefined,
+            contactPhone: contactPhone.trim() || undefined,
+            websiteUrl: websiteUrl.trim() || undefined,
+            active: partnerActive
+          });
+          toast.success("✅ Broadcaster details updated successfully.");
+        } else {
+          await api.settings.updateSponsor(partnerId, {
+            name: partnerName.trim(),
+            logoUrl: logoUrl.trim() || undefined,
+            industry: sponsorIndustry.trim() || "Corporate Partner",
+            tier: sponsorTier,
+            contactPerson: contactPerson.trim() || undefined,
+            contactEmail: contactEmail.trim() || undefined,
+            contactPhone: contactPhone.trim() || undefined,
+            websiteUrl: websiteUrl.trim() || undefined,
+            active: partnerActive
+          });
           toast.success("✅ Sponsor details updated successfully.");
         }
       }
+      navigate(`/home/strategic-partners/${partnerType}`);
+      loadData();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to save strategic partner");
     }
-
-    navigate(`/home/strategic-partners/${partnerType}`);
-    forceUpdate();
   };
 
   if (isFormView) {
@@ -720,8 +741,12 @@ export function StrategicPartners() {
 
       {/* RENDER ACTIVE GRID WALL */}
       <div className="relative z-10">
-        {isBroadcasterView ? (
-          BROADCAST_STATIONS.length === 0 ? (
+        {loading ? (
+          <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center shadow-sm flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          </div>
+        ) : isBroadcasterView ? (
+          broadcastStations.length === 0 ? (
             <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center shadow-sm">
               <Tv className="w-12 h-12 text-slate-300 mx-auto mb-3" />
               <p className="text-slate-500 font-bold text-sm">No broadcasters registered</p>
@@ -729,7 +754,7 @@ export function StrategicPartners() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {BROADCAST_STATIONS.map(partner => (
+              {broadcastStations.map(partner => (
                 <GridPartnerCard 
                   key={partner.id} 
                   partner={partner} 
@@ -741,7 +766,7 @@ export function StrategicPartners() {
             </div>
           )
         ) : (
-          SPONSORS.length === 0 ? (
+          sponsors.length === 0 ? (
             <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center shadow-sm">
               <Trophy className="w-12 h-12 text-slate-300 mx-auto mb-3" />
               <p className="text-slate-500 font-bold text-sm">No sponsors registered</p>
@@ -749,7 +774,7 @@ export function StrategicPartners() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {SPONSORS.map(partner => (
+              {sponsors.map(partner => (
                 <GridPartnerCard 
                   key={partner.id} 
                   partner={partner} 

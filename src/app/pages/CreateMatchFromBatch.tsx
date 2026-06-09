@@ -1,14 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import {
   ArrowLeft, Users, CheckCircle, AlertCircle, Box, Scale,
   Trophy, Crown, ChevronRight, ChevronLeft, Search, X,
   Weight, Swords, FileText, Star
 } from "lucide-react";
-import { MOCK_BATCHES } from "../data/batches";
-import { MOCK_FIGHTERS } from "../data/mock";
+import { api } from "../utils/api";
 import { GLOVE_SIZES, getApprovedGloveTypes } from "../data/masterData";
-import { WEIGHT_CLASSES, getWeightClassName, MOCK_CHAMPIONS } from "../data/champion";
+import { WEIGHT_CLASSES, getWeightClassName } from "../data/champion";
 import { toast } from "sonner";
 import { clsx } from "clsx";
 
@@ -18,7 +17,11 @@ export function CreateMatchFromBatch() {
   const navigate = useNavigate();
   const { batchId } = useParams();
 
-  const batch = MOCK_BATCHES.find(b => b.id === batchId);
+  const [batch, setBatch] = useState<any>(null);
+  const [fighters, setFighters] = useState<any[]>([]);
+  const [champions, setChampions] = useState<any[]>([]);
+  const [matches, setMatches] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Multi-step state
   const [currentStep, setCurrentStep] = useState(1);
@@ -44,36 +47,76 @@ export function CreateMatchFromBatch() {
   const [redSearch, setRedSearch] = useState("");
   const [blueSearch, setBlueSearch] = useState("");
 
+  useEffect(() => {
+    const loadData = async () => {
+      if (!batchId) return;
+      try {
+        const batchData = await api.batches.get(batchId);
+        const fightersData = await api.fighters.list();
+        const championsData = await api.champions.list();
+        const matchesData = await api.matches.list(batchId);
+
+        setBatch(batchData);
+        
+        // Map fighters from DB schema columns
+        const mappedFighters = (fightersData || []).map((f: any) => ({
+          ...f,
+          weight: parseFloat(f.current_weight) || 0,
+          gym: f.club_name || "Independent",
+        }));
+        setFighters(mappedFighters);
+
+        // Map champions from DB schema columns
+        const mappedChampions = (championsData || []).map((c: any) => ({
+          ...c,
+          titleName: c.title_name,
+          weightClass: parseFloat(c.weight_class) || 0,
+          currentHolderName: c.current_holder_name_db || c.current_holder_name || "Vacant",
+          status: c.status,
+        }));
+        setChampions(mappedChampions);
+        
+        setMatches(matchesData || []);
+      } catch (err: any) {
+        console.error(err);
+        toast.error("Failed to load match creation data from database");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, [batchId]);
+
   // ── Derived data ──────────────────────────────────────────────────────────
   const approvedGloves = getApprovedGloveTypes();
 
   // Filter fighters within ±WEIGHT_TOLERANCE of the selected weight class
   const eligibleFighters = useMemo(() => {
-    return MOCK_FIGHTERS.filter(f => {
+    return fighters.filter(f => {
       const diff = Math.abs(f.weight - matchData.weightClass);
       return diff <= WEIGHT_TOLERANCE && f.status === "Active";
     });
-  }, [matchData.weightClass]);
+  }, [fighters, matchData.weightClass]);
 
   const isFighterAvailable = (fighterId: string): { available: boolean; reason?: string } => {
     if (!fighterId) return { available: true };
-    const fighter = MOCK_FIGHTERS.find(f => f.id === fighterId);
+    const fighter = fighters.find(f => f.id === fighterId);
     if (!fighter) return { available: false, reason: "Not found" };
     if (fighter.status === "Injured")   return { available: false, reason: "Injured" };
     if (fighter.status === "Suspended") return { available: false, reason: "Suspended" };
     if (fighter.status === "Inactive")  return { available: false, reason: "Inactive" };
     if (fighter.status !== "Active")    return { available: false, reason: fighter.status };
-    if (batch?.matches?.some(m => m.fighterA.id === fighterId || m.fighterB.id === fighterId)) {
+    if (matches.some(m => m.fighter_a_id === fighterId || m.fighter_b_id === fighterId)) {
       return { available: false, reason: "Already in batch" };
     }
     return { available: true };
   };
 
-  const championsForWeight = MOCK_CHAMPIONS.filter(
+  const championsForWeight = champions.filter(
     c => c.weightClass === matchData.weightClass && c.status === "Active"
   );
 
-  const getFighterById = (id: string) => MOCK_FIGHTERS.find(f => f.id === id);
+  const getFighterById = (id: string) => fighters.find(f => f.id === id);
   const fighterA = getFighterById(matchData.fighterAId);
   const fighterB = getFighterById(matchData.fighterBId);
 
@@ -99,10 +142,34 @@ export function CreateMatchFromBatch() {
   };
   const handlePrevStep = () => setCurrentStep(p => Math.max(p - 1, 1));
 
-  const handleProposeMatch = () => {
-    if (!canSubmit || !fighterA || !fighterB) return;
-    toast.success(`✅ Match created: ${fighterA.name} vs ${fighterB.name}`);
-    navigate(`/home/batches/${batchId}`);
+  const handleProposeMatch = async () => {
+    if (!canSubmit || !fighterA || !fighterB || !batch) return;
+    try {
+      await api.matches.create({
+        eventId: batch.event_id,
+        subEventId: batch.id,
+        fighterAId: matchData.fighterAId,
+        fighterBId: matchData.fighterBId,
+        rounds: matchData.rounds,
+        roundTime: matchData.roundTime,
+        knockdownLimit: matchData.knockdownLimit,
+        agreedWeight: matchData.weightClass,
+        gloveSize: matchData.gloveSize,
+        gloveBrand: matchData.gloveType,
+        status: "Draft",
+        proposalStatus: "draft",
+        clubAResponse: "pending",
+        clubBResponse: "pending",
+        refereeId: null,
+        judgeIds: null,
+      });
+
+      toast.success(`✅ Match created: ${fighterA.name} vs ${fighterB.name}`);
+      navigate(`/home/batches/${batchId}`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to create match in database");
+    }
   };
 
   // Reset fighters when weight class changes
@@ -117,6 +184,15 @@ export function CreateMatchFromBatch() {
     { number: 2, title: "Fighter Selection", icon: Users },
     { number: 3, title: "Review & Confirm",  icon: CheckCircle },
   ];
+
+  if (loading) {
+    return (
+      <div className="text-center py-16">
+        <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-sm text-muted-foreground font-semibold">Loading match details...</p>
+      </div>
+    );
+  }
 
   if (!batch) {
     return (
@@ -139,7 +215,7 @@ export function CreateMatchFromBatch() {
     isOpponent,
     onSelect,
   }: {
-    fighter: typeof MOCK_FIGHTERS[0];
+    fighter: any;
     corner: "red" | "blue";
     isSelected: boolean;
     isOpponent: boolean;
@@ -314,7 +390,7 @@ export function CreateMatchFromBatch() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {WEIGHT_CLASSES.map(weight => {
                   // Count eligible fighters for this weight class
-                  const eligible = MOCK_FIGHTERS.filter(f =>
+                  const eligible = fighters.filter(f =>
                     Math.abs(f.weight - weight) <= WEIGHT_TOLERANCE && f.status === "Active"
                   ).length;
                   return (

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Save, Upload, Building2, MapPin, X, ChevronDown, Search } from "lucide-react";
 import { Link, useNavigate } from "react-router";
-import { MOCK_CLUBS } from "../data/mock";
+import { api } from "../utils/api";
 import { addWorkflowRequest } from "../data/workflow";
 import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
@@ -278,41 +278,24 @@ export function AddClub() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const clubData = {
-      id: `c${Date.now()}`,
-      name: formData.name,
-      location: formData.location,
-      headCoach: formData.headCoach,
-      activeFighters: 0,
-      rating: 5.0,
-      status: "pending",
-      image: formData.image || "https://images.unsplash.com/photo-1540206351-d6465b3ac5c1?q=80&w=2940&auto=format&fit=crop"
-    };
+    try {
+      await api.clubs.create({
+        name: formData.name,
+        location: formData.location,
+        headCoach: formData.headCoach,
+        status: formData.status || "active",
+        rating: 5.0,
+        image: formData.image || "https://images.unsplash.com/photo-1540206351-d6465b3ac5c1?q=80&w=2940&auto=format&fit=crop"
+      });
 
-    MOCK_CLUBS.push(clubData);
-    
-    // Generate workflow request
-    addWorkflowRequest({
-      type: "club",
-      title: `Register Club: ${clubData.name}`,
-      createdBy: currentUser?.id || "u5",
-      data: {
-        clubName: clubData.name,
-        headCoach: clubData.headCoach,
-        location: clubData.location,
-        phone: formData.phone,
-        email: formData.email,
-        established: formData.established,
-        description: formData.description,
-        verificationDocs: ["Business License", "Facility Photos"]
-      }
-    });
-
-    toast.success("Club registration submitted for KKF approval!");
-    navigate("/home/clubs");
+      toast.success("Club created successfully in database!");
+      navigate("/home/clubs");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create club");
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

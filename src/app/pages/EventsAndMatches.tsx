@@ -1,31 +1,67 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { Plus, Calendar, MapPin, Tv, DollarSign, Search, Trophy, Clock, CheckCircle, AlertTriangle, TrendingUp, Users, ListChecks, Building2, Crown, ArrowRight } from "lucide-react";
-import { MOCK_EVENTS, MOCK_SUB_EVENTS } from "../data/mock";
-import { getBroadcastStationById, getSponsorById } from "../data/masterData";
+import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
+import { toast } from "sonner";
 
 export function EventsAndMatches() {
   const permissions = usePermissions();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [events, setEvents] = useState<any[]>([]);
+  const [subEvents, setSubEvents] = useState<any[]>([]);
+  const [matches, setMatches] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const eventsList = await api.events.list();
+      const subEventsList = await api.batches.list();
+      const matchesList = await api.matches.list();
+      
+      setEvents(eventsList);
+      setSubEvents(subEventsList);
+      setMatches(matchesList);
+    } catch (err: any) {
+      toast.error("Failed to load events: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Enhanced events with metadata
-  const enhancedEvents = MOCK_EVENTS.map(event => {
-    const broadcastStation = getBroadcastStationById(event.broadcastStationId || "");
-    const mainSponsor = getSponsorById(event.mainSponsorId || "");
-    const subEvents = MOCK_SUB_EVENTS.filter(se => se.mainEventId === event.id);
-    const totalMatches = subEvents.reduce((sum, se) => sum + se.matchesCount, 0);
+  const enhancedEvents = events.map(event => {
+    const eventSubEvents = subEvents.filter(se => se.event_id === event.id);
+    const subEventIds = eventSubEvents.map(se => se.id);
+    const totalMatches = matches.filter((m: any) => subEventIds.includes(m.sub_event_id)).length;
+    
+    // Format date string from PostgreSQL DATE format (YYYY-MM-DD)
+    const formatDate = (dateStr: string) => {
+      if (!dateStr) return "TBD";
+      return new Date(dateStr).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+      });
+    };
     
     return {
       ...event,
-      broadcastStation: broadcastStation?.name || event.station,
-      broadcastLogo: broadcastStation?.logoUrl,
-      mainSponsor: mainSponsor?.name || event.sponsor,
-      sponsorLogo: mainSponsor?.logoUrl,
-      subEventsCount: subEvents.length,
+      date: formatDate(event.date),
+      endDate: event.end_date ? formatDate(event.end_date) : null,
+      broadcastStation: event.broadcast_station_name || "TBD",
+      broadcastLogo: event.broadcast_station_logo_url,
+      mainSponsor: event.main_sponsor_name || "TBD",
+      sponsorLogo: event.main_sponsor_logo_url,
+      subEventsCount: eventSubEvents.length,
       totalMatches,
+      hasSubEvents: eventSubEvents.length > 0,
     };
   });
 
@@ -155,7 +191,12 @@ export function EventsAndMatches() {
 
       {/* Events Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredEvents.length === 0 && (
+        {loading ? (
+          <div className="col-span-full py-16 text-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto"></div>
+            <p className="text-sm text-muted-foreground mt-4 font-semibold">Loading events...</p>
+          </div>
+        ) : filteredEvents.length === 0 ? (
           <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-border/60 shadow-sm">
             <Calendar className="w-16 h-16 text-muted-foreground/60 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-foreground tracking-tight mb-1">No Events Found</h3>
@@ -172,7 +213,7 @@ export function EventsAndMatches() {
               </Link>
             )}
           </div>
-        )}
+        ) : null}
 
         {filteredEvents.map((event) => {
           const statusBadge = getStatusBadge(event.status);

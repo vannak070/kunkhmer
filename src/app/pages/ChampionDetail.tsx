@@ -1,15 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router";
 import {
   ArrowLeft, Crown, Trophy, Calendar, MapPin, Shield, Weight,
   Award, Star, User, CheckCircle, Clock, History, CalendarClock,
-  Target, Edit, Trash2, TrendingUp, Swords, XCircle, AlertTriangle
+  Target, Edit, Trash2, TrendingUp, Swords, XCircle, AlertTriangle, Save, X
 } from "lucide-react";
-import { getChampionById, CHAMPION_TYPE_CONFIG, CHAMPION_STATUS_CONFIG } from "../data/champion";
-import { MOCK_FIGHTERS } from "../data/mock";
+import { CHAMPION_TYPE_CONFIG, CHAMPION_STATUS_CONFIG, WEIGHT_CLASSES, getWeightClassName } from "../data/champion";
 import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
 import { clsx } from "clsx";
+import { api } from "../utils/api";
 
 export function ChampionDetail() {
   const { id } = useParams<{ id: string }>();
@@ -17,26 +17,140 @@ export function ChampionDetail() {
   const permissions = usePermissions();
   const [showVacateModal, setShowVacateModal] = useState(false);
   const [vacateReason, setVacateReason] = useState("");
+  const [champion, setChampion] = useState<any>(null);
+  const [fighters, setFighters] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const champion = getChampionById(id || "");
+  // Edit Modal States
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    titleName: "",
+    organization: "KKF",
+    weightClass: 60,
+    status: "Vacant",
+    notes: ""
+  });
 
-  const handleVacateTitle = () => {
-    console.log("Vacating title:", champion?.id, "Reason:", vacateReason);
-    toast.success(`Title vacated: ${champion?.weightClass}kg ${champion?.championType}`);
-    setShowVacateModal(false);
-    setVacateReason("");
-    navigate("/home/champion");
+  const loadData = async () => {
+    try {
+      if (!id) return;
+      const champData = await api.champions.get(id);
+      if (champData) {
+        setChampion({
+          ...champData,
+          titleName: champData.title_name,
+          championType: champData.champion_type,
+          weightClass: parseFloat(champData.weight_class) || 0,
+          organization: champData.organization,
+          batchId: champData.batch_id,
+          eventName: champData.event_name || "KKF Event",
+          currentHolderId: champData.current_holder_id,
+          currentHolderName: champData.current_holder_name_db || champData.current_holder_name || "Vacant",
+          nationality: champData.current_holder_nationality_db || champData.nationality || "Cambodian",
+          dateCreated: champData.date_created || champData.created_at,
+          dateAwarded: champData.date_awarded,
+          status: champData.status,
+          defenseCount: parseInt(champData.defense_count) || 0,
+          notes: champData.notes,
+        });
+      }
+      const fightersData = await api.fighters.list();
+      setFighters(fightersData || []);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to load championship details");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [id]);
+
+  const handleVacateTitle = async () => {
+    if (!champion) return;
+    try {
+      await api.champions.update(champion.id, {
+        currentHolderId: null,
+        currentHolderName: null,
+        nationality: null,
+        status: "Vacant",
+        notes: vacateReason ? `Vacated: ${vacateReason}` : champion.notes
+      });
+      toast.success(`Title vacated: ${champion.weightClass}kg ${champion.championType}`);
+      setShowVacateModal(false);
+      setVacateReason("");
+      loadData();
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to vacate title");
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      await api.champions.update(champion.id, {
+        titleName: editFormData.titleName,
+        organization: editFormData.organization,
+        weightClass: editFormData.weightClass,
+        status: editFormData.status,
+        notes: editFormData.notes
+      });
+      toast.success("Championship details updated successfully!");
+      setShowEditModal(false);
+      loadData();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update championship details");
+    }
+  };
+
+  const handleDeleteChampion = async () => {
+    if (!champion) return;
+    if (!window.confirm("Are you sure you want to delete this championship title? This cannot be undone.")) return;
+    try {
+      await api.champions.delete(champion.id);
+      toast.success("Championship deleted successfully");
+      navigate("/home/champion");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete championship");
+    }
+  };
+
+  const startEdit = () => {
+    if (!champion) return;
+    setEditFormData({
+      titleName: champion.titleName || "",
+      organization: champion.organization || "KKF",
+      weightClass: champion.weightClass || 60,
+      status: champion.status || "Vacant",
+      notes: champion.notes || ""
+    });
+    setShowEditModal(true);
   };
 
   const getFighterPhoto = (champ: any) => {
     if (!champ) return null;
-    if (champ.currentHolderPhoto) return champ.currentHolderPhoto;
+    if (champ.belt_image_url) return champ.belt_image_url;
     if (champ.currentHolderId) {
-      const fighter = MOCK_FIGHTERS.find(f => f.id === champ.currentHolderId);
+      const fighter = fighters.find(f => f.id === champ.currentHolderId);
       if (fighter?.image) return fighter.image;
     }
     return null;
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8 min-h-[60vh] animate-fadeIn">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto"></div>
+          <p className="text-sm text-muted-foreground mt-4 font-semibold">Loading championship details...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!champion) {
     return (
@@ -158,14 +272,23 @@ export function ChampionDetail() {
 
               {/* Actions */}
               {permissions.hasPermission('events.create') && (
-                <div className="flex flex-row md:flex-col gap-2.5 w-full md:w-auto shrink-0 pt-4 md:pt-0 border-t border-white/10 md:border-t-0">
+                <div className="flex flex-col gap-2.5 w-full md:w-auto shrink-0 pt-4 md:pt-0 border-t border-white/10 md:border-t-0">
                   <button
-                    onClick={() => navigate(`/home/champion/${champion.id}/edit`)}
+                    onClick={startEdit}
                     className="flex-1 md:flex-initial btn-outline bg-white/10 hover:bg-white/20 text-white border-white/25 text-xs py-2 px-4 uppercase tracking-wider"
                   >
                     <Edit className="w-3.5 h-3.5" />
                     <span>Edit</span>
                   </button>
+                  {permissions.hasPermission('system.manage_settings') && (
+                    <button
+                      onClick={handleDeleteChampion}
+                      className="flex-1 md:flex-initial btn-outline bg-rose-600/20 hover:bg-rose-600/30 text-rose-200 border-rose-500/30 text-xs py-2 px-4 uppercase tracking-wider flex items-center justify-center gap-1.5"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete</span>
+                    </button>
+                  )}
                   {champion.status === "Active" && (
                     <>
                       <button
@@ -495,6 +618,117 @@ export function ChampionDetail() {
                 className="inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-lg bg-gradient-to-br from-red-600 to-rose-600 text-white hover:from-red-700 hover:to-rose-755 text-xs font-semibold uppercase tracking-wider transition-all shadow-sm"
               >
                 Confirm Vacancy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Champion Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-border/80 space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Crown className="w-5 h-5 text-primary" />
+                <h3 className="text-lg font-bold text-slate-900">Edit Championship Title</h3>
+              </div>
+              <button onClick={() => setShowEditModal(false)} className="p-1 hover:bg-slate-100 rounded-lg">
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">
+                  Title Name
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.titleName}
+                  onChange={(e) => setEditFormData({ ...editFormData, titleName: e.target.value })}
+                  className="input-premium py-2"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">
+                    Organization
+                  </label>
+                  <select
+                    value={editFormData.organization}
+                    onChange={(e) => setEditFormData({ ...editFormData, organization: e.target.value })}
+                    className="input-premium py-2 cursor-pointer"
+                  >
+                    <option value="KKF">KKF</option>
+                    <option value="WBC">WBC</option>
+                    <option value="WBA">WBA</option>
+                    <option value="WMC">WMC</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">
+                    Weight Class
+                  </label>
+                  <select
+                    value={editFormData.weightClass}
+                    onChange={(e) => setEditFormData({ ...editFormData, weightClass: parseFloat(e.target.value) })}
+                    className="input-premium py-2 cursor-pointer"
+                  >
+                    {WEIGHT_CLASSES.map(weight => (
+                      <option key={weight} value={weight}>
+                        {getWeightClassName(weight)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">
+                  Status
+                </label>
+                <select
+                  value={editFormData.status}
+                  onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+                  className="input-premium py-2 cursor-pointer"
+                >
+                  <option value="Vacant">Vacant</option>
+                  <option value="Active">Active</option>
+                  <option value="Title Defense Scheduled">Title Defense Scheduled</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">
+                  Notes
+                </label>
+                <textarea
+                  value={editFormData.notes}
+                  onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                  rows={3}
+                  className="input-premium py-2 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="btn-outline px-5 py-2 text-xs uppercase tracking-wider"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-lg bg-primary hover:bg-[#082E6E] text-white text-xs font-semibold uppercase tracking-wider transition-all shadow-sm"
+              >
+                <Save className="w-4 h-4" />
+                Save Changes
               </button>
             </div>
           </div>

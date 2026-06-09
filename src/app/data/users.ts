@@ -394,30 +394,55 @@ export const MOCK_USERS: User[] = [
   },
 ];
 
-// Current logged-in user (mock authentication)
-export let CURRENT_USER: User | null = MOCK_USERS[0]; // Default: superadmin
+// Current logged-in user (dynamic from localStorage)
+export const getCurrentUser = (): User | null => {
+  const userStr = localStorage.getItem("user");
+  if (!userStr) return null;
+  
+  try {
+    const dbUser = JSON.parse(userStr);
+    
+    // Map database role string to frontend UserRole type
+    let frontendRole: UserRole = 'club';
+    if (dbUser.role === 'Super Admin') {
+      frontendRole = 'kkf_super_admin';
+    } else if (dbUser.role === 'KKF Officer') {
+      frontendRole = 'kkf_officer';
+    } else if (dbUser.role === 'Organizer') {
+      frontendRole = 'organizer';
+    } else if (dbUser.role === 'Club/Gym') {
+      frontendRole = 'club';
+    }
 
-export const loginUser = (username: string, password: string): User | null => {
-  const user = MOCK_USERS.find(u => u.username === username && u.password === password && u.status === 'active');
-  if (user) {
-    CURRENT_USER = user;
-    user.lastLogin = new Date().toISOString();
-    return user;
+    return {
+      id: dbUser.id,
+      username: dbUser.username,
+      email: dbUser.email,
+      password: "",
+      fullName: dbUser.fullName,
+      role: frontendRole,
+      roles: [frontendRole],
+      phone: dbUser.phone || "",
+      organization: dbUser.organization || "",
+      status: dbUser.status === 'Active' ? 'active' : 'inactive',
+      createdAt: dbUser.createdAt || new Date().toISOString(),
+      lastLogin: dbUser.lastLogin,
+      permissions: ROLE_PERMISSIONS[frontendRole] || []
+    };
+  } catch (err) {
+    return null;
   }
-  return null;
 };
 
 export const logoutUser = () => {
-  CURRENT_USER = null;
-};
-
-export const getCurrentUser = (): User | null => {
-  return CURRENT_USER;
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
 };
 
 export const hasPermission = (permission: string): boolean => {
-  if (!CURRENT_USER) return false;
-  return CURRENT_USER.permissions.includes(permission);
+  const user = getCurrentUser();
+  if (!user) return false;
+  return user.permissions.includes(permission);
 };
 
 export const canAccessRoute = (route: string): boolean => {

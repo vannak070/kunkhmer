@@ -182,7 +182,7 @@ export function CalendarView({ batches }: CalendarViewProps) {
                       return (
                         <button
                           key={batch.id}
-                          onClick={() => navigate(`/batches/${batch.id}`)}
+                          onClick={() => navigate(`/home/batches/${batch.id}`)}
                           className={clsx(
                             "w-full text-left px-2 py-1 rounded-lg text-[9px] font-semibold uppercase tracking-wider border transition-opacity hover:opacity-85 flex items-center gap-1",
                             getStatusBadgeClass(batch.status)

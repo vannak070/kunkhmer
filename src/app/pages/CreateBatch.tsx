@@ -1,13 +1,17 @@
-import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router";
 import { ArrowLeft, Calendar, MapPin, Award, Sparkles, Info, Box } from "lucide-react";
 import { toast } from "sonner";
 import { clsx } from "clsx";
-import { MOCK_EVENTS } from "../data/mock";
-import { MOCK_BATCHES } from "../data/batches";
+import { api } from "../utils/api";
 
 export function CreateBatch() {
   const navigate = useNavigate();
+  const { batchId } = useParams();
+  const isEditMode = !!batchId;
+  const [events, setEvents] = useState<any[]>([]);
+  const [batches, setBatches] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     eventId: "",
     name: "",
@@ -16,7 +20,37 @@ export function CreateBatch() {
     location: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const eventsData = await api.events.list();
+        const batchesData = await api.batches.list();
+        setEvents(eventsData || []);
+        setBatches(batchesData || []);
+
+        if (batchId) {
+          const batch = await api.batches.get(batchId);
+          if (batch) {
+            setFormData({
+              eventId: batch.event_id,
+              name: batch.name,
+              batchType: batch.phase === "Final" ? "Main" : batch.phase === "Qualifier" ? "Prelim" : "Weekly",
+              date: batch.date ? batch.date.split("T")[0] : "",
+              location: batch.location || "",
+            });
+          }
+        }
+      } catch (err: any) {
+        console.error(err);
+        toast.error("Failed to load data from database");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, [batchId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.eventId) {
@@ -39,47 +73,71 @@ export function CreateBatch() {
       return;
     }
 
-    const selectedEvent = MOCK_EVENTS.find(e => e.id === formData.eventId);
+    try {
+      const selectedEvent = events.find(ev => ev.id === formData.eventId);
+      
+      if (isEditMode) {
+        await api.batches.update(batchId!, {
+          eventId: formData.eventId,
+          name: formData.name,
+          date: formData.date,
+          location: formData.location || selectedEvent?.location || "",
+          phase: formData.batchType === "Main" ? "Final" : "Qualifier",
+        });
+        toast.success("✅ Batch updated successfully!");
+        navigate(`/home/batches/${batchId}`);
+      } else {
+        // Calculate how many batches already exist for this event to assign a week_number
+        const eventBatches = batches.filter(b => b.event_id === formData.eventId);
+        const weekNumber = eventBatches.length + 1;
 
-    // Create new batch ID
-    const newBatchId = `batch-${Date.now()}`;
+        const newBatch = await api.batches.create({
+          eventId: formData.eventId,
+          name: formData.name,
+          weekNumber: weekNumber,
+          date: formData.date,
+          location: formData.location || selectedEvent?.location || "",
+          phase: formData.batchType === "Main" ? "Final" : "Qualifier",
+          status: "Draft",
+          batchNumber: `BATCH-${Date.now().toString().slice(-6)}`,
+        });
 
-    // Store batch data in sessionStorage to be picked up by BatchDetail page
-    const newBatch = {
-      id: newBatchId,
-      batchNumber: "NEW",
-      name: formData.name,
-      batchType: formData.batchType, // Main / Prelim / Weekly
-      eventId: formData.eventId,
-      eventName: selectedEvent?.name || "",
-      eventDate: formData.date,
-      status: "Draft" as const,
-      totalMatches: 0,
-      date: formData.date,
-      location: formData.location || selectedEvent?.location || "",
-      organizerClub: selectedEvent?.organizer || "",
-      broadcastStation: selectedEvent?.station || "",
-      mainSponsor: selectedEvent?.sponsor || "",
-      matches: [],
-      createdBy: "Current User",
-      createdDate: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    sessionStorage.setItem(`batch-${newBatchId}`, JSON.stringify(newBatch));
-
-    toast.success("✅ Batch created successfully!");
-    navigate(`/home/batches/${newBatchId}`);
+        toast.success("✅ Batch created successfully!");
+        navigate(`/home/batches/${newBatch.id}`);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save batch in database");
+    }
   };
 
   const selectedEvent = formData.eventId 
-    ? MOCK_EVENTS.find(e => e.id === formData.eventId)
+    ? events.find(e => e.id === formData.eventId)
     : null;
 
-  // Get existing batches for the selected event
+  // Get existing batches for the selected event from database list
   const existingBatches = formData.eventId
-    ? MOCK_BATCHES.filter(b => b.eventId === formData.eventId)
+    ? batches.filter(b => b.event_id === formData.eventId)
     : [];
+
+  // Helper to format date nicely
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "";
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-16">
+        <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-sm text-muted-foreground font-semibold">Loading events from database...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-6 animate-fadeIn">
@@ -93,9 +151,11 @@ export function CreateBatch() {
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Create New Batch</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              {isEditMode ? "Edit Batch" : "Create New Batch"}
+            </h1>
             <p className="text-sm text-muted-foreground mt-0.5 font-medium">
-              Set up a new match batch for an event
+              {isEditMode ? "Update match batch details for this event" : "Set up a new match batch for an event"}
             </p>
           </div>
         </div>
@@ -127,25 +187,25 @@ export function CreateBatch() {
               <select
                 value={formData.eventId}
                 onChange={(e) => {
-                  const event = MOCK_EVENTS.find(ev => ev.id === e.target.value);
+                  const event = events.find(ev => ev.id === e.target.value);
                   setFormData({
                     ...formData,
                     eventId: e.target.value,
                     location: event?.location || "",
-                    date: event?.date || "",
+                    date: event?.date ? new Date(event.date).toISOString().split('T')[0] : "",
                   });
                 }}
                 className="input-premium cursor-pointer py-2.5"
                 required
               >
                 <option value="">Choose an event...</option>
-                {MOCK_EVENTS.map(event => (
+                {events.map(event => (
                   <option key={event.id} value={event.id}>
-                    {event.name} - {event.date}
+                    {event.name} - {formatDate(event.date)}
                   </option>
                 ))}
               </select>
-              {MOCK_EVENTS.length === 0 && (
+              {events.length === 0 && (
                 <p className="text-destructive text-xs mt-2 font-semibold">
                   No events available. Please create an event first.
                 </p>
@@ -159,7 +219,7 @@ export function CreateBatch() {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div className="space-y-1">
                       <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Date</span>
-                      <p className="text-foreground font-semibold text-sm">{selectedEvent.date}</p>
+                      <p className="text-foreground font-semibold text-sm">{formatDate(selectedEvent.date)}</p>
                     </div>
                     <div className="space-y-1">
                       <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Location</span>
@@ -172,6 +232,7 @@ export function CreateBatch() {
                           "badge-premium text-[10px] font-bold",
                           selectedEvent.status === "Draft" && "badge-amber",
                           selectedEvent.status === "Active" && "badge-blue",
+                          selectedEvent.status === "Published" && "badge-blue",
                           selectedEvent.status === "Completed" && "badge-emerald",
                         )}>
                           {selectedEvent.status}
@@ -180,7 +241,7 @@ export function CreateBatch() {
                     </div>
                     <div className="space-y-1">
                       <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Organizer</span>
-                      <p className="text-foreground font-semibold text-sm truncate">{selectedEvent.organizer}</p>
+                      <p className="text-foreground font-semibold text-sm truncate">{selectedEvent.organizer_name || "KKF Federation"}</p>
                     </div>
                   </div>
                 </div>
@@ -202,7 +263,7 @@ export function CreateBatch() {
                               <div className="truncate pr-2">
                                 <p className="font-semibold text-slate-800 text-xs truncate">{batch.name}</p>
                                 <p className="text-[10px] text-muted-foreground font-medium mt-0.5">
-                                  {batch.totalMatches} matches • {batch.status}
+                                  {batch.status}
                                 </p>
                               </div>
                               <button
@@ -324,7 +385,7 @@ export function CreateBatch() {
             className="w-full sm:w-auto btn-primary py-2.5 px-6 uppercase text-xs tracking-wider"
           >
             <Box className="w-4 h-4" />
-            Create Batch
+            {isEditMode ? "Save Changes" : "Create Batch"}
           </button>
         </div>
       </form>

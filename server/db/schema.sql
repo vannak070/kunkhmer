@@ -56,6 +56,7 @@ CREATE TABLE fighters (
     current_weight DECIMAL(5,2) NOT NULL CHECK (current_weight > 0),
     height DECIMAL(5,2) NOT NULL CHECK (height > 0),
     club_id UUID REFERENCES clubs(id) ON DELETE SET NULL,
+    image VARCHAR(1024),
     style VARCHAR(100),
     record VARCHAR(50), -- formatted "W-L-D"
     grade fighter_grade NOT NULL DEFAULT 'D',

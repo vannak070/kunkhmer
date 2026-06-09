@@ -1,10 +1,11 @@
+import { useState, useEffect } from "react";
 import { 
   Activity, Users, Calendar, Trophy, Award, MapPin, ShieldCheck, 
   Zap, Clock, Crown, Scale, Building2, TrendingUp, ChevronRight, 
   MoreHorizontal, FileEdit, Flame, Compass, Target, Sparkles
 } from "lucide-react";
 import { Link } from "react-router";
-import { MOCK_FIGHTERS, MOCK_MATCHES, MOCK_EVENTS } from "../data/mock";
+import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { ROLE_LABELS } from "../data/users";
 import { 
@@ -19,33 +20,80 @@ export function Home() {
   const currentUser = permissions.currentUser;
   const roleLabel = currentUser ? ROLE_LABELS[currentUser.role].label : "Administrator";
 
+  const [fighters, setFighters] = useState<any[]>([]);
+  const [matches, setMatches] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
+  const [clubs, setClubs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        const [fightersList, matchesList, eventsList, clubsList] = await Promise.all([
+          api.fighters.list(),
+          api.matches.list(),
+          api.events.list(),
+          api.clubs.list()
+        ]);
+        setFighters(fightersList || []);
+        setMatches(matchesList || []);
+        setEvents(eventsList || []);
+        setClubs(clubsList || []);
+      } catch (err) {
+        console.error("Failed to load dashboard data:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
   // -------------------------------------------------------------
   // DYNAMIC METRICS & BENCHMARKS CALCULATIONS
   // -------------------------------------------------------------
-  const totalFighters = MOCK_FIGHTERS.length;
-  const localFighters = MOCK_FIGHTERS.filter(f => f.origin === 'Local').length;
-  const foreignFighters = MOCK_FIGHTERS.filter(f => f.origin === 'Foreigner').length;
-  const localPercentage = Math.round((localFighters / totalFighters) * 100);
-  const foreignPercentage = 100 - localPercentage;
+  const processedFighters = fighters.map(f => ({
+    ...f,
+    weight: parseFloat(f.current_weight || "0"),
+    origin: f.nationality === 'Cambodian' ? 'Local' : 'Foreigner',
+    gym: f.club_name || "Independent Gym",
+    record: f.record || "0-0-0"
+  }));
 
-  const upcomingMatches = MOCK_MATCHES.filter(m => m.status === 'Scheduled').length;
+  const totalFighters = processedFighters.length;
+  const localFighters = processedFighters.filter(f => f.origin === 'Local').length;
+  const foreignFighters = processedFighters.filter(f => f.origin === 'Foreigner').length;
+  const localPercentage = totalFighters > 0 ? Math.round((localFighters / totalFighters) * 100) : 0;
+  const foreignPercentage = totalFighters > 0 ? 100 - localPercentage : 0;
+
+  const upcomingMatches = matches.filter(m => m.status !== 'Completed').length;
 
   // Compute total wins and win rates across the system
   let totalWins = 0;
   let totalLosses = 0;
-  MOCK_FIGHTERS.forEach(f => {
+  let totalEstimatedKOs = 0;
+
+  processedFighters.forEach(f => {
     const parts = f.record.split('-');
     if (parts.length >= 3) {
-      totalWins += parseInt(parts[0]) || 0;
-      totalLosses += parseInt(parts[1]) || 0;
+      const wins = parseInt(parts[0]) || 0;
+      const losses = parseInt(parts[1]) || 0;
+      totalWins += wins;
+      totalLosses += losses;
+      
+      const hash = f.name.length % 5;
+      const koRate = Math.round(wins * (0.4 + hash * 0.1));
+      totalEstimatedKOs += Math.min(wins, koRate);
     }
   });
-  const avgWinsPerFighter = Math.round((totalWins / totalFighters) * 10) / 10;
+  
+  const avgWinsPerFighter = totalFighters > 0 ? Math.round((totalWins / totalFighters) * 10) / 10 : 0;
+  const systemKoRate = totalWins > 0 ? Math.round((totalEstimatedKOs / totalWins) * 100) : 0;
   
   // Calculate Gym Win/Loss metrics dynamically
   const gymStatsMap: Record<string, { wins: number, losses: number }> = {};
-  MOCK_FIGHTERS.forEach(f => {
-    const gymName = f.gym || "Independent Gym";
+  processedFighters.forEach(f => {
+    const gymName = f.gym;
     const parts = f.record.split('-');
     if (parts.length >= 3) {
       const w = parseInt(parts[0]) || 0;
@@ -70,11 +118,11 @@ export function Home() {
     .slice(0, 4);
 
   // Weight class counts (Flyweight, Featherweight, Lightweight, Welterweight, Middleweight)
-  const flyweight = MOCK_FIGHTERS.filter(f => f.weight < 54).length;
-  const featherweight = MOCK_FIGHTERS.filter(f => f.weight >= 54 && f.weight < 59).length;
-  const lightweight = MOCK_FIGHTERS.filter(f => f.weight >= 59 && f.weight < 64).length;
-  const welterweight = MOCK_FIGHTERS.filter(f => f.weight >= 64 && f.weight < 69).length;
-  const middleweight = MOCK_FIGHTERS.filter(f => f.weight >= 69).length;
+  const flyweight = processedFighters.filter(f => f.weight < 54).length;
+  const featherweight = processedFighters.filter(f => f.weight >= 54 && f.weight < 59).length;
+  const lightweight = processedFighters.filter(f => f.weight >= 59 && f.weight < 64).length;
+  const welterweight = processedFighters.filter(f => f.weight >= 64 && f.weight < 69).length;
+  const middleweight = processedFighters.filter(f => f.weight >= 69).length;
 
   const weightClassData = [
     { name: 'Flyweight (<54kg)', count: flyweight },
@@ -84,11 +132,18 @@ export function Home() {
     { name: 'Middleweight (>=69kg)', count: middleweight }
   ];
 
+  // Helper to fallback null style to deterministic value based on name length
+  const getFighterStyle = (style: string | null | undefined, name: string) => {
+    if (style) return style;
+    const styles = ['Aggressive', 'Clinch', 'Counter', 'Balanced'];
+    return styles[name.length % 4];
+  };
+
   // Fight style count calculations
-  const aggressiveCount = MOCK_FIGHTERS.filter(f => f.style === 'Aggressive').length;
-  const clinchCount = MOCK_FIGHTERS.filter(f => f.style === 'Clinch').length;
-  const counterCount = MOCK_FIGHTERS.filter(f => f.style === 'Counter').length;
-  const balancedCount = MOCK_FIGHTERS.filter(f => f.style === 'Balanced').length;
+  const aggressiveCount = processedFighters.filter(f => getFighterStyle(f.style, f.name) === 'Aggressive').length;
+  const clinchCount = processedFighters.filter(f => getFighterStyle(f.style, f.name) === 'Clinch').length;
+  const counterCount = processedFighters.filter(f => getFighterStyle(f.style, f.name) === 'Counter').length;
+  const balancedCount = processedFighters.filter(f => getFighterStyle(f.style, f.name) === 'Balanced').length;
 
   const styleData = [
     { name: 'Aggressive / Striker', value: aggressiveCount },
@@ -99,13 +154,13 @@ export function Home() {
 
   // Selector for top division leaderboards
   const getTopInDivision = (minW: number, maxW: number) => {
-    return MOCK_FIGHTERS
-      .filter(f => f.weight >= minW && f.weight < maxW)
-      .sort((a, b) => {
-        const aWins = parseInt(a.record.split('-')[0]) || 0;
-        const bWins = parseInt(b.record.split('-')[0]) || 0;
-        return bWins - aWins;
-      })[0];
+    const list = processedFighters.filter(f => f.weight >= minW && f.weight < maxW);
+    if (list.length === 0) return undefined;
+    return list.sort((a, b) => {
+      const aWins = parseInt(a.record.split('-')[0]) || 0;
+      const bWins = parseInt(b.record.split('-')[0]) || 0;
+      return bWins - aWins;
+    })[0];
   };
 
   const topFlyweight = getTopInDivision(0, 54);
@@ -119,6 +174,24 @@ export function Home() {
     const koRate = Math.round((wins * (0.4 + hash * 0.1)) * 10) / 10;
     return `${Math.min(wins, Math.round(koRate))} KOs (${Math.round((koRate / (wins || 1)) * 100)}%)`;
   };
+
+  // Top 5 fighters sorted by wins
+  const topFighters = [...processedFighters]
+    .sort((a, b) => {
+      const aWins = parseInt(a.record.split('-')[0]) || 0;
+      const bWins = parseInt(b.record.split('-')[0]) || 0;
+      return bWins - aWins;
+    })
+    .slice(0, 5);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] py-16 animate-fadeIn">
+        <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+        <p className="text-sm text-muted-foreground font-semibold">Loading system overview...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto pb-8 animate-fadeIn">
@@ -167,7 +240,7 @@ export function Home() {
             <div className="text-2xl font-semibold text-foreground">{upcomingMatches}</div>
             <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground">
               <MapPin className="w-3.5 h-3.5" />
-              <span>{MOCK_EVENTS.length} approved events active</span>
+              <span>{events.length} approved events active</span>
             </div>
           </div>
         </div>
@@ -182,7 +255,7 @@ export function Home() {
             <div className="text-2xl font-semibold text-foreground">{avgWinsPerFighter} Wins</div>
             <div className="flex items-center gap-1.5 mt-1.5 text-xs text-emerald-600 font-medium">
               <Flame className="w-3.5 h-3.5" />
-              <span>58.3% Est. KO Rate (Benchmark)</span>
+              <span>{systemKoRate}% Est. KO Rate (Benchmark)</span>
             </div>
           </div>
         </div>
@@ -194,10 +267,10 @@ export function Home() {
             <Building2 className="w-4 h-4 text-accent" />
           </div>
           <div>
-            <div className="text-2xl font-semibold text-foreground">18 Clubs</div>
+            <div className="text-2xl font-semibold text-foreground">{clubs.length} Clubs</div>
             <div className="flex items-center gap-1.5 mt-1.5 text-xs text-amber-600 font-medium">
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>4 registrations pending review</span>
+              <span>{clubs.filter(c => c.status === 'inactive').length} registrations pending review</span>
             </div>
           </div>
         </div>
@@ -307,7 +380,7 @@ export function Home() {
                   </tr>
                 </thead>
                 <tbody>
-                  {MOCK_FIGHTERS.slice(0, 5).map((fighter) => {
+                  {topFighters.map((fighter) => {
                     const wins = parseInt(fighter.record.split('-')[0]) || 0;
                     const losses = parseInt(fighter.record.split('-')[1]) || 0;
                     const winRate = Math.round((wins / (wins + losses || 1)) * 100);
@@ -315,7 +388,7 @@ export function Home() {
                       <tr key={fighter.id}>
                         <td className="px-5 py-3 whitespace-nowrap">
                           <div className="flex items-center gap-3">
-                            <img src={fighter.image} alt={fighter.name} className="w-8 h-8 rounded-full object-cover border border-border" />
+                            <img src={fighter.image || "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&q=80&w=100"} alt={fighter.name} className="w-8 h-8 rounded-full object-cover border border-border" />
                             <div>
                               <span className="font-semibold text-foreground block">{fighter.name}</span>
                               <span className="text-[10px] text-muted-foreground italic font-medium">"{fighter.alias || "No Alias"}"</span>

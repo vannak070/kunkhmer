@@ -13,29 +13,42 @@ export interface FighterInput {
   clubId?: string | null;
   style?: string;
   grade?: 'A' | 'B' | 'C' | 'D';
+  image?: string;
 }
 
 export class FighterService {
   static async getAll(status?: string, clubId?: string) {
-    let sql = "SELECT * FROM fighters WHERE 1=1";
+    let sql = `
+      SELECT f.*, c.name as club_name 
+      FROM fighters f 
+      LEFT JOIN clubs c ON f.club_id = c.id 
+      WHERE 1=1
+    `;
     const params: any[] = [];
     
     if (status) {
       params.push(status);
-      sql += ` AND status = $${params.length}`;
+      sql += ` AND f.status = $${params.length}`;
     }
     
     if (clubId) {
       params.push(clubId);
-      sql += ` AND club_id = $${params.length}`;
+      sql += ` AND f.club_id = $${params.length}`;
     }
+    
+    sql += " ORDER BY f.created_at DESC";
     
     const result = await query(sql, params);
     return result.rows;
   }
 
   static async getById(id: string) {
-    const result = await query("SELECT * FROM fighters WHERE id = $1", [id]);
+    const result = await query(`
+      SELECT f.*, c.name as club_name 
+      FROM fighters f 
+      LEFT JOIN clubs c ON f.club_id = c.id 
+      WHERE f.id = $1
+    `, [id]);
     return result.rows[0] || null;
   }
 
@@ -43,15 +56,15 @@ export class FighterService {
     const sql = `
       INSERT INTO fighters (
         name, name_khmer, alias, date_of_birth, nationality, province, 
-        gender, current_weight, height, club_id, style, grade, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'Draft')
+        gender, current_weight, height, club_id, style, grade, status, image
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'Draft', $13)
       RETURNING *
     `;
     const params = [
       input.name, input.nameKhmer, input.alias || null, input.dateOfBirth,
       input.nationality || 'Cambodian', input.province || null, input.gender,
       input.currentWeight, input.height, input.clubId || null, input.style || null,
-      input.grade || 'D'
+      input.grade || 'D', input.image || null
     ];
     
     const result = await query(sql, params);

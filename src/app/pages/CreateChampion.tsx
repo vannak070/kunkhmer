@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import {
   ArrowLeft, Crown, Trophy, Save, Calendar, MapPin, Shield,
@@ -10,18 +10,15 @@ import {
   WEIGHT_CLASSES,
   type ChampionType,
   type ChampionStatus,
-  MOCK_CHAMPIONS,
   getWeightClassName
 } from "../data/champion";
-import { MOCK_BATCHES } from "../data/batches";
-import { addWorkflowRequest } from "../data/workflow";
 import { usePermissions } from "../hooks/usePermissions";
 import { clsx } from "clsx";
+import { api } from "../utils/api";
 
 export function CreateChampion() {
   const navigate = useNavigate();
   const permissions = usePermissions();
-  const currentUser = permissions.currentUser;
   const [formData, setFormData] = useState({
     titleName: "",
     championType: "KKF National" as ChampionType,
@@ -32,9 +29,26 @@ export function CreateChampion() {
     notes: ""
   });
 
+  const [batches, setBatches] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const loadBatches = async () => {
+      try {
+        const data = await api.batches.list();
+        setBatches(data || []);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load events/batches");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadBatches();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
@@ -54,50 +68,30 @@ export function CreateChampion() {
       return;
     }
 
-    const championId = `champ-${Date.now()}`;
+    const selectedBatch = batches.find(b => b.id === formData.batchId);
     const newChamp = {
-      id: championId,
       titleName: formData.titleName,
       championType: formData.championType,
       weightClass: formData.weightClass,
       organization: formData.organization,
       batchId: formData.batchId,
-      eventName: selectedBatch?.eventName || "Championship Event",
+      eventName: selectedBatch?.event_name || selectedBatch?.name || "Championship Event",
       status: "Vacant" as ChampionStatus,
       defenseCount: 0,
-      dateCreated: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      notes: formData.notes,
-      approvalStatus: "pending" as const
+      notes: formData.notes
     };
 
-    MOCK_CHAMPIONS.push(newChamp);
-
-    // Generate workflow request
-    addWorkflowRequest({
-      type: "champion",
-      title: `Championship Title: ${newChamp.titleName}`,
-      createdBy: currentUser?.id || "u2",
-      data: {
-        championId: newChamp.id,
-        titleName: newChamp.titleName,
-        championType: newChamp.championType,
-        weightClass: newChamp.weightClass,
-        organization: newChamp.organization,
-        batchId: newChamp.batchId,
-        eventName: newChamp.eventName,
-        notes: newChamp.notes,
-        beltType: "Championship Belt",
-        status: "Vacant"
-      }
-    });
-
-    toast.success("Championship creation submitted for KKF approval!");
-    navigate("/home/champion");
+    try {
+      await api.champions.create(newChamp);
+      toast.success("Championship created successfully!");
+      navigate("/home/champion");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to create championship belt");
+    }
   };
 
-  const selectedBatch = MOCK_BATCHES.find(b => b.id === formData.batchId);
+  const selectedBatch = batches.find(b => b.id === formData.batchId);
   const activeFiltersCount = 0; // Not applicable for creation page
 
   return (
@@ -357,9 +351,9 @@ export function CreateChampion() {
                 )}
               >
                 <option value="">-- Select Event/Batch --</option>
-                {MOCK_BATCHES.map(batch => (
+                {batches.map(batch => (
                   <option key={batch.id} value={batch.id}>
-                    {batch.eventName} - {new Date(batch.eventDate).toLocaleDateString()}
+                    {batch.event_name || batch.name} - {new Date(batch.date).toLocaleDateString()}
                   </option>
                 ))}
               </select>
@@ -379,12 +373,12 @@ export function CreateChampion() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs">
                   <div>
                     <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Event Name</div>
-                    <div className="font-semibold text-foreground text-sm">{selectedBatch.eventName}</div>
+                    <div className="font-semibold text-foreground text-sm">{selectedBatch.event_name || selectedBatch.name}</div>
                   </div>
                   <div>
                     <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Date</div>
                     <div className="font-semibold text-foreground text-sm">
-                      {new Date(selectedBatch.eventDate).toLocaleDateString()}
+                      {new Date(selectedBatch.date).toLocaleDateString()}
                     </div>
                   </div>
                   <div>

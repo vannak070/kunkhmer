@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router";
 import { 
   ArrowLeft, Edit, MapPin, Calendar, 
@@ -8,18 +8,11 @@ import {
   Tv, Trophy, XCircle, Download,
   Building2, CalendarDays, Ban, DollarSign, User
 } from "lucide-react";
-import { MOCK_EVENTS } from "../data/mock";
-import { MOCK_BATCHES } from "../data/batches";
-import { 
-  getBroadcastStationById, 
-  getSponsorById,
-  BROADCAST_STATIONS,
-  SPONSORS
-} from "../data/masterData";
+import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { EventStatusBadge } from "../components/EventStatusBadge";
-import { addWorkflowRequest, MOCK_WORKFLOW_REQUESTS } from "../data/workflow";
 import { clsx } from "clsx";
+import { toast } from "sonner";
 
 export function EventDetailNew() {
   const { id } = useParams();
@@ -27,17 +20,11 @@ export function EventDetailNew() {
   const permissions = usePermissions();
   const [expandedBatches, setExpandedBatches] = useState<Set<string>>(new Set());
   
-  // Keep event selection in state for immediate reactivity
-  const foundEvent = useMemo(() => {
-    return MOCK_EVENTS.find((e) => e.id === id) || MOCK_EVENTS[0];
-  }, [id]);
-
-  const [event, setEvent] = useState(foundEvent);
-
-  // Sync state if routing changes
-  useMemo(() => {
-    setEvent(foundEvent);
-  }, [foundEvent]);
+  const [event, setEvent] = useState<any>(null);
+  const [eventBatches, setEventBatches] = useState<any[]>([]);
+  const [broadcastStations, setBroadcastStations] = useState<any[]>([]);
+  const [sponsors, setSponsors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Collapsible inline forms
   const [showEditEvent, setShowEditEvent] = useState(false);
@@ -56,18 +43,115 @@ export function EventDetailNew() {
   const [approvalComments, setApprovalComments] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
   const [cancelReason, setCancelReason] = useState("");
-  
-  const eventBatches = MOCK_BATCHES.filter(b => b.eventId === event.id);
-  const broadcastStation = event.broadcastStationId ? getBroadcastStationById(event.broadcastStationId) : null;
-  const mainSponsor = event.mainSponsorId ? getSponsorById(event.mainSponsorId) : null;
 
   const { canEditEvent } = permissions;
+
+  useEffect(() => {
+    if (id) {
+      loadData();
+    }
+  }, [id]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const e = await api.events.get(id!);
+      if (e) {
+        // Format DATE fields to YYYY-MM-DD
+        const formatDateStr = (d: string) => {
+          if (!d) return "";
+          return d.split("T")[0];
+        };
+        
+        const mappedEvent = {
+          ...e,
+          date: formatDateStr(e.date),
+          endDate: formatDateStr(e.end_date),
+          kkfStatus: e.status, // map status directly to kkfStatus
+          organizer: e.organizer_name || "KKF Organizer",
+        };
+        setEvent(mappedEvent);
+
+        const allStations = await api.settings.listBroadcastStations();
+        setBroadcastStations(allStations);
+        
+        const allSponsors = await api.settings.listSponsors();
+        setSponsors(allSponsors);
+
+        // Load sub-events (batches)
+        const allBatches = await api.batches.list();
+        const filteredBatches = allBatches.filter((b: any) => b.event_id === id);
+
+        // Load matches to build nested matches list
+        const allMatches = await api.matches.list();
+
+        const mappedBatches = filteredBatches.map((b: any) => {
+          const batchMatches = allMatches.filter((m: any) => m.sub_event_id === b.id).map((m: any, idx: number) => {
+            const isWinnerA = m.winner_id === m.fighter_a_id;
+            const isWinnerB = m.winner_id === m.fighter_b_id;
+            let winnerValue = "";
+            if (m.winner_id) {
+              winnerValue = isWinnerA ? "fighterA" : "fighterB";
+            }
+            return {
+              id: m.id,
+              matchNumber: `Bout ${idx + 1}`,
+              status: m.status,
+              rounds: m.rounds,
+              agreedWeight: `${m.agreed_weight} kg`,
+              winner: winnerValue,
+              winnerMethod: m.winner_method,
+              isChampionshipBout: false,
+              fighterA: {
+                id: m.fighter_a_id,
+                name: m.fighter_a_name,
+                image: m.fighter_a_image,
+                record: m.fighter_a_record,
+                gym: m.club_a_name
+              },
+              fighterB: {
+                id: m.fighter_b_id,
+                name: m.fighter_b_name,
+                image: m.fighter_b_image,
+                record: m.fighter_b_record,
+                gym: m.club_b_name
+              }
+            };
+          });
+
+          return {
+            id: b.id,
+            batchNumber: b.batch_number || `BATCH-${b.week_number}`,
+            name: b.name,
+            date: b.date ? new Date(b.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "TBD",
+            matches: batchMatches
+          };
+        });
+
+        setEventBatches(mappedBatches);
+      }
+    } catch (err: any) {
+      toast.error("Failed to load event details: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const broadcastStation = useMemo(() => {
+    if (!event || !event.broadcast_station_id) return null;
+    return broadcastStations.find(bs => bs.id === event.broadcast_station_id);
+  }, [event, broadcastStations]);
+
+  const mainSponsor = useMemo(() => {
+    if (!event || !event.main_sponsor_id) return null;
+    return sponsors.find(s => s.id === event.main_sponsor_id);
+  }, [event, sponsors]);
 
   // Calculate event stats
   const eventStats = useMemo(() => {
     const totalMatches = eventBatches.reduce((sum, b) => sum + b.matches.length, 0);
     const completedMatches = eventBatches.reduce((sum, b) => 
-      sum + b.matches.filter(m => m.result).length, 0
+      sum + b.matches.filter(m => m.status === "Completed").length, 0
     );
     const championshipMatches = eventBatches.reduce((sum, b) => 
       sum + b.matches.filter(m => m.isChampionshipBout).length, 0
@@ -82,6 +166,29 @@ export function EventDetailNew() {
     };
   }, [eventBatches]);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-foreground">Event Not Found</h2>
+          <p className="text-sm text-muted-foreground mt-1">The requested event could not be loaded.</p>
+          <Link to="/home/events" className="btn-secondary mt-4 inline-flex items-center gap-1.5 py-2 px-4 text-xs font-semibold uppercase">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Events
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   // Validation checks
   const validationChecks = [
     { id: 1, label: "Event has a name", passed: !!event.name },
@@ -90,8 +197,8 @@ export function EventDetailNew() {
     { id: 4, label: "Event has at least one batch", passed: eventBatches.length > 0 },
     { id: 5, label: "All batches have at least one match", passed: eventBatches.every(b => b.matches.length > 0) },
     { id: 6, label: "Event has organizer information", passed: !!event.organizer },
-    { id: 7, label: "Event has broadcast station", passed: !!event.broadcastStationId },
-    { id: 8, label: "Event has main sponsor", passed: !!event.mainSponsorId },
+    { id: 7, label: "Event has broadcast station", passed: !!event.broadcast_station_id },
+    { id: 8, label: "Event has main sponsor", passed: !!event.main_sponsor_id },
   ];
 
   const allChecksPassed = validationChecks.every(check => check.passed);
@@ -120,8 +227,8 @@ export function EventDetailNew() {
     setEditEventDate(event.date);
     setEditEventLocation(event.location);
     setEditEventOrganizer(event.organizer || "");
-    setEditBroadcastStationId(event.broadcastStationId || "");
-    setEditMainSponsorId(event.mainSponsorId || "");
+    setEditBroadcastStationId(event.broadcast_station_id || "");
+    setEditMainSponsorId(event.main_sponsor_id || "");
     
     setShowEditEvent(true);
     setShowApprovalModal(false);
@@ -134,171 +241,70 @@ export function EventDetailNew() {
     }, 100);
   };
 
-  const handleSaveEdit = () => {
-    const idx = MOCK_EVENTS.findIndex((e) => e.id === event.id);
-    if (idx !== -1) {
-      MOCK_EVENTS[idx] = {
-        ...MOCK_EVENTS[idx],
+  const handleSaveEdit = async () => {
+    try {
+      await api.events.update(id!, {
         name: editEventName,
         date: editEventDate,
         location: editEventLocation,
-        organizer: editEventOrganizer,
-        broadcastStationId: editBroadcastStationId || undefined,
-        mainSponsorId: editMainSponsorId || undefined,
-      };
-      setEvent(MOCK_EVENTS[idx]);
+        broadcastStationId: editBroadcastStationId || null,
+        mainSponsorId: editMainSponsorId || null,
+      });
+      toast.success("Event updated successfully!");
+      setShowEditEvent(false);
+      loadData();
+    } catch (err: any) {
+      toast.error("Failed to update event: " + err.message);
     }
-    toast.success("Event updated successfully!");
-    setShowEditEvent(false);
   };
 
-  const handleSubmitForApproval = () => {
+  const handleSubmitForApproval = async () => {
     if (!allChecksPassed) {
       toast.error("Cannot submit - please complete all requirements");
       return;
     }
-    const idx = MOCK_EVENTS.findIndex((e) => e.id === event.id);
-    if (idx !== -1) {
-      MOCK_EVENTS[idx] = {
-        ...MOCK_EVENTS[idx],
-        kkfStatus: "Pending KKF Approval",
-        status: "Draft",
-      };
-      setEvent(MOCK_EVENTS[idx]);
+    try {
+      await api.events.update(id!, { status: "Pending KKF Approval" });
+      toast.success("Event submitted for KKF approval!");
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message);
     }
-
-    // Generate workflow request
-    addWorkflowRequest({
-      type: "event",
-      title: `Event Request: ${event.name}`,
-      createdBy: permissions.currentUser?.id || "u4",
-      data: {
-        eventId: event.id,
-        eventName: event.name,
-        date: event.date,
-        location: event.location,
-        organizer: event.organizer,
-        expectedMatches: event.matchesCount || 0,
-        sponsors: event.sponsor ? [event.sponsor] : ["Angkor Beer"]
-      }
-    });
-
-    toast.success("Event submitted for KKF approval!");
   };
 
-  const handleApproveEvent = () => {
-    setApprovalComments("");
-    setShowApprovalModal(true);
-    setShowEditEvent(false);
-    setShowRejectionModal(false);
-    setShowCancelEvent(false);
-
-    setTimeout(() => {
-      const el = document.getElementById("approve-event-inline-panel");
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 100);
-  };
-
-  const handleConfirmApproval = () => {
-    const idx = MOCK_EVENTS.findIndex((e) => e.id === event.id);
-    if (idx !== -1) {
-      MOCK_EVENTS[idx] = {
-        ...MOCK_EVENTS[idx],
-        kkfStatus: "Approved",
-        status: "Published",
-        kkfComments: approvalComments || undefined,
-      };
-      setEvent(MOCK_EVENTS[idx]);
+  const handleConfirmApproval = async () => {
+    try {
+      await api.events.update(id!, { status: "Approved" });
+      toast.success("Event approved successfully!");
+      setShowApprovalModal(false);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message);
     }
-
-    // Update pending workflow request
-    const req = MOCK_WORKFLOW_REQUESTS.find(r => r.type === "event" && r.data.eventId === event.id && r.status === "pending");
-    if (req) {
-      req.status = "approved";
-      req.reviewedBy = permissions.currentUser?.id || "u1";
-      req.reviewedDate = new Date().toISOString().split('T')[0];
-      req.comments = approvalComments;
-    }
-
-    toast.success("Event approved successfully!", {
-      description: approvalComments || "Organizer has been notified"
-    });
-    setShowApprovalModal(false);
-    setApprovalComments("");
   };
 
-  const handleRejectEvent = () => {
-    setRejectionReason("");
-    setShowRejectionModal(true);
-    setShowEditEvent(false);
-    setShowApprovalModal(false);
-    setShowCancelEvent(false);
-
-    setTimeout(() => {
-      const el = document.getElementById("reject-event-inline-panel");
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 100);
-  };
-
-  const handleConfirmRejection = () => {
+  const handleConfirmRejection = async () => {
     if (!rejectionReason) return;
-    const idx = MOCK_EVENTS.findIndex((e) => e.id === event.id);
-    if (idx !== -1) {
-      MOCK_EVENTS[idx] = {
-        ...MOCK_EVENTS[idx],
-        kkfStatus: "Draft",
-        status: "Draft",
-        kkfComments: rejectionReason,
-      };
-      setEvent(MOCK_EVENTS[idx]);
+    try {
+      await api.events.update(id!, { status: "Draft" });
+      toast.error("Event proposal rejected.");
+      setShowRejectionModal(false);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message);
     }
-
-    // Update pending workflow request
-    const req = MOCK_WORKFLOW_REQUESTS.find(r => r.type === "event" && r.data.eventId === event.id && r.status === "pending");
-    if (req) {
-      req.status = "rejected";
-      req.reviewedBy = permissions.currentUser?.id || "u1";
-      req.reviewedDate = new Date().toISOString().split('T')[0];
-      req.comments = rejectionReason;
-    }
-
-    toast.error("Event rejected", {
-      description: rejectionReason
-    });
-    setShowRejectionModal(false);
-    setRejectionReason("");
   };
 
-  const handleCancelEvent = () => {
-    setCancelReason("");
-    setShowCancelEvent(true);
-    setShowEditEvent(false);
-    setShowApprovalModal(false);
-    setShowRejectionModal(false);
-
-    setTimeout(() => {
-      const el = document.getElementById("cancel-event-inline-panel");
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 100);
-  };
-
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
     if (!cancelReason) return;
-    const idx = MOCK_EVENTS.findIndex((e) => e.id === event.id);
-    if (idx !== -1) {
-      MOCK_EVENTS[idx] = {
-        ...MOCK_EVENTS[idx],
-        kkfStatus: "Cancelled",
-        status: "Cancelled",
-        kkfComments: cancelReason,
-      };
-      setEvent(MOCK_EVENTS[idx]);
+    try {
+      await api.events.update(id!, { status: "Cancelled" });
+      toast.error("Event cancelled successfully.");
+      setShowCancelEvent(false);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message);
     }
-    toast.error("Event cancelled", {
-      description: cancelReason
-    });
-    setShowCancelEvent(false);
-    setCancelReason("");
   };
 
   const handleCheckAction = (checkId: number) => {
@@ -387,14 +393,14 @@ export function EventDetailNew() {
           {event.kkfStatus === "Pending KKF Approval" && permissions.role === "kkf-admin" && (
             <>
               <button
-                onClick={handleApproveEvent}
+                onClick={() => setShowApprovalModal(true)}
                 className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-700 text-white hover:from-emerald-700 hover:to-emerald-800 text-xs font-semibold uppercase tracking-wider transition-all shadow-sm hover:shadow active:scale-[0.98]"
               >
                 <CheckCircle className="w-4 h-4" />
                 <span>Approve Event</span>
               </button>
               <button
-                onClick={handleRejectEvent}
+                onClick={() => setShowRejectionModal(true)}
                 className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-br from-red-600 to-rose-600 text-white hover:from-red-700 hover:to-rose-755 text-xs font-semibold uppercase tracking-wider transition-all shadow-sm hover:shadow active:scale-[0.98]"
               >
                 <XCircle className="w-4 h-4" />
@@ -405,7 +411,7 @@ export function EventDetailNew() {
 
           {(event.kkfStatus === "Approved" || event.kkfStatus === "Ongoing") && permissions.role === "kkf-admin" && (
             <button
-              onClick={handleCancelEvent}
+              onClick={() => setShowCancelEvent(true)}
               className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-br from-red-600 to-rose-600 text-white hover:from-red-700 hover:to-rose-755 text-xs font-semibold uppercase tracking-wider transition-all shadow-sm hover:shadow active:scale-[0.98]"
             >
               <Ban className="w-4 h-4" />
@@ -619,9 +625,9 @@ export function EventDetailNew() {
                 className="input-premium py-2.5 cursor-pointer"
               >
                 <option value="">Select Broadcast Station...</option>
-                {BROADCAST_STATIONS.map((station) => (
+                {broadcastStations.map((station) => (
                   <option key={station.id} value={station.id}>
-                    {station.logo} {station.name}
+                    {station.name}
                   </option>
                 ))}
               </select>
@@ -636,9 +642,9 @@ export function EventDetailNew() {
                 className="input-premium py-2.5 cursor-pointer"
               >
                 <option value="">Select Main Sponsor...</option>
-                {SPONSORS.map((sponsor) => (
+                {sponsors.map((sponsor) => (
                   <option key={sponsor.id} value={sponsor.id}>
-                    {sponsor.logo} {sponsor.name}
+                    {sponsor.name}
                   </option>
                 ))}
               </select>

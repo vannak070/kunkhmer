@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router";
-import { MOCK_FIGHTERS, MOCK_MATCHES, MOCK_CLUBS, MOCK_VIDEOS } from "../data/mock";
+import { api } from "../utils/api";
+import { MOCK_VIDEOS } from "../data/mock";
 import { MOCK_AWARDS } from "../data/awards";
 import { AwardCard } from "../components/AwardCard";
 import { ArrowLeft, User, HeartPulse, Activity, History, Edit, MapPin, Zap, CheckCircle, Calendar, Trophy, Users, ArrowRight, TrendingDown, ClipboardList, Dumbbell, Star, Video as VideoIcon, Play, Eye } from "lucide-react";
@@ -8,6 +9,7 @@ import { clsx } from "clsx";
 import unknownFighterImg from "figma:asset/b9f2c3f9c8bd58ed74f9c92de40fb83809a138b3.png";
 import { usePermissions } from "../hooks/usePermissions";
 import { getWeightRangeCategory } from "../data/masterData";
+import { toast } from "sonner";
 
 const tabs = [
   { id: "overview", label: "Overview", icon: User },
@@ -24,9 +26,90 @@ const getWeightRangeBilingual = (weight: number) => {
 
 export function FighterDetail() {
   const { id } = useParams();
-  const fighter = MOCK_FIGHTERS.find((f) => f.id === id) || MOCK_FIGHTERS[0];
+  const [fighter, setFighter] = useState<any>(null);
+  const [club, setClub] = useState<any>(null);
+  const [fights, setFights] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const permissions = usePermissions();
+
+  useEffect(() => {
+    if (id) {
+      loadData();
+    }
+  }, [id]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const f = await api.fighters.get(id!);
+      if (f) {
+        const mappedFighter = {
+          ...f,
+          gym: f.club_name || "Independent",
+          weight: parseFloat(f.current_weight || "0"),
+          origin: f.nationality === "Cambodian" ? "Local" : "Foreigner",
+          type: "Professional",
+          dob: f.date_of_birth,
+          pob: f.province
+        };
+        setFighter(mappedFighter);
+
+        if (f.club_id) {
+          try {
+            const c = await api.clubs.get(f.club_id);
+            if (c) {
+              const mappedClub = {
+                ...c,
+                headCoach: c.head_coach || c.headCoach,
+                activeFighters: c.active_fighters || c.activeFighters || 0
+              };
+              setClub(mappedClub);
+            }
+          } catch (cErr) {
+            console.error("Failed to load club details:", cErr);
+          }
+        }
+      }
+
+      const allMatches = await api.matches.list();
+      const fighterFights = allMatches.filter(
+        (m: any) => m.fighter_a_id === id || m.fighter_b_id === id
+      );
+
+      const mappedFights = fighterFights.map((m: any) => {
+        const dateStr = m.date ? new Date(m.date).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric"
+        }) : "TBD";
+        return {
+          id: m.id,
+          date: dateStr,
+          status: m.status,
+          winner: m.winner_id,
+          weightClass: m.agreed_weight ? `${m.agreed_weight} kg` : "TBD",
+          fighterA: {
+            id: m.fighter_a_id,
+            name: m.fighter_a_name,
+            image: m.fighter_a_image,
+            record: m.fighter_a_record
+          },
+          fighterB: {
+            id: m.fighter_b_id,
+            name: m.fighter_b_name,
+            image: m.fighter_b_image,
+            record: m.fighter_b_record
+          }
+        };
+      });
+      setFights(mappedFights);
+    } catch (err: any) {
+      toast.error("Failed to load fighter details: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
@@ -38,21 +121,29 @@ export function FighterDetail() {
     }
   };
 
-  // Get club information
-  const club = MOCK_CLUBS.find(c => c.id === fighter.clubId);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
-  // Get fighter's matches
-  const fights = MOCK_MATCHES.filter(m => m.fighterA.id === id || m.fighterB.id === id);
+  if (!fighter) {
+    return (
+      <div className="p-8 text-center">
+        <h2 className="text-xl font-bold">Fighter not found</h2>
+        <Link to="/home/fighters" className="text-primary hover:underline mt-4 inline-block">Back to Fighters</Link>
+      </div>
+    );
+  }
+
+  // Get fighter's videos & awards using standard filters
   const fighterVideos = MOCK_VIDEOS.filter(video => {
     if (video.fighterId === id) return true;
-    if (video.matchId) {
-      const match = MOCK_MATCHES.find(m => m.id === video.matchId);
-      if (match && (match.fighterA?.id === id || match.fighterB?.id === id)) {
-        return true;
-      }
-    }
     return false;
   });
+
   const completedFights = fights.filter(m => m.status === "Completed").sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const upcomingFights = fights.filter(m => m.status === "Scheduled").sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   
@@ -65,7 +156,7 @@ export function FighterDetail() {
   
   if (lastFight) {
     const fightDate = new Date(lastFight.date);
-    const today = new Date("2026-03-19");
+    const today = new Date();
     const diffTime = today.getTime() - fightDate.getTime();
     daysSinceFight = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
     isAvailable = daysSinceFight >= 10;
