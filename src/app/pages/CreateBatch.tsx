@@ -410,19 +410,116 @@ export function CreateBatch() {
               />
             </div>
 
-            {/* Location */}
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2 tracking-wide flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5" />
-                Location
+            {/* Geographic Location Pinpoint */}
+            <div className="space-y-3">
+              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-primary" />
+                Geographic Location Pinpoint
               </label>
-              <input
-                type="text"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="Venue location (auto-filled from event)"
-                className="input-premium py-2.5"
-              />
+
+              {/* Quick-select venue chips */}
+              <div className="flex flex-wrap gap-2">
+                {VENUES.map((venue) => (
+                  <button
+                    key={venue.name}
+                    type="button"
+                    onClick={() => handleVenueSelect(venue)}
+                    className={clsx(
+                      "px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all duration-150 active:scale-95",
+                      formData.location === venue.name
+                        ? "bg-primary text-white border-primary shadow-sm shadow-primary/30"
+                        : "bg-white text-slate-600 border-border/70 hover:border-primary/50 hover:text-primary hover:bg-primary/5"
+                    )}
+                  >
+                    📍 {venue.name.split(" (")[0]}
+                  </button>
+                ))}
+              </div>
+
+              {/* Interactive static map */}
+              <div
+                className="relative w-full rounded-2xl overflow-hidden cursor-crosshair border border-border/60 shadow-sm select-none"
+                style={{ aspectRatio: "16/9" }}
+                onClick={handleStaticMapClick}
+                title="Click to drop a pin on the map"
+              >
+                <img
+                  src={mapPickerImg}
+                  alt="Cambodia map – click to pin a location"
+                  className="w-full h-full object-cover pointer-events-none"
+                  draggable={false}
+                />
+
+                {/* Dark overlay tint */}
+                <div className="absolute inset-0 bg-primary/10 pointer-events-none" />
+
+                {/* Pin marker */}
+                {pin && (
+                  <div
+                    className="absolute pointer-events-none"
+                    style={{
+                      left: `${pin.x}%`,
+                      top: `${pin.y}%`,
+                      transform: "translate(-50%, -100%)",
+                    }}
+                  >
+                    {/* Pulse ring */}
+                    <span className="absolute -inset-3 rounded-full bg-primary/25 animate-ping" style={{ animationDuration: "1.4s" }} />
+                    {/* Pin head */}
+                    <div className="relative w-7 h-7 bg-primary rounded-full border-3 border-white shadow-lg flex items-center justify-center">
+                      <MapPin className="w-4 h-4 text-white fill-white" />
+                    </div>
+                    {/* Stem */}
+                    <div className="w-0.5 h-3 bg-primary mx-auto" />
+                  </div>
+                )}
+
+                {/* Instruction overlay when no pin */}
+                {!pin && (
+                  <div className="absolute inset-0 flex items-end justify-center pointer-events-none pb-4">
+                    <div className="bg-black/50 backdrop-blur-sm text-white text-[11px] font-semibold px-3 py-1.5 rounded-full">
+                      Click on the map to drop a pin
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Selected location display */}
+              {formData.location ? (
+                <div className="flex items-start gap-2.5 bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+                  <MapPin className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-foreground truncate">{formData.location}</p>
+                    {(() => {
+                      const matched = VENUES.find(v =>
+                        v.name.toLowerCase().includes(formData.location.toLowerCase()) ||
+                        formData.location.toLowerCase().includes(v.name.toLowerCase())
+                      );
+                      return matched ? (
+                        <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{matched.region} · {matched.description}</p>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Custom pinned location</p>
+                      );
+                    })()}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setFormData(prev => ({ ...prev, location: "" })); setPin(null); }}
+                    className="text-muted-foreground hover:text-destructive transition-colors text-xs font-bold shrink-0"
+                    title="Clear location"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium px-1">
+                  <MapPin className="w-3.5 h-3.5" />
+                  No location selected — choose a venue chip or click the map
+                </div>
+              )}
+
+              {/* Hidden input to persist typed location */}
+              <input type="hidden" value={formData.location} />
             </div>
           </div>
         </div>
