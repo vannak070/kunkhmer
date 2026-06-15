@@ -296,18 +296,17 @@ export const ROLE_LABELS: Record<UserRole, { label: string; color: string; descr
   },
 };
 
-// Mock Users Database - Updated with new roles
+// Mock Users Database - Updated with cleaner credentials v3.1
 export const MOCK_USERS: User[] = [
-  // KKF Super Admin
+  // 👑 KKF Super Admin
   {
     id: 'u1',
-    username: 'superadmin',
-    email: 'superadmin@kkf.gov.kh',
+    username: 'admin',
+    email: 'admin@kkf.gov.kh',
     password: 'admin123',
     fullName: 'System Administrator',
     role: 'kkf_super_admin',
     roles: ['kkf_super_admin'],
-
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150',
     phone: '+855 12 345 678',
     organization: 'Kun Khmer Federation HQ',
@@ -316,17 +315,16 @@ export const MOCK_USERS: User[] = [
     lastLogin: '2026-03-20T09:30:00',
     permissions: ROLE_PERMISSIONS.kkf_super_admin,
   },
-  
-  // KKF Officer (Execution)
+
+  // ⚙️ KKF Officer
   {
     id: 'u3',
-    username: 'officer1',
+    username: 'officer',
     email: 'officer@kkf.gov.kh',
     password: 'officer123',
     fullName: 'Sreymom Keo',
     role: 'kkf_officer',
     roles: ['kkf_officer'],
-
     avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=150',
     phone: '+855 16 789 123',
     organization: 'KKF Operations Division',
@@ -335,8 +333,8 @@ export const MOCK_USERS: User[] = [
     lastLogin: '2026-03-19T17:00:00',
     permissions: ROLE_PERMISSIONS.kkf_officer,
   },
-  
-  // Event Organizer
+
+  // 📋 Event Organizer
   {
     id: 'u4',
     username: 'organizer',
@@ -345,7 +343,6 @@ export const MOCK_USERS: User[] = [
     fullName: 'Town Full HDTV',
     role: 'organizer',
     roles: ['organizer'],
-
     avatar: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&q=80&w=150',
     phone: '+855 12 111 222',
     organization: 'Town Full HDTV',
@@ -354,17 +351,16 @@ export const MOCK_USERS: User[] = [
     lastLogin: '2026-03-20T08:00:00',
     permissions: ROLE_PERMISSIONS.organizer,
   },
-  
-  // KKF Manager
+
+  // 👔 KKF Manager
   {
     id: 'u5',
     username: 'manager',
     email: 'manager@kkf.gov.kh',
-    password: 'man123',
+    password: 'manager123',
     fullName: 'Chey Rithy',
     role: 'kkf_manager',
     roles: ['kkf_manager'],
-
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150',
     phone: '+855 12 333 444',
     organization: 'KKF Approvals',
@@ -373,20 +369,19 @@ export const MOCK_USERS: User[] = [
     lastLogin: '2026-03-20T09:00:00',
     permissions: ROLE_PERMISSIONS.kkf_manager,
   },
-  
-  // Club User
+
+  // 🥊 Club / Gym
   {
     id: 'u6',
-    username: 'club_kiry',
-    email: 'kiry@gym.com',
+    username: 'club',
+    email: 'club@gym.com',
     password: 'club123',
     fullName: 'Kiry Sak',
     role: 'club',
     roles: ['club'],
-
     avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=150',
     phone: '+855 12 555 666',
-    organization: 'Kiry Sokun',
+    organization: 'Kiry Sokun Gym',
     status: 'active',
     createdAt: '2024-01-20',
     lastLogin: '2026-03-20T10:00:00',

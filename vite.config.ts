@@ -31,9 +31,16 @@ export default defineConfig({
   },
   server: {
     port: 5175,
+    proxy: {
+      // Proxy /api calls to Laravel backend
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
 })
-// Trigger final config reload for cleanup and deletion
