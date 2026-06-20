@@ -80,9 +80,9 @@ export function AddFighter() {
           if (f) {
             setFighter({
               nameEN: f.name || "",
-              nameKH: f.name_khmer || "",
+              nameKH: f.nameKhmer || f.name_khmer || "",
               alias: f.alias || "",
-              dob: f.date_of_birth ? f.date_of_birth.split("T")[0] : "",
+              dob: f.dateOfBirth ? f.dateOfBirth.split("T")[0] : (f.date_of_birth ? f.date_of_birth.split("T")[0] : ""),
               pob: f.province || "",
               nationality: f.nationality || "",
               gender: f.gender || "Male",
@@ -91,21 +91,21 @@ export function AddFighter() {
               emergencyName: "", emergencyRelation: "", emergencyPhone: "",
               bloodType: "O+", lastMedicalCheck: "", medicalExpiry: "",
               medicalConditions: "None", allergies: "None",
-              weight: f.current_weight?.toString() || "",
+              weight: f.currentWeight?.toString() || f.current_weight?.toString() || "",
               height: f.height?.toString() || "",
               reach: "", experience: "0",
               styles: f.style ? f.style.split(", ").map((s: string) => s.toLowerCase()) : [],
               type: "Professional",
               grade: f.grade || "D",
               origin: f.nationality === "Cambodian" ? "Local" : "Foreigner",
-              gym: f.club_name || "",
-              clubId: f.club_id || "",
+              gym: f.clubName || f.club_name || "",
+              clubId: f.clubId || f.club_id || "",
               trainer: "", promoter: "",
               image: f.image || "",
               status: f.status || "Draft",
               termsAccepted: true, consentCompete: true, medicalFitness: true,
               record: f.record || "0-0-0",
-              weightClass: f.current_weight ? getWeightRangeCategory(parseFloat(f.current_weight)) : "",
+              weightClass: f.currentWeight ? getWeightRangeCategory(parseFloat(f.currentWeight)) : (f.current_weight ? getWeightRangeCategory(parseFloat(f.current_weight)) : ""),
             });
             if (f.image) setPhotoPreview(f.image);
           }

@@ -61,8 +61,8 @@ export function CreateMatchFromBatch() {
         // Map fighters from DB schema columns
         const mappedFighters = (fightersData || []).map((f: any) => ({
           ...f,
-          weight: parseFloat(f.current_weight) || 0,
-          gym: f.club_name || "Independent",
+          weight: parseFloat(f.currentWeight || f.current_weight) || 0,
+          gym: f.clubName || f.club_name || "Independent",
         }));
         setFighters(mappedFighters);
 

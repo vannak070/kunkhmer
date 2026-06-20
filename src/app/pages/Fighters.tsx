@@ -95,9 +95,9 @@ export function Fighters() {
   // Filter fighters based on nationality/origin
   let displayedFighters = fighters.map(f => ({
     ...f,
-    weight: parseFloat(f.current_weight || "0"),
+    weight: parseFloat(f.currentWeight || f.current_weight || "0"),
     origin: f.nationality === 'Cambodian' ? 'Local' : 'Foreigner',
-    gym: f.club_name || "Independent"
+    gym: f.clubName || f.club_name || "Independent"
   }));
 
   if (isKunKhmer) {
@@ -210,8 +210,12 @@ export function Fighters() {
               >
                 <option value="all">All Status</option>
                 <option value="Active">Active</option>
+                <option value="Draft">Draft</option>
+                <option value="Pending KKF Verification">Pending KKF Verification</option>
                 <option value="Injured">Injured</option>
                 <option value="Suspended">Suspended</option>
+                <option value="Inactive">Inactive</option>
+                <option value="Retired">Retired</option>
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             </div>

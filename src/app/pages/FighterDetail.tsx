@@ -46,18 +46,19 @@ export function FighterDetail() {
       if (f) {
         const mappedFighter = {
           ...f,
-          gym: f.club_name || "Independent",
-          weight: parseFloat(f.current_weight || "0"),
+          gym: f.clubName || f.club_name || "Independent",
+          weight: parseFloat(f.currentWeight || f.current_weight || "0"),
           origin: f.nationality === "Cambodian" ? "Local" : "Foreigner",
           type: "Professional",
-          dob: f.date_of_birth,
+          dob: f.dateOfBirth || f.date_of_birth,
           pob: f.province
         };
         setFighter(mappedFighter);
 
-        if (f.club_id) {
+        const clubId = f.clubId || f.club_id;
+        if (clubId) {
           try {
-            const c = await api.clubs.get(f.club_id);
+            const c = await api.clubs.get(clubId);
             if (c) {
               const mappedClub = {
                 ...c,

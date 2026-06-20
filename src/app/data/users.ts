@@ -16,6 +16,7 @@ export interface User {
   createdAt: string;
   lastLogin?: string;
   permissions: string[];
+  clubId?: string;
 }
 
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
@@ -422,7 +423,8 @@ export const getCurrentUser = (): User | null => {
       status: dbUser.status === 'Active' ? 'active' : 'inactive',
       createdAt: dbUser.createdAt || new Date().toISOString(),
       lastLogin: dbUser.lastLogin,
-      permissions: ROLE_PERMISSIONS[frontendRole] || []
+      permissions: ROLE_PERMISSIONS[frontendRole] || [],
+      clubId: dbUser.clubId || dbUser.club_id || ""
     };
   } catch (err) {
     return null;

@@ -54,9 +54,9 @@ export function Home() {
   // -------------------------------------------------------------
   const processedFighters = fighters.map(f => ({
     ...f,
-    weight: parseFloat(f.current_weight || "0"),
+    weight: parseFloat(f.currentWeight || f.current_weight || "0"),
     origin: f.nationality === 'Cambodian' ? 'Local' : 'Foreigner',
-    gym: f.club_name || "Independent Gym",
+    gym: f.clubName || f.club_name || "Independent Gym",
     record: f.record || "0-0-0"
   }));
 

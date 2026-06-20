@@ -225,9 +225,17 @@ class MatchController extends Controller
             return response()->json(['success' => false, 'error' => 'Forbidden: Insufficient permissions'], 403);
         }
 
+        // Auto-derive event_id from the sub-event when not explicitly provided
+        $subEventId = $request->input('subEventId');
+        $eventId    = $request->input('eventId');
+        if (!$eventId && $subEventId) {
+            $subEvent = SubEvent::find($subEventId);
+            $eventId  = $subEvent ? $subEvent->event_id : null;
+        }
+
         $match = SportMatch::create([
-            'event_id' => $request->input('eventId'),
-            'sub_event_id' => $request->input('subEventId'),
+            'event_id'     => $eventId,
+            'sub_event_id' => $subEventId,
             'fighter_a_id' => $request->input('fighterAId'),
             'fighter_b_id' => $request->input('fighterBId'),
             'rounds' => $request->input('rounds'),
