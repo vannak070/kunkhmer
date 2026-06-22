@@ -11,7 +11,8 @@ export type BatchStatus =
   | "Weight-In"       // Weight-in ceremony happening
   | "Ready"           // Weight-in complete, ready for matches
   | "Live"            // Event is happening
-  | "Complete";       // All matches completed with results
+  | "Complete"        // All matches completed with results
+  | "Scheduled";      // Scheduled event batch
 
 export interface Match {
   id: string;
@@ -189,6 +190,12 @@ export const BATCH_STATUS_CONFIG: Record<BatchStatus, {
     color: "text-gray-700",
     bgColor: "bg-gray-100",
     icon: "🏆"
+  },
+  "Scheduled": {
+    label: "Scheduled",
+    color: "text-blue-750",
+    bgColor: "bg-blue-50",
+    icon: "📅"
   }
 };
 

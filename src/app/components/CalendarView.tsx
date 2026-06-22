@@ -31,6 +31,7 @@ const getStatusBadgeClass = (status: BatchStatus): string => {
     case "Weight-In":
       return "bg-orange-50 text-orange-700 border-orange-200/60";
     case "Ready":
+    case "Scheduled":
       return "bg-blue-50 text-[#0A3D91] border-blue-200/60";
     case "Live":
       return "bg-purple-50 text-purple-700 border-purple-200/60";

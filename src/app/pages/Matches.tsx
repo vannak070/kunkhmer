@@ -159,6 +159,7 @@ export function Matches() {
       case "Draft": return "badge-outline text-muted-foreground border-border/60 bg-muted/5";
       case "Weight-In": return "badge-amber";
       case "Ready": return "badge-blue";
+      case "Scheduled": return "badge-blue";
       case "Live": return "badge-red";
       case "Complete": return "badge-emerald";
       default: return "badge-outline";
@@ -170,6 +171,7 @@ export function Matches() {
       case "Draft": return "bg-slate-400";
       case "Weight-In": return "bg-amber-500";
       case "Ready": return "bg-blue-500";
+      case "Scheduled": return "bg-blue-500";
       case "Live": return "bg-red-500";
       case "Complete": return "bg-emerald-500";
       default: return "bg-slate-400";
@@ -283,6 +285,7 @@ export function Matches() {
               <option value="Draft">Draft</option>
               <option value="Weight-In">Weight-In</option>
               <option value="Ready">Ready</option>
+              <option value="Scheduled">Scheduled</option>
               <option value="Live">Live</option>
               <option value="Complete">Complete</option>
             </select>

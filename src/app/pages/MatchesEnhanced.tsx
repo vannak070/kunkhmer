@@ -27,6 +27,7 @@ const getStatusBorderColor = (status: BatchStatus): string => {
     case "Weight-In":
       return "border-l-orange-500";
     case "Ready":
+    case "Scheduled":
       return "border-l-primary";
     case "Live":
       return "border-l-purple-500";
@@ -47,6 +48,7 @@ const getStatusBadgeClass = (status: BatchStatus): string => {
     case "Weight-In":
       return "bg-orange-50 text-orange-700 border-orange-200/60";
     case "Ready":
+    case "Scheduled":
       return "bg-blue-50 text-[#0A3D91] border-blue-200/60";
     case "Live":
       return "bg-purple-50 text-purple-700 border-purple-200/60";
@@ -229,7 +231,7 @@ export function MatchesEnhanced({ embedded = false }: { embedded?: boolean }) {
   const stats = {
     total: batches.length,
     draft: batches.filter(b => b.status === "Draft").length,
-    approved: batches.filter(b => b.status === "Weight-In" || b.status === "Ready").length,
+    approved: batches.filter(b => b.status === "Weight-In" || b.status === "Ready" || b.status === "Scheduled").length,
     active: batches.filter(b => b.status === "Live" || b.status === "Complete").length,
   };
 
@@ -357,6 +359,7 @@ export function MatchesEnhanced({ embedded = false }: { embedded?: boolean }) {
               <option value="Draft">Draft</option>
               <option value="Weight-In">Weight-In</option>
               <option value="Ready">Ready</option>
+              <option value="Scheduled">Scheduled</option>
               <option value="Live">Live</option>
               <option value="Complete">Complete</option>
             </select>

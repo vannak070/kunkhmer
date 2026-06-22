@@ -200,7 +200,9 @@ export function BatchDetail() {
             rounds: m.rounds,
             weightClass: m.agreed_weight ? `${m.agreed_weight} kg` : "Catchweight",
             agreedWeight: m.agreed_weight,
-            isChampionshipBout: false,
+            isChampionshipBout: m.is_title_match || m.isTitleMatch || false,
+            refereeId: m.referee_id || "",
+            judgeIds: m.judge_ids || [],
             officials: m.referee_name ? true : false,
             refereeName: m.referee_name,
             fighterA: {
@@ -545,7 +547,8 @@ export function BatchDetail() {
                         batch.status === "Weight-In" && "badge-amber bg-orange-50 text-orange-700 border-orange-200",
                         batch.status === "Ready" && "badge-blue",
                         batch.status === "Live" && "bg-purple-50 text-purple-750 border-purple-200/50",
-                        batch.status === "Complete" && "bg-slate-100 text-slate-700 border-slate-200"
+                        batch.status === "Complete" && "bg-slate-100 text-slate-700 border-slate-200",
+                        batch.status === "Scheduled" && "badge-blue bg-blue-50 text-blue-750 border-blue-200/50"
                       )}
                       title={`Status: ${statusConfig.label}`}
                     >
@@ -770,7 +773,7 @@ export function BatchDetail() {
                 {/* Share Fight Card */}
                 {(() => {
                   const isDraftReady = batch.status === "Draft" && batch.matches.length > 0;
-                  const isActiveStage = ["Weight-In", "Ready", "Live"].includes(batch.status);
+                  const isActiveStage = ["Weight-In", "Ready", "Live", "Scheduled"].includes(batch.status);
                   const isCompleted = ["Complete", "Completed"].includes(batch.status);
                   const allResultsUpdated = isCompleted && batch.matches.length > 0 && batch.matches.every(m => m.winner);
                   
