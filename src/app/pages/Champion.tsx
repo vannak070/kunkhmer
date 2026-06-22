@@ -18,7 +18,7 @@ import {
 import { usePermissions } from "../hooks/usePermissions";
 import { clsx } from "clsx";
 
-export function Champion() {
+export function Champion({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate();
   const permissions = usePermissions();
   const [search, setSearch] = useState("");
@@ -193,42 +193,44 @@ export function Champion() {
   const activeChampionsCount = champions.filter(c => c.status === "Active" || c.status === "Title Defense Scheduled").length;
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn">
+    <div className={embedded ? "space-y-6" : "p-4 md:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn"}>
       {/* Header */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Championships</h1>
-          <p className="text-sm text-muted-foreground mt-0.5 font-medium">
-            {activeChampionsCount} Active Title Holders & Special Awards
-          </p>
-          <div className="flex items-center gap-3.5 mt-2.5 text-xs font-semibold">
-            <div className="flex items-center gap-1 text-primary">
-              <Trophy className="w-3.5 h-3.5" />
-              <span>{sortedChampions.length} Total</span>
-            </div>
-            <div className="w-1 h-1 rounded-full bg-slate-300" />
-            <div className="flex items-center gap-1 text-emerald-600">
-              <CheckCircle className="w-3.5 h-3.5" />
-              <span>{activeChampionsCount} Active</span>
-            </div>
-            <div className="w-1 h-1 rounded-full bg-slate-300" />
-            <div className="flex items-center gap-1 text-rose-600">
-              <XCircle className="w-3.5 h-3.5" />
-              <span>{vacantTitles.length} Vacant</span>
+      {!embedded && (
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Championships</h1>
+            <p className="text-sm text-muted-foreground mt-0.5 font-medium">
+              {activeChampionsCount} Active Title Holders & Special Awards
+            </p>
+            <div className="flex items-center gap-3.5 mt-2.5 text-xs font-semibold">
+              <div className="flex items-center gap-1 text-primary">
+                <Trophy className="w-3.5 h-3.5" />
+                <span>{sortedChampions.length} Total</span>
+              </div>
+              <div className="w-1 h-1 rounded-full bg-slate-300" />
+              <div className="flex items-center gap-1 text-emerald-600">
+                <CheckCircle className="w-3.5 h-3.5" />
+                <span>{activeChampionsCount} Active</span>
+              </div>
+              <div className="w-1 h-1 rounded-full bg-slate-300" />
+              <div className="flex items-center gap-1 text-rose-600">
+                <XCircle className="w-3.5 h-3.5" />
+                <span>{vacantTitles.length} Vacant</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        {permissions.hasPermission('events.create') && (
-          <Link
-            to="/home/champion/new"
-            className="btn-primary py-2.5 px-5 uppercase text-xs tracking-wider"
-          >
-            <Crown className="w-4 h-4" />
-            Create Championship
-          </Link>
-        )}
-      </header>
+          {permissions.hasPermission('events.create') && (
+            <Link
+              to="/home/champion/new"
+              className="btn-primary py-2.5 px-5 uppercase text-xs tracking-wider"
+            >
+              <Crown className="w-4 h-4" />
+              Create Championship
+            </Link>
+          )}
+        </header>
+      )}
 
       {/* Enhanced Top Champions Section */}
       {topChampions.length > 0 && (
@@ -519,8 +521,8 @@ export function Champion() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {sortedChampions.map((champion) => {
-            const typeConfig = CHAMPION_TYPE_CONFIG[champion.championType];
-            const statusConfig = CHAMPION_STATUS_CONFIG[champion.status];
+            const typeConfig = CHAMPION_TYPE_CONFIG[champion.championType as ChampionType] || CHAMPION_TYPE_CONFIG["KKF National"];
+            const statusConfig = CHAMPION_STATUS_CONFIG[champion.status as ChampionStatus] || CHAMPION_STATUS_CONFIG["Active"];
 
             return (
               <Link

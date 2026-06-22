@@ -23,6 +23,12 @@ class EventController extends Controller
             $arr['main_sponsor_name'] = $event->mainSponsor ? $event->mainSponsor->name : null;
             $arr['main_sponsor_logo_url'] = $event->mainSponsor ? $event->mainSponsor->logo_url : null;
             $arr['sponsorIds'] = $event->sponsors->pluck('id')->toArray();
+            
+            $arr['eventType'] = $event->event_type;
+            $arr['isTournament'] = (bool) $event->is_tournament;
+            $arr['tournamentFormat'] = $event->tournament_format;
+            $arr['tournamentWeightClass'] = $event->tournament_weight_class;
+            $arr['expectedParticipants'] = (int) $event->expected_participants;
             return $arr;
         });
 
@@ -46,6 +52,12 @@ class EventController extends Controller
         $data['main_sponsor_name'] = $event->mainSponsor ? $event->mainSponsor->name : null;
         $data['main_sponsor_logo_url'] = $event->mainSponsor ? $event->mainSponsor->logo_url : null;
         $data['sponsorIds'] = $event->sponsors->pluck('id')->toArray();
+
+        $data['eventType'] = $event->event_type;
+        $data['isTournament'] = (bool) $event->is_tournament;
+        $data['tournamentFormat'] = $event->tournament_format;
+        $data['tournamentWeightClass'] = $event->tournament_weight_class;
+        $data['expectedParticipants'] = (int) $event->expected_participants;
 
         return response()->json([
             'success' => true,
@@ -73,6 +85,11 @@ class EventController extends Controller
             'description' => $request->input('description'),
             'image' => $request->input('image'),
             'main_sponsor_id' => $request->input('mainSponsorId'),
+            'event_type' => $request->input('eventType', 'single-day'),
+            'is_tournament' => $request->input('isTournament', false),
+            'tournament_format' => $request->input('tournamentFormat'),
+            'tournament_weight_class' => $request->input('tournamentWeightClass'),
+            'expected_participants' => $request->input('expectedParticipants', 8),
         ]);
 
         if ($request->has('sponsorIds')) {
@@ -87,6 +104,12 @@ class EventController extends Controller
         $data['main_sponsor_name'] = $event->mainSponsor ? $event->mainSponsor->name : null;
         $data['main_sponsor_logo_url'] = $event->mainSponsor ? $event->mainSponsor->logo_url : null;
         $data['sponsorIds'] = $event->sponsors->pluck('id')->toArray();
+
+        $data['eventType'] = $event->event_type;
+        $data['isTournament'] = (bool) $event->is_tournament;
+        $data['tournamentFormat'] = $event->tournament_format;
+        $data['tournamentWeightClass'] = $event->tournament_weight_class;
+        $data['expectedParticipants'] = (int) $event->expected_participants;
 
         return response()->json([
             'success' => true,
@@ -119,6 +142,12 @@ class EventController extends Controller
         if (isset($input['description'])) $updateData['description'] = $input['description'];
         if (isset($input['image'])) $updateData['image'] = $input['image'];
         if (isset($input['mainSponsorId'])) $updateData['main_sponsor_id'] = $input['mainSponsorId'];
+        
+        if (isset($input['eventType'])) $updateData['event_type'] = $input['eventType'];
+        if (isset($input['isTournament'])) $updateData['is_tournament'] = $input['isTournament'];
+        if (isset($input['tournamentFormat'])) $updateData['tournament_format'] = $input['tournamentFormat'];
+        if (isset($input['tournamentWeightClass'])) $updateData['tournament_weight_class'] = $input['tournamentWeightClass'];
+        if (isset($input['expectedParticipants'])) $updateData['expected_participants'] = $input['expectedParticipants'];
 
         $event->update($updateData);
 
@@ -134,6 +163,12 @@ class EventController extends Controller
         $data['main_sponsor_name'] = $event->mainSponsor ? $event->mainSponsor->name : null;
         $data['main_sponsor_logo_url'] = $event->mainSponsor ? $event->mainSponsor->logo_url : null;
         $data['sponsorIds'] = $event->sponsors->pluck('id')->toArray();
+
+        $data['eventType'] = $event->event_type;
+        $data['isTournament'] = (bool) $event->is_tournament;
+        $data['tournamentFormat'] = $event->tournament_format;
+        $data['tournamentWeightClass'] = $event->tournament_weight_class;
+        $data['expectedParticipants'] = (int) $event->expected_participants;
 
         return response()->json([
             'success' => true,

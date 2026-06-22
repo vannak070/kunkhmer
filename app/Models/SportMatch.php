@@ -35,7 +35,10 @@ class SportMatch extends Model
         'club_b_response',
         'referee_id',
         'judge_ids',
-        'winner_id'
+        'winner_id',
+        'is_title_match',
+        'championship_id',
+        'sort_order'
     ];
 
     protected $casts = [
@@ -47,7 +50,9 @@ class SportMatch extends Model
         'fighter_b_confirmed' => 'boolean',
         'referee_confirmed' => 'boolean',
         'glove_confirmed_date' => 'datetime',
-        'judge_ids' => 'json'
+        'judge_ids' => 'json',
+        'is_title_match' => 'boolean',
+        'sort_order' => 'integer'
     ];
 
     public function event()
@@ -78,6 +83,11 @@ class SportMatch extends Model
     public function winner()
     {
         return $this->belongsTo(Fighter::class, 'winner_id');
+    }
+
+    public function championship()
+    {
+        return $this->belongsTo(Champion::class, 'championship_id');
     }
 
     public function result()

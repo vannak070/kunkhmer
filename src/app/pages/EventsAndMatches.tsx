@@ -5,7 +5,7 @@ import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
 
-export function EventsAndMatches() {
+export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
   const permissions = usePermissions();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -136,28 +136,30 @@ export function EventsAndMatches() {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn">
+    <div className={embedded ? "space-y-6 flex flex-col min-h-full" : "p-4 md:p-8 max-w-7xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn"}>
       {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Events & Matches
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1 font-medium">
-            Manage fight nights, broadcasts, and schedules • {filteredEvents.length} {filteredEvents.length === 1 ? 'event' : 'events'} found
-          </p>
-        </div>
-        
-        {permissions.hasPermission('events.create') && (
-          <Link
-            to="/home/events/new"
-            className="btn-primary py-2.5 px-5"
-          >
-            <Plus className="w-4 h-4" />
-            Create Event
-          </Link>
-        )}
-      </header>
+      {!embedded && (
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              Events & Matches
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1 font-medium">
+              Manage fight nights, broadcasts, and schedules • {filteredEvents.length} {filteredEvents.length === 1 ? 'event' : 'events'} found
+            </p>
+          </div>
+          
+          {permissions.hasPermission('events.create') && (
+            <Link
+              to="/home/events/new"
+              className="btn-primary py-2.5 px-5"
+            >
+              <Plus className="w-4 h-4" />
+              Create Event
+            </Link>
+          )}
+        </header>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4 relative z-10">

@@ -29,15 +29,17 @@ class Fighter extends Model
         'record',
         'grade',
         'status',
-        'professional_status',
         'verified_by',
-        'verified_date'
+        'verified_date',
+        'medical_status',
+        'suspension_end_date'
     ];
 
     protected $casts = [
         'current_weight' => 'float',
         'height' => 'float',
         'verified_date' => 'datetime',
+        'suspension_end_date' => 'date',
     ];
 
     public function club()

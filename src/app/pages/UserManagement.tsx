@@ -34,6 +34,7 @@ import {
   Star,
   CalendarClock,
   ArrowLeft,
+  ChevronDown,
 } from "lucide-react";
 import { MOCK_USERS, ROLE_LABELS, ROLE_PERMISSIONS, type User as UserType, type UserRole } from "../data/users";
 import { type Official } from "../data/officials";
@@ -680,109 +681,118 @@ export function UserManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F4F5F8] via-white to-[#F9FAFB]">
-      {/* Enhanced Header with Gradient */}
-      <div className="bg-gradient-to-r from-[#0A3D91] via-[#0B4AAF] to-[#0A3D91] shadow-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-            <div>
-              <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-4">
-                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-                  <Users className="w-8 h-8 text-white" />
-                </div>
-                User Management
-              </h1>
-              <p className="text-white/90 mt-2 font-medium text-base">Manage system users, roles, and officer assignments</p>
-            </div>
-            {activeTab === "users" && permissions.hasPermission("users.create") && (
-              <button
-                onClick={openAddModal}
-                className="inline-flex items-center gap-2 bg-white text-[#0A3D91] hover:bg-white/95 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all shadow-sm hover:shadow-md hover:-translate-y-[1px] active:translate-y-0 active:scale-[0.98]"
-              >
-                <UserPlus className="w-4 h-4" />
-                Add System User
-              </button>
-            )}
-            {activeTab === "officers" && (
-              <button
-                onClick={() => {
-                  setOfficerFormData({
-                    name: "",
-                    experience: "",
-                    grade: "National B",
-                    role: "Referee",
-                    status: "Available"
-                  });
-                  setShowAddOfficerModal(true);
-                }}
-                className="inline-flex items-center gap-2 bg-white text-[#C8102E] hover:bg-white/95 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all shadow-sm hover:shadow-md hover:-translate-y-[1px] active:translate-y-0 active:scale-[0.98]"
-              >
-                <Plus className="w-4 h-4" />
-                Add New Officer
-              </button>
-            )}
-          </div>
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            User Management
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1 font-medium">Manage system users, roles, and officer assignments</p>
         </div>
-      </div>
+        {activeTab === "users" && permissions.hasPermission("users.create") && (
+          <button
+            onClick={openAddModal}
+            className="btn-primary py-2.5 px-5"
+          >
+            <UserPlus className="w-4 h-4" />
+            Add System User
+          </button>
+        )}
+        {activeTab === "officers" && (
+          <button
+            onClick={() => {
+              setOfficerFormData({
+                name: "",
+                experience: "",
+                grade: "National B",
+                role: "Referee",
+                status: "Available"
+              });
+              setShowAddOfficerModal(true);
+            }}
+            className="btn-primary py-2.5 px-5"
+          >
+            <Plus className="w-4 h-4" />
+            Add New Officer
+          </button>
+        )}
+      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Main Content */}
-        <div className="mb-8">
-
-          {/* Enhanced Tabs */}
-          <div className="flex gap-2 mb-6 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
-            <button
-              onClick={() => setActiveTab("users")}
-              className={clsx(
-                "flex-1 flex items-center justify-center gap-3 px-5 py-3 rounded-lg font-bold text-sm transition-all duration-200 cursor-pointer",
-                activeTab === "users"
-                  ? "bg-gradient-to-br from-primary to-[#082F6E] text-white shadow-sm"
-                  : "text-slate-500 hover:bg-slate-50 hover:text-primary"
-              )}
-            >
-              <Users className="w-4 h-4" />
-              <div className="flex flex-col items-start leading-tight">
-                <span>User List</span>
-                <span className={clsx("text-[10px] font-medium mt-0.5", activeTab === "users" ? "text-white/80" : "text-slate-400")}>
-                  {systemStats.total} users
-                </span>
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab("roles")}
-              className={clsx(
-                "flex-1 flex items-center justify-center gap-3 px-5 py-3 rounded-lg font-bold text-sm transition-all duration-200 cursor-pointer",
-                activeTab === "roles"
-                  ? "bg-gradient-to-br from-primary to-[#082F6E] text-white shadow-sm"
-                  : "text-slate-500 hover:bg-slate-50 hover:text-primary"
-              )}
-            >
-              <Shield className="w-4 h-4" />
-              <div className="flex flex-col items-start leading-tight">
-                <span>Roles & Permissions</span>
-                <span className={clsx("text-[10px] font-medium mt-0.5", activeTab === "roles" ? "text-white/80" : "text-slate-400")}>
-                  {Object.keys(dynamicRoles).length} Roles
-                </span>
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab("officers")}
-              className={clsx(
-                "flex-1 flex items-center justify-center gap-3 px-5 py-3 rounded-lg font-bold text-sm transition-all duration-200 cursor-pointer",
-                activeTab === "officers"
-                  ? "bg-gradient-to-br from-primary to-[#082F6E] text-white shadow-sm"
-                  : "text-slate-500 hover:bg-slate-50 hover:text-primary"
-              )}
-            >
-              <Award className="w-4 h-4" />
-              <div className="flex flex-col items-start leading-tight">
-                <span>Official Officers</span>
-                <span className={clsx("text-[10px] font-medium mt-0.5", activeTab === "officers" ? "text-white/80" : "text-slate-400")}>
-                  {officerStats.total} officers
-                </span>
-              </div>
-            </button>
+      <div className="flex flex-col lg:flex-row gap-6 items-start w-full">
+        {/* Sidebar Tabs */}
+        <aside className="w-full lg:w-72 bg-white border border-border rounded-xl flex flex-col shrink-0 shadow-sm p-4 space-y-1.5 self-start">
+          <div className="pb-3 border-b border-border/80 mb-2 px-1">
+            <span className="text-[10px] text-muted-foreground font-extrabold uppercase tracking-widest select-none">
+              Navigation
+            </span>
           </div>
+
+          <button
+            onClick={() => setActiveTab("users")}
+            className={`w-full flex items-center justify-between p-3 py-2 rounded-xl transition-all group border text-left cursor-pointer ${
+              activeTab === "users"
+                ? "bg-primary/5 border-primary/20 text-primary shadow-xs font-bold"
+                : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50 font-semibold"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                activeTab === "users" ? "bg-primary/10 text-primary" : "bg-slate-100 text-slate-500 group-hover:bg-slate-200"
+              }`}>
+                <Users className="w-4 h-4" />
+              </div>
+              <div className="flex flex-col leading-tight">
+                <span className="text-xs uppercase font-bold tracking-wider">User List</span>
+                <span className="text-[10px] text-muted-foreground font-medium mt-0.5">{systemStats.total} users</span>
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("roles")}
+            className={`w-full flex items-center justify-between p-3 py-2 rounded-xl transition-all group border text-left cursor-pointer ${
+              activeTab === "roles"
+                ? "bg-primary/5 border-primary/20 text-primary shadow-xs font-bold"
+                : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50 font-semibold"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                activeTab === "roles" ? "bg-primary/10 text-primary" : "bg-slate-100 text-slate-500 group-hover:bg-slate-200"
+              }`}>
+                <Shield className="w-4 h-4" />
+              </div>
+              <div className="flex flex-col leading-tight">
+                <span className="text-xs uppercase font-bold tracking-wider">Roles & Permissions</span>
+                <span className="text-[10px] text-muted-foreground font-medium mt-0.5">{Object.keys(dynamicRoles).length} Roles</span>
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("officers")}
+            className={`w-full flex items-center justify-between p-3 py-2 rounded-xl transition-all group border text-left cursor-pointer ${
+              activeTab === "officers"
+                ? "bg-primary/5 border-primary/20 text-primary shadow-xs font-bold"
+                : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50 font-semibold"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                activeTab === "officers" ? "bg-primary/10 text-primary" : "bg-slate-100 text-slate-500 group-hover:bg-slate-200"
+              }`}>
+                <Award className="w-4 h-4" />
+              </div>
+              <div className="flex flex-col leading-tight">
+                <span className="text-xs uppercase font-bold tracking-wider">Official Officers</span>
+                <span className="text-[10px] text-muted-foreground font-medium mt-0.5">{officerStats.total} officers</span>
+              </div>
+            </div>
+          </button>
+        </aside>
+
+        {/* Content Workspace */}
+        <div className="flex-1 min-w-0 w-full space-y-6">
 
           {/* Enhanced Stats Cards - System Users */}
           {activeTab === "users" && (
@@ -873,7 +883,6 @@ export function UserManagement() {
               </div>
             </div>
           )}
-        </div>
 
         {/* Enhanced Search & Filter - System Users */}
         {activeTab === "users" && (
@@ -1740,6 +1749,7 @@ export function UserManagement() {
             </div>
           </div>
         )}
+      </div>
       </div>
 
       {/* Add User Modal has been moved inline above the user table */}

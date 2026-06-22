@@ -47,6 +47,7 @@ import { StoreSettings } from "./pages/StoreSettings";
 import { News } from "./pages/News";
 import { Video } from "./pages/Video";
 import { StrategicPartners } from "./pages/StrategicPartners";
+import { ProgramDashboard } from "./pages/ProgramDashboard";
 
 export const router = createBrowserRouter([
   {
@@ -189,7 +190,8 @@ export const router = createBrowserRouter([
       { path: "matches/:batchId", element: <BatchDetail /> },
       { path: "batches/:batchId", element: <BatchDetail /> },
       { path: "batches/:batchId/share", element: <ShareFightCard /> },
-      { path: "matches", element: <MatchesEnhanced /> },
+      { path: "program", element: <ProgramDashboard /> },
+      { path: "matches", element: <Navigate to="/home/program?tab=matches" replace /> },
       { path: "matches-old", element: <Matches /> },
       { path: "match/:id", element: <MatchDetail /> },
       { path: "match/:id/update-result", element: <MatchDetailView /> },
@@ -199,8 +201,8 @@ export const router = createBrowserRouter([
       { path: "events/:eventId/sub-events/:subEventId", element: <SubEventDetail /> },
       { path: "events/:eventId/sub-events/:subEventId/add-match", element: <AddMatchToEvent /> },
       { path: "events/:eventId/add-match", element: <AddMatchToEvent /> },
-      { path: "events", element: <EventsAndMatches /> },
-      { path: "champion", element: <Champion /> },
+      { path: "events", element: <Navigate to="/home/program?tab=events" replace /> },
+      { path: "champion", element: <Navigate to="/home/program?tab=champions" replace /> },
       { path: "champion/new", element: <CreateChampion /> },
       { path: "champion/:id", element: <ChampionDetail /> },
       { path: "champion/:id/history", element: <ChampionHistory /> },

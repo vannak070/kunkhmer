@@ -56,7 +56,7 @@ const getStatusBadgeClass = (status: BatchStatus): string => {
 };
 
 
-export function MatchesEnhanced() {
+export function MatchesEnhanced({ embedded = false }: { embedded?: boolean }) {
   const permissions = usePermissions();
   const navigate = useNavigate();
   const [batches, setBatches] = useState<MatchBatch[]>([]);
@@ -252,18 +252,20 @@ export function MatchesEnhanced() {
   const clubs = Array.from(clubsSet).sort();
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8 animate-fadeIn">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className={embedded ? "space-y-6" : "min-h-screen bg-background p-4 md:p-8 animate-fadeIn"}>
+      <div className={embedded ? "space-y-6" : "max-w-7xl mx-auto space-y-6"}>
         {/* Header */}
-        <header className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tighter font-sans">
-              Match Batches
-            </h1>
-            <p className="text-xs md:text-sm text-slate-500 font-normal mt-1">
-              Manage fight cards, match details, and scheduling
-            </p>
-          </div>
+        <header className={clsx("flex items-start justify-between gap-4", embedded && "justify-end")}>
+          {!embedded && (
+            <div className="flex-1">
+              <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tighter font-sans">
+                Match Batches
+              </h1>
+              <p className="text-xs md:text-sm text-slate-500 font-normal mt-1">
+                Manage fight cards, match details, and scheduling
+              </p>
+            </div>
+          )}
 
           <div className="flex items-center gap-3 mt-1">
             {/* View Mode Toggle */}

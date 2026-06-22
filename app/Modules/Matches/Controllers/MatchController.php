@@ -139,13 +139,13 @@ class MatchController extends Controller
     public function index(Request $request)
     {
         $subEventId = $request->query('subEventId');
-        $query = SportMatch::with(['subEvent', 'fighterA.club', 'fighterB.club', 'referee', 'result']);
+        $query = SportMatch::with(['subEvent', 'fighterA.club', 'fighterB.club', 'referee', 'result', 'championship']);
 
         if ($subEventId) {
             $query->where('sub_event_id', $subEventId);
         }
 
-        $matches = $query->orderBy('created_at', 'asc')->get();
+        $matches = $query->orderBy('sort_order', 'asc')->orderBy('created_at', 'asc')->get();
 
         $data = $matches->map(function ($match) {
             $arr = $match->toArray();
@@ -172,6 +172,11 @@ class MatchController extends Controller
             $arr['winner_round'] = $match->result ? $match->result->round : null;
             $arr['winner_duration'] = $match->result ? $match->result->duration : null;
 
+            $arr['isTitleMatch'] = (bool) $match->is_title_match;
+            $arr['championshipId'] = $match->championship_id;
+            $arr['championshipTitleName'] = $match->championship ? $match->championship->title_name : null;
+            $arr['sortOrder'] = (int) $match->sort_order;
+
             return $arr;
         });
 
@@ -183,7 +188,7 @@ class MatchController extends Controller
 
     public function show($id)
     {
-        $match = SportMatch::with(['subEvent', 'fighterA.club', 'fighterB.club', 'referee', 'result'])->find($id);
+        $match = SportMatch::with(['subEvent', 'fighterA.club', 'fighterB.club', 'referee', 'result', 'championship'])->find($id);
         if (!$match) {
             return response()->json(['success' => false, 'error' => 'Match not found'], 404);
         }
@@ -211,6 +216,11 @@ class MatchController extends Controller
         $arr['winner_method'] = $match->result ? $match->result->method : null;
         $arr['winner_round'] = $match->result ? $match->result->round : null;
         $arr['winner_duration'] = $match->result ? $match->result->duration : null;
+
+        $arr['isTitleMatch'] = (bool) $match->is_title_match;
+        $arr['championshipId'] = $match->championship_id;
+        $arr['championshipTitleName'] = $match->championship ? $match->championship->title_name : null;
+        $arr['sortOrder'] = (int) $match->sort_order;
 
         return response()->json([
             'success' => true,
@@ -250,6 +260,9 @@ class MatchController extends Controller
             'club_b_response' => $request->input('clubBResponse', 'pending'),
             'referee_id' => $request->input('refereeId'),
             'judge_ids' => $request->input('judgeIds', []),
+            'is_title_match' => $request->input('isTitleMatch', false),
+            'championship_id' => $request->input('championshipId'),
+            'sort_order' => $request->input('sortOrder', 0),
         ]);
 
         return $this->show($match->id);
@@ -300,6 +313,10 @@ class MatchController extends Controller
         if (isset($input['fighterBConfirmed'])) $updateData['fighter_b_confirmed'] = $input['fighterBConfirmed'];
         if (isset($input['refereeConfirmed'])) $updateData['referee_confirmed'] = $input['refereeConfirmed'];
         if (isset($input['gloveConfirmedDate'])) $updateData['glove_confirmed_date'] = $input['gloveConfirmedDate'];
+        if (isset($input['isTitleMatch'])) $updateData['is_title_match'] = $input['isTitleMatch'];
+        if (isset($input['championshipId'])) $updateData['championship_id'] = $input['championshipId'];
+        if (isset($input['sortOrder'])) $updateData['sort_order'] = $input['sortOrder'];
+        if (isset($input['sort_order'])) $updateData['sort_order'] = $input['sort_order'];
 
         $match->update($updateData);
 
@@ -360,10 +377,118 @@ class MatchController extends Controller
             'winner_id' => $winnerId ?: null
         ]);
 
+        if ($match->is_title_match && $match->championship_id) {
+            $this->updateChampionshipRegistry($match, $winnerId, $method, $round);
+        }
+
         $this->recalculateFighterRecord($match->fighter_a_id);
         $this->recalculateFighterRecord($match->fighter_b_id);
 
         return $this->show($id);
+    }
+
+    private function updateChampionshipRegistry($match, $winnerId, $method, $round)
+    {
+        $champion = \App\Models\Champion::find($match->championship_id);
+        if (!$champion) return;
+
+        $oldHolderId = $champion->current_holder_id;
+        $matchDate = $match->subEvent ? $match->subEvent->date : now();
+        $eventName = $match->event ? $match->event->name : 'Kun Khmer Event';
+
+        // Get winner fighter details
+        $winnerFighter = null;
+        if ($winnerId) {
+            $winnerFighter = \App\Models\Fighter::find($winnerId);
+        }
+
+        // Determine opponent
+        $opponentId = ($winnerId === $match->fighter_a_id) ? $match->fighter_b_id : $match->fighter_a_id;
+        $opponentFighter = \App\Models\Fighter::find($opponentId);
+        $opponentName = $opponentFighter ? $opponentFighter->name : 'Unknown Opponent';
+
+        // Case 1: Title was Vacant
+        if (!$oldHolderId) {
+            if ($winnerFighter) {
+                // Winner becomes the new champion!
+                $champion->update([
+                    'current_holder_id' => $winnerId,
+                    'current_holder_name' => $winnerFighter->name,
+                    'nationality' => $winnerFighter->nationality,
+                    'date_awarded' => $matchDate,
+                    'winning_match_id' => $match->id,
+                    'status' => 'Active',
+                    'defense_count' => 0,
+                    'last_defense_date' => null
+                ]);
+
+                // Create a Defense log representing the crowning
+                \App\Models\ChampionDefense::create([
+                    'champion_id' => $champion->id,
+                    'event_id' => $match->event_id,
+                    'event_name' => $eventName,
+                    'match_id' => $match->id,
+                    'date' => $matchDate,
+                    'opponent' => $opponentName,
+                    'opponent_id' => $opponentId,
+                    'result' => 'Crowned New Champion',
+                    'method' => $method,
+                    'round' => $round
+                ]);
+            }
+            return;
+        }
+
+        // Case 2: Champion defended successfully
+        if ($winnerId === $oldHolderId) {
+            $champion->increment('defense_count');
+            $champion->update([
+                'last_defense_date' => $matchDate,
+                'winning_match_id' => $match->id
+            ]);
+
+            // Create a successful defense log
+            \App\Models\ChampionDefense::create([
+                'champion_id' => $champion->id,
+                'event_id' => $match->event_id,
+                'event_name' => $eventName,
+                'match_id' => $match->id,
+                'date' => $matchDate,
+                'opponent' => $opponentName,
+                'opponent_id' => $opponentId,
+                'result' => 'Won',
+                'method' => $method,
+                'round' => $round
+            ]);
+        } 
+        // Case 3: Champion lost the title
+        elseif ($winnerFighter) {
+            // Log defeat for old champion (result = 'Lost')
+            \App\Models\ChampionDefense::create([
+                'champion_id' => $champion->id,
+                'event_id' => $match->event_id,
+                'event_name' => $eventName,
+                'match_id' => $match->id,
+                'date' => $matchDate,
+                'opponent' => $winnerFighter->name,
+                'opponent_id' => $winnerFighter->id,
+                'result' => 'Lost',
+                'method' => $method,
+                'round' => $round
+            ]);
+
+            // Crown new champion
+            $champion->update([
+                'current_holder_id' => $winnerId,
+                'current_holder_name' => $winnerFighter->name,
+                'nationality' => $winnerFighter->nationality,
+                'date_awarded' => $matchDate,
+                'winning_match_id' => $match->id,
+                'status' => 'Active',
+                'defense_count' => 0,
+                'last_defense_date' => null
+            ]);
+        }
     }
 
     private function recalculateFighterRecord($fighterId)

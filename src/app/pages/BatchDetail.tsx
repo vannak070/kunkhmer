@@ -4,7 +4,7 @@ import {
   ArrowLeft, Eye, Plus, Search, ChevronDown, ChevronUp,
   CheckCircle, Clock, Calendar, MapPin, Users, Trophy, Check,
   Send, AlertCircle, Edit2, TrendingUp, Shield, Radio, Award, Building2, X,
-  UserCheck, Target, BarChart3, FileText, Trash2, Share2, Download, Scale, Dumbbell
+  UserCheck, Target, BarChart3, FileText, Trash2, Share2, Download, Scale, Dumbbell, Sparkles
 } from "lucide-react";
 import { 
   BATCH_STATUS_CONFIG, 
@@ -36,6 +36,145 @@ export function BatchDetail() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [selectedReferee, setSelectedReferee] = useState<string>("");
   const [selectedJudges, setSelectedJudges] = useState<string[]>([]);
+
+  // Grid-Based Officials Assignment State
+  const [matchOfficials, setMatchOfficials] = useState<Record<string, { refereeId: string, judgeIds: string[] }>>({});
+
+  useEffect(() => {
+    if (showOfficialModal && batch?.matches) {
+      const initial: Record<string, { refereeId: string, judgeIds: string[] }> = {};
+      batch.matches.forEach((m: any) => {
+        initial[m.id] = {
+          refereeId: m.referee_id || "",
+          judgeIds: m.judge_ids || []
+        };
+      });
+      setMatchOfficials(initial);
+    }
+  }, [showOfficialModal, batch]);
+
+  const updateMatchOfficialState = (matchId: string, field: "refereeId" | "judgeIds", value: any) => {
+    setMatchOfficials(prev => ({
+      ...prev,
+      [matchId]: {
+        ...prev[matchId],
+        [field]: value
+      }
+    }));
+  };
+
+  const getFilteredJudgesForSlot = (matchId: string, slotIndex: number) => {
+    const current = matchOfficials[matchId]?.judgeIds || [];
+    const selectedOtherSlots = current.filter((_, idx) => idx !== slotIndex);
+    return getJudges().filter(j => j.status === "Available" && !selectedOtherSlots.includes(j.id));
+  };
+
+  const handleAutoFillOfficials = () => {
+    if (!batch?.matches || batch.matches.length === 0) return;
+    const firstMatchId = batch.matches[0].id;
+    const firstMatchAssignment = matchOfficials[firstMatchId];
+    if (!firstMatchAssignment || !firstMatchAssignment.refereeId || firstMatchAssignment.judgeIds.length !== 3) {
+      toast.error("❌ Configure officials for the first match first!");
+      return;
+    }
+
+    const updated = { ...matchOfficials };
+    batch.matches.forEach((m: any) => {
+      updated[m.id] = {
+        refereeId: firstMatchAssignment.refereeId,
+        judgeIds: [...firstMatchAssignment.judgeIds]
+      };
+    });
+    setMatchOfficials(updated);
+    toast.success("⚡ Officials copied to all matches!");
+  };
+
+  // Inline Results Recorder State
+  const [inlineResults, setInlineResults] = useState<Record<string, { winnerId: string, method: string, round: string }>>({});
+
+  useEffect(() => {
+    if (batch?.matches) {
+      const initial: Record<string, { winnerId: string, method: string, round: string }> = {};
+      batch.matches.forEach((m: any) => {
+        initial[m.id] = {
+          winnerId: m.winner_id || "",
+          method: m.winner_method || "",
+          round: m.winner_round ? String(m.winner_round) : "",
+        };
+      });
+      setInlineResults(initial);
+    }
+  }, [batch]);
+
+  const updateInlineResultState = (matchId: string, field: string, value: string) => {
+    setInlineResults(prev => {
+      const current = prev[matchId] || { winnerId: "", method: "", round: "" };
+      const updated = { ...current, [field]: value };
+      
+      if (field === "winnerId" && (value === "Draw" || value === "No Contest")) {
+        updated.method = "";
+        updated.round = "";
+      }
+      if (field === "method" && value === "PTS") {
+        updated.round = "";
+      }
+      return { ...prev, [matchId]: updated };
+    });
+  };
+
+  const handleSaveInlineResult = async (matchId: string) => {
+    const result = inlineResults[matchId];
+    if (!result || !result.winnerId) {
+      toast.error("❌ Please select a winner!");
+      return;
+    }
+
+    const m = batch.matches.find((x: any) => x.id === matchId);
+    if (!m) return;
+
+    const isDrawOrNC = result.winnerId === "Draw" || result.winnerId === "No Contest";
+    if (!isDrawOrNC) {
+      if (!result.method) {
+        toast.error("❌ Please select victory method!");
+        return;
+      }
+      if (result.method !== "PTS" && !result.round) {
+        toast.error("❌ Please select ending round!");
+        return;
+      }
+    }
+
+    try {
+      await api.matches.saveResult(matchId, {
+        winnerId: isDrawOrNC ? null : result.winnerId,
+        winnerMethod: isDrawOrNC ? result.winnerId : result.method,
+        winnerRound: isDrawOrNC ? null : (result.method === "PTS" ? m.rounds : parseInt(result.round)),
+      });
+
+      const updatedMatches = batch.matches.map((x: any) => {
+        if (x.id === matchId) {
+          return {
+            ...x,
+            status: "Complete" as any,
+            winner_id: isDrawOrNC ? null : result.winnerId,
+            winner_method: isDrawOrNC ? result.winnerId : result.method,
+            winner_round: isDrawOrNC ? null : (result.method === "PTS" ? m.rounds : parseInt(result.round)),
+          };
+        }
+        return x;
+      });
+
+      setBatch((prev: any) => ({
+        ...prev,
+        matches: updatedMatches
+      }));
+
+      toast.success("✅ Match outcome recorded successfully!");
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to save match result: " + err.message);
+    }
+  };
 
   const [batch, setBatch] = useState<any>(null);
   const [matches, setMatches] = useState<any[]>([]);
@@ -225,20 +364,78 @@ export function BatchDetail() {
   };
 
   const handleOfficialAssignment = () => {
-    if (!selectedReferee) {
-      toast.error("❌ Please select a referee");
-      return;
-    }
-    if (selectedJudges.length !== 3) {
-      toast.error("❌ Exactly 3 judges are required");
-      return;
-    }
-
     if (selectedMatchForOfficials) {
+      if (!selectedReferee) {
+        toast.error("❌ Please select a referee");
+        return;
+      }
+      if (selectedJudges.length !== 3) {
+        toast.error("❌ Exactly 3 judges are required");
+        return;
+      }
+
+      // Update specific match
+      const referee = getReferees().find(r => r.id === selectedReferee);
+      const judges = selectedJudges.map(id => getJudges().find(j => j.id === id)?.name || "");
+      
+      const updatedMatches = batch.matches.map((m: any) => {
+        if (m.id === selectedMatchForOfficials) {
+          return {
+            ...m,
+            referee_id: selectedReferee,
+            refereeName: referee?.name || "Assigned",
+            judge_ids: selectedJudges,
+            judgeNames: judges,
+            officials: true
+          };
+        }
+        return m;
+      });
+
+      setBatch((prev: any) => ({
+        ...prev,
+        matches: updatedMatches
+      }));
+
       toast.success("✅ Officials assigned to match");
     } else {
-      toast.success("✅ Officials assigned to all matches in batch");
+      // Validate all matches in the card
+      let isValid = true;
+      batch.matches.forEach((m: any) => {
+        const assignment = matchOfficials[m.id];
+        if (!assignment || !assignment.refereeId || assignment.judgeIds.length !== 3) {
+          isValid = false;
+        }
+      });
+
+      if (!isValid) {
+        toast.error("❌ Each match must have a referee and exactly 3 judges assigned!");
+        return;
+      }
+
+      // Save assignments for all matches
+      const updatedMatches = batch.matches.map((m: any) => {
+        const assignment = matchOfficials[m.id];
+        const referee = getReferees().find(r => r.id === assignment.refereeId);
+        const judges = assignment.judgeIds.map(id => getJudges().find(j => j.id === id)?.name || "");
+        return {
+          ...m,
+          referee_id: assignment.refereeId,
+          refereeName: referee?.name || "Assigned",
+          judge_ids: assignment.judgeIds,
+          judgeNames: judges,
+          officials: true
+        };
+      });
+
+      setBatch((prev: any) => ({
+        ...prev,
+        matches: updatedMatches
+      }));
+
+      toast.success("✅ Officials assigned successfully to all matches!");
     }
+
     setShowOfficialModal(false);
     setSelectedMatchForOfficials(null);
     setSelectedReferee("");
@@ -636,6 +833,120 @@ export function BatchDetail() {
 
           {/* Matches List */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 md:p-8">
+            {/* Quick Results Recorder Panel */}
+            {batch.matches.length > 0 && ["Ready", "Live", "Complete"].includes(batch.status) && (
+              <div className="bg-slate-50 rounded-2xl border border-slate-200/80 p-5 mb-8 space-y-4 animate-fadeIn">
+                <div className="flex items-center justify-between border-b border-slate-200/50 pb-3">
+                  <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    Quick Results Recorder Desk
+                  </h3>
+                  <span className="px-2.5 py-0.5 bg-primary/10 text-primary font-bold text-[9px] rounded-full uppercase tracking-wider">
+                    Control Center
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-200/60 bg-white shadow-sm">
+                  <table className="w-full text-left text-xs font-semibold text-slate-700 min-w-[650px] table-fixed">
+                    <thead>
+                      <tr className="bg-slate-50/50 border-b border-slate-200/60 text-slate-450 uppercase text-[9px] tracking-wider">
+                        <th className="py-3 px-3 w-[220px]">Match Card</th>
+                        <th className="py-3 px-3 w-[180px]">Winner Corner Selection</th>
+                        <th className="py-3 px-3 w-[140px]">Victory Method</th>
+                        <th className="py-3 px-3 w-[110px]">End Round</th>
+                        <th className="py-3 px-3 text-right w-[120px]">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {batch.matches.map((m: any, index: number) => {
+                        const isSaved = m.status === "Complete" || m.winner_id || m.winner_method;
+                        const matchResult = inlineResults[m.id] || { winnerId: "", method: "", round: "" };
+                        
+                        return (
+                          <tr key={m.id} className="hover:bg-slate-50/40 transition-colors">
+                            <td className="py-3.5 px-3">
+                              <div className="flex items-center gap-2">
+                                <span className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center font-bold text-[10px] text-slate-500 shrink-0">
+                                  #{index + 1}
+                                </span>
+                                <div className="min-w-0">
+                                  <div className="font-extrabold text-slate-900 truncate">
+                                    {m.fighterA.name} <span className="text-slate-400 font-normal">vs</span> {m.fighterB.name}
+                                  </div>
+                                  <div className="text-[10px] text-slate-405 mt-0.5">
+                                    {m.weightClass} • {m.rounds} Rounds
+                                    {m.isChampionshipBout && (
+                                      <span className="text-amber-600 font-bold ml-1.5">🏆 TITLE</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-3">
+                              <select 
+                                disabled={isSaved}
+                                value={matchResult.winnerId}
+                                onChange={(e) => updateInlineResultState(m.id, "winnerId", e.target.value)}
+                                className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 w-full focus:border-primary focus:outline-none cursor-pointer disabled:bg-slate-50 disabled:text-slate-450"
+                              >
+                                <option value="">Select Winner...</option>
+                                <option value={m.fighterA.id}>{m.fighterA.name} (Red Corner)</option>
+                                <option value={m.fighterB.id}>{m.fighterB.name} (Blue Corner)</option>
+                                <option value="Draw">Draw Match</option>
+                                <option value="No Contest">No Contest (NC)</option>
+                              </select>
+                            </td>
+                            <td className="py-3.5 px-3">
+                              <select 
+                                disabled={isSaved || matchResult.winnerId === "Draw" || matchResult.winnerId === "No Contest" || !matchResult.winnerId}
+                                value={matchResult.method}
+                                onChange={(e) => updateInlineResultState(m.id, "method", e.target.value)}
+                                className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 w-full focus:border-primary focus:outline-none cursor-pointer disabled:bg-slate-50 disabled:text-slate-450"
+                              >
+                                <option value="">Victory Method...</option>
+                                <option value="KO">Knockout (KO)</option>
+                                <option value="TKO">Technical Knockout (TKO)</option>
+                                <option value="PTS">Points Decision (PTS)</option>
+                                <option value="DQ">Disqualification (DQ)</option>
+                              </select>
+                            </td>
+                            <td className="py-3.5 px-3">
+                              <select 
+                                disabled={isSaved || matchResult.winnerId === "Draw" || matchResult.winnerId === "No Contest" || matchResult.method === "PTS" || !matchResult.method}
+                                value={matchResult.round}
+                                onChange={(e) => updateInlineResultState(m.id, "round", e.target.value)}
+                                className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 w-full focus:border-primary focus:outline-none cursor-pointer disabled:bg-slate-50 disabled:text-slate-450"
+                              >
+                                <option value="">Round...</option>
+                                {[...Array(m.rounds)].map((_, i) => (
+                                  <option key={i+1} value={i+1}>Round {i+1}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="py-3.5 px-3 text-right">
+                              {isSaved ? (
+                                <span className="inline-flex items-center gap-1 text-emerald-600 font-extrabold text-[10px] uppercase tracking-wider bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/50">
+                                  <Check className="w-3.5 h-3.5" />
+                                  Saved
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => handleSaveInlineResult(m.id)}
+                                  className="px-3.5 py-1.5 bg-primary hover:bg-primary/95 text-white font-extrabold rounded-lg text-[10px] uppercase tracking-wider transition-all shadow-sm shadow-primary/10 active:scale-[0.97]"
+                                >
+                                  Save Result
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
               <h2 className="text-lg md:text-xl font-extrabold text-slate-900 tracking-tight uppercase">
                 Matches ({filteredMatches.length})
@@ -876,78 +1187,198 @@ export function BatchDetail() {
       {/* Assign Officials Modal */}
       {showOfficialModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl p-6 md:p-8 max-w-2xl w-full border border-slate-100 shadow-xl">
+          <div className={clsx(
+            "bg-white rounded-2xl p-6 md:p-8 w-full border border-slate-100 shadow-xl transition-all duration-300",
+            selectedMatchForOfficials ? "max-w-md" : "max-w-4xl"
+          )}>
             <h3 className="text-lg font-extrabold text-slate-900 mb-4 tracking-tight uppercase">Assign Officials</h3>
             
-            <div className="space-y-4 mb-6">
-              <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl">
-                <p className="text-xs font-semibold text-primary">
-                  {selectedMatchForOfficials 
-                    ? `Assigning officials to specific match`
-                    : `Assigning officials to all ${batch.matches.length} matches in this batch`
-                  }
-                </p>
-              </div>
-              
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Main Referee</label>
-                <select 
-                  value={selectedReferee}
-                  onChange={(e) => setSelectedReferee(e.target.value)}
-                  className="input-premium font-medium text-slate-700 rounded-xl px-4 py-2.5"
-                >
-                  <option value="">Select referee...</option>
-                  {getReferees().filter(r => r.status === "Available").map(referee => (
-                    <option key={referee.id} value={referee.id}>
-                      {referee.name} - {referee.grade} ({referee.experience})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Judges (3 required)</label>
-                <div className="bg-slate-50/50 border border-slate-200/80 rounded-xl p-4 max-h-56 overflow-y-auto space-y-2">
-                  {getJudges().filter(j => j.status === "Available").map(judge => {
-                    const isSelected = selectedJudges.includes(judge.id);
+            {/* Batch Grid Officials Assignment */}
+            {!selectedMatchForOfficials ? (
+              <div className="space-y-4 mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                  <p className="text-xs font-semibold text-slate-500">
+                    Assign a referee and 3 judges for each of the {batch.matches.length} fights.
+                  </p>
+                  <button 
+                    onClick={handleAutoFillOfficials}
+                    className="px-3.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-extrabold text-[10px] uppercase tracking-wider rounded-xl border border-amber-200/50 transition-colors shadow-sm self-end sm:self-auto"
+                  >
+                    ⚡ Copy Match 1 to All
+                  </button>
+                </div>
+                
+                <div className="max-h-[380px] overflow-y-auto pr-1 space-y-4">
+                  {batch.matches.map((m: any, index: number) => {
+                    const refereeId = matchOfficials[m.id]?.refereeId || "";
+                    const judgeIds = matchOfficials[m.id]?.judgeIds || [];
+                    
                     return (
-                      <button
-                        key={judge.id}
-                        type="button"
-                        onClick={() => handleToggleJudge(judge.id)}
-                        className={`w-full text-left p-2.5 rounded-xl border transition-all duration-200 flex items-center justify-between ${
-                          isSelected
-                            ? "bg-primary border-primary text-white shadow-sm shadow-primary/20"
-                            : "bg-white border-slate-200 hover:border-slate-350 text-slate-800"
-                        }`}
-                      >
-                        <div className="flex-1">
-                          <div className="font-semibold text-xs">{judge.name}</div>
-                          <div className={`text-[10px] mt-0.5 font-medium ${isSelected ? "text-white/90" : "text-slate-500"}`}>
-                            {judge.grade} • {judge.experience}
+                      <div key={m.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+                        <div className="flex items-center justify-between border-b border-slate-200/40 pb-2">
+                          <span className="text-[10px] font-extrabold text-[#0A3D91] bg-[#0A3D91]/10 px-2.5 py-0.5 rounded-lg uppercase tracking-wide">
+                            Fight #{index + 1}
+                          </span>
+                          <span className="text-xs font-extrabold text-slate-800">
+                            {m.fighterA.name} vs {m.fighterB.name}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                          {/* Referee */}
+                          <div>
+                            <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Referee</label>
+                            <select
+                              value={refereeId}
+                              onChange={(e) => updateMatchOfficialState(m.id, "refereeId", e.target.value)}
+                              className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg p-2 focus:border-primary focus:outline-none"
+                            >
+                              <option value="">Select...</option>
+                              {getReferees().filter(r => r.status === "Available").map(referee => (
+                                <option key={referee.id} value={referee.id}>
+                                  {referee.name} ({referee.grade})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Judge 1 */}
+                          <div>
+                            <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Judge 1</label>
+                            <select
+                              value={judgeIds[0] || ""}
+                              onChange={(e) => {
+                                const copy = [...judgeIds];
+                                copy[0] = e.target.value;
+                                updateMatchOfficialState(m.id, "judgeIds", copy);
+                              }}
+                              className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg p-2 focus:border-primary focus:outline-none"
+                            >
+                              <option value="">Select...</option>
+                              {getFilteredJudgesForSlot(m.id, 0).map(judge => (
+                                <option key={judge.id} value={judge.id}>
+                                  {judge.name} ({judge.grade})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Judge 2 */}
+                          <div>
+                            <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Judge 2</label>
+                            <select
+                              value={judgeIds[1] || ""}
+                              onChange={(e) => {
+                                const copy = [...judgeIds];
+                                copy[1] = e.target.value;
+                                updateMatchOfficialState(m.id, "judgeIds", copy);
+                              }}
+                              className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg p-2 focus:border-primary focus:outline-none"
+                            >
+                              <option value="">Select...</option>
+                              {getFilteredJudgesForSlot(m.id, 1).map(judge => (
+                                <option key={judge.id} value={judge.id}>
+                                  {judge.name} ({judge.grade})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Judge 3 */}
+                          <div>
+                            <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Judge 3</label>
+                            <select
+                              value={judgeIds[2] || ""}
+                              onChange={(e) => {
+                                const copy = [...judgeIds];
+                                copy[2] = e.target.value;
+                                updateMatchOfficialState(m.id, "judgeIds", copy);
+                              }}
+                              className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg p-2 focus:border-primary focus:outline-none"
+                            >
+                              <option value="">Select...</option>
+                              {getFilteredJudgesForSlot(m.id, 2).map(judge => (
+                                <option key={judge.id} value={judge.id}>
+                                  {judge.name} ({judge.grade})
+                                </option>
+                              ))}
+                            </select>
                           </div>
                         </div>
-                        {isSelected && (
-                          <Check className="w-4 h-4 flex-shrink-0 ml-2" />
-                        )}
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
+              </div>
+            ) : (
+              // Single Match Officials Assignment Form
+              <div className="space-y-4 mb-6">
+                <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl">
+                  <p className="text-xs font-semibold text-primary">
+                    Assigning officials to specific match
+                  </p>
+                </div>
                 
-                {/* Selected Count */}
-                <div className="mt-2 text-center">
-                  <span className={clsx(
-                    "text-[10px] uppercase tracking-wider font-bold",
-                    selectedJudges.length === 3 ? "text-emerald-600" : "text-slate-500"
-                  )}>
-                    {selectedJudges.length} / 3 judges selected
-                  </span>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Main Referee</label>
+                  <select 
+                    value={selectedReferee}
+                    onChange={(e) => setSelectedReferee(e.target.value)}
+                    className="input-premium font-medium text-slate-700 rounded-xl px-4 py-2.5"
+                  >
+                    <option value="">Select referee...</option>
+                    {getReferees().filter(r => r.status === "Available").map(referee => (
+                      <option key={referee.id} value={referee.id}>
+                        {referee.name} - {referee.grade} ({referee.experience})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Judges (3 required)</label>
+                  <div className="bg-slate-50/50 border border-slate-200/80 rounded-xl p-4 max-h-56 overflow-y-auto space-y-2">
+                    {getJudges().filter(j => j.status === "Available").map(judge => {
+                      const isSelected = selectedJudges.includes(judge.id);
+                      return (
+                        <button
+                          key={judge.id}
+                          type="button"
+                          onClick={() => handleToggleJudge(judge.id)}
+                          className={`w-full text-left p-2.5 rounded-xl border transition-all duration-200 flex items-center justify-between ${
+                            isSelected
+                              ? "bg-primary border-primary text-white shadow-sm shadow-primary/20"
+                              : "bg-white border-slate-200 hover:border-slate-350 text-slate-800"
+                          }`}
+                        >
+                          <div className="flex-1">
+                            <div className="font-semibold text-xs">{judge.name}</div>
+                            <div className={`text-[10px] mt-0.5 font-medium ${isSelected ? "text-white/90" : "text-slate-500"}`}>
+                              {judge.grade} • {judge.experience}
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <Check className="w-4 h-4 flex-shrink-0 ml-2" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Selected Count */}
+                  <div className="mt-2 text-center">
+                    <span className={clsx(
+                      "text-[10px] uppercase tracking-wider font-bold",
+                      selectedJudges.length === 3 ? "text-emerald-600" : "text-slate-500"
+                    )}>
+                      {selectedJudges.length} / 3 judges selected
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 border-t border-slate-100 pt-5">
               <button
                 onClick={handleOfficialAssignment}
                 className="flex-1 py-2.5 bg-primary hover:bg-primary/95 text-white rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow hover:-translate-y-[1px]"

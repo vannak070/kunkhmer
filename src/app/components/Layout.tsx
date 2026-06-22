@@ -56,9 +56,10 @@ const navItems = [
     path: "/home/program",
     permission: "events.view",
     submenu: [
-      { emoji: "🎟️", label: "Events", path: "/home/events", permission: "events.view" },
-      { emoji: "🥊", label: "Matches", path: "/home/matches", permission: "matches.view" },
-      { emoji: "🏆", label: "Champions", path: "/home/champion", permission: "events.view" }
+      { emoji: "📊", label: "Overview", path: "/home/program?tab=overview", permission: "events.view" },
+      { emoji: "🎟️", label: "Events", path: "/home/program?tab=events", permission: "events.view" },
+      { emoji: "⚔️", label: "Matches", path: "/home/program?tab=matches", permission: "events.view" },
+      { emoji: "🏆", label: "Champions", path: "/home/program?tab=champions", permission: "events.view" }
     ]
   },
   { icon: ClipboardCheck, label: "Match Proposals", path: "/home/match-proposals", permission: "matches.view_proposals" },
@@ -85,7 +86,10 @@ export function Layout() {
 
   useEffect(() => {
     const activeItem = navItems.find(item => 
-      item.submenu && item.submenu.some(sub => location.pathname.startsWith(sub.path))
+      item.submenu && item.submenu.some(sub => {
+        const pathOnly = sub.path.split("?")[0];
+        return location.pathname.startsWith(pathOnly);
+      })
     );
     if (activeItem) {
       setOpenSubmenu(activeItem.label);
@@ -156,7 +160,10 @@ export function Layout() {
                         {item.submenu
                           .filter(subItem => !subItem.permission || permissions.hasPermission(subItem.permission))
                           .map((subItem) => {
-                          const isSubActive = location.pathname === subItem.path || location.pathname.startsWith(subItem.path + "/");
+                          const currentPathWithSearch = location.pathname + (location.search || "");
+                          const isSubActive = subItem.path.includes("?") 
+                            ? (currentPathWithSearch === subItem.path || (subItem.path.endsWith("overview") && currentPathWithSearch === "/home/program"))
+                            : (location.pathname === subItem.path || location.pathname.startsWith(subItem.path + "/"));
                           return (
                             <NavLink
                               key={subItem.path}

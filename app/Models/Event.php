@@ -24,13 +24,20 @@ class Event extends Model
         'description',
         'image',
         'kkf_approval_date',
-        'kkf_approved_by'
+        'kkf_approved_by',
+        'event_type',
+        'is_tournament',
+        'tournament_format',
+        'tournament_weight_class',
+        'expected_participants'
     ];
 
     protected $casts = [
         'date' => 'date',
         'end_date' => 'date',
         'kkf_approval_date' => 'datetime',
+        'is_tournament' => 'boolean',
+        'expected_participants' => 'integer'
     ];
 
     public function organizer()

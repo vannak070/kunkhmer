@@ -173,8 +173,8 @@ export function ChampionDetail() {
     );
   }
 
-  const typeConfig = CHAMPION_TYPE_CONFIG[champion.championType];
-  const statusConfig = CHAMPION_STATUS_CONFIG[champion.status];
+  const typeConfig = CHAMPION_TYPE_CONFIG[champion.championType as ChampionType] || CHAMPION_TYPE_CONFIG["KKF National"];
+  const statusConfig = CHAMPION_STATUS_CONFIG[champion.status as ChampionStatus] || CHAMPION_STATUS_CONFIG["Active"];
   const champPhoto = getFighterPhoto(champion);
 
   return (
