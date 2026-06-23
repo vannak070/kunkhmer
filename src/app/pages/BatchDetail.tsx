@@ -27,6 +27,10 @@ export function BatchDetail() {
   const { batchId } = useParams();
   const navigate = useNavigate();
   const permissions = usePermissions();
+
+  // === All state declarations at the top ===
+  const [batch, setBatch] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,8 +49,8 @@ export function BatchDetail() {
       const initial: Record<string, { refereeId: string, judgeIds: string[] }> = {};
       batch.matches.forEach((m: any) => {
         initial[m.id] = {
-          refereeId: m.referee_id || "",
-          judgeIds: m.judge_ids || []
+          refereeId: m.refereeId || "",
+          judgeIds: m.judgeIds || []
         };
       });
       setMatchOfficials(initial);
@@ -91,18 +95,25 @@ export function BatchDetail() {
 
   // Inline Results Recorder State
   const [inlineResults, setInlineResults] = useState<Record<string, { winnerId: string, method: string, round: string }>>({});
+  const [actualWeights, setActualWeights] = useState<Record<string, { weightA: string, weightB: string }>>({});
 
   useEffect(() => {
     if (batch?.matches) {
-      const initial: Record<string, { winnerId: string, method: string, round: string }> = {};
+      const initialResults: Record<string, { winnerId: string, method: string, round: string }> = {};
+      const initialWeights: Record<string, { weightA: string, weightB: string }> = {};
       batch.matches.forEach((m: any) => {
-        initial[m.id] = {
+        initialResults[m.id] = {
           winnerId: m.winner_id || "",
           method: m.winner_method || "",
           round: m.winner_round ? String(m.winner_round) : "",
         };
+        initialWeights[m.id] = {
+          weightA: m.fighterA?.weight ? String(m.fighterA.weight) : "",
+          weightB: m.fighterB?.weight ? String(m.fighterB.weight) : "",
+        };
       });
-      setInlineResults(initial);
+      setInlineResults(initialResults);
+      setActualWeights(initialWeights);
     }
   }, [batch]);
 
@@ -176,9 +187,8 @@ export function BatchDetail() {
     }
   };
 
-  const [batch, setBatch] = useState<any>(null);
+  // (State already declared at the top of the component)
   const [matches, setMatches] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
     if (batchId) {
@@ -202,22 +212,32 @@ export function BatchDetail() {
             agreedWeight: m.agreed_weight,
             isChampionshipBout: m.is_title_match || m.isTitleMatch || false,
             refereeId: m.referee_id || "",
-            judgeIds: m.judge_ids || [],
-            officials: m.referee_name ? true : false,
+            judgeIds: Array.isArray(m.judge_ids) ? m.judge_ids : [],
+            officials: (m.referee_id || (Array.isArray(m.judge_ids) && m.judge_ids.length > 0)) ? true : false,
             refereeName: m.referee_name,
+            fighterAConfirmed: m.fighter_a_confirmed || false,
+            fighterBConfirmed: m.fighter_b_confirmed || false,
+            winnerId: m.winner_id || null,
+            winnerMethod: m.winner_method || null,
+            winnerRound: m.winner_round || null,
+            gloveSize: m.glove_size || m.gloveSize || "",
+            gloveBrand: m.glove_brand || m.gloveBrand || "",
+            championshipTitleName: m.championshipTitleName || m.championship_title_name || null,
             fighterA: {
               id: m.fighter_a_id,
-              name: m.fighter_a_name,
+              name: m.fighter_a_name || "TBD (Fighter A)",
               image: m.fighter_a_image,
-              gym: m.club_a_name,
-              record: m.fighter_a_record || "0-0-0"
+              gym: m.club_a_name || "Independent",
+              record: m.fighter_a_record || "0-0-0",
+              weight: parseFloat(m.fighterA?.current_weight || m.fighterA?.currentWeight || m.fighter_a?.current_weight || m.fighter_a?.currentWeight || 0)
             },
             fighterB: {
               id: m.fighter_b_id,
-              name: m.fighter_b_name,
+              name: m.fighter_b_name || "TBD (Fighter B)",
               image: m.fighter_b_image,
-              gym: m.club_b_name,
-              record: m.fighter_b_record || "0-0-0"
+              gym: m.club_b_name || "Independent",
+              record: m.fighter_b_record || "0-0-0",
+              weight: parseFloat(m.fighterB?.current_weight || m.fighterB?.currentWeight || m.fighter_b?.current_weight || m.fighter_b?.currentWeight || 0)
             }
           };
         });
@@ -288,9 +308,9 @@ export function BatchDetail() {
     
     const query = searchQuery.toLowerCase();
     return batch.matches.filter((match: any) => 
-      match.fighterA.name.toLowerCase().includes(query) ||
-      match.fighterB.name.toLowerCase().includes(query) ||
-      match.weightClass.toLowerCase().includes(query)
+      (match.fighterA?.name || "").toLowerCase().includes(query) ||
+      (match.fighterB?.name || "").toLowerCase().includes(query) ||
+      (match.weightClass || "").toLowerCase().includes(query)
     );
   }, [batch?.matches, searchQuery]);
 
@@ -308,7 +328,7 @@ export function BatchDetail() {
         <div className="text-center">
           <h1 className="text-2xl font-extrabold text-slate-900 mb-4 tracking-tight">Batch Not Found</h1>
           <button
-            onClick={() => navigate("/home/matches")}
+            onClick={() => navigate("/home/program?tab=matches")}
             className="btn-primary px-5 py-2.5 font-semibold uppercase tracking-wider text-xs rounded-xl shadow-md"
           >
             Back to Matches
@@ -332,11 +352,104 @@ export function BatchDetail() {
     }
   };
 
+  const handleCompleteWeightIn = async () => {
+    // Check if all fighters have a weight > 0
+    const allWeighed = batch.matches.every((m: any) => m.fighterA?.weight > 0 && m.fighterB?.weight > 0);
+    if (!allWeighed) {
+      if (!confirm("⚠️ Some fighters have not completed weigh-in confirmation. Do you want to override and proceed?")) {
+        return;
+      }
+    }
+    try {
+      await api.batches.update(batchId!, { status: "Scheduled" });
+      toast.success(`✅ Batch ${batch.batchNumber} has been successfully scheduled!`);
+      loadData();
+    } catch (err: any) {
+      toast.error("Failed to schedule batch: " + err.message);
+    }
+  };
+
+  const handleGoLive = async () => {
+    try {
+      await api.batches.update(batchId!, { status: "Live" });
+      toast.success(`🔥 Batch ${batch.batchNumber} is now LIVE!`);
+      loadData();
+    } catch (err: any) {
+      toast.error("Failed to start event: " + err.message);
+    }
+  };
+
+  const handleFinalizeEvent = async () => {
+    const allCompleted = batch.matches.every((m: any) => m.status === "Complete" || m.winner_id || m.winner_method);
+    if (!allCompleted) {
+      toast.error("❌ Cannot finalize: Record outcomes for all matches first!");
+      return;
+    }
+    try {
+      await api.batches.update(batchId!, { status: "Complete" });
+      toast.success(`🏆 Batch ${batch.batchNumber} event has been finalized and completed!`);
+      loadData();
+    } catch (err: any) {
+      toast.error("Failed to finalize event: " + err.message);
+    }
+  };
+
+  const handleSaveFighterWeight = async (matchId: string, corner: "A" | "B") => {
+    const match = batch.matches.find((m: any) => m.id === matchId);
+    if (!match) return;
+
+    const weights = actualWeights[matchId] || { weightA: "", weightB: "" };
+    const weightVal = corner === "A" ? weights.weightA : weights.weightB;
+    const fighter = corner === "A" ? match.fighterA : match.fighterB;
+
+    if (!weightVal || isNaN(parseFloat(weightVal))) {
+      toast.error("❌ Please enter a valid weight!");
+      return;
+    }
+
+    try {
+      // 1. Update fighter's weight in database
+      await api.fighters.update(fighter.id, { currentWeight: parseFloat(weightVal) });
+      
+      // 2. Set fighter weigh-in confirmation on the match
+      const updatePayload = corner === "A" 
+        ? { fighterAConfirmed: true } 
+        : { fighterBConfirmed: true };
+      
+      await api.matches.update(matchId, updatePayload);
+
+      // 3. Update local state
+      const updatedMatches = batch.matches.map((m: any) => {
+        if (m.id === matchId) {
+          const updatedFighter = { ...fighter, weight: parseFloat(weightVal) };
+          return {
+            ...m,
+            fighterAConfirmed: corner === "A" ? true : m.fighterAConfirmed,
+            fighterBConfirmed: corner === "B" ? true : m.fighterBConfirmed,
+            fighterA: corner === "A" ? updatedFighter : m.fighterA,
+            fighterB: corner === "B" ? updatedFighter : m.fighterB,
+          };
+        }
+        return m;
+      });
+
+      setBatch((prev: any) => ({
+        ...prev,
+        matches: updatedMatches
+      }));
+
+      toast.success(`✅ Weight recorded for ${fighter.name}!`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to save weight: " + err.message);
+    }
+  };
+
   const handleDeleteBatch = async () => {
     try {
       await api.batches.delete(batchId!);
       toast.success(`✅ Batch ${batch.batchNumber} deleted`);
-      setTimeout(() => navigate("/home/matches"), 1000);
+      setTimeout(() => navigate("/home/program?tab=matches"), 1000);
     } catch (err: any) {
       toast.error("Failed to delete batch: " + err.message);
     }
@@ -365,7 +478,7 @@ export function BatchDetail() {
     }
   };
 
-  const handleOfficialAssignment = () => {
+  const handleOfficialAssignment = async () => {
     if (selectedMatchForOfficials) {
       if (!selectedReferee) {
         toast.error("❌ Please select a referee");
@@ -376,30 +489,43 @@ export function BatchDetail() {
         return;
       }
 
-      // Update specific match
-      const referee = getReferees().find(r => r.id === selectedReferee);
-      const judges = selectedJudges.map(id => getJudges().find(j => j.id === id)?.name || "");
-      
-      const updatedMatches = batch.matches.map((m: any) => {
-        if (m.id === selectedMatchForOfficials) {
-          return {
-            ...m,
-            referee_id: selectedReferee,
-            refereeName: referee?.name || "Assigned",
-            judge_ids: selectedJudges,
-            judgeNames: judges,
-            officials: true
-          };
-        }
-        return m;
-      });
+      try {
+        await api.matches.update(selectedMatchForOfficials, {
+          refereeId: selectedReferee,
+          judgeIds: selectedJudges,
+        });
 
-      setBatch((prev: any) => ({
-        ...prev,
-        matches: updatedMatches
-      }));
+        // Update specific match
+        const referee = getReferees().find(r => r.id === selectedReferee);
+        const judges = selectedJudges.map(id => getJudges().find(j => j.id === id)?.name || "");
+        
+        const updatedMatches = batch.matches.map((m: any) => {
+          if (m.id === selectedMatchForOfficials) {
+            return {
+              ...m,
+              refereeId: selectedReferee,
+              referee_id: selectedReferee,
+              refereeName: referee?.name || "Assigned",
+              judgeIds: selectedJudges,
+              judge_ids: selectedJudges,
+              judgeNames: judges,
+              officials: true
+            };
+          }
+          return m;
+        });
 
-      toast.success("✅ Officials assigned to match");
+        setBatch((prev: any) => ({
+          ...prev,
+          matches: updatedMatches
+        }));
+
+        toast.success("✅ Officials assigned to match");
+      } catch (err: any) {
+        console.error(err);
+        toast.error("Failed to assign officials: " + err.message);
+        return;
+      }
     } else {
       // Validate all matches in the card
       let isValid = true;
@@ -415,27 +541,45 @@ export function BatchDetail() {
         return;
       }
 
-      // Save assignments for all matches
-      const updatedMatches = batch.matches.map((m: any) => {
-        const assignment = matchOfficials[m.id];
-        const referee = getReferees().find(r => r.id === assignment.refereeId);
-        const judges = assignment.judgeIds.map(id => getJudges().find(j => j.id === id)?.name || "");
-        return {
-          ...m,
-          referee_id: assignment.refereeId,
-          refereeName: referee?.name || "Assigned",
-          judge_ids: assignment.judgeIds,
-          judgeNames: judges,
-          officials: true
-        };
-      });
+      try {
+        await Promise.all(
+          batch.matches.map((m: any) => {
+            const assignment = matchOfficials[m.id];
+            return api.matches.update(m.id, {
+              refereeId: assignment.refereeId,
+              judgeIds: assignment.judgeIds,
+            });
+          })
+        );
 
-      setBatch((prev: any) => ({
-        ...prev,
-        matches: updatedMatches
-      }));
+        // Save assignments for all matches
+        const updatedMatches = batch.matches.map((m: any) => {
+          const assignment = matchOfficials[m.id];
+          const referee = getReferees().find(r => r.id === assignment.refereeId);
+          const judges = assignment.judgeIds.map(id => getJudges().find(j => j.id === id)?.name || "");
+          return {
+            ...m,
+            refereeId: assignment.refereeId,
+            referee_id: assignment.refereeId,
+            refereeName: referee?.name || "Assigned",
+            judgeIds: assignment.judgeIds,
+            judge_ids: assignment.judgeIds,
+            judgeNames: judges,
+            officials: true
+          };
+        });
 
-      toast.success("✅ Officials assigned successfully to all matches!");
+        setBatch((prev: any) => ({
+          ...prev,
+          matches: updatedMatches
+        }));
+
+        toast.success("✅ Officials assigned successfully to all matches!");
+      } catch (err: any) {
+        console.error(err);
+        toast.error("Failed to assign officials: " + err.message);
+        return;
+      }
     }
 
     setShowOfficialModal(false);
@@ -491,20 +635,20 @@ export function BatchDetail() {
         if (status === "Draft") {
           return hasMatches ? "active" : "upcoming";
         }
-        if (["Pending KKF", "Approved", "Rejected", "Scheduled"].includes(status)) {
-          return "active";
-        }
         return "completed";
       case "weight-in":
-        if (["Draft", "Pending KKF", "Approved", "Rejected", "Scheduled"].includes(status)) {
+        if (status === "Weight-In") {
+          return "active";
+        }
+        if (["Draft", "Pending KKF", "Approved", "Rejected"].includes(status)) {
           return "upcoming";
         }
-        return status === "Weight-In" ? "active" : "completed";
+        return "completed";
       case "live":
-        if (["Draft", "Pending KKF", "Approved", "Rejected", "Scheduled", "Weight-In"].includes(status)) {
-          return "upcoming";
+        if (["Scheduled", "Ready", "Live", "Approved"].includes(status)) {
+          return "active";
         }
-        return ["Ready", "Live"].includes(status) ? "active" : "completed";
+        return "upcoming";
       case "complete":
         return (status === "Complete" || status === "Completed") ? "active" : "upcoming";
       default:
@@ -518,12 +662,26 @@ export function BatchDetail() {
         <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn">
           {/* Back Button */}
           <button
-            onClick={() => navigate("/home/matches")}
+            onClick={() => navigate("/home/program?tab=matches")}
             className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 font-semibold uppercase tracking-wider text-xs transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Batches
           </button>
+
+          {/* Live Fight Night Pulsing Banner */}
+          {batch.status === "Live" && (
+            <div className="bg-red-600 text-white px-6 py-4 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-lg shadow-red-500/10 border border-red-500 animate-fadeIn">
+              <div className="flex items-center gap-3">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+                </span>
+                <span className="font-extrabold text-sm uppercase tracking-widest leading-none">Fight Night Live</span>
+              </div>
+              <span className="text-xs font-semibold text-white/95">Broadcasting live from {batch.location} • Record match outcomes in the Results Desk below</span>
+            </div>
+          )}
 
           {/* Batch Header Card */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
@@ -770,12 +928,45 @@ export function BatchDetail() {
                   </button>
                 )}
 
+                {/* Complete Weigh-In & Schedule */}
+                {batch.status === "Weight-In" && permissions.hasPermission('matches.edit') && (
+                  <button
+                    onClick={handleCompleteWeightIn}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow hover:-translate-y-[1px] active:scale-[0.98]"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Complete Weigh-In
+                  </button>
+                )}
+
+                {/* Launch Event (Go Live) */}
+                {(batch.status === "Scheduled" || batch.status === "Ready" || batch.status === "Approved") && permissions.hasPermission('matches.edit') && (
+                  <button
+                    onClick={handleGoLive}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow hover:-translate-y-[1px] active:scale-[0.98]"
+                  >
+                    <Send className="w-4 h-4 text-white" />
+                    Launch Event (Go Live)
+                  </button>
+                )}
+
+                {/* Finalize Event & Complete Batch */}
+                {batch.status === "Live" && permissions.hasPermission('matches.edit') && (
+                  <button
+                    onClick={handleFinalizeEvent}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-650 hover:bg-indigo-700 text-white rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow hover:-translate-y-[1px] active:scale-[0.98]"
+                  >
+                    <Trophy className="w-4 h-4" />
+                    Finalize Event & Complete
+                  </button>
+                )}
+
                 {/* Share Fight Card */}
                 {(() => {
                   const isDraftReady = batch.status === "Draft" && batch.matches.length > 0;
                   const isActiveStage = ["Weight-In", "Ready", "Live", "Scheduled"].includes(batch.status);
                   const isCompleted = ["Complete", "Completed"].includes(batch.status);
-                  const allResultsUpdated = isCompleted && batch.matches.length > 0 && batch.matches.every(m => m.winner);
+                  const allResultsUpdated = isCompleted && batch.matches.length > 0 && batch.matches.every(m => m.winnerId || m.winner || m.winnerMethod);
                   
                   // Show share button for Draft Ready, Weight-In, Ready, Live
                   if (isDraftReady || isActiveStage) {
@@ -1028,20 +1219,52 @@ export function BatchDetail() {
                             </div>
 
                             {/* Fighters name text */}
-                            <div className="flex-1 flex items-center gap-3 md:gap-4">
-                              <div className="flex-1 text-right">
-                                <div className="font-extrabold text-slate-900 text-sm md:text-base tracking-tight">{match.fighterA.name}</div>
-                                <div className="text-xs text-slate-500 font-medium uppercase tracking-wider text-[10px]">{match.fighterA.record}</div>
+                            <div className="flex-1 flex flex-col gap-1">
+                              <div className="flex items-center gap-3 md:gap-4">
+                                <div className="flex-1 text-right">
+                                  <div className={clsx(
+                                    "font-extrabold text-sm md:text-base tracking-tight",
+                                    match.winnerId === match.fighterA.id ? "text-emerald-600 font-black" : "text-slate-900"
+                                  )}>
+                                    {match.fighterA.name}
+                                    {match.winnerId === match.fighterA.id && " 👑"}
+                                  </div>
+                                  <div className="text-xs text-slate-500 font-medium uppercase tracking-wider text-[10px]">{match.fighterA.record}</div>
+                                </div>
+                                
+                                <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-50 border border-slate-200/80 text-slate-500 font-extrabold text-[9px] tracking-widest flex-shrink-0">
+                                  VS
+                                </div>
+                                
+                                <div className="flex-1">
+                                  <div className={clsx(
+                                    "font-extrabold text-sm md:text-base tracking-tight",
+                                    match.winnerId === match.fighterB.id ? "text-emerald-600 font-black" : "text-slate-900"
+                                  )}>
+                                    {match.winnerId === match.fighterB.id && "👑 "}
+                                    {match.fighterB.name}
+                                  </div>
+                                  <div className="text-xs text-slate-500 font-medium uppercase tracking-wider text-[10px]">{match.fighterB.record}</div>
+                                </div>
                               </div>
-                              
-                              <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-50 border border-slate-200/80 text-slate-500 font-extrabold text-[9px] tracking-widest flex-shrink-0">
-                                VS
-                              </div>
-                              
-                              <div className="flex-1">
-                                <div className="font-extrabold text-slate-900 text-sm md:text-base tracking-tight">{match.fighterB.name}</div>
-                                <div className="text-xs text-slate-500 font-medium uppercase tracking-wider text-[10px]">{match.fighterB.record}</div>
-                              </div>
+
+                              {/* Victory outcome subtext */}
+                              {(match.status === "Complete" || match.winnerId || match.winnerMethod) && (
+                                <div className="text-center mt-1">
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-extrabold rounded-lg border border-emerald-200/40 uppercase tracking-wider">
+                                    {match.winnerMethod === "Draw" ? (
+                                      "Match Result: Draw"
+                                    ) : match.winnerMethod === "No Contest" ? (
+                                      "Match Result: No Contest"
+                                    ) : (
+                                      <>
+                                        Winner: {match.winnerId === match.fighterA.id ? match.fighterA.name : match.fighterB.name} 
+                                        ({match.winnerMethod} {match.winnerRound ? `• R${match.winnerRound}` : ""})
+                                      </>
+                                    )}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -1115,35 +1338,195 @@ export function BatchDetail() {
                       {/* Expanded Details */}
                       {isExpanded && (
                         <div className="mt-5 pt-5 border-t border-slate-100 animate-fadeIn">
-                          <div className="bg-slate-50/50 rounded-xl p-4 border border-slate-200/40 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Fighter A Details</h4>
-                              <div className="space-y-2">
-                                <div className="flex justify-between">
-                                  <span className="text-xs text-slate-500 font-medium">Club:</span>
-                                  <span className="text-xs text-slate-800 font-semibold">{match.fighterA.gym}</span>
+                          {batch.status === "Weight-In" ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              {/* Fighter A Weigh-In */}
+                              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl space-y-3 shadow-sm">
+                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                  Fighter A (Red Corner) Weigh-In
+                                </h4>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center font-bold text-indigo-700 uppercase">
+                                    {match.fighterA.name.charAt(0)}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-xs font-bold text-slate-900 truncate">{match.fighterA.name}</div>
+                                    <div className="text-[10px] text-slate-500">Agreed weight: {match.agreedWeight} kg</div>
+                                  </div>
                                 </div>
-                                <div className="flex justify-between">
-                                  <span className="text-xs text-slate-500 font-medium">Record:</span>
-                                  <span className="text-xs text-slate-800 font-semibold">{match.fighterA.record}</span>
+                                <div className="space-y-2">
+                                  <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                      <input
+                                        type="number"
+                                        step="0.1"
+                                        placeholder="Actual Weight"
+                                        value={actualWeights[match.id]?.weightA || ""}
+                                        onChange={(e) => setActualWeights(prev => ({
+                                          ...prev,
+                                          [match.id]: {
+                                            ...prev[match.id],
+                                            weightA: e.target.value
+                                          }
+                                        }))}
+                                        className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-3 py-2 focus:border-primary outline-none"
+                                      />
+                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">kg</span>
+                                    </div>
+                                    <button
+                                      onClick={() => handleSaveFighterWeight(match.id, "A")}
+                                      className="px-3 py-2 bg-primary hover:bg-primary/95 text-white text-xs font-bold rounded-lg transition-colors"
+                                    >
+                                      Save
+                                    </button>
+                                  </div>
+                                  {match.fighterA.weight > 0 && (
+                                    <div className="flex items-center justify-between mt-1">
+                                      <span className="text-[10px] font-bold text-slate-400">Weigh-in status:</span>
+                                      {Math.abs(match.fighterA.weight - match.agreedWeight) <= 1.0 ? (
+                                        <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-extrabold rounded border border-emerald-250/40 uppercase tracking-wider">
+                                          PASS ({match.fighterA.weight} kg)
+                                        </span>
+                                      ) : (
+                                        <span className="px-2.5 py-0.5 bg-red-50 text-red-700 text-[10px] font-extrabold rounded border border-red-250/40 uppercase tracking-wider">
+                                          FAIL - Overweight ({match.fighterA.weight} kg)
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Fighter B Weigh-In */}
+                              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl space-y-3 shadow-sm">
+                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                  Fighter B (Blue Corner) Weigh-In
+                                </h4>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center font-bold text-indigo-700 uppercase">
+                                    {match.fighterB.name.charAt(0)}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-xs font-bold text-slate-900 truncate">{match.fighterB.name}</div>
+                                    <div className="text-[10px] text-slate-500">Agreed weight: {match.agreedWeight} kg</div>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                      <input
+                                        type="number"
+                                        step="0.1"
+                                        placeholder="Actual Weight"
+                                        value={actualWeights[match.id]?.weightB || ""}
+                                        onChange={(e) => setActualWeights(prev => ({
+                                          ...prev,
+                                          [match.id]: {
+                                            ...prev[match.id],
+                                            weightB: e.target.value
+                                          }
+                                        }))}
+                                        className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-3 py-2 focus:border-primary outline-none"
+                                      />
+                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">kg</span>
+                                    </div>
+                                    <button
+                                      onClick={() => handleSaveFighterWeight(match.id, "B")}
+                                      className="px-3 py-2 bg-primary hover:bg-primary/95 text-white text-xs font-bold rounded-lg transition-colors"
+                                    >
+                                      Save
+                                    </button>
+                                  </div>
+                                  {match.fighterB.weight > 0 && (
+                                    <div className="flex items-center justify-between mt-1">
+                                      <span className="text-[10px] font-bold text-slate-400">Weigh-in status:</span>
+                                      {Math.abs(match.fighterB.weight - match.agreedWeight) <= 1.0 ? (
+                                        <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-extrabold rounded border border-emerald-250/40 uppercase tracking-wider">
+                                          PASS ({match.fighterB.weight} kg)
+                                        </span>
+                                      ) : (
+                                        <span className="px-2.5 py-0.5 bg-red-50 text-red-700 text-[10px] font-extrabold rounded border border-red-250/40 uppercase tracking-wider">
+                                          FAIL - Overweight ({match.fighterB.weight} kg)
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
-                            
-                            <div>
-                              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Fighter B Details</h4>
-                              <div className="space-y-2">
-                                <div className="flex justify-between">
-                                  <span className="text-xs text-slate-500 font-medium">Club:</span>
-                                  <span className="text-xs text-slate-800 font-semibold">{match.fighterB.gym}</span>
+                          ) : (
+                            <div className="bg-slate-50/50 rounded-xl p-4 border border-slate-200/40 grid grid-cols-1 md:grid-cols-3 gap-6">
+                              <div>
+                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Fighter A Details</h4>
+                                <div className="space-y-2">
+                                  <div className="flex justify-between">
+                                    <span className="text-xs text-slate-500 font-medium">Club:</span>
+                                    <span className="text-xs text-slate-800 font-semibold">{match.fighterA.gym}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-xs text-slate-500 font-medium">Record:</span>
+                                    <span className="text-xs text-slate-800 font-semibold">{match.fighterA.record}</span>
+                                  </div>
                                 </div>
-                                <div className="flex justify-between">
-                                  <span className="text-xs text-slate-500 font-medium">Record:</span>
-                                  <span className="text-xs text-slate-800 font-semibold">{match.fighterB.record}</span>
+                              </div>
+                              
+                              <div>
+                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Fighter B Details</h4>
+                                <div className="space-y-2">
+                                  <div className="flex justify-between">
+                                    <span className="text-xs text-slate-500 font-medium">Club:</span>
+                                    <span className="text-xs text-slate-800 font-semibold">{match.fighterB.gym}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-xs text-slate-500 font-medium">Record:</span>
+                                    <span className="text-xs text-slate-800 font-semibold">{match.fighterB.record}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Officials & Gear Details */}
+                              <div>
+                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Officials & Equipment</h4>
+                                <div className="space-y-2 text-xs">
+                                  <div className="flex justify-between items-start">
+                                    <span className="text-slate-500 font-medium">Referee:</span>
+                                    <span className="text-slate-800 font-semibold text-right">
+                                      {match.refereeName || (match.refereeId ? getReferees().find((r: any) => r.id === match.refereeId)?.name : "None assigned")}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between items-start">
+                                    <span className="text-slate-500 font-medium">Judges:</span>
+                                    <span className="text-slate-800 font-semibold text-right">
+                                      {match.judgeIds && match.judgeIds.length > 0 ? (
+                                        <ul className="list-none text-right">
+                                          {match.judgeIds.map((jid: string, jIdx: number) => {
+                                            const jName = getJudges().find((j: any) => j.id === jid)?.name || "Judge";
+                                            return <li key={jid}>{jIdx + 1}. {jName}</li>;
+                                          })}
+                                        </ul>
+                                      ) : (
+                                        "None assigned"
+                                      )}
+                                    </span>
+                                  </div>
+                                  {match.gloveSize && (
+                                    <div className="flex justify-between">
+                                      <span className="text-slate-500 font-medium">Gloves:</span>
+                                      <span className="text-slate-800 font-semibold">{match.gloveSize} ({match.gloveBrand})</span>
+                                    </div>
+                                  )}
+                                  {match.isChampionshipBout && (
+                                    <div className="flex justify-between items-start">
+                                      <span className="text-slate-500 font-medium">Championship:</span>
+                                      <span className="text-amber-700 font-extrabold text-right max-w-[140px] truncate" title={match.championshipTitleName}>
+                                        {match.championshipTitleName || "KKF Title"}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
-                          </div>
+                          )}
                           
                           {match.officials && (
                             <div className="mt-4 p-4 bg-emerald-50/40 border border-emerald-200/50 rounded-xl">
@@ -1428,7 +1811,7 @@ export function BatchDetail() {
             {err.message || String(err)}
           </pre>
           <button
-            onClick={() => navigate("/home/matches")}
+            onClick={() => navigate("/home/program?tab=matches")}
             className="btn-primary w-full py-2.5 font-semibold uppercase tracking-wider text-xs rounded-xl shadow-md"
           >
             Back to Matches
