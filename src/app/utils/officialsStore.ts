@@ -10,7 +10,13 @@ const initializeData = <T>(storageKey: string, defaultData: T[]): T[] => {
   const stored = localStorage.getItem(storageKey);
   if (stored) {
     try {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      // Force reset if the data contains old short IDs (like 'J001' or 'R001')
+      if (Array.isArray(parsed) && parsed.length > 0 && String((parsed[0] as any).id || "").length < 10) {
+        localStorage.setItem(storageKey, JSON.stringify(defaultData));
+        return defaultData;
+      }
+      return parsed;
     } catch {
       return defaultData;
     }

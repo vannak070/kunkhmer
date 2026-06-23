@@ -81,15 +81,15 @@ export function Matches() {
   if (filterClub !== "all") {
     filteredBatches = filteredBatches.filter(b => 
       b.organizerClub === filterClub || b.createdBy === filterClub ||
-      b.matches.some(m => m.fighterA.clubName === filterClub || m.fighterB.clubName === filterClub)
+      b.matches.some(m => m.fighterA?.clubName === filterClub || m.fighterB?.clubName === filterClub)
     );
   }
 
   if (filterFighter) {
     filteredBatches = filteredBatches.filter(b =>
       b.matches.some(m => 
-        m.fighterA.name.toLowerCase().includes(filterFighter.toLowerCase()) ||
-        m.fighterB.name.toLowerCase().includes(filterFighter.toLowerCase())
+        (m.fighterA?.name || "").toLowerCase().includes(filterFighter.toLowerCase()) ||
+        (m.fighterB?.name || "").toLowerCase().includes(filterFighter.toLowerCase())
       )
     );
   }
@@ -104,12 +104,12 @@ export function Matches() {
 
   if (search) {
     filteredBatches = filteredBatches.filter(b =>
-      b.batchNumber.toLowerCase().includes(search.toLowerCase()) ||
-      b.eventName.toLowerCase().includes(search.toLowerCase()) ||
-      b.location.toLowerCase().includes(search.toLowerCase()) ||
+      (b.batchNumber || "").toLowerCase().includes(search.toLowerCase()) ||
+      (b.eventName || "").toLowerCase().includes(search.toLowerCase()) ||
+      (b.location || "").toLowerCase().includes(search.toLowerCase()) ||
       b.matches.some(m => 
-        m.fighterA.name.toLowerCase().includes(search.toLowerCase()) ||
-        m.fighterB.name.toLowerCase().includes(search.toLowerCase())
+        (m.fighterA?.name || "").toLowerCase().includes(search.toLowerCase()) ||
+        (m.fighterB?.name || "").toLowerCase().includes(search.toLowerCase())
       )
     );
   }

@@ -20,6 +20,8 @@ import { toast } from "sonner";
 import { clsx } from "clsx";
 import { CalendarView } from "../components/CalendarView";
 import { api } from "../utils/api";
+import { getJudges, getReferees } from "../utils/officialsStore";
+
 
 // Helper function to get status border color
 const getStatusBorderColor = (status: BatchStatus): string => {
@@ -84,32 +86,43 @@ export function MatchesEnhanced({ embedded = false }: { embedded?: boolean }) {
   const loadData = async () => {
     setLoading(true);
     try {
-      const list = await api.batches.list();
-      const allMatches = await api.matches.list();
+      const list = (await api.batches.list()) || [];
+      const allMatches = (await api.matches.list()) || [];
       
-      const mappedBatches = list.map((b: any) => {
-        const batchMatches = allMatches.filter((m: any) => m.sub_event_id === b.id).map((m: any) => {
+      const mappedBatches = (Array.isArray(list) ? list : []).map((b: any) => {
+        const batchMatches = (allMatches || []).filter((m: any) => m.sub_event_id === b.id).map((m: any) => {
+          const isTitle = m.isTitleMatch || m.is_title_match || false;
           return {
             id: m.id,
             status: m.status,
             rounds: m.rounds,
             weightClass: m.agreed_weight ? `${m.agreed_weight} kg` : "Catchweight",
             agreedWeight: m.agreed_weight,
-            matchType: "Ranking Fight",
-            winner: m.winner_id,
+            matchType: isTitle ? "Championship Bout" : "Ranking Fight",
+            isChampionshipBout: isTitle,
+            championshipTitleName: m.championshipTitleName || m.championship_title_name || null,
+            winnerId: m.winner_id || null,
+            winnerMethod: m.winner_method || null,
+            winnerRound: m.winner_round || null,
+            refereeName: m.referee_name || null,
+            judgeIds: Array.isArray(m.judge_ids) ? m.judge_ids : [],
+            gloveSize: m.glove_size || "",
+            gloveBrand: m.glove_brand || "",
             fighterA: {
               id: m.fighter_a_id,
-              name: m.fighter_a_name,
+              name: m.fighter_a_name || "TBD (Fighter A)",
               image: m.fighter_a_image,
-              clubName: m.club_a_name,
-              grade: m.fighter_a_grade || "C"
+              clubName: m.club_a_name || "Independent",
+              grade: m.fighter_a_grade || "C",
+              weight: parseFloat(m.fighterA?.current_weight || m.fighterA?.currentWeight || m.fighter_a?.current_weight || m.fighter_a?.currentWeight || 0)
             },
             fighterB: {
               id: m.fighter_b_id,
-              name: m.fighter_b_name,
+              name: m.fighter_b_name || "TBD (Fighter B)",
               image: m.fighter_b_image,
-              clubName: m.club_b_name,
-              grade: m.fighter_b_grade || "C"
+              clubName: m.club_b_name || "Independent",
+              grade: m.fighter_b_grade || "C",
+              weight: parseFloat(m.fighterB?.current_weight || m.fighterB?.currentWeight || m.fighter_b?.current_weight || m.fighter_b?.currentWeight || 0)
             }
           };
         });
@@ -171,7 +184,7 @@ export function MatchesEnhanced({ embedded = false }: { embedded?: boolean }) {
 
   if (filterLocation !== "all") {
     filteredBatches = filteredBatches.filter(b => 
-      b.location.toLowerCase().includes(filterLocation.toLowerCase())
+      (b.location || "").toLowerCase().includes(filterLocation.toLowerCase())
     );
   }
 
@@ -182,15 +195,15 @@ export function MatchesEnhanced({ embedded = false }: { embedded?: boolean }) {
   if (filterClub !== "all") {
     filteredBatches = filteredBatches.filter(b => 
       b.organizerClub === filterClub || b.createdBy === filterClub ||
-      b.matches.some(m => m.fighterA.clubName === filterClub || m.fighterB.clubName === filterClub)
+      b.matches.some(m => m.fighterA?.clubName === filterClub || m.fighterB?.clubName === filterClub)
     );
   }
 
   if (filterFighter) {
     filteredBatches = filteredBatches.filter(b =>
       b.matches.some(m => 
-        m.fighterA.name.toLowerCase().includes(filterFighter.toLowerCase()) ||
-        m.fighterB.name.toLowerCase().includes(filterFighter.toLowerCase())
+        (m.fighterA?.name || "").toLowerCase().includes(filterFighter.toLowerCase()) ||
+        (m.fighterB?.name || "").toLowerCase().includes(filterFighter.toLowerCase())
       )
     );
   }
@@ -205,12 +218,12 @@ export function MatchesEnhanced({ embedded = false }: { embedded?: boolean }) {
 
   if (search) {
     filteredBatches = filteredBatches.filter(b =>
-      b.batchNumber.toLowerCase().includes(search.toLowerCase()) ||
-      b.eventName.toLowerCase().includes(search.toLowerCase()) ||
-      b.location.toLowerCase().includes(search.toLowerCase()) ||
+      (b.batchNumber || "").toLowerCase().includes(search.toLowerCase()) ||
+      (b.eventName || "").toLowerCase().includes(search.toLowerCase()) ||
+      (b.location || "").toLowerCase().includes(search.toLowerCase()) ||
       b.matches.some(m => 
-        m.fighterA.name.toLowerCase().includes(search.toLowerCase()) ||
-        m.fighterB.name.toLowerCase().includes(search.toLowerCase())
+        (m.fighterA?.name || "").toLowerCase().includes(search.toLowerCase()) ||
+        (m.fighterB?.name || "").toLowerCase().includes(search.toLowerCase())
       )
     );
   }
@@ -659,7 +672,7 @@ export function MatchesEnhanced({ embedded = false }: { embedded?: boolean }) {
                           const isDraftReady = batch.status === "Draft" && batch.matches.length > 0;
                           const isActiveStage = ["Weight-In", "Ready", "Live"].includes(batch.status);
                           const isCompleted = ["Complete", "Completed"].includes(batch.status);
-                          const allResultsUpdated = isCompleted && batch.matches.length > 0 && batch.matches.every(m => m.winner);
+                          const allResultsUpdated = isCompleted && batch.matches.length > 0 && batch.matches.every(m => m.winnerId || m.winner || m.winnerMethod);
                           const showShare = isDraftReady || isActiveStage || (isCompleted && allResultsUpdated);
                           
                           if (!showShare) return null;
@@ -799,101 +812,146 @@ export function MatchesEnhanced({ embedded = false }: { embedded?: boolean }) {
                               key={match.id}
                               className="bg-white border border-border rounded-xl p-4 hover:shadow-md hover:border-slate-300 transition-all duration-200"
                             >
-                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                {/* Match Order Badge */}
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-extrabold text-sm tracking-tight shadow-sm">
-                                    #{idx + 1}
-                                  </div>
-                                  <div>
-                                    <div className="font-bold text-slate-800 text-[13px] uppercase tracking-wider">{match.matchType}</div>
-                                    <div className="text-xs text-slate-500 font-medium">{match.weightClass} • {match.rounds} Rounds</div>
-                                  </div>
-                                </div>
-
-                                {/* Fighters Comparison Row */}
-                                <div className="flex-1 grid grid-cols-1 md:grid-cols-7 items-center gap-4">
-                                  {/* Fighter A */}
-                                  <div className="md:col-span-3 flex items-center gap-3 bg-secondary/5 p-2.5 rounded-xl border border-secondary/15 hover:bg-secondary/10 transition-colors">
-                                    <img
-                                      src={match.fighterA.image || "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=100"}
-                                      alt={match.fighterA.name}
-                                      className="w-10 h-10 rounded-lg object-cover border-2 border-secondary/30 flex-shrink-0"
-                                    />
-                                    <div className="min-w-0 flex-1">
-                                      <div className="font-bold text-slate-900 text-sm truncate flex items-center gap-1.5">
-                                        {match.fighterA.name}
-                                        <span className="badge-premium bg-secondary/10 text-secondary border-secondary/20 text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">
-                                          {match.fighterA.grade}
-                                        </span>
-                                      </div>
-                                      <div className="text-xs text-slate-500 truncate font-medium">{match.fighterA.clubName}</div>
+                              <div className="flex flex-col gap-3">
+                                {/* Top Row: Order, Fighters, Action */}
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                  {/* Match Order Badge */}
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-extrabold text-sm tracking-tight shadow-sm">
+                                      #{idx + 1}
+                                    </div>
+                                    <div>
+                                      <div className="font-bold text-slate-800 text-[13px] uppercase tracking-wider">{match.matchType}</div>
+                                      <div className="text-xs text-slate-500 font-medium">{match.weightClass} • {match.rounds} Rounds</div>
                                     </div>
                                   </div>
 
-                                  {/* VS Badge */}
-                                  <div className="text-center md:col-span-1 flex justify-center">
-                                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-900 text-white font-extrabold text-[10px] tracking-tight shadow-sm border-2 border-white">
-                                      VS
-                                    </span>
-                                  </div>
-
-                                  {/* Fighter B */}
-                                  <div className="md:col-span-3 flex items-center gap-3 bg-primary/5 p-2.5 rounded-xl border border-primary/15 hover:bg-primary/10 transition-colors">
-                                    <img
-                                      src={match.fighterB.image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100"}
-                                      alt={match.fighterB.name}
-                                      className="w-10 h-10 rounded-lg object-cover border-2 border-primary/30 flex-shrink-0"
-                                    />
-                                    <div className="min-w-0 flex-1">
-                                      <div className="font-bold text-slate-900 text-sm truncate flex items-center gap-1.5">
-                                        {match.fighterB.name}
-                                        <span className="badge-premium bg-primary/10 text-primary border-primary/20 text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">
-                                          {match.fighterB.grade}
-                                        </span>
+                                  {/* Fighters Comparison Row */}
+                                  <div className="flex-1 grid grid-cols-1 md:grid-cols-7 items-center gap-4">
+                                    {/* Fighter A */}
+                                    <div className={clsx(
+                                      "md:col-span-3 flex items-center gap-3 p-2.5 rounded-xl border transition-colors",
+                                      match.winnerId === match.fighterA.id
+                                        ? "bg-emerald-50 border-emerald-300 ring-1 ring-emerald-300"
+                                        : "bg-secondary/5 border-secondary/15 hover:bg-secondary/10"
+                                    )}>
+                                      <img
+                                        src={match.fighterA.image || "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=100"}
+                                        alt={match.fighterA.name}
+                                        className="w-10 h-10 rounded-lg object-cover border-2 border-secondary/30 flex-shrink-0"
+                                      />
+                                      <div className="min-w-0 flex-1">
+                                        <div className="font-bold text-slate-900 text-sm truncate flex items-center gap-1.5">
+                                          {match.fighterA.name}
+                                          {match.winnerId === match.fighterA.id && " 👑"}
+                                          <span className="badge-premium bg-secondary/10 text-secondary border-secondary/20 text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">
+                                            {match.fighterA.grade}
+                                          </span>
+                                        </div>
+                                        <div className="text-xs text-slate-500 truncate font-medium">{match.fighterA.clubName}</div>
                                       </div>
-                                      <div className="text-xs text-slate-500 truncate font-medium">{match.fighterB.clubName}</div>
+                                    </div>
+
+                                    {/* VS Badge */}
+                                    <div className="text-center md:col-span-1 flex flex-col items-center justify-center">
+                                      <span className={clsx(
+                                        "inline-flex items-center justify-center w-8 h-8 rounded-full font-extrabold text-[10px] tracking-tight shadow-sm border-2 border-white",
+                                        match.winnerId ? "bg-emerald-600 text-white" : "bg-slate-900 text-white"
+                                      )}>
+                                        {match.winnerId ? "WIN" : "VS"}
+                                      </span>
+                                      {(match.winnerId || match.winnerMethod) && (
+                                        <span className="text-[9px] font-extrabold text-emerald-700 uppercase tracking-wide mt-1 block max-w-[80px] truncate text-center" title={match.winnerMethod}>
+                                          {match.winnerMethod}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {/* Fighter B */}
+                                    <div className={clsx(
+                                      "md:col-span-3 flex items-center gap-3 p-2.5 rounded-xl border transition-colors",
+                                      match.winnerId === match.fighterB.id
+                                        ? "bg-emerald-50 border-emerald-300 ring-1 ring-emerald-300"
+                                        : "bg-primary/5 border-primary/15 hover:bg-primary/10"
+                                    )}>
+                                      <img
+                                        src={match.fighterB.image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100"}
+                                        alt={match.fighterB.name}
+                                        className="w-10 h-10 rounded-lg object-cover border-2 border-primary/30 flex-shrink-0"
+                                      />
+                                      <div className="min-w-0 flex-1">
+                                        <div className="font-bold text-slate-900 text-sm truncate flex items-center gap-1.5">
+                                          {match.winnerId === match.fighterB.id && "👑 "}
+                                          {match.fighterB.name}
+                                          <span className="badge-premium bg-primary/10 text-primary border-primary/20 text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">
+                                            {match.fighterB.grade}
+                                          </span>
+                                        </div>
+                                        <div className="text-xs text-slate-500 truncate font-medium">{match.fighterB.clubName}</div>
+                                      </div>
                                     </div>
                                   </div>
+
+                                  {/* View Detail Action */}
+                                  <div className="flex items-center justify-end">
+                                    <Link
+                                      to={`/home/match/${match.id}`}
+                                      className="p-2 bg-muted/45 hover:bg-primary/10 text-muted-foreground hover:text-primary rounded-xl transition-all border border-border shadow-sm"
+                                      title="View Detailed Match Page"
+                                    >
+                                      <Eye className="w-5 h-5" />
+                                    </Link>
+                                  </div>
                                 </div>
 
-                                {/* Eligibility Checks */}
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <div className="badge-premium bg-emerald-50 text-emerald-700 border-emerald-200/50 text-[9px] uppercase tracking-wider py-1 font-semibold shadow-sm" title="Medical Clearance check complete">
-                                    <CheckCircle className="w-3.5 h-3.5" />
-                                    Medical
-                                  </div>
-                                  <div className="badge-premium bg-emerald-50 text-emerald-700 border-emerald-200/50 text-[9px] uppercase tracking-wider py-1 font-semibold shadow-sm" title="Resting period validation ok">
-                                    <CheckCircle className="w-3.5 h-3.5" />
-                                    Rest Period
-                                  </div>
-                                  <div className="badge-premium bg-emerald-50 text-emerald-700 border-emerald-200/50 text-[9px] uppercase tracking-wider py-1 font-semibold shadow-sm" title="Grades are compatible for matchmaking">
-                                    <CheckCircle className="w-3.5 h-3.5" />
-                                    Matchup OK
+                                {/* Bottom Row: Metadata & Officials */}
+                                <div className="mt-2 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                  {/* Details Badges */}
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="badge-premium bg-emerald-50 text-emerald-700 border-emerald-200/50 text-[9px] uppercase tracking-wider py-1 font-semibold shadow-sm" title="Clearances: Medical, Rest Period, Matchup Grade check complete">
+                                      🛡️ Verified
+                                    </span>
+
+                                    {match.isChampionshipBout && (
+                                      <span className="badge-premium bg-amber-50 text-amber-700 border-amber-200/50 text-[9px] uppercase tracking-wider py-1 font-semibold shadow-sm" title={match.championshipTitleName || "KKF Championship"}>
+                                        🏆 Title: {match.championshipTitleName || "KKF Championship"}
+                                      </span>
+                                    )}
+
+                                    {match.gloveSize && (
+                                      <span className="badge-premium bg-slate-50 text-slate-650 border-slate-200/60 text-[9px] uppercase tracking-wider py-1 font-semibold shadow-sm">
+                                        🥊 Gloves: {match.gloveSize} ({match.gloveBrand})
+                                      </span>
+                                    )}
+
+                                    {match.fighterA?.weight > 0 && match.fighterB?.weight > 0 ? (
+                                      <span className="badge-premium bg-orange-50 text-orange-700 border-orange-200/50 text-[9px] uppercase tracking-wider py-1 font-semibold shadow-sm">
+                                        ⚖️ Weighed: {match.fighterA.weight}kg vs {match.fighterB.weight}kg
+                                      </span>
+                                    ) : (
+                                      <span className="badge-premium bg-slate-50 text-slate-500 border-slate-200/60 text-[9px] uppercase tracking-wider py-1 font-semibold shadow-sm">
+                                        ⚖️ Agreed Weight: {match.agreedWeight ? `${match.agreedWeight} kg` : "Catchweight"}
+                                      </span>
+                                    )}
                                   </div>
 
-                                  {match.isChampionshipBout && (
-                                    <span className="badge-premium bg-amber-50 text-amber-700 border-amber-200/50 text-[9px] uppercase tracking-wider py-1 font-semibold shadow-sm">
-                                      <Trophy className="w-3.5 h-3.5" />
-                                      Title
-                                    </span>
-                                  )}
-                                </div>
+                                  {/* Officials Badges */}
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {match.refereeName && (
+                                      <span className="inline-flex items-center gap-1.5 text-[9px] bg-indigo-50 text-indigo-700 border border-indigo-200/50 px-2.5 py-1 rounded-lg font-semibold uppercase tracking-wider">
+                                        👤 Ref: {match.refereeName}
+                                      </span>
+                                    )}
 
-                                {/* View Detail Action */}
-                                <div className="flex items-center justify-end gap-2">
-                                  {match.refereeName && (
-                                    <span className="hidden lg:inline-flex items-center gap-1.5 text-[9px] bg-slate-100 text-slate-600 border border-slate-200/60 px-2 py-1 rounded-lg font-semibold uppercase tracking-wider">
-                                      👤 Ref: {match.refereeName}
-                                    </span>
-                                  )}
-                                  <Link
-                                    to={`/home/match/${match.id}`}
-                                    className="p-2 bg-muted/45 hover:bg-primary/10 text-muted-foreground hover:text-primary rounded-xl transition-all border border-border shadow-sm"
-                                    title="View Detailed Match Page"
-                                  >
-                                    <Eye className="w-5 h-5" />
-                                  </Link>
+                                    {match.judgeIds && match.judgeIds.length > 0 && (
+                                      <span 
+                                        className="inline-flex items-center gap-1.5 text-[9px] bg-purple-50 text-purple-700 border border-purple-200/50 px-2.5 py-1 rounded-lg font-semibold uppercase tracking-wider cursor-help"
+                                        title={match.judgeIds.map((jid: string) => getJudges().find(j => j.id === jid)?.name || "Judge").join(", ")}
+                                      >
+                                        👥 Judges: {match.judgeIds.length} Assigned
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>

@@ -162,6 +162,8 @@ export function CreateMatchFromBatch() {
         clubBResponse: "pending",
         refereeId: null,
         judgeIds: null,
+        isTitleMatch: matchData.isChampionshipMatch,
+        championshipId: matchData.isChampionshipMatch && matchData.championTitleId ? matchData.championTitleId : null,
       });
 
       toast.success(`✅ Match created: ${fighterA.name} vs ${fighterB.name}`);
@@ -598,7 +600,7 @@ export function CreateMatchFromBatch() {
                   {/* Fighter grid */}
                   <div className="space-y-2 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
                     {eligibleFighters
-                      .filter(f => !redSearch || f.name.toLowerCase().includes(redSearch.toLowerCase()) || f.gym.toLowerCase().includes(redSearch.toLowerCase()))
+                      .filter(f => !redSearch || (f.name || "").toLowerCase().includes(redSearch.toLowerCase()) || (f.gym || "").toLowerCase().includes(redSearch.toLowerCase()))
                       .map(fighter => (
                         <FighterCard
                           key={fighter.id}
@@ -655,7 +657,7 @@ export function CreateMatchFromBatch() {
                   {/* Fighter grid */}
                   <div className="space-y-2 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
                     {eligibleFighters
-                      .filter(f => !blueSearch || f.name.toLowerCase().includes(blueSearch.toLowerCase()) || f.gym.toLowerCase().includes(blueSearch.toLowerCase()))
+                      .filter(f => !blueSearch || (f.name || "").toLowerCase().includes(blueSearch.toLowerCase()) || (f.gym || "").toLowerCase().includes(blueSearch.toLowerCase()))
                       .map(fighter => (
                         <FighterCard
                           key={fighter.id}

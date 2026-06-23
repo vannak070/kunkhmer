@@ -5,7 +5,7 @@ import {
   Trophy, Users, Shield, Edit2, Save, X, Video, Clock, AlertCircle
 } from "lucide-react";
 import { api } from "../utils/api";
-import { MOCK_REFEREES, MOCK_JUDGES } from "../data/officials";
+import { getJudges, getReferees } from "../utils/officialsStore";
 import { toast } from "sonner";
 import { clsx } from "clsx";
 
@@ -39,21 +39,21 @@ export function MatchDetail() {
             agreedWeight: data.agreed_weight,
             fighterA: {
               id: data.fighter_a_id,
-              name: data.fighter_a_name,
-              grade: data.fighter_a_grade,
+              name: data.fighter_a_name || "TBD (Fighter A)",
+              grade: data.fighter_a_grade || "C",
               weight: data.agreed_weight,
-              record: data.fighter_a_record,
+              record: data.fighter_a_record || "0-0-0",
               clubName: data.club_a_name || "Independent",
-              image: data.fighter_a_image
+              image: data.fighter_a_image || "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=400"
             },
             fighterB: {
               id: data.fighter_b_id,
-              name: data.fighter_b_name,
-              grade: data.fighter_b_grade,
+              name: data.fighter_b_name || "TBD (Fighter B)",
+              grade: data.fighter_b_grade || "C",
               weight: data.agreed_weight,
-              record: data.fighter_b_record,
+              record: data.fighter_b_record || "0-0-0",
               clubName: data.club_b_name || "Independent",
-              image: data.fighter_b_image
+              image: data.fighter_b_image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
             },
             refereeName: data.referee_name || null,
             judgeNames: data.judge_names || [],
@@ -97,16 +97,16 @@ export function MatchDetail() {
   }, [id]);
 
   const assignedReferee = match?.referee_id 
-    ? MOCK_REFEREES.find(r => r.id === match.referee_id) || { name: match.refereeName || "Assigned Referee", grade: "Class A", experience: "50+ fights" }
+    ? getReferees().find(r => r.id === match.referee_id) || { name: match.refereeName || "Assigned Referee", grade: "Class A", experience: "50+ fights" }
     : match?.refereeName 
     ? { name: match.refereeName, grade: "Class A", experience: "50+ fights" }
     : null;
 
-  const assignedJudges = match?.judge_ids && match.judge_ids.length > 0
+  const assignedJudges = Array.isArray(match?.judge_ids) && match.judge_ids.length > 0
     ? match.judge_ids.map((jid: string, idx: number) => 
-        MOCK_JUDGES.find(j => j.id === jid) || { id: jid, name: `Judge ${idx + 1}`, grade: "Class A", experience: "30+ fights" }
+        getJudges().find(j => j.id === jid) || { id: jid, name: `Judge ${idx + 1}`, grade: "Class A", experience: "30+ fights" }
       )
-    : [MOCK_JUDGES[0], MOCK_JUDGES[1], MOCK_JUDGES[2]];
+    : [];
 
   const getMatchTypeBadge = () => {
     if (match?.is_championship_bout) return "Championship";
@@ -222,7 +222,7 @@ export function MatchDetail() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Event</div>
-                <div className="font-semibold text-slate-900 text-sm md:text-base leading-tight">Fight Night March 30</div>
+                <div className="font-semibold text-slate-900 text-sm md:text-base leading-tight">{batch?.event_name || "Weekly Fight Card"}</div>
               </div>
             </div>
           </div>
@@ -235,7 +235,7 @@ export function MatchDetail() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Date</div>
-                <div className="font-semibold text-slate-900 text-sm md:text-base leading-tight">2026-03-30</div>
+                <div className="font-semibold text-slate-900 text-sm md:text-base leading-tight">{batch?.date ? String(batch.date).split("T")[0] : "N/A"}</div>
               </div>
             </div>
           </div>
@@ -248,7 +248,7 @@ export function MatchDetail() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Location</div>
-                <div className="font-semibold text-slate-900 text-sm md:text-base leading-tight">Siem Reap, Cambodia</div>
+                <div className="font-semibold text-slate-900 text-sm md:text-base leading-tight">{batch?.location || "Olympic Stadium Arena"}</div>
               </div>
             </div>
           </div>
@@ -261,7 +261,7 @@ export function MatchDetail() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Status</div>
-                <div className="font-semibold text-[#0A3D91] text-sm md:text-base uppercase leading-tight">Scheduled</div>
+                <div className="font-semibold text-[#0A3D91] text-sm md:text-base uppercase leading-tight">{match?.status || "Draft"}</div>
               </div>
             </div>
           </div>
@@ -294,12 +294,12 @@ export function MatchDetail() {
                 </h2>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="badge-premium bg-red-50 text-red-700 border-red-200/50 text-[9px] uppercase tracking-wider py-1 font-semibold">
-                    Grade B
+                    Grade {match.fighterA.grade || "B"}
                   </span>
                   <span className="badge-premium bg-slate-50 text-slate-700 border-slate-200 text-[9px] uppercase tracking-wider py-1 font-semibold">{match.fighterA.weight || 57} kg</span>
                 </div>
                 <div className="text-xs text-slate-500 font-semibold">{match.fighterA.record}</div>
-                <div className="text-[10px] text-slate-400 mt-1 font-semibold uppercase tracking-wider">Victory Gym</div>
+                <div className="text-[10px] text-slate-400 mt-1 font-semibold uppercase tracking-wider">{match.fighterA.clubName || "Independent"}</div>
               </div>
 
               {/* VS Center */}
@@ -343,12 +343,12 @@ export function MatchDetail() {
                 </h2>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="badge-premium bg-blue-50 text-primary border-blue-200/50 text-[9px] uppercase tracking-wider py-1 font-semibold">
-                    Grade B
+                    Grade {match.fighterB.grade || "B"}
                   </span>
                   <span className="badge-premium bg-slate-50 text-slate-700 border-slate-200 text-[9px] uppercase tracking-wider py-1 font-semibold">{match.fighterB.weight || 57} kg</span>
                 </div>
                 <div className="text-xs text-slate-500 font-semibold">{match.fighterB.record}</div>
-                <div className="text-[10px] text-slate-400 mt-1 font-semibold uppercase tracking-wider">Victory Gym</div>
+                <div className="text-[10px] text-slate-400 mt-1 font-semibold uppercase tracking-wider">{match.fighterB.clubName || "Independent"}</div>
               </div>
             </div>
           </div>
@@ -382,24 +382,30 @@ export function MatchDetail() {
                   </span>
                 </div>
                 <div className="space-y-3">
-                  {assignedJudges.map((judge, idx) => (
-                    <div 
-                      key={judge.id}
-                      className="flex items-center gap-3 p-4 bg-purple-50/40 rounded-xl border border-purple-200/50"
-                    >
-                      <div className="w-9 h-9 bg-purple-600 rounded-full flex items-center justify-center text-white font-extrabold text-sm shrink-0">
-                        {idx + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-bold text-slate-900 text-sm truncate">{judge.name}</div>
-                        <div className="flex items-center gap-2 text-xs mt-1">
-                          <span className="text-purple-700 font-semibold">{judge.grade}</span>
-                          <span className="text-slate-300">•</span>
-                          <span className="text-slate-500 font-normal">{judge.experience}</span>
+                  {assignedJudges.length > 0 ? (
+                    assignedJudges.map((judge, idx) => (
+                      <div 
+                        key={judge.id}
+                        className="flex items-center gap-3 p-4 bg-purple-50/40 rounded-xl border border-purple-200/50"
+                      >
+                        <div className="w-9 h-9 bg-purple-600 rounded-full flex items-center justify-center text-white font-extrabold text-sm shrink-0">
+                          {idx + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-slate-900 text-sm truncate">{judge.name}</div>
+                          <div className="flex items-center gap-2 text-xs mt-1">
+                            <span className="text-purple-700 font-semibold">{judge.grade}</span>
+                            <span className="text-slate-300">•</span>
+                            <span className="text-slate-500 font-normal">{judge.experience}</span>
+                          </div>
                         </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="p-4 bg-purple-50/20 rounded-xl border border-purple-200/30 text-center text-slate-400 text-sm font-semibold">
+                      No Judges Assigned
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 

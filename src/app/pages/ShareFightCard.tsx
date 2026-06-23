@@ -4,10 +4,12 @@ import {
   ArrowLeft, Copy, Printer, Image, CheckCircle
 } from "lucide-react";
 import { getBatchById, formatDisplayDate } from "../data/batches";
+import type { BatchStatus } from "../data/batches";
 import { toast } from "sonner";
 import html2canvas from "html2canvas-pro";
 import kkfLogo from "../../assets/modern_logo.png";
 import { SPONSORS } from "../data/masterData";
+import { api } from "../utils/api";
 
 const getSponsorLogoSvg = (sponsorName: string) => {
   const name = sponsorName.toLowerCase();
@@ -128,14 +130,105 @@ export function ShareFightCard() {
   const [copiedImage, setCopiedImage] = useState(false);
   const [logoBase64, setLogoBase64] = useState<string>("");
   const [sponsorLogoBase64, setSponsorLogoBase64] = useState<string>("");
+  const [batch, setBatch] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const batch = batchId ? getBatchById(batchId) : undefined;
+  // Fetch Batch Data dynamically from the API with mock fallback
+  useEffect(() => {
+    const fetchBatchData = async () => {
+      if (!batchId) {
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        const b = await api.batches.get(batchId);
+        if (b) {
+          // Load matches for this sub-event
+          const allMatches = await api.matches.list();
+          const batchMatches = allMatches
+            .filter((m: any) => m.sub_event_id === b.id)
+            .map((m: any) => {
+              return {
+                id: m.id,
+                status: m.status,
+                rounds: m.rounds,
+                weightClass: m.agreed_weight ? `${m.agreed_weight} kg` : "Catchweight",
+                agreedWeight: m.agreed_weight,
+                isChampionshipBout: m.is_title_match || m.isTitleMatch || false,
+                refereeId: m.referee_id || "",
+                judgeIds: Array.isArray(m.judge_ids) ? m.judge_ids : [],
+                officials: (m.referee_id || (Array.isArray(m.judge_ids) && m.judge_ids.length > 0)) ? true : false,
+                refereeName: m.referee_name,
+                fighterAConfirmed: m.fighter_a_confirmed || false,
+                fighterBConfirmed: m.fighter_b_confirmed || false,
+                winnerId: m.winner_id || null,
+                winnerMethod: m.winner_method || null,
+                winnerRound: m.winner_round || null,
+                gloveSize: m.glove_size || m.gloveSize || "",
+                gloveBrand: m.glove_brand || m.gloveBrand || "",
+                championshipTitleName: m.championshipTitleName || m.championship_title_name || null,
+                fighterA: {
+                  id: m.fighter_a_id,
+                  name: m.fighter_a_name || "TBD (Fighter A)",
+                  image: m.fighter_a_image,
+                  gym: m.club_a_name || "Independent",
+                  clubName: m.club_a_name || "Independent",
+                  record: m.fighter_a_record || "0-0-0",
+                  weight: parseFloat(m.fighterA?.current_weight || m.fighterA?.currentWeight || m.fighter_a?.current_weight || m.fighter_a?.currentWeight || 0)
+                },
+                fighterB: {
+                  id: m.fighter_b_id,
+                  name: m.fighter_b_name || "TBD (Fighter B)",
+                  image: m.fighter_b_image,
+                  gym: m.club_b_name || "Independent",
+                  clubName: m.club_b_name || "Independent",
+                  record: m.fighter_b_record || "0-0-0",
+                  weight: parseFloat(m.fighterB?.current_weight || m.fighterB?.currentWeight || m.fighter_b?.current_weight || m.fighter_b?.currentWeight || 0)
+                }
+              };
+            });
+
+          const mappedBatch = {
+            id: b.id,
+            batchNumber: b.batch_number || `BATCH-${b.week_number}`,
+            eventName: b.event_name || "Weekly Fight Card",
+            location: b.location || "Olympic Stadium Arena",
+            date: b.date ? String(b.date).split("T")[0] : "",
+            createdDate: b.created_at ? String(b.created_at).split("T")[0] : "",
+            status: b.status as BatchStatus,
+            totalMatches: batchMatches.length,
+            matches: batchMatches,
+            organizerClub: b.creator_name,
+            createdBy: b.creator_name,
+            eventId: b.event_id,
+            broadcastStation: b.broadcast_station_name,
+            mainSponsor: b.main_sponsor_name,
+            notes: b.notes || ""
+          };
+          setBatch(mappedBatch);
+        } else {
+          // fallback to mock data
+          const mock = getBatchById(batchId);
+          if (mock) setBatch(mock);
+        }
+      } catch (err) {
+        console.warn("API batch fetch failed, falling back to mock data:", err);
+        const mock = getBatchById(batchId);
+        if (mock) setBatch(mock);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBatchData();
+  }, [batchId]);
 
   // Determine if sharing is allowed based on batch lifecycle status
   // Draft Ready (Draft + has matches), Weight-In, Ready, Live → share fighter card
-  // Complete → share only if ALL matches have results (winner set)
+  // Complete → share only if ALL matches have results (winner set or draw/no contest method/id set)
   const allMatchesHaveResults = batch
-    ? batch.matches.length > 0 && batch.matches.every(m => m.winner)
+    ? batch.matches.length > 0 && batch.matches.every((m: any) => m.winnerId || m.winner || m.winnerMethod)
     : false;
 
   const isShareable = batch ? (
@@ -182,6 +275,15 @@ export function ShareFightCard() {
     }
   }, [batch]);
   
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <div className="w-12 h-12 border-4 border-[#0A3D91] border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-slate-500 font-bold text-sm">Loading official fight card details...</p>
+      </div>
+    );
+  }
+
   if (!batch) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -190,7 +292,7 @@ export function ShareFightCard() {
           <p className="text-slate-500 mb-6 font-normal text-sm">The fight card you're looking for doesn't exist.</p>
           <button
             onClick={() => navigate("/home/matches")}
-            className="btn-primary w-full py-3 font-semibold uppercase tracking-wider text-xs rounded-xl shadow-md"
+            className="btn-primary w-full py-3 font-semibold uppercase tracking-wider text-xs rounded-xl shadow-md flex items-center justify-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Matches
@@ -487,7 +589,7 @@ export function ShareFightCard() {
                         <td className="p-4 bg-gradient-to-r from-red-50/15 via-transparent to-transparent text-center border-r border-slate-200">
                           <div className="font-black text-[#C8102E] text-base mb-1 uppercase tracking-wide flex items-center justify-center gap-1.5 flex-wrap">
                             <span>{match.fighterA.name}</span>
-                            {match.status === "Completed" && match.winner === match.fighterA.name && (
+                            {(match.status === "Completed" || match.status === "Complete") && (match.winnerId === match.fighterA.id || match.winner === match.fighterA.name) && (
                               <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded bg-emerald-600 text-white font-extrabold text-[8px] uppercase tracking-wider shadow-sm select-none">
                                 🏆 WINNER
                               </span>
@@ -530,7 +632,7 @@ export function ShareFightCard() {
                         <td className="p-4 bg-gradient-to-l from-blue-50/15 via-transparent to-transparent text-center">
                           <div className="font-black text-[#0A3D91] text-base mb-1 uppercase tracking-wide flex items-center justify-center gap-1.5 flex-wrap">
                             <span>{match.fighterB.name}</span>
-                            {match.status === "Completed" && match.winner === match.fighterB.name && (
+                            {(match.status === "Completed" || match.status === "Complete") && (match.winnerId === match.fighterB.id || match.winner === match.fighterB.name) && (
                               <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded bg-emerald-600 text-white font-extrabold text-[8px] uppercase tracking-wider shadow-sm select-none">
                                 🏆 WINNER
                               </span>

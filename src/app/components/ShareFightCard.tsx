@@ -248,8 +248,8 @@ export function ShareFightCard({ batch, onClose }: ShareFightCardProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl my-8">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto md:p-8">
+      <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl my-4 md:my-8">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[#E0E0E0]">
           <h2 className="text-2xl font-black text-[#1A1A24] uppercase">
@@ -548,7 +548,7 @@ export function ShareFightCard({ batch, onClose }: ShareFightCardProps) {
                             flexWrap: 'wrap',
                           }}>
                             <span>{match.fighterA.name}</span>
-                            {match.status === "Completed" && match.winner === match.fighterA.name && (
+                            {(match.status === "Completed" || match.status === "Complete") && (match.winnerId === match.fighterA.id || match.winner === match.fighterA.name) && (
                               <span style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -657,8 +657,30 @@ export function ShareFightCard({ batch, onClose }: ShareFightCardProps) {
                             color: '#0A3D91',
                             marginBottom: '4px',
                             textTransform: 'uppercase',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            flexWrap: 'wrap',
                           }}>
-                            {match.fighterB.name}
+                            <span>{match.fighterB.name}</span>
+                            {(match.status === "Completed" || match.status === "Complete") && (match.winnerId === match.fighterB.id || match.winner === match.fighterB.name) && (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '2px',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                backgroundColor: '#10B981',
+                                color: '#ffffff',
+                                fontSize: '8px',
+                                fontWeight: 900,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                              }}>
+                                🏆 WINNER
+                              </span>
+                            )}
                           </div>
                           <div style={{
                             fontSize: '11px',
