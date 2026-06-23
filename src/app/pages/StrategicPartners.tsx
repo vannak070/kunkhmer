@@ -725,7 +725,7 @@ export function StrategicPartners() {
             </div>
             <div className="bg-white border-l-4 border-l-indigo-500 border-slate-200/80 rounded-r-2xl p-4 shadow-sm hover:shadow-md transition-all">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Platinum Sponsors</span>
-              <span className="text-2xl font-black text-indigo-650">{platinumSponsors}</span>
+              <span className="text-2xl font-black text-indigo-600">{platinumSponsors}</span>
             </div>
             <div className="bg-white border-l-4 border-l-[#F2C94C] border-slate-200/80 rounded-r-2xl p-4 shadow-sm hover:shadow-md transition-all">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Gold Sponsors</span>

@@ -954,7 +954,7 @@ export function BatchDetail() {
                 {batch.status === "Live" && permissions.hasPermission('matches.edit') && (
                   <button
                     onClick={handleFinalizeEvent}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-650 hover:bg-indigo-700 text-white rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow hover:-translate-y-[1px] active:scale-[0.98]"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow hover:-translate-y-[1px] active:scale-[0.98]"
                   >
                     <Trophy className="w-4 h-4" />
                     Finalize Event & Complete

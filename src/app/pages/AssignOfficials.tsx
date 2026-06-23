@@ -149,7 +149,7 @@ export default function AssignOfficials() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-red-650 mx-auto mb-4" />
+          <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-4">Batch not found</h2>
           <button onClick={() => navigate("/home/matches")} className="btn-primary px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider">
             Back to Matches
@@ -188,7 +188,7 @@ export default function AssignOfficials() {
           {/* Header */}
           <div className="p-6 md:p-8 pb-4">
             <div className="flex items-center gap-3.5 mb-2.5">
-              <span className="p-2 bg-indigo-50 text-indigo-650 rounded-xl">
+              <span className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
                 <Shield className="w-6 h-6" />
               </span>
               <div>
@@ -202,7 +202,7 @@ export default function AssignOfficials() {
             </div>
             
             <div className="mt-4 p-4 bg-indigo-50/50 border border-indigo-200/35 rounded-xl text-xs font-semibold text-indigo-750 flex items-center gap-2.5">
-              <Shield className="w-4 h-4 text-indigo-650 shrink-0" />
+              <Shield className="w-4 h-4 text-indigo-600 shrink-0" />
               <span>Event Card: {batch.event_name} • Location: {batch.location}</span>
             </div>
           </div>
@@ -223,7 +223,7 @@ export default function AssignOfficials() {
                   <div key={m.id} className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4 shadow-sm hover:shadow transition-shadow">
                     <div className="flex items-center justify-between border-b border-slate-250/40 pb-2.5 flex-wrap gap-2">
                       <div className="flex items-center gap-2.5">
-                        <span className="w-6 h-6 rounded-lg bg-indigo-650 text-white flex items-center justify-center font-extrabold text-[11px] tracking-tight shrink-0">
+                        <span className="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-extrabold text-[11px] tracking-tight shrink-0">
                           #{index + 1}
                         </span>
                         <span className="font-extrabold text-slate-900 text-sm md:text-base">
