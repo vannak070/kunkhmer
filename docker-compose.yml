@@ -1,31 +1,92 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: kun_khmer_postgres
-    restart: always
+    container_name: kunkhmer_postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: kun_khmer_db
+      POSTGRES_USER: kunkhmer
+      POSTGRES_PASSWORD: kunkhmer123
+      POSTGRES_DB: kunkhmer_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kunkhmer -d kunkhmer_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   backend:
-    image: betpro-backend
-    container_name: kun_khmer_backend_laravel
-    restart: always
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kunkhmer_backend
+    restart: unless-stopped
     working_dir: /app
     ports:
       - "3001:3001"
     volumes:
-      - .:/app
-    command: php artisan serve --host=0.0.0.0 --port=3001
+      - ./backend:/app
+      - backend_vendor:/app/vendor
+    environment:
+      APP_NAME: "Kun Khmer"
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:3001
+      FRONTEND_ADMIN_URL: http://localhost:5175
+      FRONTEND_PUBLIC_URL: http://localhost:5176
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: kunkhmer_db
+      DB_USERNAME: kunkhmer
+      DB_PASSWORD: kunkhmer123
+      SESSION_DRIVER: database
+      QUEUE_CONNECTION: database
+      CACHE_STORE: database
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+
+  frontend-admin:
+    build:
+      context: ./frontend/admin
+      dockerfile: Dockerfile
+    container_name: kunkhmer_frontend_admin
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "5175:5175"
+    volumes:
+      - ./frontend/admin:/app
+      - frontend_admin_node_modules:/app/node_modules
+    environment:
+      VITE_PROXY_TARGET: http://backend:3001
+      VITE_API_BASE_URL: /api
+    depends_on:
+      - backend
+
+  frontend-public:
+    build:
+      context: ./frontend/public
+      dockerfile: Dockerfile
+    container_name: kunkhmer_frontend_public
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "5176:5176"
+    volumes:
+      - ./frontend/public:/app
+      - frontend_public_node_modules:/app/node_modules
+    environment:
+      VITE_PROXY_TARGET: http://backend:3001
+      VITE_API_BASE_URL: /api
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:
+  backend_vendor:
+  frontend_admin_node_modules:
+  frontend_public_node_modules:
