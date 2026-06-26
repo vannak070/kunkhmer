@@ -136,7 +136,7 @@ export function Clubs() {
                   {/* Action Overlays on Hover */}
                   <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-200 flex gap-2 translate-y-[-5px] group-hover:translate-y-0">
                     <Link 
-                      to={`/home/clubs/${club.id}`}
+                      to={`/home/clubs/${club.id}/edit`}
                       className="p-2 bg-white/95 hover:bg-white text-primary border border-border/40 rounded-xl shadow-md backdrop-blur-md transition-all duration-150 hover:scale-105 active:scale-95"
                     >
                       <Edit2 className="w-4 h-4" />

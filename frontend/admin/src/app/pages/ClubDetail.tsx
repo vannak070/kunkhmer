@@ -91,6 +91,8 @@ export function ClubDetail() {
     wonDate: '2026-01-20'
   }));
 
+  const clubFighterIds = clubFighters.map((f: any) => f.id);
+
   if (loading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 min-h-full">
@@ -132,9 +134,9 @@ export function ClubDetail() {
             </p>
           </div>
         </div>
-        <button className="btn-outline py-2.5 px-5 shadow-sm">
+        <Link to={`/home/clubs/${club.id}/edit`} className="btn-outline py-2.5 px-5 shadow-sm">
           Edit Profile
-        </button>
+        </Link>
       </header>
 
       {/* Hero Section */}
@@ -259,11 +261,11 @@ export function ClubDetail() {
               <div className="md:col-span-2">
                 <div className="card-premium h-full flex flex-col justify-between">
                   <div>
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 mb-4 flex items-center gap-2">
                       <Users className="w-4 h-4 text-primary shrink-0" />
                       <span>About the Club</span>
                     </h3>
-                    <p className="text-slate-700 leading-relaxed font-medium text-sm">
+                    <p className="text-slate-800 leading-relaxed font-semibold text-sm">
                       {club.description}
                     </p>
                   </div>
@@ -272,35 +274,38 @@ export function ClubDetail() {
 
               {/* Contact information details */}
               <div>
-                <div className="card-premium bg-slate-900 border-slate-800 text-white shadow-md flex flex-col justify-between">
+                <div className="card-premium h-full flex flex-col justify-between">
                   <div>
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 mb-4">Contact Info</h3>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 mb-4 flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-primary shrink-0" />
+                      <span>Contact Info</span>
+                    </h3>
                     <div className="space-y-4">
                       <div className="flex items-start gap-3">
-                        <div className="p-2 bg-white/10 backdrop-blur-sm rounded-lg shrink-0 mt-0.5">
-                          <Phone className="w-4 h-4 text-amber-300" />
+                        <div className="p-2 bg-amber-50 border border-amber-100 rounded-lg shrink-0 mt-0.5">
+                          <Phone className="w-4 h-4 text-primary" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <span className="block text-[10px] font-bold text-white/50 uppercase tracking-wider mb-0.5">Phone</span>
-                          <a href={`tel:${club.phone}`} className="text-sm font-semibold hover:text-[#F2C94C] transition-colors break-all block">{club.phone}</a>
+                          <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Phone</span>
+                          <a href={`tel:${club.phone}`} className="text-sm font-bold text-slate-800 hover:text-primary transition-colors break-all block">{club.phone || "N/A"}</a>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
-                        <div className="p-2 bg-white/10 backdrop-blur-sm rounded-lg shrink-0 mt-0.5">
-                          <Mail className="w-4 h-4 text-amber-300" />
+                        <div className="p-2 bg-amber-50 border border-amber-100 rounded-lg shrink-0 mt-0.5">
+                          <Mail className="w-4 h-4 text-primary" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <span className="block text-[10px] font-bold text-white/50 uppercase tracking-wider mb-0.5">Email</span>
-                          <a href={`mailto:${club.email}`} className="text-sm font-semibold hover:text-[#F2C94C] transition-colors break-all block">{club.email}</a>
+                          <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Email</span>
+                          <a href={`mailto:${club.email}`} className="text-sm font-bold text-slate-800 hover:text-primary transition-colors break-all block">{club.email || "N/A"}</a>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
-                        <div className="p-2 bg-white/10 backdrop-blur-sm rounded-lg shrink-0 mt-0.5">
-                          <MapPin className="w-4 h-4 text-amber-300" />
+                        <div className="p-2 bg-amber-50 border border-amber-100 rounded-lg shrink-0 mt-0.5">
+                          <MapPin className="w-4 h-4 text-primary" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <span className="block text-[10px] font-bold text-white/50 uppercase tracking-wider mb-0.5">Location</span>
-                          <span className="text-sm font-semibold text-slate-200 block truncate">{club.location}</span>
+                          <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Location</span>
+                          <span className="text-sm font-bold text-slate-800 block truncate">{club.location || "N/A"}</span>
                         </div>
                       </div>
                     </div>
@@ -313,21 +318,21 @@ export function ClubDetail() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="card-premium text-center hover:bg-muted/15 hover:border-slate-300 transition-all flex flex-col justify-center py-5">
                 <div className="text-3xl font-black text-primary mb-1">{clubFighters.length}</div>
-                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Fighters</div>
+                <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Total Fighters</div>
               </div>
               <div className="card-premium text-center hover:bg-muted/15 hover:border-slate-300 transition-all flex flex-col justify-center py-5">
                 <div className="text-3xl font-black text-amber-600 mb-1">{clubChampions.length}</div>
-                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Champions</div>
+                <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Champions</div>
               </div>
               <div className="card-premium text-center hover:bg-muted/15 hover:border-slate-300 transition-all flex flex-col justify-center py-5">
                 <div className="text-3xl font-black text-secondary mb-1">{clubMatches.length}</div>
-                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Matches</div>
+                <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Total Matches</div>
               </div>
               <div className="card-premium text-center hover:bg-muted/15 hover:border-slate-300 transition-all flex flex-col justify-center py-5">
                 <div className="text-3xl font-black text-emerald-600 mb-1">
                   {clubFighters.filter(f => getFighterStatus(f).label === 'Available').length}
                 </div>
-                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Available Now</div>
+                <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Available Now</div>
               </div>
             </div>
           </div>

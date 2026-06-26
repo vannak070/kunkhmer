@@ -30,6 +30,7 @@ class SettingController extends Controller
         $sponsor = Sponsor::create([
             'name' => $input['name'],
             'logo_url' => $input['logoUrl'] ?? null,
+            'image' => $input['image'] ?? null,
             'industry' => $input['industry'] ?? null,
             'tier' => $input['tier'] ?? 'Gold',
             'active' => isset($input['active']) ? (bool)$input['active'] : true,
@@ -62,6 +63,7 @@ class SettingController extends Controller
 
         if (isset($input['name'])) $updateData['name'] = $input['name'];
         if (isset($input['logoUrl'])) $updateData['logo_url'] = $input['logoUrl'];
+        if (isset($input['image'])) $updateData['image'] = $input['image'];
         if (isset($input['industry'])) $updateData['industry'] = $input['industry'];
         if (isset($input['tier'])) $updateData['tier'] = $input['tier'];
         if (isset($input['active'])) $updateData['active'] = (bool)$input['active'];
@@ -127,6 +129,7 @@ class SettingController extends Controller
             'contact_phone' => $input['contactPhone'] ?? null,
             'website_url' => $input['websiteUrl'] ?? null,
             'logo_url' => $input['logoUrl'] ?? null,
+            'image' => $input['image'] ?? null,
         ]);
 
         return response()->json([
@@ -160,6 +163,7 @@ class SettingController extends Controller
         if (isset($input['contactPhone'])) $updateData['contact_phone'] = $input['contactPhone'];
         if (isset($input['websiteUrl'])) $updateData['website_url'] = $input['websiteUrl'];
         if (isset($input['logoUrl'])) $updateData['logo_url'] = $input['logoUrl'];
+        if (isset($input['image'])) $updateData['image'] = $input['image'];
 
         $station->update($updateData);
 

@@ -26,6 +26,10 @@ class TestSeeder extends Seeder
                 'status' => 'active',
                 'rating' => 4.8,
                 'image' => 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2940&auto=format&fit=crop',
+                'phone' => '+855 12 345 678',
+                'email' => 'contact@pptopteam.com',
+                'established' => '2015',
+                'description' => 'Phnom Penh Top Team is a premier combat sports academy located in the heart of Cambodia. We offer high-quality instruction in Kun Khmer, Brazilian Jiu-Jitsu, and Wrestling, training both local champions and international athletes.'
             ],
             [
                 'id' => (string) Str::uuid(),
@@ -36,6 +40,10 @@ class TestSeeder extends Seeder
                 'status' => 'active',
                 'rating' => 4.5,
                 'image' => 'https://images.unsplash.com/photo-1555597673-b21d5c935865?q=80&w=2940&auto=format&fit=crop',
+                'phone' => '+855 98 765 432',
+                'email' => 'info@srwarriors.com',
+                'established' => '2018',
+                'description' => 'Siem Reap Warriors is dedicated to preserving and promoting the traditional art of Kun Khmer. Located close to the historical temples of Angkor, our gym provides authentic, high-endurance training for fighters of all levels.'
             ],
             [
                 'id' => (string) Str::uuid(),
@@ -46,6 +54,10 @@ class TestSeeder extends Seeder
                 'status' => 'inactive',
                 'rating' => 4.2,
                 'image' => 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2940&auto=format&fit=crop',
+                'phone' => '+855 15 223 344',
+                'email' => 'battambang@strikers.com',
+                'established' => '2012',
+                'description' => 'Battambang Strikers is a historic training camp that has produced numerous legendary fighters over the last decade. It focuses heavily on conditioning and technical kickboxing/Kun Khmer mastery.'
             ],
             [
                 'id' => (string) Str::uuid(),
@@ -56,6 +68,10 @@ class TestSeeder extends Seeder
                 'status' => 'active',
                 'rating' => 4.3,
                 'image' => 'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?q=80&w=2940&auto=format&fit=crop',
+                'phone' => '+855 77 998 877',
+                'email' => 'kampotfc@gmail.com',
+                'established' => '2020',
+                'description' => 'Kampot Fight Club is a modern gym offering sea-breeze conditioning, traditional Kun Khmer classes, and fitness programs for tourists and professional competitors alike.'
             ],
             [
                 'id' => (string) Str::uuid(),
@@ -66,6 +82,10 @@ class TestSeeder extends Seeder
                 'status' => 'active',
                 'rating' => 4.7,
                 'image' => 'https://images.unsplash.com/photo-1595078475328-1ab05d0a6a0e?q=80&w=2940&auto=format&fit=crop',
+                'phone' => '+855 88 555 4444',
+                'email' => 'admin@angkorelite.academy',
+                'established' => '2022',
+                'description' => 'Angkor Elite Academy features state-of-the-art facilities and structured martial arts programs designed to develop next-generation athletes and future Kun Khmer titleholders.'
             ],
         ];
         DB::table('clubs')->insert($clubs);

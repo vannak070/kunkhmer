@@ -180,6 +180,7 @@ export const router = createBrowserRouter([
       { path: "fighters/:id/edit", element: <AddFighter /> },
       { path: "fighters/:id", element: <FighterDetail /> },
       { path: "clubs/:id", element: <ClubDetail /> },
+      { path: "clubs/:id/edit", element: <AddClub /> },
       { path: "clubs/new", element: <AddClub /> },
       { path: "clubs", element: <Clubs /> },
       { path: "matches/new", element: <CreateBatch /> },

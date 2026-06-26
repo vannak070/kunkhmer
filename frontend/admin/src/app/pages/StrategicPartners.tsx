@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, Navigate, useLocation, useNavigate, Link } from "react-router";
 import { 
   Tv, Trophy, Edit, Trash2, Plus, Globe, Radio, Award,
-  Mail, ArrowLeft, Save, User, Phone
+  Mail, ArrowLeft, Save, User, Phone, Upload, X
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../utils/api";
@@ -32,6 +32,95 @@ const AngkorWatWatermark = () => (
 );
 
 export type PartnerType = 'BROADCAST_PARTNERS' | 'OFFICIAL_SPONSORS';
+
+// ── LIVE CARD PREVIEW SUB-COMPONENT ──────────────────────────────────────────
+function LivePartnerPreview({ name, logoUrl, bannerUrl, type, isBroadcaster, contactPerson, contactEmail, contactPhone, websiteUrl, active }: any) {
+  const imageSrc = bannerUrl || logoUrl;
+  
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-1">Live Card Preview</div>
+      <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-md flex flex-col relative w-full pointer-events-none opacity-95">
+        {/* Image Banner Section */}
+        <div className="h-32 relative overflow-hidden bg-muted">
+          {imageSrc ? (
+            <img 
+              src={imageSrc} 
+              alt={name} 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-[#0A3D91] to-[#082E6E] flex items-center justify-center text-white/20 select-none">
+              {isBroadcaster ? (
+                <Tv className="w-10 h-10 opacity-30" />
+              ) : (
+                <Trophy className="w-10 h-10 opacity-30" />
+              )}
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+          
+          {/* Badge Overlays */}
+          <div className="absolute bottom-2.5 left-2.5 right-2.5 flex justify-between items-end">
+            {/* Tier/Type badge */}
+            <div className="flex items-center gap-1 bg-[#FFFDF5] border border-amber-200/80 text-amber-700 px-2 py-0.5 rounded-full text-[9px] font-semibold shadow-sm">
+              {isBroadcaster ? (
+                <Radio className="w-2.5 h-2.5 text-amber-500 fill-amber-500/20" />
+              ) : (
+                <Award className="w-2.5 h-2.5 text-amber-500 fill-amber-500/20" />
+              )}
+              <span>{type}</span>
+            </div>
+            
+            {/* Active Status Badge */}
+            <div className={`badge-premium ${active ? 'badge-emerald' : 'badge-red'} text-[9px] px-2 py-0.5`}>
+              <span className={`badge-dot ${active ? 'bg-emerald-500' : 'bg-red-500'}`} />
+              {active ? 'Active' : 'Inactive'}
+            </div>
+          </div>
+        </div>
+        
+        {/* Card Content Section */}
+        <div className="p-4 flex-1 flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-foreground tracking-tight leading-tight line-clamp-1 mb-1 text-left">
+              {name || "Partner Name"}
+            </h3>
+            {/* Subtitle details */}
+            <div className="space-y-1 mb-3 text-left border-l-2 border-border pl-2.5">
+              {contactPerson && (
+                <div className="flex items-center gap-1.5 text-slate-700">
+                  <User className="w-3 h-3 text-slate-400 shrink-0" />
+                  <span className="text-[10px] font-bold truncate">{contactPerson}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-1.5 text-slate-500">
+                <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                <span className="text-[10px] font-medium truncate">
+                  {contactEmail || "contact@partner.com"}
+                </span>
+              </div>
+              {contactPhone && (
+                <div className="flex items-center gap-1.5 text-slate-500">
+                  <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                  <span className="text-[10px] font-medium truncate">{contactPhone}</span>
+                </div>
+              )}
+              {websiteUrl && (
+                <div className="flex items-center gap-1.5 text-slate-500">
+                  <Globe className="w-3 h-3 text-slate-400 shrink-0" />
+                  <span className="text-[10px] font-medium truncate">
+                    {websiteUrl.replace(/^https?:\/\/(www\.)?/, '')}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── PARTNER CARD SUB-COMPONENT ──────────────────────────────────────────────
 interface GridCardProps {
@@ -207,6 +296,7 @@ export function StrategicPartners() {
   // Form states
   const [partnerName, setPartnerName] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
+  const [bannerUrl, setBannerUrl] = useState("");
   const [contactPerson, setContactPerson] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
@@ -284,7 +374,8 @@ export function StrategicPartners() {
       const found = list.find(p => p.id === partnerId);
       if (found) {
         setPartnerName(found.name);
-        setLogoUrl(found.image || found.logoUrl || found.logo_url || "");
+        setLogoUrl(found.logoUrl || found.logo_url || "");
+        setBannerUrl(found.image || "");
         setContactPerson(found.contactPerson || "");
         setContactEmail(found.contactEmail || "");
         setContactPhone(found.contactPhone || "");
@@ -301,6 +392,7 @@ export function StrategicPartners() {
     } else {
       setPartnerName("");
       setLogoUrl("");
+      setBannerUrl("");
       setContactPerson("");
       setContactEmail("");
       setContactPhone("");
@@ -342,6 +434,7 @@ export function StrategicPartners() {
           await api.settings.createBroadcastStation({
             name: partnerName.trim(),
             logoUrl: logoUrl.trim() || undefined,
+            image: bannerUrl.trim() || undefined,
             type: broadcasterType,
             reach: broadcasterReach,
             contactPerson: contactPerson.trim() || undefined,
@@ -355,6 +448,7 @@ export function StrategicPartners() {
           await api.settings.createSponsor({
             name: partnerName.trim(),
             logoUrl: logoUrl.trim() || undefined,
+            image: bannerUrl.trim() || undefined,
             industry: sponsorIndustry.trim() || "Corporate Partner",
             tier: sponsorTier,
             contactPerson: contactPerson.trim() || undefined,
@@ -371,6 +465,7 @@ export function StrategicPartners() {
           await api.settings.updateBroadcastStation(partnerId, {
             name: partnerName.trim(),
             logoUrl: logoUrl.trim() || undefined,
+            image: bannerUrl.trim() || undefined,
             type: broadcasterType,
             reach: broadcasterReach,
             contactPerson: contactPerson.trim() || undefined,
@@ -384,6 +479,7 @@ export function StrategicPartners() {
           await api.settings.updateSponsor(partnerId, {
             name: partnerName.trim(),
             logoUrl: logoUrl.trim() || undefined,
+            image: bannerUrl.trim() || undefined,
             industry: sponsorIndustry.trim() || "Corporate Partner",
             tier: sponsorTier,
             contactPerson: contactPerson.trim() || undefined,
@@ -427,8 +523,12 @@ export function StrategicPartners() {
         </header>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
-          <div className="md:col-span-2 space-y-6">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-10">
+          
+          {/* Left Column: Input Fields */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Partner Information */}
             <div className="card-premium">
               <h2 className="text-base font-bold text-foreground mb-4">
                 Partner Information
@@ -582,37 +682,124 @@ export function StrategicPartners() {
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="space-y-6">
+            {/* Branding Assets (Logo and Banner upload) */}
             <div className="card-premium">
-              <h3 className="text-sm font-bold text-foreground mb-3">
-                Logo / Cover Image
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Image URL
+              <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
+                <Upload className="w-5 h-5 text-primary" />
+                <span>Branding Assets</span>
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Logo Upload Dropzone */}
+                <div className="space-y-3">
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    Partner Logo
                   </label>
-                  <input
-                    type="url"
-                    value={logoUrl}
-                    onChange={e => setLogoUrl(e.target.value)}
-                    placeholder="https://images.unsplash.com/photo-..."
-                    className="input-premium font-semibold text-slate-800"
-                  />
+                  <div className="flex flex-col items-center gap-3">
+                    <label className="flex flex-col items-center justify-center w-full h-28 border border-border/80 border-dashed rounded-xl cursor-pointer bg-muted/10 hover:bg-muted/20 transition-all duration-200">
+                      <div className="flex flex-col items-center justify-center pt-2 pb-2 px-2 text-center">
+                        <Upload className="w-6 h-6 text-muted-foreground mb-1" />
+                        <span className="text-xs font-semibold text-primary hover:underline">Upload Logo</span>
+                        <span className="text-[9px] text-muted-foreground mt-0.5">PNG, JPG (MAX. 1MB)</span>
+                      </div>
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setLogoUrl(reader.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                    
+                    {logoUrl && (
+                      <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-border shadow-sm animate-fadeIn bg-slate-50 flex items-center justify-center">
+                        <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                        <button
+                          type="button"
+                          onClick={() => setLogoUrl("")}
+                          className="absolute -top-1.5 -right-1.5 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors shadow-md animate-scaleIn"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                {logoUrl ? (
-                  <div className="relative w-full h-32 rounded-xl overflow-hidden border border-border/60 shadow-sm animate-fadeIn">
-                    <img src={logoUrl} alt="Preview" className="w-full h-full object-cover" />
+
+                {/* Banner Upload Dropzone */}
+                <div className="space-y-3">
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    Banner / Cover Image
+                  </label>
+                  <div className="flex flex-col items-center gap-3">
+                    <label className="flex flex-col items-center justify-center w-full h-28 border border-border/80 border-dashed rounded-xl cursor-pointer bg-muted/10 hover:bg-muted/20 transition-all duration-200">
+                      <div className="flex flex-col items-center justify-center pt-2 pb-2 px-2 text-center">
+                        <Upload className="w-6 h-6 text-muted-foreground mb-1" />
+                        <span className="text-xs font-semibold text-primary hover:underline">Upload Banner</span>
+                        <span className="text-[9px] text-muted-foreground mt-0.5">PNG, JPG (MAX. 2MB)</span>
+                      </div>
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setBannerUrl(reader.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+
+                    {bannerUrl && (
+                      <div className="relative w-full h-20 rounded-xl overflow-hidden border border-border shadow-sm animate-fadeIn">
+                        <img src={bannerUrl} alt="Banner" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setBannerUrl("")}
+                          className="absolute -top-1.5 -right-1.5 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors shadow-md animate-scaleIn"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="h-32 rounded-xl bg-muted/10 border border-border/40 flex items-center justify-center text-muted-foreground text-xs font-medium">
-                    No image URL provided
-                  </div>
-                )}
+                </div>
+
               </div>
             </div>
+
+          </div>
+
+          {/* Right Column: Live Preview, Status & Actions */}
+          <div className="space-y-6">
+            
+            {/* Live Card Preview */}
+            <LivePartnerPreview 
+              name={partnerName}
+              logoUrl={logoUrl}
+              bannerUrl={bannerUrl}
+              type={isBroadcasterView ? broadcasterType : `${sponsorTier} Tier`}
+              isBroadcaster={isBroadcasterView}
+              contactPerson={contactPerson}
+              contactEmail={contactEmail}
+              contactPhone={contactPhone}
+              websiteUrl={websiteUrl}
+              active={partnerActive}
+            />
 
             {/* Status Settings Card */}
             <div className="card-premium">
@@ -636,6 +823,7 @@ export function StrategicPartners() {
               </div>
             </div>
 
+            {/* Form Actions */}
             <div className="bg-white rounded-xl border border-border p-4 shadow-sm flex flex-col gap-3">
               <button
                 type="submit"
@@ -651,6 +839,7 @@ export function StrategicPartners() {
                 Cancel
               </Link>
             </div>
+
           </div>
         </form>
       </div>

@@ -19,7 +19,11 @@ class Club extends Model
         'head_coach',
         'status',
         'rating',
-        'image'
+        'image',
+        'phone',
+        'email',
+        'established',
+        'description'
     ];
 
     protected $casts = [

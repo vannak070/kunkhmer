@@ -40,7 +40,11 @@ class ClubController extends Controller
             'head_coach' => $input['headCoach'] ?? null,
             'status' => $input['status'] ?? 'active',
             'rating' => $input['rating'] ?? 4.0,
-            'image' => $input['image'] ?? null
+            'image' => $input['image'] ?? null,
+            'phone' => $input['phone'] ?? null,
+            'email' => $input['email'] ?? null,
+            'established' => $input['established'] ?? null,
+            'description' => $input['description'] ?? null
         ]);
 
         return response()->json([
@@ -67,6 +71,10 @@ class ClubController extends Controller
         if (isset($input['status'])) $updateData['status'] = $input['status'];
         if (isset($input['rating'])) $updateData['rating'] = $input['rating'];
         if (isset($input['image'])) $updateData['image'] = $input['image'];
+        if (isset($input['phone'])) $updateData['phone'] = $input['phone'];
+        if (isset($input['email'])) $updateData['email'] = $input['email'];
+        if (isset($input['established'])) $updateData['established'] = $input['established'];
+        if (isset($input['description'])) $updateData['description'] = $input['description'];
 
         $club->update($updateData);
 

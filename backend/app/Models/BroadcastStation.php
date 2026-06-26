@@ -22,7 +22,8 @@ class BroadcastStation extends Model
         'contact_email',
         'contact_phone',
         'website_url',
-        'logo_url'
+        'logo_url',
+        'image'
     ];
 
     protected $casts = [

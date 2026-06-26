@@ -17,6 +17,10 @@ return new class extends Migration {
             $table->string('status')->default('active');
             $table->decimal('rating', 3, 2)->default(4.0);
             $table->text('image')->nullable();
+            $table->string('phone')->nullable();
+            $table->string('email')->nullable();
+            $table->string('established')->nullable();
+            $table->text('description')->nullable();
             $table->timestamps();
         });
 
@@ -77,6 +81,7 @@ return new class extends Migration {
             $table->string('contact_phone')->nullable();
             $table->text('website_url')->nullable();
             $table->text('logo_url')->nullable();
+            $table->text('image')->nullable();
             $table->timestamps();
         });
 
@@ -85,6 +90,7 @@ return new class extends Migration {
             $table->uuid('id')->primary();
             $table->string('name');
             $table->text('logo_url')->nullable();
+            $table->text('image')->nullable();
             $table->string('industry')->nullable();
             $table->string('tier')->default('Gold');
             $table->boolean('active')->default(true);

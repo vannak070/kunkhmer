@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Save, Upload, Building2, MapPin, X, ChevronDown, Search } from "lucide-react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { api } from "../utils/api";
 import { addWorkflowRequest } from "../data/workflow";
 import { usePermissions } from "../hooks/usePermissions";
@@ -72,6 +72,8 @@ const QUICK_HUBS = [
 
 export function AddClub() {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditMode = !!id;
   const permissions = usePermissions();
   const currentUser = permissions.currentUser;
   const [formData, setFormData] = useState({
@@ -85,6 +87,32 @@ export function AddClub() {
     status: "active",
     image: ""
   });
+
+  useEffect(() => {
+    if (isEditMode && id) {
+      const fetchClub = async () => {
+        try {
+          const clubData = await api.clubs.get(id);
+          if (clubData) {
+            setFormData({
+              name: clubData.name || "",
+              location: clubData.location || "",
+              headCoach: clubData.head_coach || clubData.headCoach || "",
+              phone: clubData.phone || "",
+              email: clubData.email || "",
+              established: clubData.established || "",
+              description: clubData.description || "",
+              status: clubData.status || "active",
+              image: clubData.image || ""
+            });
+          }
+        } catch (err: any) {
+          toast.error("Failed to load club details: " + err.message);
+        }
+      };
+      fetchClub();
+    }
+  }, [id, isEditMode]);
 
   const [pin, setPin] = useState<{ x: number; y: number } | null>(null);
   
@@ -282,19 +310,30 @@ export function AddClub() {
     e.preventDefault();
     
     try {
-      await api.clubs.create({
+      const payload = {
         name: formData.name,
         location: formData.location,
         headCoach: formData.headCoach,
         status: formData.status || "active",
         rating: 5.0,
-        image: formData.image || "https://images.unsplash.com/photo-1540206351-d6465b3ac5c1?q=80&w=2940&auto=format&fit=crop"
-      });
+        image: formData.image || "https://images.unsplash.com/photo-1540206351-d6465b3ac5c1?q=80&w=2940&auto=format&fit=crop",
+        phone: formData.phone || null,
+        email: formData.email || null,
+        established: formData.established || null,
+        description: formData.description || null
+      };
 
-      toast.success("Club created successfully in database!");
+      if (isEditMode && id) {
+        await api.clubs.update(id, payload);
+        toast.success("Club updated successfully in database!");
+      } else {
+        await api.clubs.create(payload);
+        toast.success("Club created successfully in database!");
+      }
+
       navigate("/home/clubs");
     } catch (err: any) {
-      toast.error(err.message || "Failed to create club");
+      toast.error(err.message || `Failed to ${isEditMode ? "update" : "create"} club`);
     }
   };
 
@@ -365,8 +404,12 @@ export function AddClub() {
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Add New Club</h1>
-            <p className="text-sm text-muted-foreground mt-1 font-medium">Register a new Kun Khmer training facility and location</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              {isEditMode ? "Edit Club" : "Add New Club"}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1 font-medium">
+              {isEditMode ? "Update Kun Khmer training facility details" : "Register a new Kun Khmer training facility and location"}
+            </p>
           </div>
         </div>
       </header>
@@ -706,7 +749,7 @@ export function AddClub() {
               className="btn-primary w-full py-3"
             >
               <Save className="w-4 h-4 animate-pulse" />
-              Save Club
+              {isEditMode ? "Save Changes" : "Save Club"}
             </button>
             <Link
               to="/home/clubs"
