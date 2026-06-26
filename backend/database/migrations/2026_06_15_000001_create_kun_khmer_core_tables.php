@@ -16,7 +16,7 @@ return new class extends Migration {
             $table->string('head_coach')->nullable();
             $table->string('status')->default('active');
             $table->decimal('rating', 3, 2)->default(4.0);
-            $table->string('image', 1024)->nullable();
+            $table->text('image')->nullable();
             $table->timestamps();
         });
 
@@ -49,7 +49,7 @@ return new class extends Migration {
             $table->decimal('current_weight', 5, 2);
             $table->decimal('height', 5, 2);
             $table->uuid('club_id')->nullable();
-            $table->string('image', 1024)->nullable();
+            $table->text('image')->nullable();
             $table->string('style')->nullable();
             $table->string('record', 50)->nullable();
             $table->string('grade', 5)->default('D');
@@ -68,15 +68,15 @@ return new class extends Migration {
         Schema::create('broadcast_stations', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('name');
-            $table->string('stream_url', 1024)->nullable();
+            $table->text('stream_url')->nullable();
             $table->string('type')->default('Cable TV');
             $table->string('reach')->default('National');
             $table->boolean('active')->default(true);
             $table->string('contact_person')->nullable();
             $table->string('contact_email')->nullable();
             $table->string('contact_phone')->nullable();
-            $table->string('website_url', 1024)->nullable();
-            $table->string('logo_url', 1024)->nullable();
+            $table->text('website_url')->nullable();
+            $table->text('logo_url')->nullable();
             $table->timestamps();
         });
 
@@ -84,14 +84,14 @@ return new class extends Migration {
         Schema::create('sponsors', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('name');
-            $table->string('logo_url', 1024)->nullable();
+            $table->text('logo_url')->nullable();
             $table->string('industry')->nullable();
             $table->string('tier')->default('Gold');
             $table->boolean('active')->default(true);
             $table->string('contact_person')->nullable();
             $table->string('contact_email')->nullable();
             $table->string('contact_phone')->nullable();
-            $table->string('website_url', 1024)->nullable();
+            $table->text('website_url')->nullable();
             $table->timestamps();
         });
 
@@ -107,7 +107,7 @@ return new class extends Migration {
             $table->uuid('broadcast_station_id')->nullable();
             $table->uuid('main_sponsor_id')->nullable();
             $table->text('description')->nullable();
-            $table->string('image', 1024)->nullable();
+            $table->text('image')->nullable();
             $table->timestamp('kkf_approval_date')->nullable();
             $table->uuid('kkf_approved_by')->nullable();
             $table->timestamps();

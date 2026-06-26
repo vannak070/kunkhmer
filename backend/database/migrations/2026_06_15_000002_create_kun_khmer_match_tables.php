@@ -91,9 +91,9 @@ return new class extends Migration {
             $table->integer('defense_count')->default(0);
             $table->date('last_defense_date')->nullable();
             $table->date('next_defense_deadline')->nullable();
-            $table->string('belt_image_url', 1024)->nullable();
-            $table->string('trophy_image_url', 1024)->nullable();
-            $table->string('certificate_url', 1024)->nullable();
+            $table->text('belt_image_url')->nullable();
+            $table->text('trophy_image_url')->nullable();
+            $table->text('certificate_url')->nullable();
             $table->text('notes')->nullable();
             $table->string('approval_status')->default('approved');
             $table->timestamps();

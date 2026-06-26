@@ -28,6 +28,14 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}): Pr
     data = { success: false, error: text || "Invalid JSON response from server" };
   }
 
+  if (response.status === 401) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    if (typeof window !== "undefined" && !window.location.pathname.endsWith("/login")) {
+      window.location.href = "/login";
+    }
+  }
+
   if (!response.ok) {
     throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
   }
