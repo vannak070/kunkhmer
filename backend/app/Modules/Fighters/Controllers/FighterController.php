@@ -105,7 +105,8 @@ class FighterController extends Controller
             'style'           => $input['style'] ?? null,
             'grade'           => $input['grade'] ?? 'D',
             'image'           => $input['image'] ?? null,
-            'status'          => 'Draft',
+            'record'          => $input['record'] ?? null,
+            'status'          => $input['status'] ?? 'Draft',
         ]);
 
         $fighter->load('club');
@@ -162,6 +163,7 @@ class FighterController extends Controller
         if (isset($input['image']))            $updateData['image']             = $input['image'];
         if (isset($input['status']))           $updateData['status']            = $input['status'];
         if (isset($input['professionalStatus'])) $updateData['professional_status'] = $input['professionalStatus'];
+        if (isset($input['record']))           $updateData['record']            = $input['record'];
 
         $fighter->update($updateData);
         $fighter->load('club');
@@ -247,6 +249,7 @@ class FighterController extends Controller
             'style'             => $fighter->style,
             'grade'             => $fighter->grade,
             'image'             => $fighter->image,
+            'record'            => $fighter->record,
             'status'            => $fighter->status,
             'professionalStatus'=> $fighter->professional_status,
             'verifiedBy'        => $fighter->verified_by,

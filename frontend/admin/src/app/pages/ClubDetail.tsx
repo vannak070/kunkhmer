@@ -29,7 +29,12 @@ export function ClubDetail() {
       setClub(clubData);
       
       const fightersData = await api.fighters.list(undefined, id!);
-      setClubFighters(fightersData);
+      const mappedFighters = fightersData.map((f: any) => ({
+        ...f,
+        weight: parseFloat(f.currentWeight || f.current_weight || "0"),
+        origin: f.nationality === 'Cambodian' ? 'Local' : 'Foreigner'
+      }));
+      setClubFighters(mappedFighters);
 
       const allMatches = await api.matches.list();
       const fighterIds = fightersData.map((f: any) => f.id);

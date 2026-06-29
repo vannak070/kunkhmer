@@ -125,30 +125,36 @@ export function AddFighter() {
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setPhotoPreview(url);
-      setFighter((p) => ({ ...p, image: url }));
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64Data = reader.result as string;
+        setPhotoPreview(base64Data);
+        setFighter((p) => ({ ...p, image: base64Data }));
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const handleDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setDocPreview(url);
-      setFighter((p) => ({ ...p, idDocumentUrl: url }));
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64Data = reader.result as string;
+        setDocPreview(base64Data);
+        setFighter((p) => ({ ...p, idDocumentUrl: base64Data }));
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const removePhoto = () => {
-    if (photoPreview) URL.revokeObjectURL(photoPreview);
     setPhotoPreview(null);
     setFighter((p) => ({ ...p, image: "" }));
     if (photoInputRef.current) photoInputRef.current.value = "";
   };
 
   const removeDoc = () => {
-    if (docPreview) URL.revokeObjectURL(docPreview);
     setDocPreview(null);
     setFighter((p) => ({ ...p, idDocumentUrl: "" }));
     if (docInputRef.current) docInputRef.current.value = "";
@@ -210,7 +216,10 @@ export function AddFighter() {
       height: parseFloat(fighter.height) || 0,
       clubId: fighter.clubId || null,
       style: fighter.styles.join(", "),
-      grade: fighter.grade as 'A' | 'B' | 'C' | 'D'
+      grade: fighter.grade as 'A' | 'B' | 'C' | 'D',
+      image: finalImage,
+      record: fighter.record,
+      status: fighter.status
     };
 
     try {
@@ -979,9 +988,11 @@ export function AddFighter() {
               <h3 className="text-sm font-bold text-foreground mb-3">Status</h3>
               <div className="relative">
                 <select value={fighter.status} onChange={(e) => updateField("status", e.target.value)} className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none">
-                  <option>Active</option>
-                  <option>Inactive</option>
-                  <option>Suspended</option>
+                  <option value="Draft">Draft</option>
+                  <option value="Pending KKF Verification">Pending KKF Verification</option>
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                  <option value="Suspended">Suspended</option>
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               </div>
