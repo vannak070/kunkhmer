@@ -1,0 +1,58 @@
+import { createBrowserRouter, Navigate, useParams } from "react-router";
+import { SuperAppHome } from "./pages/SuperAppHome";
+import { SuperAppFighterDetail } from "./pages/SuperAppFighterDetail";
+import { ArticleDetail } from "./pages/ArticleDetail";
+
+function LegacySuperAppRedirect() {
+  const { section } = useParams();
+  return <Navigate to={section ? `/${section}` : "/"} replace />;
+}
+
+function LegacySuperAppFighterRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/fighters/${id}`} replace />;
+}
+
+function LegacySuperAppArticleRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/article/${id}`} replace />;
+}
+
+export const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <SuperAppHome />,
+  },
+  {
+    path: "/fighters/:id",
+    element: <SuperAppFighterDetail />,
+  },
+  {
+    path: "/article/:id",
+    element: <ArticleDetail />,
+  },
+  {
+    path: "/:section",
+    element: <SuperAppHome />,
+  },
+  {
+    path: "/superapp",
+    element: <Navigate to="/" replace />,
+  },
+  {
+    path: "/superapp/fighters/:id",
+    element: <LegacySuperAppFighterRedirect />,
+  },
+  {
+    path: "/superapp/article/:id",
+    element: <LegacySuperAppArticleRedirect />,
+  },
+  {
+    path: "/superapp/:section",
+    element: <LegacySuperAppRedirect />,
+  },
+  {
+    path: "*",
+    element: <Navigate to="/" replace />,
+  },
+]);
