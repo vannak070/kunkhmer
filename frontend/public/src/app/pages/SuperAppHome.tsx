@@ -510,10 +510,13 @@ export function SuperAppHome() {
       id: club.id,
       name: club.name,
       location: club.location || "Cambodia",
-      headCoach: club.headCoach || club.head_coach || "Head Coach",
-      activeFighters: parseInt(club.activeFighters || club.active_fighters || "0"),
+      // DB stores as snake_case: head_coach
+      headCoach: club.head_coach || club.headCoach || "",
+      // fighters_count is injected by withCount('fighters') in the API
+      activeFighters: parseInt(club.fighters_count ?? club.active_fighters ?? club.activeFighters ?? "0"),
       rating: parseFloat(club.rating || "4.5"),
       status: club.status || "active",
+      // image is stored directly in the DB column
       image: club.image || `https://images.unsplash.com/photo-1593375547549-29fe3bf5c94f?w=400&sig=${index % 10}`
     };
   });
@@ -2352,8 +2355,7 @@ export function SuperAppHome() {
       {/* Tab Content */}
       {strategicPartnersTab === "clubs" && (
         <div className="bg-white rounded-2xl rounded-tl-none p-8 border border-gray-100">
-          {/* Clubs Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {clubs.map((club) => (
               <div
                 key={club.id}
@@ -2362,78 +2364,77 @@ export function SuperAppHome() {
                   setCurrentSection("club-detail");
                   navigate(`/club-detail`);
                 }}
-                className="group relative bg-gradient-to-br from-white to-gray-50 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500 border border-gray-200 hover:-translate-y-2 hover:border-[#0A3D91]/30 cursor-pointer flex"
+                className="group relative bg-white rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500 border border-gray-200 hover:-translate-y-1 hover:border-[#0A3D91]/30 cursor-pointer flex flex-col"
               >
-                {/* Club Image - Left Side (40%) */}
-                <div className="relative w-2/5 flex-shrink-0 bg-gray-200 overflow-hidden">
+                {/* Banner — full width, respects uploaded image proportions */}
+                <div className="relative w-full aspect-[16/9] bg-gray-100 overflow-hidden flex-shrink-0">
                   <img
                     src={club.image}
                     alt={club.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black/20 to-black/60" />
-                  
-                  {/* Status Badge - Top Left */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+
+                  {/* Status Badge — top left */}
                   <div className="absolute top-3 left-3">
-                    <span className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase backdrop-blur-xl border shadow-lg ${
-                      club.status === 'active' 
-                        ? 'bg-green-500/90 text-white border-white/30' 
-                        : 'bg-gray-500/90 text-white border-white/30'
+                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase backdrop-blur-sm border shadow ${
+                      club.status === "active"
+                        ? "bg-green-500/90 text-white border-white/30"
+                        : "bg-gray-500/90 text-white border-white/30"
                     }`}>
                       {club.status}
                     </span>
                   </div>
 
-                  {/* Rating Badge - Bottom Left */}
-                  <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-white/20 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/30 shadow-xl">
-                    <Star className="w-4 h-4 text-[#F2C94C] fill-[#F2C94C]" />
+                  {/* Rating — bottom right over banner */}
+                  <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2.5 py-1 rounded-full border border-white/20">
+                    <Star className="w-3.5 h-3.5 text-[#F2C94C] fill-[#F2C94C]" />
                     <span className="text-sm font-bold text-white">{club.rating}</span>
                   </div>
                 </div>
 
-                {/* Card Content - Right Side (60%) */}
-                <div className="relative w-3/5 p-6 flex flex-col justify-between">
-                  {/* Top Section */}
+                {/* Card Body */}
+                <div className="flex flex-col gap-3 p-5 flex-1">
+                  {/* Name & Location */}
                   <div>
-                    {/* Club Name & Location */}
-                    <div className="mb-4">
-                      <h3 className="text-xl font-black text-gray-900 mb-2 group-hover:text-[#0A3D91] transition-colors tracking-tight leading-tight line-clamp-2">
-                        {club.name}
-                      </h3>
-                      <div className="flex items-center gap-1.5 text-gray-500">
-                        <MapPin className="w-4 h-4" />
-                        <span className="text-sm font-semibold">{club.location}</span>
-                      </div>
-                    </div>
-
-                    {/* Head Coach Info */}
-                    <div className="bg-gray-50 rounded-xl p-3 mb-3 border border-gray-100">
-                      <p className="text-xs font-bold text-gray-500 uppercase mb-1">Head Coach</p>
-                      <p className="text-sm font-black text-gray-900">{club.headCoach}</p>
+                    <h3 className="text-base font-black text-gray-900 group-hover:text-[#0A3D91] transition-colors leading-tight line-clamp-2 mb-1">
+                      {club.name}
+                    </h3>
+                    <div className="flex items-center gap-1.5 text-gray-400">
+                      <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="text-xs font-semibold truncate">{club.location}</span>
                     </div>
                   </div>
 
-                  {/* Bottom Section */}
-                  <div className="space-y-3">
-                    {/* Active Fighters Count */}
-                    <div className="flex items-center justify-between py-2.5 px-3 bg-gradient-to-r from-[#0A3D91]/5 to-blue-50 rounded-lg border border-[#0A3D91]/10">
-                      <div className="flex items-center gap-2 text-sm text-gray-700">
-                        <Users className="w-4 h-4 text-[#0A3D91]" />
-                        <span className="font-bold">Active Fighters</span>
+                  {/* Head Coach (left) + Active Fighters (right) — one row */}
+                  <div className="flex items-stretch gap-2">
+                    {/* Head Coach */}
+                    <div className="flex items-center gap-2 flex-1 min-w-0 px-3 py-2 bg-slate-50 rounded-xl border border-slate-100">
+                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#0A3D91]/10 flex items-center justify-center">
+                        <Users className="w-3.5 h-3.5 text-[#0A3D91]" />
                       </div>
-                      <span className="text-lg font-black text-[#0A3D91]">{club.activeFighters}</span>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-0.5">Head Coach</p>
+                        <p className="text-xs font-black text-gray-900 truncate">
+                          {club.headCoach || <span className="text-gray-300 font-medium italic">—</span>}
+                        </p>
+                      </div>
                     </div>
+                    {/* Active Fighters */}
+                    <div className="flex flex-col items-center justify-center px-3 py-2 bg-gradient-to-b from-[#0A3D91]/5 to-blue-50 rounded-xl border border-[#0A3D91]/10 flex-shrink-0 min-w-[64px]">
+                      <span className="text-xl font-black text-[#0A3D91] leading-none">{club.activeFighters}</span>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5 whitespace-nowrap">Fighters</span>
+                    </div>
+                  </div>
 
-                    {/* View Details Button */}
-                    <div className="w-full px-4 py-2.5 bg-gradient-to-r from-[#0A3D91] via-blue-600 to-[#0A3D91] text-white rounded-lg font-black group-hover:shadow-2xl group-hover:shadow-[#0A3D91]/50 transition-all text-center uppercase tracking-wider text-xs relative overflow-hidden">
+                  {/* View Details CTA */}
+                  <div className="mt-auto pt-1">
+                    <div className="w-full py-2.5 bg-gradient-to-r from-[#0A3D91] to-blue-600 text-white rounded-xl font-black text-xs uppercase tracking-wider text-center group-hover:shadow-lg group-hover:shadow-[#0A3D91]/30 transition-all relative overflow-hidden">
                       <span className="relative z-10">View Details</span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                     </div>
                   </div>
                 </div>
-
-                {/* Decorative Corner Accent */}
-                <div className="absolute bottom-0 right-0 w-24 h-24 bg-gradient-to-tl from-[#0A3D91]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-tl-[80px]" />
               </div>
             ))}
           </div>
@@ -2443,68 +2444,52 @@ export function SuperAppHome() {
 
       {strategicPartnersTab === "broadcasts" && (
         <div className="bg-white rounded-2xl rounded-tl-none rounded-tr-none p-8 border border-gray-100">
-          {/* Broadcast Stations Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {broadcastStations.map((station) => (
               <div
                 key={station.id}
-                className="group relative bg-gradient-to-br from-white to-purple-50/30 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500 border border-purple-100 hover:-translate-y-2 hover:border-purple-300/50 cursor-pointer flex"
+                className="group relative bg-white rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500 border border-purple-100 hover:-translate-y-1 hover:border-purple-300/50 cursor-pointer flex flex-col"
               >
-                {/* Image Section - Left Side (35%) */}
-                <div className="relative w-[35%] flex-shrink-0 bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900 overflow-hidden">
-                  <img 
-                    src={station.image} 
-                    alt={station.name} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-80" 
+                {/* Banner */}
+                <div className="relative w-full aspect-[16/9] bg-purple-900 overflow-hidden flex-shrink-0">
+                  <img
+                    src={station.image}
+                    alt={station.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-85"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-900/40 to-purple-900/80" />
-                  
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                   {/* Live Badge */}
-                  <div className="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-700 rounded-full border border-white/30 shadow-lg">
+                  <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 bg-red-600 rounded-full shadow">
                     <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                    <span className="text-xs font-black text-white uppercase">Live</span>
+                    <span className="text-[11px] font-black text-white uppercase">Live</span>
                   </div>
-                  
-                  {/* Logo Badge - Bottom Left */}
-                  <div className="absolute bottom-3 left-3 w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-xl border border-purple-200 overflow-hidden">
-                    <img src={station.logo} alt={station.name} className="w-full h-full object-contain p-1.5" />
+                  {/* Logo — bottom right */}
+                  <div className="absolute bottom-3 right-3 w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg border border-purple-100 overflow-hidden">
+                    <img src={station.logo} alt={station.name} className="w-full h-full object-contain p-1" />
                   </div>
                 </div>
 
-                {/* Card Content - Right Side (65%) */}
-                <div className="relative w-[65%] p-6 flex flex-col justify-between">
-                  {/* Top Section */}
+                {/* Card Body */}
+                <div className="flex flex-col gap-3 p-5 flex-1">
                   <div>
-                    {/* Station Name */}
-                    <div className="mb-3">
-                      <h3 className="text-xl font-black text-gray-900 mb-2 group-hover:text-purple-600 transition-colors tracking-tight leading-tight">
-                        {station.name}
-                      </h3>
-                      <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">{station.description}</p>
-                    </div>
+                    <h3 className="text-base font-black text-gray-900 group-hover:text-purple-600 transition-colors leading-tight line-clamp-1 mb-1">
+                      {station.name}
+                    </h3>
+                    <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">{station.description}</p>
                   </div>
 
-                  {/* Bottom Section */}
-                  <div className="space-y-3">
-                    {/* Events Broadcast Count */}
-                    <div className="flex items-center justify-between py-2.5 px-3 bg-gradient-to-r from-purple-50 to-purple-100/50 rounded-lg border border-purple-200/50">
-                      <div className="flex items-center gap-2 text-sm text-gray-700">
-                        <Video className="w-4 h-4 text-purple-600" />
-                        <span className="font-bold">Events Broadcast</span>
-                      </div>
-                      <span className="text-lg font-black text-purple-600">{station.eventsCount}</span>
-                    </div>
+                  <div className="flex items-center justify-between px-3 py-2 bg-purple-50 rounded-xl border border-purple-100">
+                    <span className="text-xs font-bold text-gray-600">Events Broadcast</span>
+                    <span className="text-base font-black text-purple-600">{station.eventsCount}</span>
+                  </div>
 
-                    {/* View Schedule Button */}
-                    <div className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-600 via-purple-700 to-purple-600 text-white rounded-lg font-black group-hover:shadow-2xl group-hover:shadow-purple-600/50 transition-all text-center uppercase tracking-wider text-xs relative overflow-hidden">
+                  <div className="mt-auto pt-1">
+                    <div className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl font-black text-xs uppercase tracking-wider text-center group-hover:shadow-lg group-hover:shadow-purple-600/30 transition-all relative overflow-hidden">
                       <span className="relative z-10">View Schedule</span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                     </div>
                   </div>
                 </div>
-
-                {/* Decorative Corner Accent */}
-                <div className="absolute bottom-0 right-0 w-24 h-24 bg-gradient-to-tl from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-tl-[80px]" />
               </div>
             ))}
           </div>
@@ -2513,226 +2498,81 @@ export function SuperAppHome() {
 
       {strategicPartnersTab === "sponsors" && (
         <div className="bg-white rounded-2xl rounded-tr-none p-8 border border-gray-100">
-          {/* All Sponsors - Modern Horizontal Card Layout */}
-          <div className="space-y-6">
-            {/* Platinum Sponsors */}
-            {sponsors.filter(s => s.tier === 'platinum').length > 0 && (
-              <div>
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-300 to-gray-400 rounded-full shadow-lg">
-                    <Crown className="w-5 h-5 text-white" />
-                    <span className="text-sm font-black text-white uppercase tracking-wider">Platinum Sponsors</span>
+          <div className="space-y-8">
+            {/* Tier helper */}
+            {(['platinum', 'gold', 'silver', 'bronze'] as const).map((tier) => {
+              const tierSponsors = sponsors.filter(s => s.tier === tier);
+              if (tierSponsors.length === 0) return null;
+              const tierMeta: Record<string, { label: string; badge: string; btn: string; stat: string; border: string }> = {
+                platinum: { label: 'Platinum', badge: 'from-slate-400 to-slate-500', btn: 'from-slate-600 to-slate-700', stat: 'bg-slate-50 border-slate-200 text-slate-700', border: 'border-slate-200 hover:border-slate-400/60' },
+                gold:     { label: 'Gold',     badge: 'from-amber-400 to-yellow-500', btn: 'from-amber-500 to-yellow-600', stat: 'bg-amber-50 border-amber-100 text-amber-700', border: 'border-amber-200 hover:border-amber-400/60' },
+                silver:   { label: 'Silver',   badge: 'from-gray-300 to-gray-400',   btn: 'from-gray-500 to-gray-600',   stat: 'bg-gray-50 border-gray-200 text-gray-600',   border: 'border-gray-200 hover:border-gray-400/50'  },
+                bronze:   { label: 'Bronze',   badge: 'from-orange-400 to-amber-600', btn: 'from-orange-500 to-amber-700', stat: 'bg-orange-50 border-orange-100 text-orange-700', border: 'border-orange-200 hover:border-orange-400/60' },
+              };
+              const m = tierMeta[tier];
+              return (
+                <div key={tier}>
+                  {/* Tier heading */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className={`flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r ${m.badge} rounded-full shadow`}>
+                      <Crown className="w-4 h-4 text-white" />
+                      <span className="text-xs font-black text-white uppercase tracking-wider">{m.label} Sponsors</span>
+                    </div>
+                    <div className="flex-1 h-px bg-gray-100" />
+                  </div>
+                  {/* Cards grid — same portrait pattern as Clubs & Gyms */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {tierSponsors.map((sponsor) => (
+                      <div
+                        key={sponsor.id}
+                        className={`group relative bg-white rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500 border hover:-translate-y-1 cursor-pointer flex flex-col ${m.border}`}
+                      >
+                        {/* Banner */}
+                        <div className="relative w-full aspect-[16/9] bg-gray-100 overflow-hidden flex-shrink-0">
+                          <img
+                            src={sponsor.image}
+                            alt={sponsor.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                          {/* Tier badge */}
+                          <div className={`absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r ${m.badge} shadow`}>
+                            <Crown className="w-3 h-3 text-white" />
+                            <span className="text-[11px] font-black text-white uppercase">{m.label}</span>
+                          </div>
+                          {/* Logo — bottom right */}
+                          <div className="absolute bottom-3 right-3 w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg border border-white/60 overflow-hidden">
+                            <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-contain p-1" />
+                          </div>
+                        </div>
+
+                        {/* Card Body */}
+                        <div className="flex flex-col gap-3 p-5 flex-1">
+                          <div>
+                            <h3 className="text-base font-black text-gray-900 group-hover:text-[#0A3D91] transition-colors leading-tight line-clamp-1 mb-1">
+                              {sponsor.name}
+                            </h3>
+                            <p className="text-xs text-gray-400 truncate">{sponsor.industry}</p>
+                          </div>
+
+                          <div className={`flex items-center justify-between px-3 py-2 rounded-xl border ${m.stat}`}>
+                            <span className="text-xs font-bold">Events Sponsored</span>
+                            <span className="text-base font-black">{sponsor.eventsSponsored}</span>
+                          </div>
+
+                          <div className="mt-auto pt-1">
+                            <div className={`w-full py-2.5 bg-gradient-to-r ${m.btn} text-white rounded-xl font-black text-xs uppercase tracking-wider text-center group-hover:shadow-lg transition-all relative overflow-hidden`}>
+                              <span className="relative z-10">View Details</span>
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {sponsors.filter(s => s.tier === 'platinum').map((sponsor) => (
-                    <div
-                      key={sponsor.id}
-                      className="group relative bg-gradient-to-br from-white to-gray-50/50 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500 border-2 border-gray-200 hover:-translate-y-2 hover:border-gray-400/70 cursor-pointer flex"
-                    >
-                      {/* Image Section - Left Side (35%) */}
-                      <div className="relative w-[35%] flex-shrink-0 bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800 overflow-hidden">
-                        <img 
-                          src={sponsor.image} 
-                          alt={sponsor.name} 
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-80" 
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-900/40 to-gray-900/80" />
-                        
-                        {/* Tier Badge */}
-                        <div className="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-gray-400 to-gray-500 rounded-full border border-white/30 shadow-lg">
-                          <Crown className="w-3.5 h-3.5 text-white" />
-                          <span className="text-xs font-black text-white uppercase">Platinum</span>
-                        </div>
-                        
-                        {/* Logo Badge - Bottom Left */}
-                        <div className="absolute bottom-3 left-3 w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-xl border border-gray-200 overflow-hidden">
-                          <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-contain p-1.5" />
-                        </div>
-                      </div>
-
-                      {/* Card Content - Right Side (65%) */}
-                      <div className="relative w-[65%] p-6 flex flex-col justify-between">
-                        {/* Top Section */}
-                        <div>
-                          <h3 className="text-xl font-black text-gray-900 mb-2 group-hover:text-gray-600 transition-colors tracking-tight leading-tight">
-                            {sponsor.name}
-                          </h3>
-                          <p className="text-sm text-gray-500 mb-3 leading-relaxed">{sponsor.industry}</p>
-                        </div>
-
-                        {/* Bottom Section */}
-                        <div className="space-y-3">
-                          {/* Events Sponsored Count */}
-                          <div className="flex items-center justify-between py-2.5 px-3 bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-lg border border-gray-200/50">
-                            <div className="flex items-center gap-2 text-sm text-gray-700">
-                              <Trophy className="w-4 h-4 text-gray-600" />
-                              <span className="font-bold">Events Sponsored</span>
-                            </div>
-                            <span className="text-lg font-black text-gray-700">{sponsor.eventsSponsored}</span>
-                          </div>
-
-                          {/* View Details Button */}
-                          <div className="w-full px-4 py-2.5 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-600 text-white rounded-lg font-black group-hover:shadow-2xl group-hover:shadow-gray-600/50 transition-all text-center uppercase tracking-wider text-xs relative overflow-hidden">
-                            <span className="relative z-10">View Details</span>
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Decorative Corner Accent */}
-                      <div className="absolute bottom-0 right-0 w-24 h-24 bg-gradient-to-tl from-gray-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-tl-[80px]" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Gold Sponsors */}
-            {sponsors.filter(s => s.tier === 'gold').length > 0 && (
-              <div>
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full shadow-lg">
-                    <Crown className="w-5 h-5 text-white" />
-                    <span className="text-sm font-black text-white uppercase tracking-wider">Gold Sponsors</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {sponsors.filter(s => s.tier === 'gold').map((sponsor) => (
-                    <div
-                      key={sponsor.id}
-                      className="group relative bg-gradient-to-br from-white to-yellow-50/30 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500 border-2 border-yellow-200 hover:-translate-y-2 hover:border-yellow-400/70 cursor-pointer flex"
-                    >
-                      {/* Image Section - Left Side (35%) */}
-                      <div className="relative w-[35%] flex-shrink-0 bg-gradient-to-br from-yellow-800 via-yellow-700 to-yellow-800 overflow-hidden">
-                        <img 
-                          src={sponsor.image} 
-                          alt={sponsor.name} 
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-80" 
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-900/40 to-yellow-900/80" />
-                        
-                        {/* Tier Badge */}
-                        <div className="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-full border border-white/30 shadow-lg">
-                          <Crown className="w-3.5 h-3.5 text-white" />
-                          <span className="text-xs font-black text-white uppercase">Gold</span>
-                        </div>
-                        
-                        {/* Logo Badge - Bottom Left */}
-                        <div className="absolute bottom-3 left-3 w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-xl border border-yellow-200 overflow-hidden">
-                          <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-contain p-1.5" />
-                        </div>
-                      </div>
-
-                      {/* Card Content - Right Side (65%) */}
-                      <div className="relative w-[65%] p-6 flex flex-col justify-between">
-                        {/* Top Section */}
-                        <div>
-                          <h3 className="text-xl font-black text-gray-900 mb-2 group-hover:text-yellow-600 transition-colors tracking-tight leading-tight">
-                            {sponsor.name}
-                          </h3>
-                          <p className="text-sm text-gray-500 mb-3 leading-relaxed">{sponsor.industry}</p>
-                        </div>
-
-                        {/* Bottom Section */}
-                        <div className="space-y-3">
-                          {/* Events Sponsored Count */}
-                          <div className="flex items-center justify-between py-2.5 px-3 bg-gradient-to-r from-yellow-50 to-yellow-100/50 rounded-lg border border-yellow-200/50">
-                            <div className="flex items-center gap-2 text-sm text-gray-700">
-                              <Trophy className="w-4 h-4 text-yellow-600" />
-                              <span className="font-bold">Events Sponsored</span>
-                            </div>
-                            <span className="text-lg font-black text-yellow-600">{sponsor.eventsSponsored}</span>
-                          </div>
-
-                          {/* View Details Button */}
-                          <div className="w-full px-4 py-2.5 bg-gradient-to-r from-yellow-500 via-yellow-600 to-yellow-500 text-white rounded-lg font-black group-hover:shadow-2xl group-hover:shadow-yellow-600/50 transition-all text-center uppercase tracking-wider text-xs relative overflow-hidden">
-                            <span className="relative z-10">View Details</span>
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Decorative Corner Accent */}
-                      <div className="absolute bottom-0 right-0 w-24 h-24 bg-gradient-to-tl from-yellow-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-tl-[80px]" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Silver Sponsors */}
-            {sponsors.filter(s => s.tier === 'silver').length > 0 && (
-              <div>
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full shadow-lg">
-                    <Star className="w-5 h-5 text-gray-600" />
-                    <span className="text-sm font-black text-gray-700 uppercase tracking-wider">Silver Sponsors</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {sponsors.filter(s => s.tier === 'silver').map((sponsor) => (
-                    <div
-                      key={sponsor.id}
-                      className="group relative bg-gradient-to-br from-white to-gray-100/30 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500 border border-gray-200 hover:-translate-y-2 hover:border-gray-400/50 cursor-pointer flex"
-                    >
-                      {/* Image Section - Left Side (35%) */}
-                      <div className="relative w-[35%] flex-shrink-0 bg-gradient-to-br from-gray-600 via-gray-500 to-gray-600 overflow-hidden">
-                        <img 
-                          src={sponsor.image} 
-                          alt={sponsor.name} 
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-80" 
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-700/40 to-gray-700/80" />
-                        
-                        {/* Tier Badge */}
-                        <div className="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-gray-300 to-gray-400 rounded-full border border-white/30 shadow-lg">
-                          <Star className="w-3.5 h-3.5 text-gray-700" />
-                          <span className="text-xs font-black text-gray-700 uppercase">Silver</span>
-                        </div>
-                        
-                        {/* Logo Badge - Bottom Left */}
-                        <div className="absolute bottom-3 left-3 w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-xl border border-gray-200 overflow-hidden">
-                          <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-contain p-1.5" />
-                        </div>
-                      </div>
-
-                      {/* Card Content - Right Side (65%) */}
-                      <div className="relative w-[65%] p-6 flex flex-col justify-between">
-                        {/* Top Section */}
-                        <div>
-                          <h3 className="text-xl font-black text-gray-900 mb-2 group-hover:text-gray-600 transition-colors tracking-tight leading-tight">
-                            {sponsor.name}
-                          </h3>
-                          <p className="text-sm text-gray-500 mb-3 leading-relaxed">{sponsor.industry}</p>
-                        </div>
-
-                        {/* Bottom Section */}
-                        <div className="space-y-3">
-                          {/* Events Sponsored Count */}
-                          <div className="flex items-center justify-between py-2.5 px-3 bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-lg border border-gray-200/50">
-                            <div className="flex items-center gap-2 text-sm text-gray-700">
-                              <Trophy className="w-4 h-4 text-gray-600" />
-                              <span className="font-bold">Events Sponsored</span>
-                            </div>
-                            <span className="text-lg font-black text-gray-600">{sponsor.eventsSponsored}</span>
-                          </div>
-
-                          {/* View Details Button */}
-                          <div className="w-full px-4 py-2.5 bg-gradient-to-r from-gray-500 via-gray-600 to-gray-500 text-white rounded-lg font-black group-hover:shadow-2xl group-hover:shadow-gray-600/50 transition-all text-center uppercase tracking-wider text-xs relative overflow-hidden">
-                            <span className="relative z-10">View Details</span>
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Decorative Corner Accent */}
-                      <div className="absolute bottom-0 right-0 w-24 h-24 bg-gradient-to-tl from-gray-400/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-tl-[80px]" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+              );
+            })}
           </div>
         </div>
       )}

@@ -10,7 +10,7 @@ class ClubController extends Controller
 {
     public function index()
     {
-        $clubs = Club::orderBy('created_at', 'desc')->get();
+        $clubs = Club::withCount('fighters')->orderBy('created_at', 'desc')->get();
         return response()->json([
             'success' => true,
             'data' => $clubs
@@ -19,7 +19,7 @@ class ClubController extends Controller
 
     public function show($id)
     {
-        $club = Club::find($id);
+        $club = Club::withCount('fighters')->find($id);
         if (!$club) {
             return response()->json(['success' => false, 'error' => 'Club not found'], 404);
         }
