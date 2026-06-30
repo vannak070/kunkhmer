@@ -24,6 +24,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  // Static assets in /public are served at / and copied to dist/ root
+  publicDir: 'public',
   resolve: {
     alias: {
       // Alias @ to the src directory

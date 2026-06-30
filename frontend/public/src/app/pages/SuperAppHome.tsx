@@ -292,6 +292,24 @@ export function SuperAppHome() {
     }
   }, [params.section]);
 
+  // Sync news & events sub-tab with query parameter (e.g. ?tab=media)
+  useEffect(() => {
+    if (currentSection === "news-events") {
+      const queryParams = new URLSearchParams(window.location.search);
+      const tabParam = queryParams.get("tab");
+      if (tabParam === "media") {
+        setNewsEventsTab("media");
+      } else if (tabParam === "news") {
+        setNewsEventsTab("news");
+      }
+    }
+  }, [currentSection]);
+
+  // Scroll to top when section changes
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [currentSection]);
+
   // Auto-slide sponsors every 4 seconds
   useEffect(() => {
     const sponsorCount = SPONSORS.filter(s => s.active).length;
@@ -1208,132 +1226,6 @@ export function SuperAppHome() {
         </div>
       </div>
 
-      {/* Featured Products Section */}
-      <div className="relative bg-gradient-to-br from-white via-gray-50/50 to-white rounded-2xl p-6 md:p-8 border-2 border-gray-200 shadow-lg overflow-hidden">
-        {/* Decorative Elements */}
-        <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-[#C8102E]/5 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-yellow-500/5 to-transparent rounded-full blur-3xl" />
-
-        <div className="relative flex items-center justify-between mb-6">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-[#C8102E]/10 to-red-700/10 rounded-full border border-[#C8102E]/20">
-                <ShoppingBag className="w-4 h-4 text-[#C8102E]" />
-                <span className="text-xs font-black text-[#C8102E] uppercase tracking-wider">Shop Now</span>
-              </div>
-            </div>
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">Featured Products</h2>
-            <p className="text-gray-600 font-medium">Premium Kun Khmer gear & merchandise</p>
-          </div>
-          <button
-            onClick={() => handleSectionChange("shop")}
-            className="hidden md:flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300 hover:shadow-lg"
-          >
-            Shop All <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {products.slice(0, 3).map((product) => (
-            <div
-              key={product.id}
-              className="group relative bg-white rounded-2xl overflow-hidden hover:shadow-lg hover:-translate-y-2 transition-all duration-500 border-2 border-gray-200 hover:border-[#C8102E] cursor-pointer flex flex-col"
-            >
-              {/* Product Image */}
-              <div className="relative aspect-square bg-gradient-to-br from-gray-100 to-gray-50 overflow-hidden">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                
-                {/* Badges */}
-                {product.badge && (
-                  <div className="absolute top-3 left-3">
-                    <span className="px-3 py-1.5 bg-gradient-to-r from-[#C8102E] to-red-700 text-white text-xs font-black uppercase rounded-full shadow-xl border border-white/30">
-                      {product.badge}
-                    </span>
-                  </div>
-                )}
-
-                {product.discount && (
-                  <div className="absolute top-3 right-3">
-                    <span className="px-3 py-1.5 bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-black rounded-full shadow-xl border border-white/30">
-                      -{product.discount}% OFF
-                    </span>
-                  </div>
-                )}
-                
-                {/* Quick Add Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                  <button
-                    onClick={() => addToCart(product)}
-                    className="px-5 py-2.5 bg-white text-gray-900 rounded-xl font-black text-sm hover:bg-gray-100 transition-all flex items-center gap-2 shadow-2xl transform scale-90 group-hover:scale-100 transition-transform"
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    Quick Add
-                  </button>
-                </div>
-              </div>
-
-              {/* Product Details */}
-              <div className="p-5 flex flex-col flex-1">
-                <h4 className="text-base font-black text-gray-900 mb-2 line-clamp-2 leading-tight group-hover:text-[#C8102E] transition-colors min-h-[44px]">
-                  {product.name}
-                </h4>
-                
-                {/* Rating */}
-                <div className="flex items-center gap-2 mb-4 py-2 px-3 bg-gradient-to-r from-yellow-50 to-yellow-100/50 rounded-lg border border-yellow-200/50">
-                  <div className="flex items-center gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star 
-                        key={i} 
-                        className={`w-3.5 h-3.5 ${
-                          i < Math.floor(product.rating) 
-                            ? 'fill-[#F2C94C] text-[#F2C94C]' 
-                            : 'fill-gray-200 text-gray-200'
-                        }`} 
-                      />
-                    ))}
-                  </div>
-                  <span className="text-sm font-black text-gray-900">{product.rating}</span>
-                  <span className="text-xs text-gray-500">({product.reviews})</span>
-                </div>
-
-                {/* Price */}
-                <div className="mt-auto">
-                  {product.discount ? (
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-2xl font-black text-[#C8102E]">
-                        ${(product.price * (1 - product.discount / 100)).toFixed(2)}
-                      </span>
-                      <span className="text-sm text-gray-400 line-through font-bold">
-                        ${product.price.toFixed(2)}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-2xl font-black text-[#C8102E] mb-3 block">${product.price.toFixed(2)}</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Decorative Corner */}
-              <div className="absolute bottom-0 right-0 w-16 h-16 bg-gradient-to-tl from-[#C8102E]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-tl-[50px]" />
-            </div>
-          ))}
-        </div>
-
-        {/* Mobile View All Button */}
-        <div className="md:hidden mt-6 text-center">
-          <button
-            onClick={() => handleSectionChange("shop")}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300 hover:shadow-lg"
-          >
-            Shop All Products <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
     </div>
   );
 
@@ -3693,181 +3585,66 @@ export function SuperAppHome() {
   };
 
   const renderShop = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">Official Store</h2>
-          <p className="text-gray-500">Premium Kun Khmer equipment and merchandise</p>
-        </div>
+    <div className="space-y-6 max-w-4xl mx-auto py-12 px-4 text-center">
+      {/* Decorative Accent */}
+      <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl mb-2">
+        <Sparkles className="w-4 h-4 text-[#0A3D91]" />
+        <span className="text-xs font-black text-[#0A3D91] uppercase tracking-wider">Official Merch &amp; Gear</span>
       </div>
 
-      {/* Floating Tabs Above Content */}
-      <div className="relative -mb-4">
-        <div className="flex items-center justify-start gap-1 relative z-10 overflow-x-auto">
-          {[
-            { id: "all", label: "All Products", icon: Grid3x3 },
-            { id: "gloves", label: "Gloves", icon: Zap },
-            { id: "shorts", label: "Shorts", icon: Package },
-            { id: "equipment", label: "Equipment", icon: Award },
-            { id: "apparel", label: "Apparel", icon: ShoppingBag }
-          ].map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id as Category)}
-              className={`group relative px-8 py-4 transition-all duration-300 flex items-center gap-3 whitespace-nowrap ${
-                selectedCategory === cat.id
-                  ? "bg-white text-gray-900 rounded-t-xl"
-                  : "bg-white/40 text-gray-500 hover:bg-white/60 rounded-t-xl"
-              }`}
-            >
-              <div className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300 ${
-                selectedCategory === cat.id
-                  ? "bg-[#C8102E]/10"
-                  : "bg-gray-200/50"
-              }`}>
-                <cat.icon className={`w-4 h-4 ${selectedCategory === cat.id ? "text-[#C8102E]" : ""}`} />
-              </div>
-              <span className={`font-bold text-xs tracking-wide uppercase ${selectedCategory === cat.id ? "text-gray-900" : ""}`}>
-                {cat.label}
-              </span>
-            </button>
-          ))}
-        </div>
+      <div className="space-y-4">
+        <h2 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight uppercase leading-none">
+          Kun Khmer Store <br/>
+          <span className="bg-gradient-to-r from-[#0A3D91] to-blue-600 bg-clip-text text-transparent">Coming Soon</span>
+        </h2>
+        <p className="text-base text-gray-500 max-w-2xl mx-auto font-medium leading-relaxed">
+          We are currently building a world-class shopping experience. Soon, you will be able to purchase authentic Kun Khmer equipment, official fighter signature apparel, training gear, and limited-edition merchandise delivered directly to your doorstep.
+        </p>
       </div>
 
-      {/* Products Grid */}
-      <div className="bg-white rounded-2xl rounded-tl-none p-8 border border-gray-100">
-        {filteredProducts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <ShoppingBag className="w-10 h-10 text-gray-400" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">No Products Found</h3>
-            <p className="text-gray-600 mb-6">Try a different category or search term</p>
-            <button
-              onClick={() => {
-                setSelectedCategory("all");
-                setSearchQuery("");
-              }}
-              className="px-6 py-2.5 bg-[#C8102E] text-white rounded-xl font-bold hover:bg-red-700 transition-colors"
+      {/* Illustrative Card */}
+      <div className="bg-white border border-gray-100 shadow-xl rounded-3xl p-8 md:p-12 max-w-xl mx-auto mt-8 space-y-8 relative overflow-hidden">
+        {/* Subtle background glow */}
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-red-500/5 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="w-20 h-20 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+          <ShoppingBag className="w-10 h-10 text-[#0A3D91]" />
+        </div>
+
+        <div className="space-y-2">
+          <h3 className="text-xl font-black text-gray-900">Get Notified On Launch</h3>
+          <p className="text-sm text-gray-500 font-semibold">Be the first to know when the shop goes live and get exclusive early-bird discounts.</p>
+        </div>
+
+        <form onSubmit={(e) => { e.preventDefault(); toast.success("Thank you! We've saved your spot."); }} className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="email"
+            required
+            placeholder="Enter your email address"
+            className="flex-1 px-4 py-3.5 bg-gray-50 border border-gray-200/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A3D91]/50 focus:border-[#0A3D91] transition-all text-sm font-semibold text-gray-800"
+          />
+          <button
+            type="submit"
+            className="px-6 py-3.5 bg-[#0A3D91] hover:bg-blue-800 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 whitespace-nowrap"
+          >
+            Notify Me
+          </button>
+        </form>
+
+        <div className="pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Stay connected</span>
+          <div className="flex gap-2">
+            <a
+              href="https://www.facebook.com/kkfcambodia"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#0A3D91] text-xs font-black rounded-lg transition-colors flex items-center gap-1.5"
             >
-              View All Products
-            </button>
+              <span>Kun Khmer Facebook</span>
+            </a>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
-            <div
-              key={product.id}
-              className="group relative bg-gradient-to-br from-white to-gray-50/30 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500 border-2 border-gray-100 hover:-translate-y-3 hover:border-[#C8102E]/50 cursor-pointer flex flex-col"
-            >
-              {/* Product Image */}
-              <div className="relative aspect-square bg-gradient-to-br from-gray-100 to-gray-50 overflow-hidden">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                
-                {/* Badges */}
-                <div className="absolute top-3 left-3 flex flex-col gap-2">
-                  {product.badge && (
-                    <span className="px-3 py-1.5 bg-gradient-to-r from-[#C8102E] to-red-700 text-white text-xs font-black uppercase rounded-full shadow-xl border border-white/30">
-                      {product.badge}
-                    </span>
-                  )}
-                </div>
-
-                {product.discount && (
-                  <div className="absolute top-3 right-3">
-                    <span className="px-3 py-1.5 bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-black rounded-full shadow-xl border border-white/30">
-                      -{product.discount}% OFF
-                    </span>
-                  </div>
-                )}
-
-                {/* Stock Status */}
-                {!product.inStock && (
-                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
-                    <span className="px-4 py-2 bg-red-600 text-white text-sm font-black uppercase rounded-lg">
-                      Out of Stock
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Product Details */}
-              <div className="p-5 flex flex-col flex-1">
-                {/* Product Name */}
-                <h4 className="text-base font-black text-gray-900 mb-2 line-clamp-2 leading-tight group-hover:text-[#C8102E] transition-colors min-h-[44px]">
-                  {product.name}
-                </h4>
-
-                {/* Seller */}
-                {product.seller && (
-                  <p className="text-xs text-gray-500 mb-3 font-semibold">by {product.seller}</p>
-                )}
-
-                {/* Rating */}
-                <div className="flex items-center gap-2 mb-4 py-2 px-3 bg-gradient-to-r from-yellow-50 to-yellow-100/50 rounded-lg border border-yellow-200/50">
-                  <div className="flex items-center gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star 
-                        key={i} 
-                        className={`w-3.5 h-3.5 ${
-                          i < Math.floor(product.rating) 
-                            ? 'fill-[#F2C94C] text-[#F2C94C]' 
-                            : 'fill-gray-200 text-gray-200'
-                        }`} 
-                      />
-                    ))}
-                  </div>
-                  <span className="text-sm font-black text-gray-900">{product.rating}</span>
-                  <span className="text-xs text-gray-500">({product.reviews})</span>
-                </div>
-
-                {/* Price & Add to Cart */}
-                <div className="mt-auto">
-                  <div className="mb-3">
-                    {product.discount ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl font-black text-[#C8102E]">
-                          ${(product.price * (1 - product.discount / 100)).toFixed(2)}
-                        </span>
-                        <span className="text-sm text-gray-400 line-through font-bold">
-                          ${product.price.toFixed(2)}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-2xl font-black text-[#C8102E]">${product.price.toFixed(2)}</span>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => addToCart(product)}
-                    disabled={!product.inStock}
-                    className={`w-full px-4 py-3 rounded-xl text-sm font-black uppercase tracking-wider transition-all relative overflow-hidden flex items-center justify-center gap-2 ${
-                      product.inStock
-                        ? 'bg-gradient-to-r from-[#C8102E] via-red-600 to-[#C8102E] text-white hover:shadow-2xl hover:shadow-red-600/50'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
-                  >
-                    <ShoppingCart className="w-4 h-4 relative z-10" />
-                    <span className="relative z-10">{product.inStock ? 'Add to Cart' : 'Unavailable'}</span>
-                    {product.inStock && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Decorative Corner Accent */}
-              <div className="absolute bottom-0 right-0 w-20 h-20 bg-gradient-to-tl from-[#C8102E]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-tl-[60px]" />
-            </div>
-            ))}
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
