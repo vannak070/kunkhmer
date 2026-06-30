@@ -1,4 +1,5 @@
 import { createBrowserRouter } from "react-router";
+import { getRouterBasename } from "./utils/basePath";
 import { Layout } from "./components/Layout";
 import { Home } from "./pages/Home";
 import { Fighters } from "./pages/Fighters";
@@ -49,7 +50,8 @@ import { Video } from "./pages/Video";
 import { StrategicPartners } from "./pages/StrategicPartners";
 import { ProgramDashboard } from "./pages/ProgramDashboard";
 
-export const router = createBrowserRouter([
+export const router = createBrowserRouter(
+  [
   {
     path: "/login",
     element: <Login />,
@@ -237,4 +239,6 @@ export const router = createBrowserRouter([
     path: "*",
     element: <NotFound />,
   },
-]);
+],
+  { basename: getRouterBasename() }
+);

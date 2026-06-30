@@ -1,3 +1,5 @@
+import { appPath } from "./basePath";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
 // Helper to get headers (automatically append Authorization bearer token)
@@ -32,7 +34,7 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}): Pr
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     if (typeof window !== "undefined" && !window.location.pathname.endsWith("/login")) {
-      window.location.href = "/login";
+      window.location.href = appPath("/login");
     }
   }
 

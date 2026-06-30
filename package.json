@@ -5,6 +5,12 @@
     "dev:backend": "cd backend && php artisan serve --host=0.0.0.0 --port=3001",
     "dev:admin": "npm run dev --prefix frontend/admin",
     "dev:public": "npm run dev --prefix frontend/public",
+    "build:demo:public": "npm run build:demo --prefix frontend/public",
+    "build:demo:admin": "npm run build:demo --prefix frontend/admin",
+    "build:demo": "npm run build:demo:public && npm run build:demo:admin",
+    "build:prod:public": "npm run build:prod --prefix frontend/public",
+    "build:prod:admin": "npm run build:prod --prefix frontend/admin",
+    "build:prod": "npm run build:prod:public && npm run build:prod:admin",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down"
   }

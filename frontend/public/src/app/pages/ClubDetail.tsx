@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router";
+import { useParams, Link, useNavigate } from "react-router";
 import { ArrowLeft, MapPin, Dumbbell, Star, Phone, Mail, Trophy, Users, ShieldAlert, Weight, Activity, Clock, Calendar, TrendingUp, Shield } from "lucide-react";
 import { MOCK_FIGHTERS, MOCK_MATCHES } from "../data/mock";
 import { FighterApprovalBadge } from "../components/FighterApprovalBadge";
@@ -347,6 +347,7 @@ type TabType = 'overview' | 'fighters' | 'champions' | 'matches';
 
 export function ClubDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const club = id ? MOCK_CLUBS_DATA[id] : null;
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
@@ -616,7 +617,7 @@ export function ClubDetail() {
                     return (
                       <div
                         key={fighter.id}
-                        onClick={() => window.location.href = `/fighters/${fighter.id}`}
+                        onClick={() => navigate(`/fighters/${fighter.id}`)}
                         className="group cursor-pointer bg-white rounded-2xl overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 border-2 border-[#E0E0E0] hover:border-[#0A3D91]"
                       >
                         <div className="relative h-64 overflow-hidden bg-gradient-to-br from-[#0A3D91] to-[#051C42]">
@@ -685,7 +686,7 @@ export function ClubDetail() {
                   {clubChampions.map((champion) => (
                     <div
                       key={champion.id}
-                      onClick={() => window.location.href = `/fighters/${champion.id}`}
+                      onClick={() => navigate(`/fighters/${champion.id}`)}
                       className="group cursor-pointer bg-white rounded-2xl border-2 border-[#F2C94C] overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300"
                     >
                       <div className="relative h-56 overflow-hidden bg-gradient-to-br from-[#F2C94C] to-[#C8102E]">

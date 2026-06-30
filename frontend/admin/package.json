@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "build:demo": "VITE_BASE_PATH=/kunkhmer/admin/ VITE_API_BASE_URL=/kunkhmer/api vite build",
+    "build:prod": "VITE_API_BASE_URL=/api vite build",
     "dev": "vite"
   },
   "dependencies": {

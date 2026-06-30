@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate, useParams } from "react-router";
+import { getRouterBasename } from "./utils/basePath";
 import { SuperAppHome } from "./pages/SuperAppHome";
 import { SuperAppFighterDetail } from "./pages/SuperAppFighterDetail";
 import { ArticleDetail } from "./pages/ArticleDetail";
@@ -18,7 +19,8 @@ function LegacySuperAppArticleRedirect() {
   return <Navigate to={`/article/${id}`} replace />;
 }
 
-export const router = createBrowserRouter([
+export const router = createBrowserRouter(
+  [
   {
     path: "/",
     element: <SuperAppHome />,
@@ -55,4 +57,6 @@ export const router = createBrowserRouter([
     path: "*",
     element: <Navigate to="/" replace />,
   },
-]);
+],
+  { basename: getRouterBasename() }
+);

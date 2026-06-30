@@ -15,7 +15,10 @@ function figmaAssetResolver() {
   }
 }
 
+const basePath = process.env.VITE_BASE_PATH || '/'
+
 export default defineConfig({
+  base: basePath,
   plugins: [
     figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if
