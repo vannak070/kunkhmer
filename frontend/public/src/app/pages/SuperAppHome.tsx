@@ -29,7 +29,7 @@ import HeroSection from "../components/home/HeroSection";
  * reflect in both the Digital Platform and Super App.
  */
 import { MOCK_FIGHTERS, MOCK_CLUBS, MOCK_EVENTS } from "../data/mock";
-import { BROADCAST_STATIONS, SPONSORS, getWeightRangeCategory } from "../data/masterData";
+import { BROADCAST_STATIONS, SPONSORS, getWeightRangeCategory, getFighterSlug } from "../data/masterData";
 import { MOCK_BATCHES } from "../data/batches";
 import { NEWS_ARTICLES } from "../data/newsArticles";
 import { MEDIA_CONTENT } from "../data/mediaContent";
@@ -421,6 +421,24 @@ export function SuperAppHome() {
     const losses = parseInt(recordParts[1] || '0');
     const draws = parseInt(recordParts[2] || '0');
 
+    const idStr = fighter.id || "";
+    const charSum = idStr.split("").reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+
+    let calculatedAge = 22;
+    const dob = fighter.dateOfBirth || fighter.date_of_birth;
+    if (dob) {
+      const birthYear = new Date(dob).getFullYear();
+      const currentYear = new Date().getFullYear();
+      if (birthYear) {
+        calculatedAge = currentYear - birthYear;
+      }
+    } else {
+      calculatedAge = 20 + (charSum % 15);
+    }
+
+    const followersCount = 5000 + (charSum % 20000);
+    const championshipsCount = fighter.grade === 'A' ? (charSum % 3) + 1 : fighter.grade === 'B' ? 1 : 0;
+
     return {
       id: fighter.id,
       name: fighter.name,
@@ -433,9 +451,9 @@ export function SuperAppHome() {
       losses,
       draws,
       verified: fighter.status === 'Active',
-      followers: Math.floor(Math.random() * 20000) + 5000,
-      championships: fighter.grade === 'A' ? Math.floor(Math.random() * 3) + 1 : fighter.grade === 'B' ? 1 : 0,
-      age: Math.floor(Math.random() * 15) + 20,
+      followers: followersCount,
+      championships: championshipsCount,
+      age: calculatedAge,
       type: (fighter.professionalStatus || fighter.professional_status || "Professional") as "Professional" | "Amateur",
       clubId: fighter.clubId || fighter.club_id
     };
@@ -740,7 +758,10 @@ export function SuperAppHome() {
       <TrendingFightersSection 
         fighters={fighters}
         onViewAllClick={() => handleSectionChange("fighters")}
-        onFighterClick={(fighterId) => navigate(`/fighters/${fighterId}`)}
+        onFighterClick={(fighterId) => {
+          const f = fighters.find(x => x.id === fighterId);
+          navigate(`/fighters/${f ? getFighterSlug(f) : fighterId}`);
+        }}
       />
       {/* Upcoming Events Section */}
       <div className="relative bg-gradient-to-br from-white via-gray-50/50 to-white rounded-2xl p-6 md:p-8 border-2 border-gray-200 shadow-lg overflow-hidden">
@@ -1307,7 +1328,10 @@ export function SuperAppHome() {
           setStrategicPartnersTab("clubs");
           navigate("/strategic-partners");
         }}
-        onFighterClick={(fighterId) => navigate(`/fighters/${fighterId}`)}
+        onFighterClick={(fighterId) => {
+          const f = fighters.find(x => x.id === fighterId);
+          navigate(`/fighters/${f ? getFighterSlug(f) : fighterId}`);
+        }}
       />
     );
   };
@@ -2054,7 +2078,7 @@ export function SuperAppHome() {
               <Users className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">Elite Fighters</h2>
+              <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">All Fighters</h2>
               <p className="text-sm text-gray-600 font-medium">Official Kun Khmer Athletes</p>
             </div>
           </div>
@@ -2070,70 +2094,8 @@ export function SuperAppHome() {
         </div>
       </div>
 
-      {/* Floating Tabs Above Content */}
-      <div className="relative -mb-4">
-        <div className="flex items-center justify-start gap-1 relative z-10">
-          {/* All Fighters Tab */}
-          <button
-            onClick={() => setFighterTypeFilter("all")}
-            className={`group relative px-8 py-4 transition-all duration-300 flex items-center gap-3 ${
-              fighterTypeFilter === "all"
-                ? "bg-white text-gray-900 rounded-t-xl"
-                : "bg-white/40 text-gray-500 hover:bg-white/60 rounded-t-xl"
-            }`}
-          >
-            <div className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300 ${
-              fighterTypeFilter === "all"
-                ? "bg-[#0A3D91]/10"
-                : "bg-gray-200/50"
-            }`}>
-              <Users className={`w-4 h-4 ${fighterTypeFilter === "all" ? "text-[#0A3D91]" : ""}`} />
-            </div>
-            <span className={`font-bold text-xs tracking-wide uppercase ${fighterTypeFilter === "all" ? "text-gray-900" : ""}`}>All Fighters</span>
-          </button>
-
-          {/* Professional Tab */}
-          <button
-            onClick={() => setFighterTypeFilter("Professional")}
-            className={`group relative px-8 py-4 transition-all duration-300 flex items-center gap-3 ${
-              fighterTypeFilter === "Professional"
-                ? "bg-white text-gray-900 rounded-t-xl"
-                : "bg-white/40 text-gray-500 hover:bg-white/60 rounded-t-xl"
-            }`}
-          >
-            <div className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300 ${
-              fighterTypeFilter === "Professional"
-                ? "bg-[#0A3D91]/10"
-                : "bg-gray-200/50"
-            }`}>
-              <Trophy className={`w-4 h-4 ${fighterTypeFilter === "Professional" ? "text-[#0A3D91]" : ""}`} />
-            </div>
-            <span className={`font-bold text-xs tracking-wide uppercase ${fighterTypeFilter === "Professional" ? "text-gray-900" : ""}`}>Professional</span>
-          </button>
-
-          {/* Amateur Tab */}
-          <button
-            onClick={() => setFighterTypeFilter("Amateur")}
-            className={`group relative px-8 py-4 transition-all duration-300 flex items-center gap-3 ${
-              fighterTypeFilter === "Amateur"
-                ? "bg-white text-gray-900 rounded-t-xl"
-                : "bg-white/40 text-gray-500 hover:bg-white/60 rounded-t-xl"
-            }`}
-          >
-            <div className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300 ${
-              fighterTypeFilter === "Amateur"
-                ? "bg-[#C8102E]/10"
-                : "bg-gray-200/50"
-            }`}>
-              <Star className={`w-4 h-4 ${fighterTypeFilter === "Amateur" ? "text-[#C8102E]" : ""}`} />
-            </div>
-            <span className={`font-bold text-xs tracking-wide uppercase ${fighterTypeFilter === "Amateur" ? "text-gray-900" : ""}`}>Amateur</span>
-          </button>
-        </div>
-      </div>
-
       {/* Fighters List */}
-      <div className="bg-white rounded-2xl rounded-tl-none border border-gray-200 shadow-sm">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
         <FighterFilters
           fighters={fighters}
           fighterFilter={fighterFilter}
@@ -2153,17 +2115,11 @@ export function SuperAppHome() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
-              {fighterTypeFilter === "all" ? "All Athletes" : `${fighterTypeFilter} Athletes`}
+              Official Athletes
             </p>
             <p className="text-3xl font-black text-gray-900">
               {filteredFighters.length} <span className="text-lg font-bold text-gray-500">Fighters</span>
             </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
-              <Trophy className="w-4 h-4 text-[#0A3D91]" />
-              <span className="text-sm font-bold text-gray-900">Elite Roster</span>
-            </div>
           </div>
         </div>
 
@@ -2188,7 +2144,7 @@ export function SuperAppHome() {
         ) : (
           filteredFighters.map((fighter) => (
           <Link
-            to={`/fighters/${fighter.id}`}
+            to={`/fighters/${getFighterSlug(fighter)}`}
             key={fighter.id}
             className="group relative bg-white rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-200 hover:border-[#0A3D91]/50 cursor-pointer"
           >

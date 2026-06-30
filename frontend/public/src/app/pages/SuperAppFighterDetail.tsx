@@ -107,15 +107,29 @@ export function SuperAppFighterDetail() {
   );
   const koWins = Math.floor(wins * 0.15); // Mock: 15% of wins are KOs
 
+  // Deterministic age calculation based on DOB or character sum
+  let detailAge = 22;
+  const detailDob = fighter.dateOfBirth || fighter.date_of_birth;
+  if (detailDob) {
+    const birthYear = new Date(detailDob).getFullYear();
+    const currentYear = new Date().getFullYear();
+    if (birthYear) {
+      detailAge = currentYear - birthYear;
+    }
+  } else {
+    const charSum = (fighter.id || "").split("").reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+    detailAge = 20 + (charSum % 15);
+  }
+
   // Mock data for detailed stats
   const fighterStats = {
-    age: 22,
-    height: 170, // cm
+    age: detailAge,
+    height: fighter.height || 170, // cm
     weight: fighter.weight,
     reach: 175, // cm
     stance: "Orthodox",
-    nationality: "Cambodia",
-    flagEmoji: "🇰🇭",
+    nationality: fighter.nationality || "Cambodian",
+    flagEmoji: fighter.nationality !== 'Cambodian' ? "🌐" : "🇰🇭",
   };
 
   // Get related fighters based on weight class and club
@@ -248,14 +262,7 @@ export function SuperAppFighterDetail() {
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             <span className="text-sm">Back to Fighters</span>
           </button>
-          <div className="flex items-center gap-2">
-            <button className="p-3 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full text-gray-700 transition-all border border-gray-200/50 hover:border-[#0A3D91] hover:scale-110">
-              <Share2 className="w-4 h-4" />
-            </button>
-            <button className="p-3 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full text-red-500 transition-all border border-gray-200/50 hover:border-red-500 hover:scale-110">
-              <Heart className="w-4 h-4" />
-            </button>
-          </div>
+
         </div>
       </div>
 
@@ -320,11 +327,7 @@ export function SuperAppFighterDetail() {
 
                   {/* Action Buttons */}
                   <div className="flex flex-wrap gap-4 justify-center md:justify-start pt-2">
-                    <button className="flex items-center gap-2.5 px-8 py-3.5 bg-white hover:bg-gray-50 text-gray-900 rounded-2xl font-bold transition-all hover:scale-105 shadow-xl hover:shadow-2xl">
-                      <Heart className="w-5 h-5" />
-                      <span>Follow Fighter</span>
-                    </button>
-                    <button className="flex items-center gap-2.5 px-8 py-3.5 bg-gradient-to-r from-red-500 via-red-600 to-rose-600 hover:from-red-600 hover:via-red-700 hover:to-rose-700 text-white rounded-2xl font-bold transition-all hover:scale-105 shadow-xl hover:shadow-2xl">
+                    <button className="flex items-center gap-2.5 px-8 py-3.5 bg-gradient-to-r from-[#0A3D91] to-blue-700 hover:from-blue-800 hover:to-blue-900 text-white rounded-2xl font-bold transition-all hover:scale-105 shadow-xl hover:shadow-2xl">
                       <ShoppingBag className="w-5 h-5" />
                       <span>Shop Merch</span>
                     </button>
@@ -473,7 +476,9 @@ export function SuperAppFighterDetail() {
                       </div>
                       <span className="text-xs font-bold text-white/80 uppercase tracking-widest">Fighting Style</span>
                     </div>
-                    <p className="text-3xl md:text-4xl font-black text-white mb-3">{fighter.style}</p>
+                    <p className="text-3xl md:text-4xl font-black text-white mb-3 capitalize">
+                      {fighter.style ? fighter.style.split(',').map((s: string) => s.trim()).join(' • ') : 'Balanced'}
+                    </p>
                     <p className="text-sm text-white/80 font-medium">{fighterStats.stance} Stance</p>
                   </div>
                 </div>

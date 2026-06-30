@@ -506,3 +506,12 @@ export function getWeightRangeCategory(weight: number): string {
   if (weight <= 80) return "77 kg - 80 kg";
   return "Over 80 kg";
 }
+
+export function getFighterSlug(fighter: { id: string; name?: string }): string {
+  if (!fighter.name) return fighter.id;
+  const slug = fighter.name
+    .toLowerCase()
+    .trim()
+    .replace(/[\s_-]+/g, '-');
+  return encodeURIComponent(slug) || fighter.id;
+}

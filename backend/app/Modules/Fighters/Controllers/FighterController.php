@@ -60,7 +60,24 @@ class FighterController extends Controller
     // ─────────────────────────────────────────────────────────
     public function show($id)
     {
-        $fighter = Fighter::with('club')->find($id);
+        // Try finding by UUID first
+        $fighter = null;
+        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+            $fighter = Fighter::with('club')->find($id);
+        }
+
+        // If not found by UUID, try finding by name (slug or exact)
+        if (!$fighter) {
+            $decodedName = urldecode($id);
+            $normalizedName = str_replace('-', ' ', strtolower($decodedName));
+            $fighter = Fighter::with('club')
+                ->where(function($query) use ($decodedName, $normalizedName) {
+                    $query->whereRaw('LOWER(name) = ?', [strtolower($decodedName)])
+                          ->orWhereRaw('LOWER(name) = ?', [$normalizedName])
+                          ->orWhere('name_khmer', $decodedName);
+                })
+                ->first();
+        }
 
         if (!$fighter) {
             return response()->json([

@@ -9,6 +9,7 @@ import type { FighterStatus } from "../data/fighterStatuses";
 import type { FighterApprovalStatus } from "../data/fighterApproval";
 import unknownFighterImg from "figma:asset/b9f2c3f9c8bd58ed74f9c92de40fb83809a138b3.png";
 import { api } from "../utils/api";
+import { getFighterSlug } from "../data/masterData";
 
 // Helper function to derive advanced fighter status based on matches and mock rules
 const getFighterStatus = (fighter: any, matches: any[] = []) => {
@@ -297,7 +298,7 @@ export function Fighters() {
           return (
           <div
             key={fighter.id}
-            onClick={() => navigate(`/fighters/${fighter.id}`)}
+            onClick={() => navigate(`/fighters/${getFighterSlug(fighter)}`)}
             className="group cursor-pointer bg-[#FFFFFF] rounded-2xl overflow-hidden hover:shadow-[0_12px_30px_rgba(10,61,145,0.1)] hover:-translate-y-1 transition-all duration-300 flex flex-col relative border border-[#E0E0E0]"
           >
             <div className="relative h-56 overflow-hidden bg-gradient-to-br from-[#0A3D91] to-[#051C42]">
