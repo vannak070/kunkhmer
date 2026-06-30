@@ -65,3 +65,17 @@ require __DIR__.'/../app/Modules/Champions/Routes/api.php';
 |----------------------------------------------------------
 */
 require __DIR__.'/../app/Modules/Settings/Routes/api.php';
+
+/*
+|----------------------------------------------------------
+| 8. News Articles  →  /api/news/*
+|----------------------------------------------------------
+*/
+require __DIR__.'/../app/Modules/News/Routes/api.php';
+
+/*
+|----------------------------------------------------------
+| 9. Videos  →  /api/videos/*
+|----------------------------------------------------------
+*/
+require __DIR__.'/../app/Modules/Video/Routes/api.php';

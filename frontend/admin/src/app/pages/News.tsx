@@ -1,7 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router";
-import { Plus, Search, Newspaper, Calendar, Eye, Edit2, Trash2, Image as ImageIcon, FileText, CheckCircle, Clock, XCircle, Upload, X, ArrowLeft, Save, ChevronDown } from "lucide-react";
+import { Plus, Search, Newspaper, Calendar, Eye, Edit2, Trash2, Image as ImageIcon, FileText, CheckCircle, Clock, XCircle, Upload, X, ArrowLeft, Save, ChevronDown, Heading, Bold, Italic, List, Quote, Link2 } from "lucide-react";
 import { usePermissions } from "../hooks/usePermissions";
+import { api } from "../utils/api";
 
 interface NewsArticle {
   id: string;
@@ -14,75 +15,16 @@ interface NewsArticle {
   category: string;
   featuredImage?: string;
   views: number;
-  tags: string[];
+  featured: boolean;
 }
 
-const MOCK_NEWS: NewsArticle[] = [
-  {
-    id: "1",
-    title: "Kun Khmer National Championship 2026 Kicks Off This Weekend",
-    subtitle: "The premier championship featuring top fighters across eight weight divisions",
-    content: "The highly anticipated Kun Khmer National Championship 2026 begins this Saturday at the National Olympic Stadium. Featuring 32 matches across multiple weeks...",
-    author: "Sok Pheakdey",
-    publishDate: "2026-04-25",
-    status: "Published",
-    category: "Championship",
-    featuredImage: "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?ixlib=rb-4.0.3&w=800&q=80",
-    views: 1245,
-    tags: ["Championship", "National", "Tournament"]
-  },
-  {
-    id: "2",
-    title: "New Weight Division Rules Announced for 2026 Season",
-    subtitle: "Official guidelines and regulations for all competitive divisions",
-    content: "The Kun Khmer Federation has announced updated weight division rules for the 2026 competitive season. These changes aim to ensure fair competition...",
-    author: "Chea Sopheap",
-    publishDate: "2026-04-20",
-    status: "Published",
-    category: "Regulations",
-    featuredImage: "https://images.unsplash.com/photo-1555597673-b21d5c935865?ixlib=rb-4.0.3&w=800&q=80",
-    views: 892,
-    tags: ["Rules", "Weight Division", "Regulations"]
-  },
-  {
-    id: "3",
-    title: "Rising Star: Interview with Champion Kem Sitha",
-    subtitle: "Exclusive conversation with the lightweight division champion",
-    content: "We sat down with reigning lightweight champion Kem Sitha to discuss his journey, training regimen, and upcoming title defense...",
-    author: "Lim Dara",
-    publishDate: "2026-04-18",
-    status: "Published",
-    category: "Interview",
-    featuredImage: "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?ixlib=rb-4.0.3&w=800&q=80",
-    views: 2103,
-    tags: ["Interview", "Champion", "Fighter Profile"]
-  },
-  {
-    id: "4",
-    title: "Youth Development Program Expands to 5 New Provinces",
-    subtitle: "Bringing traditional Kun Khmer training to communities nationwide",
-    content: "The Kun Khmer Federation's youth development initiative is expanding its reach with new training centers opening in five additional provinces...",
-    author: "Sok Pheakdey",
-    publishDate: "2026-04-15",
-    status: "Published",
-    category: "Youth Development",
-    featuredImage: "https://images.unsplash.com/photo-1555597673-b21d5c935865?ixlib=rb-4.0.3&w=800&q=80",
-    views: 645,
-    tags: ["Youth", "Training", "Development"]
-  },
-  {
-    id: "6",
-    title: "Charity Fight Night Raises $50,000 for Local Communities",
-    subtitle: "Successful fundraising event supports education and healthcare",
-    content: "Last weekend's charity fight night exceeded expectations, raising over $50,000 for local community development projects focused on education...",
-    author: "Lim Dara",
-    publishDate: "2026-04-10",
-    status: "Published",
-    category: "Charity",
-    featuredImage: "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?ixlib=rb-4.0.3&w=800&q=80",
-    views: 1876,
-    tags: ["Charity", "Fundraising", "Community"]
-  }
+const CATEGORIES = [
+  "News",
+  "Events",
+  "Fighter Spotlight",
+  "Regulations",
+  "Training",
+  "Community"
 ];
 
 export function News() {
@@ -90,36 +32,70 @@ export function News() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [news, setNews] = useState<NewsArticle[]>(MOCK_NEWS);
+  
+  const [news, setNews] = useState<NewsArticle[]>([]);
+  const [loading, setLoading] = useState(true);
+  
   const [viewMode, setViewMode] = useState<'list' | 'add' | 'edit'>('list');
   const [editingNews, setEditingNews] = useState<NewsArticle | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Editor configuration
+  const [editorTab, setEditorTab] = useState<'write' | 'preview'>('write');
 
   const [formData, setFormData] = useState({
     title: "",
     subtitle: "",
     content: "",
-    category: "",
+    category: "News",
     status: "Draft" as "Draft" | "Published" | "Archived",
-    tags: ""
+    author: "",
+    publishDate: "",
+    featured: false
   });
+
+  const fetchNews = async () => {
+    setLoading(true);
+    try {
+      const data = await api.news.list();
+      const mapped = (data || []).map((art: any) => ({
+        id: art.id,
+        title: art.title,
+        subtitle: art.subtitle || "",
+        content: art.content || "",
+        author: art.author || "Admin",
+        publishDate: art.publish_date || art.publishDate || "",
+        status: art.status || "Draft",
+        category: art.category || "News",
+        featuredImage: art.featured_image || art.featuredImage || undefined,
+        views: art.views || 0,
+        featured: Boolean(art.featured)
+      }));
+      setNews(mapped);
+    } catch (err) {
+      console.error("Failed to load news articles from database:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNews();
+  }, []);
 
   // Filter news
   const filteredNews = news.filter(article => {
     const matchesSearch = article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           article.subtitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          article.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          article.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+                          article.author.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus = statusFilter === "all" || article.status === statusFilter;
     const matchesCategory = categoryFilter === "all" || article.category === categoryFilter;
 
     return matchesSearch && matchesStatus && matchesCategory;
   });
-
-  // Get unique categories
-  const categories = Array.from(new Set(news.map(article => article.category)));
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -134,23 +110,32 @@ export function News() {
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this news article?")) {
-      setNews(news.filter(article => article.id !== id));
+      try {
+        await api.news.delete(id);
+        setNews(prev => prev.filter(article => article.id !== id));
+      } catch (err) {
+        alert("Failed to delete news article: " + (err as Error).message);
+      }
     }
   };
 
   const handleAddNews = () => {
+    const currentUser = api.auth.getCurrentUser();
     setFormData({
       title: "",
       subtitle: "",
       content: "",
-      category: "",
+      category: "News",
       status: "Draft",
-      tags: ""
+      author: currentUser ? currentUser.full_name : "KKF Official",
+      publishDate: new Date().toISOString().split("T")[0],
+      featured: false
     });
     setEditingNews(null);
     setImagePreview(null);
+    setEditorTab("write");
     setViewMode("add");
   };
 
@@ -161,10 +146,13 @@ export function News() {
       content: article.content,
       category: article.category,
       status: article.status,
-      tags: article.tags.join(", ")
+      author: article.author,
+      publishDate: article.publishDate,
+      featured: article.featured
     });
     setEditingNews(article);
     setImagePreview(article.featuredImage || null);
+    setEditorTab("write");
     setViewMode("edit");
   };
 
@@ -186,53 +174,122 @@ export function News() {
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  // Helper to insert format tags into the content editor
+  const insertFormat = (syntax: string, placeholder = "") => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const selectedText = text.substring(start, end);
+    const replacement = syntax.includes('%s') 
+      ? syntax.replace('%s', selectedText || placeholder)
+      : syntax + (selectedText || placeholder);
+
+    const newContent = text.substring(0, start) + replacement + text.substring(end);
+    
+    setFormData({ ...formData, content: newContent });
+
+    // Focus and select range back
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + replacement.length, start + replacement.length);
+    }, 50);
+  };
+
+  // Simple parser to display markdown format in Preview tab
+  const renderPreviewHTML = (text: string) => {
+    if (!text) return '<p class="text-slate-400 italic">No content written yet.</p>';
+    
+    let html = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    // Headings
+    html = html.replace(/^### (.*?)$/gm, '<h3 class="text-lg font-black text-slate-800 mt-4 mb-2">$1</h3>');
+    html = html.replace(/^## (.*?)$/gm, '<h2 class="text-xl font-black text-slate-900 mt-5 mb-2">$1</h2>');
+    html = html.replace(/^# (.*?)$/gm, '<h1 class="text-2xl font-black text-slate-900 mt-6 mb-3">$1</h1>');
+    
+    // Bold & Italic
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    
+    // Quotes
+    html = html.replace(/^&gt; (.*?)$/gm, '<blockquote class="border-l-4 border-slate-300 pl-4 py-1 my-3 bg-slate-50 text-slate-600 italic rounded-r">$1</blockquote>');
+    
+    // Lists
+    html = html.replace(/^- (.*?)$/gm, '<li class="ml-4 list-disc text-slate-700 my-1">$1</li>');
+    
+    // Links
+    html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline font-semibold hover:text-blue-800">$1</a>');
+
+    // Paragraphs / Newlines
+    html = html.split('\n').map(para => {
+      if (para.trim().startsWith('<h') || para.trim().startsWith('<blockquote') || para.trim().startsWith('<li')) {
+        return para;
+      }
+      return para.trim() ? `<p class="text-slate-700 leading-relaxed mb-4">${para}</p>` : '';
+    }).join('\n');
+
+    return html;
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim()) {
       alert("Title is required");
       return;
     }
 
-    const tagsArray = formData.tags
-      .split(",")
-      .map(tag => tag.trim())
-      .filter(Boolean);
-
-    if (viewMode === "add") {
-      const newArticle: NewsArticle = {
-        id: `n${Date.now()}`,
-        title: formData.title,
-        subtitle: formData.subtitle,
-        content: formData.content,
-        category: formData.category || "General",
-        status: formData.status,
-        tags: tagsArray,
-        author: "Sok Pheakdey",
-        publishDate: new Date().toISOString().split("T")[0],
-        featuredImage: imagePreview || undefined,
-        views: 0
-      };
-      setNews([newArticle, ...news]);
-    } else if (viewMode === "edit" && editingNews) {
-      setNews(news.map(art => {
-        if (art.id === editingNews.id) {
-          return {
-            ...art,
-            title: formData.title,
-            subtitle: formData.subtitle,
-            content: formData.content,
-            category: formData.category || "General",
-            status: formData.status,
-            tags: tagsArray,
-            featuredImage: imagePreview || undefined
-          };
-        }
-        return art;
-      }));
+    try {
+      if (viewMode === "add") {
+        const payload = {
+          title: formData.title,
+          subtitle: formData.subtitle,
+          content: formData.content,
+          category: formData.category,
+          status: formData.status,
+          author: formData.author,
+          publishDate: formData.publishDate,
+          featured: formData.featured,
+          featuredImage: imagePreview || undefined,
+          tags: [] // removed tags block, defaults to empty array
+        };
+        await api.news.create(payload);
+      } else if (viewMode === "edit" && editingNews) {
+        const payload = {
+          title: formData.title,
+          subtitle: formData.subtitle,
+          content: formData.content,
+          category: formData.category,
+          status: formData.status,
+          author: formData.author,
+          publishDate: formData.publishDate,
+          featured: formData.featured,
+          featuredImage: imagePreview || undefined,
+          tags: []
+        };
+        await api.news.update(editingNews.id, payload);
+      }
+      
+      await fetchNews();
+      setViewMode("list");
+    } catch (err) {
+      alert("Failed to save news article: " + (err as Error).message);
     }
-
-    setViewMode("list");
   };
+
+  if (loading && viewMode === 'list') {
+    return (
+      <div className="p-8 flex flex-col items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A3D91] mb-4" />
+        <p className="text-sm text-slate-500 font-bold uppercase tracking-wider animate-pulse">Loading articles from database…</p>
+      </div>
+    );
+  }
 
   if (viewMode === "add" || viewMode === "edit") {
     return (
@@ -248,11 +305,11 @@ export function News() {
               <ArrowLeft className="w-4 h-4" />
             </button>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                {viewMode === "edit" ? "Edit Article" : "Add New Article"}
+              <h1 className="text-2xl font-black tracking-tight text-foreground uppercase">
+                {viewMode === "edit" ? "Edit News Article" : "Create News Article"}
               </h1>
               <p className="text-sm text-muted-foreground mt-1 font-medium">
-                {viewMode === "edit" ? "Edit details of the published news article" : "Publish a new Kun Khmer federation news article"}
+                {viewMode === "edit" ? "Modify existing article details and publish status" : "Publish a new Kun Khmer federation news article"}
               </p>
             </div>
           </div>
@@ -262,11 +319,12 @@ export function News() {
         <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Columns: Form Inputs */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Basic Information */}
+            
+            {/* Article Content Info Card */}
             <div className="card-premium">
               <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                 <FileText className="w-5 h-5 text-primary" />
-                <span>Article Content</span>
+                <span>Article General Information</span>
               </h2>
               <div className="space-y-4">
                 <div>
@@ -275,178 +333,292 @@ export function News() {
                   </label>
                   <input
                     type="text"
-                    name="title"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     required
-                    placeholder="Enter article title"
+                    placeholder="e.g., Championship Title Fight Confirmed for April"
                     className="input-premium font-semibold text-slate-800"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Subtitle
+                    Subtitle / Excerpt Summary
                   </label>
                   <input
                     type="text"
-                    name="subtitle"
                     value={formData.subtitle}
                     onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
-                    placeholder="Enter short description or subtitle"
+                    placeholder="Enter short description or summary highlighting this article"
                     className="input-premium font-medium text-slate-700"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Content Body <span className="text-secondary">*</span>
-                  </label>
-                  <textarea
-                    rows={12}
-                    name="content"
-                    value={formData.content}
-                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                    required
-                    placeholder="Write the full content of the news article here..."
-                    className="input-premium font-medium text-slate-700 resize-none"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Categorization & Metadata */}
-            <div className="card-premium">
-              <h2 className="text-base font-bold text-foreground mb-4">Metadata & Classification</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Category <span className="text-secondary">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      name="category"
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      required
-                      className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none animate-fadeIn"
-                    >
-                      <option value="">Select category</option>
-                      <option value="Championship">Championship</option>
-                      <option value="Regulations">Regulations</option>
-                      <option value="Interview">Interview</option>
-                      <option value="Youth Development">Youth Development</option>
-                      <option value="International">International</option>
-                      <option value="Charity">Charity</option>
-                      <option value="General">General</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-muted-foreground">
-                      <ChevronDown className="w-4 h-4" />
-                    </div>
-                  </div>
+            {/* FULL CONTENT RICH EDITOR */}
+            <div className="card-premium flex flex-col">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 border-b border-slate-100 pb-3">
+                <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-primary" />
+                  <span>Full Article Content Editor</span>
+                </h2>
+                
+                {/* Editor Mode Tabs */}
+                <div className="flex bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setEditorTab("write")}
+                    className={`px-4 py-1.5 rounded-md text-xs font-black uppercase tracking-wider transition-all ${
+                      editorTab === "write" 
+                        ? "bg-white text-slate-800 shadow" 
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    Write Content
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditorTab("preview")}
+                    className={`px-4 py-1.5 rounded-md text-xs font-black uppercase tracking-wider transition-all ${
+                      editorTab === "preview" 
+                        ? "bg-white text-slate-800 shadow" 
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    Live Preview
+                  </button>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Publication Status <span className="text-secondary">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      name="status"
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                      required
-                      className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none animate-fadeIn"
-                    >
-                      <option value="Draft">Draft</option>
-                      <option value="Published">Published</option>
-                      <option value="Archived">Archived</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-muted-foreground">
-                      <ChevronDown className="w-4 h-4" />
-                    </div>
-                  </div>
+              {/* Formatting Toolbar - only visible in Write mode */}
+              {editorTab === "write" && (
+                <div className="flex flex-wrap gap-1 mb-3 p-1.5 bg-slate-50 border border-slate-200/80 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => insertFormat("# ")}
+                    title="Heading 1"
+                    className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
+                  >
+                    <Heading className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormat("**%s**", "bold text")}
+                    title="Bold"
+                    className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
+                  >
+                    <Bold className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormat("*%s*", "italic text")}
+                    title="Italic"
+                    className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
+                  >
+                    <Italic className="w-4 h-4" />
+                  </button>
+                  <div className="w-px h-6 bg-slate-200 mx-1 align-middle self-center" />
+                  <button
+                    type="button"
+                    onClick={() => insertFormat("- ")}
+                    title="Bulleted List"
+                    className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormat("> ")}
+                    title="Blockquote"
+                    className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
+                  >
+                    <Quote className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormat("[Link Text](https://)")}
+                    title="Insert Link"
+                    className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
+                  >
+                    <Link2 className="w-4 h-4" />
+                  </button>
                 </div>
+              )}
 
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Tags (comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    name="tags"
-                    value={formData.tags}
-                    onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                    placeholder="Championship, National, Tournament"
-                    className="input-premium font-semibold text-slate-800"
+              {/* Editor Workspace */}
+              <div className="flex-1 min-h-[300px]">
+                {editorTab === "write" ? (
+                  <textarea
+                    ref={textareaRef}
+                    rows={15}
+                    value={formData.content}
+                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                    required
+                    placeholder="Write the full content of the news article here. Markdown syntax is supported (e.g. use **text** for bold, # for Headings, - for Lists)..."
+                    className="w-full bg-white border border-border/80 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-inner transition-all resize-y min-h-[320px] font-mono leading-relaxed"
                   />
-                </div>
+                ) : (
+                  <div 
+                    className="w-full border border-border/60 bg-slate-50/50 rounded-xl px-5 py-4 min-h-[320px] overflow-y-auto text-left prose max-w-none"
+                    dangerouslySetInnerHTML={{ __html: renderPreviewHTML(formData.content) }}
+                  />
+                )}
               </div>
             </div>
           </div>
 
-          {/* Right Column: Upload Image & Actions */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Featured Image upload */}
+          {/* Right Column: Settings & Publish Options */}
+          <div className="space-y-6">
+            {/* Publishing Settings */}
             <div className="card-premium">
-              <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-                <Upload className="w-4 h-4 text-primary" />
-                <span>Featured Image</span>
-              </h3>
+              <h2 className="text-base font-bold text-foreground mb-4">Publishing Settings</h2>
               
               <div className="space-y-4">
-                <div className="flex items-center justify-center w-full">
-                  <label className="flex flex-col items-center justify-center w-full h-40 border border-border/80 border-dashed rounded-xl cursor-pointer bg-muted/10 hover:bg-muted/20 transition-all duration-200">
-                    <div className="flex flex-col items-center justify-center pt-4 pb-4 px-2 text-center">
-                      <Upload className="w-7 h-7 text-muted-foreground mb-2" />
-                      <p className="text-xs font-semibold text-slate-700">
-                        <span className="text-primary hover:underline">Click to upload</span> or drag
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">PNG, JPG (MAX. 10MB)</p>
-                    </div>
-                    <input 
-                      type="file" 
-                      className="hidden" 
-                      accept="image/*"
-                      onChange={handleImageChange}
-                    />
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    News Category
                   </label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all cursor-pointer"
+                  >
+                    {CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
                 </div>
 
-                {imagePreview ? (
-                  <div className="relative w-full h-40 rounded-xl overflow-hidden border border-border/60 shadow-sm animate-fadeIn">
-                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={removeImage}
-                      className="absolute top-2 right-2 p-1.5 bg-red-500/90 hover:bg-red-600 text-white rounded-lg transition-colors shadow-md"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="h-40 rounded-xl bg-muted/10 border border-border/40 flex items-center justify-center text-muted-foreground text-xs font-medium">
-                    No image selected
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    Publish Status
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                    className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all cursor-pointer"
+                  >
+                    <option value="Draft">Draft</option>
+                    <option value="Published">Published</option>
+                    <option value="Archived">Archived</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    Publish Date
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.publishDate}
+                    onChange={(e) => setFormData({ ...formData, publishDate: e.target.value })}
+                    required
+                    className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    Author / Publisher
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.author}
+                    onChange={(e) => setFormData({ ...formData, author: e.target.value })}
+                    required
+                    placeholder="e.g. KKF Official"
+                    className="input-premium font-semibold text-slate-800"
+                  />
+                </div>
+
+                {editingNews && (
+                  <div>
+                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                      Views Count
+                    </label>
+                    <div className="flex items-center gap-1 text-slate-600 text-xs font-bold bg-slate-100 px-3 py-2 rounded-lg border border-slate-200 w-fit">
+                      <Eye className="w-3.5 h-3.5 text-primary" />
+                      <span>{editingNews.views} total views</span>
+                    </div>
                   </div>
                 )}
+
+                {/* Featured Switch */}
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                  <div>
+                    <p className="text-xs font-black text-slate-700 uppercase tracking-wide">Featured Article</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Highlight and pin this article to top pages</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.featured}
+                      onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                  </label>
+                </div>
               </div>
             </div>
 
-            {/* Actions Card */}
-            <div className="bg-white rounded-xl border border-border p-4 shadow-sm flex flex-col gap-3">
-              <button
-                type="submit"
-                className="btn-primary w-full py-3"
-              >
-                <Save className="w-4 h-4" />
-                {viewMode === "edit" ? "Save Changes" : "Publish Article"}
-              </button>
+            {/* Featured Image upload */}
+            <div className="card-premium">
+              <h2 className="text-base font-bold text-foreground mb-4">Featured Banner Image</h2>
+              
+              {imagePreview ? (
+                <div className="relative rounded-xl overflow-hidden border border-border bg-slate-900 aspect-video group">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="p-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-lg transition-transform active:scale-95"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-border hover:border-primary/50 hover:bg-muted/10 rounded-xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center aspect-video group"
+                >
+                  <ImageIcon className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
+                  <span className="text-xs font-bold text-foreground">Upload banner image</span>
+                  <span className="text-[10px] text-muted-foreground mt-1">PNG, JPG, or WEBP up to 5MB</span>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleImageChange}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Save & Cancel Buttons */}
+            <div className="flex gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setViewMode("list")}
-                className="btn-outline w-full py-3"
+                className="flex-1 px-4 py-3 bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-sm"
               >
-                Cancel
+                <X className="w-4 h-4" />
+                <span>Cancel</span>
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-4 py-3 bg-[#0A3D91] hover:bg-blue-800 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-blue-900/10 hover:shadow-xl hover:shadow-blue-900/20 border border-transparent"
+              >
+                <CheckCircle className="w-4 h-4" />
+                <span>Save Article</span>
               </button>
             </div>
           </div>
@@ -456,7 +628,7 @@ export function News() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn">
+    <div className="p-4 md:p-8 space-y-6 animate-fadeIn">
       {/* Header */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -478,7 +650,7 @@ export function News() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <input
             type="text"
-            placeholder="Search articles by title, subtitle, author, or tag..."
+            placeholder="Search articles by title, subtitle, author, or category..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-white border border-border/80 rounded-xl pl-11 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all"
@@ -502,7 +674,7 @@ export function News() {
             className="px-4 py-2.5 bg-white border border-border/80 rounded-xl text-sm font-medium text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm hover:border-slate-300 transition-all cursor-pointer min-w-[140px]"
           >
             <option value="all">All Categories</option>
-            {categories.map(cat => (
+            {CATEGORIES.map(cat => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
@@ -571,9 +743,16 @@ export function News() {
               {/* Card Content Section */}
               <div className="p-5 flex-1 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors duration-200 tracking-tight leading-tight line-clamp-2 mb-1.5">
-                    {article.title}
-                  </h3>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors duration-200 tracking-tight leading-tight line-clamp-2 pr-2">
+                      {article.title}
+                    </h3>
+                    {article.featured && (
+                      <span className="px-2 py-0.5 bg-amber-100 border border-amber-200 text-amber-700 rounded-md text-[9px] font-black uppercase flex-shrink-0">
+                        Featured
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground font-medium line-clamp-2 mb-4">
                     {article.subtitle}
                   </p>
@@ -594,15 +773,6 @@ export function News() {
                 </div>
 
                 <div>
-                  {/* Tags */}
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {article.tags.slice(0, 3).map(tag => (
-                      <span key={tag} className="px-2 py-0.5 bg-muted text-muted-foreground rounded-full text-[10px] font-medium border border-border/40">
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-
                   {/* Date Row */}
                   <div className="flex items-center justify-between text-xs text-muted-foreground font-medium pt-3 border-t border-border/50">
                     <span className="flex items-center gap-1">

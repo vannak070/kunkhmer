@@ -31,8 +31,6 @@ import HeroSection from "../components/home/HeroSection";
 import { MOCK_FIGHTERS, MOCK_CLUBS, MOCK_EVENTS } from "../data/mock";
 import { BROADCAST_STATIONS, SPONSORS, getWeightRangeCategory, getFighterSlug } from "../data/masterData";
 import { MOCK_BATCHES } from "../data/batches";
-import { NEWS_ARTICLES } from "../data/newsArticles";
-import { MEDIA_CONTENT } from "../data/mediaContent";
 import { MatchBatchCard } from "../components/MatchBatchCard";
 import { FighterFilters } from "../components/FighterFilters";
 import { MatchFilters } from "../components/MatchFilters";
@@ -249,6 +247,101 @@ export function SuperAppHome() {
     };
     fetchFighters();
   }, []);
+
+  const [newsArticles, setNewsArticles] = useState<any[]>([]);
+  const [loadingNews, setLoadingNews] = useState(true);
+
+  useEffect(() => {
+    const fetchNews = async () => {
+      setLoadingNews(true);
+      try {
+        const data = await api.news.list();
+        if (data && data.length > 0) {
+          const mapped = data.map((art: any) => ({
+            id: art.id,
+            title: art.title,
+            excerpt: art.subtitle || "",
+            image: art.featured_image || art.featuredImage || "https://images.unsplash.com/photo-1504309092620-4d0ec726efa4?w=800",
+            category: art.category || "General",
+            author: art.author || "Admin",
+            date: art.publish_date || art.publishDate || "",
+            featured: Boolean(art.featured),
+            content: art.content || ""
+          }));
+          setNewsArticles(mapped);
+        } else {
+          setNewsArticles([]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch news from database:", err);
+        setNewsArticles([]);
+      } finally {
+        setLoadingNews(false);
+      }
+    };
+    fetchNews();
+  }, []);
+
+  const [mediaContent, setMediaContent] = useState<any[]>([]);
+  const [loadingMedia, setLoadingMedia] = useState(true);
+
+  useEffect(() => {
+    const fetchMedia = async () => {
+      setLoadingMedia(true);
+      try {
+        const data = await api.videos.list();
+        if (data && data.length > 0) {
+          const mapped = data.map((vid: any) => {
+            let youtubeId = "dQw4w9WgXcQ";
+            if (vid.youtube_url || vid.youtubeUrl) {
+              const url = vid.youtube_url || vid.youtubeUrl;
+              const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+              const match = url.match(regExp);
+              if (match && match[2].length === 11) {
+                youtubeId = match[2];
+              }
+            }
+
+            const viewsVal = vid.views || 0;
+            let formattedViews = "0";
+            if (viewsVal >= 1000000) {
+              formattedViews = (viewsVal / 1000000).toFixed(1) + "M";
+            } else if (viewsVal >= 1000) {
+              formattedViews = (viewsVal / 1000).toFixed(1) + "K";
+            } else {
+              formattedViews = viewsVal.toString();
+            }
+
+            return {
+              id: vid.id,
+              title: vid.title,
+              thumbnail: vid.thumbnail || "https://images.unsplash.com/photo-1504309092620-4d0ec726efa4?w=600",
+              duration: vid.duration || "00:00",
+              views: formattedViews,
+              date: vid.created_at ? new Date(vid.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : "Recently",
+              youtubeId,
+              category: vid.category || "Highlights",
+              fighterId: vid.fighter_id || vid.fighterId || ""
+            };
+          });
+          setMediaContent(mapped);
+        } else {
+          setMediaContent([]);
+        }
+      } catch (err) {
+        console.error("Failed to load videos from database:", err);
+        setMediaContent([]);
+      } finally {
+        setLoadingMedia(false);
+      }
+    };
+    fetchMedia();
+  }, []);
+  const [newsCategoryFilter, setNewsCategoryFilter] = useState("All");
+  const [newsSearchQuery, setNewsSearchQuery] = useState("");
+  const [mediaCategoryFilter, setMediaCategoryFilter] = useState("All");
+  const [mediaFighterFilter, setMediaFighterFilter] = useState("All");
+  const [mediaSearchQuery, setMediaSearchQuery] = useState("");
 
   const [clubsList, setClubsList] = useState<any[]>([]);
   const [broadcastersList, setBroadcastersList] = useState<any[]>([]);
@@ -502,8 +595,6 @@ export function SuperAppHome() {
     };
   });
 
-  const newsArticles = NEWS_ARTICLES;
-
   // EVENTS: Transform event data from Digital Platform
   const events: Event[] = MOCK_EVENTS.map(event => {
     return {
@@ -568,9 +659,6 @@ export function SuperAppHome() {
       websiteUrl: sponsor.websiteUrl || sponsor.website_url || null,
     };
   });
-
-  // Media content for News & Events section
-  const mediaContent = MEDIA_CONTENT;
 
   /**
    * SYNCHRONIZED DATA TRANSFORMATIONS
@@ -1254,8 +1342,25 @@ export function SuperAppHome() {
       />
     );
   };
-  const renderNewsEvents = () => (
-    <div className="space-y-8">
+  const renderNewsEvents = () => {
+    const filteredNews = newsArticles.filter(article => {
+      const matchesCategory = newsCategoryFilter === "All" || article.category === newsCategoryFilter;
+      const matchesSearch = newsSearchQuery.trim() === "" || 
+        article.title.toLowerCase().includes(newsSearchQuery.toLowerCase()) ||
+        (article.excerpt && article.excerpt.toLowerCase().includes(newsSearchQuery.toLowerCase()));
+      return matchesCategory && matchesSearch;
+    });
+
+    const filteredMedia = mediaContent.filter(media => {
+      const matchesCategory = mediaCategoryFilter === "All" || media.category === mediaCategoryFilter;
+      const matchesFighter = mediaFighterFilter === "All" || media.fighterId === mediaFighterFilter;
+      const matchesSearch = mediaSearchQuery.trim() === "" || 
+        media.title.toLowerCase().includes(mediaSearchQuery.toLowerCase());
+      return matchesCategory && matchesFighter && matchesSearch;
+    });
+
+    return (
+      <div className="space-y-8">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
@@ -1300,6 +1405,11 @@ export function SuperAppHome() {
               <BookOpen className={`w-4 h-4 ${newsEventsTab === "news" ? "text-[#0A3D91]" : ""}`} />
             </div>
             <span className={`font-bold text-xs tracking-wide uppercase ${newsEventsTab === "news" ? "text-gray-900" : ""}`}>Latest News</span>
+            {newsArticles.length > 0 && (
+              <span className="px-2 py-0.5 bg-blue-100 text-[#0A3D91] text-[10px] font-black rounded-full">
+                {newsArticles.length}
+              </span>
+            )}
           </button>
 
           {/* Media Tab */}
@@ -1319,10 +1429,10 @@ export function SuperAppHome() {
               <Video className={`w-4 h-4 ${newsEventsTab === "media" ? "text-yellow-600" : ""}`} />
             </div>
             <span className={`font-bold text-xs tracking-wide uppercase ${newsEventsTab === "media" ? "text-gray-900" : ""}`}>Media Hub</span>
-            {newsEventsTab === "media" && (
-              <div className="absolute top-2 right-2 px-2 py-1 bg-purple-500 text-white text-[10px] font-black rounded-full">
-                6 Videos
-              </div>
+            {mediaContent.length > 0 && (
+              <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-[10px] font-black rounded-full">
+                {mediaContent.length}
+              </span>
             )}
           </button>
         </div>
@@ -1331,133 +1441,164 @@ export function SuperAppHome() {
       {/* Tab Content */}
       {newsEventsTab === "news" && !selectedArticle && (
         <div className="bg-white rounded-2xl rounded-tl-none p-6 md:p-8 border border-gray-100">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {newsArticles.slice((newsCurrentPage - 1) * newsPerPage, newsCurrentPage * newsPerPage).map((article, index) => (
-              <div
-                key={article.id}
-                onClick={() => setSelectedArticle(article)}
-                className="group relative bg-white rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 border-2 border-gray-100 hover:border-[#0A3D91]/30 cursor-pointer flex flex-col"
-              >
-                {/* Article Image - Top */}
-                <div className="relative h-56 bg-gradient-to-br from-gray-200 to-gray-100 overflow-hidden">
-                  <img
-                    src={article.image}
-                    alt={article.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-
-                  {/* Featured Badge */}
-                  {article.featured && (
-                    <div className="absolute top-4 left-4">
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#C8102E] to-red-700 text-white text-xs font-black uppercase rounded-lg shadow-lg">
-                        <Star className="w-3.5 h-3.5 fill-white" />
-                        Featured
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Category Badge - Top Right */}
-                  <div className="absolute top-4 right-4">
-                    <span className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase shadow-lg backdrop-blur-sm ${
-                      article.category === 'Events' ? 'bg-[#0A3D91]/95 text-white' :
-                      article.category === 'News' ? 'bg-green-600/95 text-white' :
-                      article.category === 'Training' ? 'bg-purple-600/95 text-white' :
-                      article.category === 'Fighter Spotlight' ? 'bg-[#F2C94C]/95 text-gray-900' :
-                      'bg-gray-700/95 text-white'
-                    }`}>
-                      {article.category}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Article Content - Bottom */}
-                <div className="p-6 flex flex-col flex-1">
-                  {/* Article Title */}
-                  <h3 className="text-lg md:text-xl font-black text-gray-900 mb-3 group-hover:text-[#0A3D91] transition-colors leading-tight line-clamp-2">
-                    {article.title}
-                  </h3>
-
-                  {/* Excerpt */}
-                  <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed mb-4 font-medium flex-1">{article.excerpt}</p>
-
-                  {/* Meta Info */}
-                  <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-gray-100 mb-4">
-                    {/* Author */}
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-gradient-to-br from-[#0A3D91] to-blue-700 rounded-full flex items-center justify-center">
-                        <User className="w-4 h-4 text-white" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-gray-500">By</p>
-                        <p className="text-sm font-bold text-gray-900">{article.author}</p>
-                      </div>
-                    </div>
-
-                    {/* Date */}
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                        <Calendar className="w-4 h-4 text-gray-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-gray-500">Published</p>
-                        <p className="text-sm font-bold text-gray-900">
-                          {new Date(article.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bottom Section - Action */}
-                  <div>
-                    <button
-                      onClick={() => setSelectedArticle(article)}
-                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-gray-50 hover:bg-[#0A3D91] text-gray-900 hover:text-white rounded-xl font-bold transition-all border-2 border-gray-200 hover:border-[#0A3D91] group/btn"
-                    >
-                      <span>Read Article</span>
-                      <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                    </button>
-                  </div>
+          {/* Filters Bar */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-100">
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-lg">
+              <Search className="absolute left-4 top-3.5 w-4.5 h-4.5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search latest stories, announcements or events..."
+                value={newsSearchQuery}
+                onChange={(e) => {
+                  setNewsSearchQuery(e.target.value);
+                  setNewsCurrentPage(1);
+                }}
+                className="w-full pl-11 pr-4 py-3 bg-slate-50/50 border border-slate-200 focus:border-[#0A3D91] rounded-xl text-sm font-semibold focus:outline-none transition-all placeholder:text-gray-400"
+              />
+            </div>
+            
+            {/* Category Select Dropdown */}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Category:</span>
+              <div className="relative">
+                <select
+                  value={newsCategoryFilter}
+                  onChange={(e) => {
+                    setNewsCategoryFilter(e.target.value);
+                    setNewsCurrentPage(1);
+                  }}
+                  className="appearance-none pl-3 pr-8 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-lg text-xs font-bold focus:outline-none focus:border-[#0A3D91] transition-all text-gray-700 cursor-pointer min-w-[180px]"
+                >
+                  <option value="All">All News Categories</option>
+                  {["News", "Events", "Training", "Fighter Spotlight", "Official Announcement"].map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-2.5 top-2 pointer-events-none text-gray-400">
+                  <ChevronDown className="w-3.5 h-3.5" />
                 </div>
               </div>
-            ))}
+            </div>
           </div>
 
-          {/* Pagination Controls */}
-          {newsArticles.length > newsPerPage && (
-            <div className="flex items-center justify-center gap-2 pt-6 border-t border-gray-100">
-              <button
-                onClick={() => setNewsCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={newsCurrentPage === 1}
-                className="px-4 py-2 rounded-xl font-bold text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                Previous
-              </button>
+          {filteredNews.length === 0 ? (
+            <div className="text-center py-12">
+              <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-slate-500 font-semibold text-sm">No articles match your search criteria.</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {filteredNews.slice((newsCurrentPage - 1) * newsPerPage, newsCurrentPage * newsPerPage).map((article, index) => {
+                  return (
+                    <div
+                      key={article.id}
+                      onClick={() => setSelectedArticle(article)}
+                      className="group bg-white rounded-2xl border border-slate-100 hover:border-blue-100 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col"
+                    >
+                      {/* Article Image */}
+                      <div className="relative aspect-[16/10] overflow-hidden bg-slate-100 shrink-0">
+                        <img
+                          src={article.image}
+                          alt={article.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
+                        
+                        {/* Category overlay */}
+                        <div className="absolute top-4 left-4">
+                          <span className="px-2.5 py-1 bg-white/95 backdrop-blur-sm border border-white/20 text-gray-900 rounded-lg text-[10px] font-black uppercase shadow-sm tracking-wider">
+                            {article.category}
+                          </span>
+                        </div>
 
-              <div className="flex items-center gap-2">
-                {Array.from({ length: Math.ceil(newsArticles.length / newsPerPage) }, (_, i) => i + 1).map(page => (
-                  <button
-                    key={page}
-                    onClick={() => setNewsCurrentPage(page)}
-                    className={`w-10 h-10 rounded-xl font-bold text-sm transition-all ${
-                      newsCurrentPage === page
-                        ? 'bg-[#0A3D91] text-white shadow-md'
-                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
+                        {article.featured && (
+                          <div className="absolute top-4 right-4">
+                            <span className="flex items-center gap-1 px-2.5 py-1 bg-[#C8102E] text-white text-[10px] font-black uppercase rounded-lg shadow-sm">
+                              <Star className="w-3 h-3 fill-white" />
+                              Featured
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Article Content */}
+                      <div className="p-5 flex-1 flex flex-col justify-between">
+                        <div>
+                          {/* Header info */}
+                          <div className="flex items-center gap-2.5 text-[11px] text-gray-400 font-semibold mb-2.5">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3.5 h-3.5" />
+                              {new Date(article.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <User className="w-3.5 h-3.5" />
+                              {article.author}
+                            </span>
+                          </div>
+
+                          <h3 className="text-base font-black text-gray-900 leading-snug mb-2 group-hover:text-[#0A3D91] transition-colors line-clamp-2">
+                            {article.title}
+                          </h3>
+                          <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
+                            {article.excerpt}
+                          </p>
+                        </div>
+
+                        <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between text-[11px]">
+                          <span className="font-bold text-[#0A3D91] uppercase tracking-wider group-hover:underline flex items-center gap-1">
+                            <span>Read Article</span>
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                          </span>
+                          <span className="text-gray-400 font-semibold">5 min read</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-              <button
-                onClick={() => setNewsCurrentPage(prev => Math.min(Math.ceil(newsArticles.length / newsPerPage), prev + 1))}
-                disabled={newsCurrentPage === Math.ceil(newsArticles.length / newsPerPage)}
-                className="px-4 py-2 rounded-xl font-bold text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                Next
-              </button>
-            </div>
+              {/* Pagination Controls */}
+              {filteredNews.length > newsPerPage && (
+                <div className="flex items-center justify-center gap-2 pt-6 border-t border-gray-100">
+                  <button
+                    onClick={() => setNewsCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={newsCurrentPage === 1}
+                    className="px-4 py-2 rounded-xl font-bold text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    Previous
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    {Array.from({ length: Math.ceil(filteredNews.length / newsPerPage) }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setNewsCurrentPage(page)}
+                        className={`w-10 h-10 rounded-xl font-bold text-sm transition-all ${
+                          newsCurrentPage === page
+                            ? 'bg-[#0A3D91] text-white shadow-md'
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => setNewsCurrentPage(prev => Math.min(Math.ceil(filteredNews.length / newsPerPage), prev + 1))}
+                    disabled={newsCurrentPage === Math.ceil(filteredNews.length / newsPerPage)}
+                    className="px-4 py-2 rounded-xl font-bold text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -1663,82 +1804,175 @@ export function SuperAppHome() {
 
       {newsEventsTab === "media" && (
         <div className="bg-white rounded-2xl rounded-tl-none p-6 md:p-8 border border-gray-100">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {mediaContent.slice((mediaCurrentPage - 1) * mediaPerPage, mediaCurrentPage * mediaPerPage).map((media) => (
-              <div
-                key={media.id}
-                onClick={() => setSelectedVideo(media)}
-                className="group relative bg-white rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 border-2 border-gray-100 hover:border-[#0A3D91]/30 cursor-pointer"
-              >
-                {/* Video Thumbnail */}
-                <div className="relative aspect-video bg-gray-900 overflow-hidden">
-                  <img
-                    src={media.thumbnail}
-                    alt={media.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-
-                  {/* Play Button */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-20 h-20 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-2xl border-2 border-white/50">
-                      <Play className="w-8 h-8 text-[#C8102E] ml-0.5 fill-[#C8102E]" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="p-6">
-                  {/* Title */}
-                  <h4 className="text-xl font-black text-gray-900 line-clamp-2 leading-tight group-hover:text-[#0A3D91] transition-colors">
-                    {media.title}
-                  </h4>
-
-                  {/* Date */}
-                  <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
-                    <Calendar className="w-5 h-5 text-gray-500" />
-                    <span className="text-sm font-bold text-gray-700">{media.date}</span>
+          {/* Filters Bar */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-100">
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-lg">
+              <Search className="absolute left-4 top-3.5 w-4.5 h-4.5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search videos, highlights or interviews..."
+                value={mediaSearchQuery}
+                onChange={(e) => {
+                  setMediaSearchQuery(e.target.value);
+                  setMediaCurrentPage(1);
+                }}
+                className="w-full pl-11 pr-4 py-3 bg-slate-50/50 border border-slate-200 focus:border-yellow-600 rounded-xl text-sm font-semibold focus:outline-none transition-all placeholder:text-gray-400"
+              />
+            </div>
+            
+            {/* Category Select & Fighter Select */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 shrink-0">
+              {/* Category Dropdown */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Category:</span>
+                <div className="relative">
+                  <select
+                    value={mediaCategoryFilter}
+                    onChange={(e) => {
+                      setMediaCategoryFilter(e.target.value);
+                      setMediaCurrentPage(1);
+                    }}
+                    className="appearance-none pl-3 pr-8 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-lg text-xs font-bold focus:outline-none focus:border-yellow-600 transition-all text-gray-700 cursor-pointer min-w-[180px]"
+                  >
+                    <option value="All">All Video Categories</option>
+                    {["Highlights", "Full Fights", "Interviews", "Behind the Scenes", "Training & Workouts", "Documentary"].map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-2.5 top-2 pointer-events-none text-gray-400">
+                    <ChevronDown className="w-3.5 h-3.5" />
                   </div>
                 </div>
               </div>
-            ))}
+
+              {/* Fighter Dropdown */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Fighter:</span>
+                <div className="relative">
+                  <select
+                    value={mediaFighterFilter}
+                    onChange={(e) => {
+                      setMediaFighterFilter(e.target.value);
+                      setMediaCurrentPage(1);
+                    }}
+                    className="appearance-none pl-3 pr-8 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-lg text-xs font-bold focus:outline-none focus:border-yellow-600 transition-all text-gray-700 cursor-pointer min-w-[160px]"
+                  >
+                    <option value="All">All Fighters</option>
+                    {fightersList.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-2.5 top-2 pointer-events-none text-gray-400">
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Pagination Controls */}
-          {mediaContent.length > mediaPerPage && (
-            <div className="flex items-center justify-center gap-2 pt-6 border-t border-gray-100">
-              <button
-                onClick={() => setMediaCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={mediaCurrentPage === 1}
-                className="px-4 py-2 rounded-xl font-bold text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                Previous
-              </button>
+          {filteredMedia.length === 0 ? (
+            <div className="text-center py-12">
+              <Video className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-slate-500 font-semibold text-sm">No videos match your search criteria.</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {filteredMedia.slice((mediaCurrentPage - 1) * mediaPerPage, mediaCurrentPage * mediaPerPage).map((media) => {
+                  return (
+                    <div
+                      key={media.id}
+                      onClick={() => setSelectedVideo(media)}
+                      className="group bg-white rounded-2xl border border-slate-100 hover:border-blue-100 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col"
+                    >
+                      {/* Video Thumbnail */}
+                      <div className="relative aspect-video bg-slate-900 overflow-hidden">
+                        <img
+                          src={media.thumbnail}
+                          alt={media.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-550 ease-out"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+                        
+                        {/* Play Overlay */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-14 h-14 bg-white/95 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <Play className="w-5 h-5 text-[#C8102E] ml-0.5 fill-[#C8102E]" />
+                          </div>
+                        </div>
 
-              <div className="flex items-center gap-2">
-                {Array.from({ length: Math.ceil(mediaContent.length / mediaPerPage) }, (_, i) => i + 1).map(page => (
-                  <button
-                    key={page}
-                    onClick={() => setMediaCurrentPage(page)}
-                    className={`w-10 h-10 rounded-xl font-bold text-sm transition-all ${
-                      mediaCurrentPage === page
-                        ? 'bg-[#0A3D91] text-white shadow-md'
-                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
+                        {/* Duration overlay badge */}
+                        <div className="absolute bottom-3 right-3 px-2 py-0.5 bg-black/75 text-white text-[10px] font-bold rounded">
+                          {media.duration}
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-5 flex-1 flex flex-col justify-between">
+                        <div>
+                          <h4 className="text-base font-black text-gray-900 leading-snug line-clamp-2 group-hover:text-[#0A3D91] transition-colors mb-4">
+                            {media.title}
+                          </h4>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-3 border-t border-slate-50 text-[11px] text-gray-400 font-semibold">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5" />
+                            {media.date}
+                          </span>
+                          <span className="flex items-center gap-1 text-[#0A3D91]">
+                            <Eye className="w-3.5 h-3.5" />
+                            {media.views} views
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-              <button
-                onClick={() => setMediaCurrentPage(prev => Math.min(Math.ceil(mediaContent.length / mediaPerPage), prev + 1))}
-                disabled={mediaCurrentPage === Math.ceil(mediaContent.length / mediaPerPage)}
-                className="px-4 py-2 rounded-xl font-bold text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                Next
-              </button>
-            </div>
+              {/* Pagination Controls */}
+              {filteredMedia.length > mediaPerPage && (
+                <div className="flex items-center justify-center gap-2 pt-6 border-t border-gray-100">
+                  <button
+                    onClick={() => setMediaCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={mediaCurrentPage === 1}
+                    className="px-4 py-2 rounded-xl font-bold text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    Previous
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    {Array.from({ length: Math.ceil(filteredMedia.length / mediaPerPage) }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setMediaCurrentPage(page)}
+                        className={`w-10 h-10 rounded-xl font-bold text-sm transition-all ${
+                          mediaCurrentPage === page
+                            ? 'bg-[#0A3D91] text-white shadow-md'
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => setMediaCurrentPage(prev => Math.min(Math.ceil(filteredMedia.length / mediaPerPage), prev + 1))}
+                    disabled={mediaCurrentPage === Math.ceil(filteredMedia.length / mediaPerPage)}
+                    className="px-4 py-2 rounded-xl font-bold text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -1788,6 +2022,7 @@ export function SuperAppHome() {
       )}
     </div>
   );
+};
 
   const renderClubs = () => (
     <div className="space-y-8">

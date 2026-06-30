@@ -1,47 +1,125 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router";
-import { Plus, Search, Video as VideoIcon, Calendar, Eye, Edit2, Trash2, FileText, CheckCircle, Clock, XCircle, Upload, X, Play, User, Building2, ArrowLeft, Save, ChevronDown, Swords } from "lucide-react";
+import { Plus, Search, Video as VideoIcon, Calendar, Eye, Edit2, Trash2, FileText, CheckCircle, Clock, XCircle, Upload, X, Play, User, Building2, ArrowLeft, Save, ChevronDown, Swords, Heading, Bold, Italic, List, Quote, Link2 } from "lucide-react";
 import { usePermissions } from "../hooks/usePermissions";
-import { MOCK_FIGHTERS, MOCK_CLUBS, MOCK_MATCHES, MOCK_VIDEOS, VideoItem } from "../data/mock";
+import { api } from "../utils/api";
+
+interface VideoItem {
+  id: string;
+  title: string;
+  description: string;
+  youtubeUrl?: string;
+  duration: string;
+  category: string;
+  status: "Draft" | "Published" | "Archived";
+  tags: string[];
+  uploadDate: string;
+  thumbnail?: string;
+  views: number;
+  fighterId?: string;
+  clubId?: string;
+  matchId?: string;
+}
+
+const CATEGORIES = [
+  "Highlights",
+  "Full Fights",
+  "Interviews",
+  "Behind the Scenes",
+  "Training & Workouts",
+  "Documentary",
+  "General"
+];
 
 export function Video() {
   const permissions = usePermissions();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [videos, setVideos] = useState<VideoItem[]>(MOCK_VIDEOS);
+
+  const [videos, setVideos] = useState<VideoItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Relations state lists
+  const [fightersList, setFightersList] = useState<any[]>([]);
+  const [clubsList, setClubsList] = useState<any[]>([]);
+  const [matchesList, setMatchesList] = useState<any[]>([]);
+
   const [viewMode, setViewMode] = useState<'list' | 'add' | 'edit'>('list');
   const [editingVideo, setEditingVideo] = useState<VideoItem | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Editor configuration
+  const [editorTab, setEditorTab] = useState<'write' | 'preview'>('write');
 
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     youtubeUrl: "",
     duration: "",
-    category: "",
+    category: "Highlights",
     status: "Draft" as "Draft" | "Published" | "Archived",
-    tags: "",
     fighterId: "",
     clubId: "",
     matchId: ""
   });
 
+  const loadRelationsAndVideos = async () => {
+    setLoading(true);
+    try {
+      const [vData, fData, cData, mData] = await Promise.all([
+        api.videos.list(),
+        api.fighters.list(),
+        api.clubs.list(),
+        api.matches.list()
+      ]);
+
+      // Mapped videos
+      const mappedVideos = (vData || []).map((vid: any) => ({
+        id: vid.id,
+        title: vid.title,
+        description: vid.description || "",
+        youtubeUrl: vid.youtube_url || vid.youtubeUrl || "",
+        duration: vid.duration || "00:00",
+        category: vid.category || "General",
+        status: vid.status || "Draft",
+        tags: Array.isArray(vid.tags) ? vid.tags : (vid.tags ? (typeof vid.tags === 'string' ? JSON.parse(vid.tags) : vid.tags) : []),
+        uploadDate: vid.created_at ? vid.created_at.split("T")[0] : new Date().toISOString().split("T")[0],
+        thumbnail: vid.thumbnail || undefined,
+        views: vid.views || 0,
+        fighterId: vid.fighter_id || vid.fighterId || "",
+        clubId: vid.club_id || vid.clubId || "",
+        matchId: vid.match_id || vid.matchId || ""
+      }));
+      setVideos(mappedVideos);
+
+      // Mapped relations
+      setFightersList(fData || []);
+      setClubsList(cData || []);
+      setMatchesList(mData || []);
+    } catch (err) {
+      console.error("Failed to load video dashboard data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRelationsAndVideos();
+  }, []);
+
   // Filter videos
   const filteredVideos = videos.filter(video => {
     const matchesSearch = video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          video.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          video.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+                          video.description.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus = statusFilter === "all" || video.status === statusFilter;
     const matchesCategory = categoryFilter === "all" || video.category === categoryFilter;
 
     return matchesSearch && matchesStatus && matchesCategory;
   });
-
-  // Get unique categories
-  const categories = Array.from(new Set(videos.map(video => video.category)));
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -56,9 +134,14 @@ export function Video() {
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this video?")) {
-      setVideos(videos.filter(video => video.id !== id));
+      try {
+        await api.videos.delete(id);
+        setVideos(prev => prev.filter(video => video.id !== id));
+      } catch (err) {
+        alert("Failed to delete video: " + (err as Error).message);
+      }
     }
   };
 
@@ -68,15 +151,15 @@ export function Video() {
       description: "",
       youtubeUrl: "",
       duration: "",
-      category: "",
+      category: "Highlights",
       status: "Draft",
-      tags: "",
       fighterId: "",
       clubId: "",
       matchId: ""
     });
     setEditingVideo(null);
     setThumbnailPreview(null);
+    setEditorTab("write");
     setViewMode("add");
   };
 
@@ -88,13 +171,13 @@ export function Video() {
       duration: video.duration,
       category: video.category,
       status: video.status,
-      tags: video.tags.join(", "),
       fighterId: video.fighterId || "",
       clubId: video.clubId || "",
       matchId: video.matchId || ""
     });
     setEditingVideo(video);
     setThumbnailPreview(video.thumbnail || null);
+    setEditorTab("write");
     setViewMode("edit");
   };
 
@@ -125,87 +208,138 @@ export function Video() {
       return;
     }
 
-    const match = MOCK_MATCHES.find(m => m.id === matchId);
+    const match = matchesList.find(m => m.id === matchId);
     if (match) {
       // Auto-populate fighter and club involved
       setFormData(prev => ({
         ...prev,
         matchId,
-        fighterId: match.fighterA?.id || prev.fighterId,
-        clubId: match.fighterA?.clubId || prev.clubId
+        fighterId: match.fighter_a_id || match.fighterA?.id || prev.fighterId,
+        clubId: match.fighterA?.club_id || match.fighterA?.clubId || prev.clubId
       }));
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  // Helper to insert format syntax inside description editor
+  const insertFormat = (syntax: string, placeholder = "") => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const selectedText = text.substring(start, end);
+    const replacement = syntax.includes('%s') 
+      ? syntax.replace('%s', selectedText || placeholder)
+      : syntax + (selectedText || placeholder);
+
+    const newDescription = text.substring(0, start) + replacement + text.substring(end);
+    
+    setFormData({ ...formData, description: newDescription });
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + replacement.length, start + replacement.length);
+    }, 50);
+  };
+
+  // Simple Markdown-like formatter for preview display
+  const renderPreviewHTML = (text: string) => {
+    if (!text) return '<p class="text-slate-400 italic">No description details written yet.</p>';
+    
+    let html = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    // Headings
+    html = html.replace(/^### (.*?)$/gm, '<h3 class="text-base font-black text-slate-800 mt-3 mb-1.5">$1</h3>');
+    html = html.replace(/^## (.*?)$/gm, '<h2 class="text-lg font-black text-slate-900 mt-4 mb-2">$1</h2>');
+    html = html.replace(/^# (.*?)$/gm, '<h1 class="text-xl font-black text-slate-900 mt-5 mb-2">$1</h1>');
+    
+    // Bold & Italic
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    
+    // Quotes
+    html = html.replace(/^&gt; (.*?)$/gm, '<blockquote class="border-l-4 border-slate-300 pl-4 py-1 my-3 bg-slate-50 text-slate-600 italic rounded-r">$1</blockquote>');
+    
+    // Lists
+    html = html.replace(/^- (.*?)$/gm, '<li class="ml-4 list-disc text-slate-700 my-1">$1</li>');
+    
+    // Links
+    html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline font-semibold hover:text-blue-800">$1</a>');
+
+    // Paragraphs / Newlines
+    html = html.split('\n').map(para => {
+      if (para.trim().startsWith('<h') || para.trim().startsWith('<blockquote') || para.trim().startsWith('<li')) {
+        return para;
+      }
+      return para.trim() ? `<p class="text-slate-700 leading-relaxed mb-3">${para}</p>` : '';
+    }).join('\n');
+
+    return html;
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim()) {
       alert("Title is required");
       return;
     }
 
-    const tagsArray = formData.tags
-      .split(",")
-      .map(tag => tag.trim())
-      .filter(Boolean);
-
-    if (viewMode === "add") {
-      const newVideo: VideoItem = {
-        id: `v${Date.now()}`,
+    try {
+      const payload = {
         title: formData.title,
         description: formData.description,
         youtubeUrl: formData.youtubeUrl || undefined,
         duration: formData.duration || "00:00",
-        category: formData.category || "General",
+        category: formData.category,
         status: formData.status,
-        tags: tagsArray,
-        uploadDate: new Date().toISOString().split("T")[0],
+        tags: [], // removed tags input, defaults to empty array
         thumbnail: thumbnailPreview || undefined,
-        views: 0,
         fighterId: formData.fighterId || undefined,
         clubId: formData.clubId || undefined,
         matchId: formData.matchId || undefined
       };
-      setVideos([newVideo, ...videos]);
-    } else if (viewMode === "edit" && editingVideo) {
-      setVideos(videos.map(vid => {
-        if (vid.id === editingVideo.id) {
-          return {
-            ...vid,
-            title: formData.title,
-            description: formData.description,
-            youtubeUrl: formData.youtubeUrl || undefined,
-            duration: formData.duration || "00:00",
-            category: formData.category || "General",
-            status: formData.status,
-            tags: tagsArray,
-            thumbnail: thumbnailPreview || undefined,
-            fighterId: formData.fighterId || undefined,
-            clubId: formData.clubId || undefined,
-            matchId: formData.matchId || undefined
-          };
-        }
-        return vid;
-      }));
-    }
 
-    setViewMode("list");
+      if (viewMode === "add") {
+        await api.videos.create(payload);
+      } else if (viewMode === "edit" && editingVideo) {
+        await api.videos.update(editingVideo.id, payload);
+      }
+
+      await loadRelationsAndVideos();
+      setViewMode("list");
+    } catch (err) {
+      alert("Failed to save video: " + (err as Error).message);
+    }
   };
 
   const getFighterById = (id?: string) => {
     if (!id) return null;
-    return MOCK_FIGHTERS.find(f => f.id === id);
+    return fightersList.find(f => f.id === id);
   };
 
   const getClubById = (id?: string) => {
     if (!id) return null;
-    return MOCK_CLUBS.find(c => c.id === id);
+    return clubsList.find(c => c.id === id);
   };
 
   const getMatchById = (id?: string) => {
     if (!id) return null;
-    return MOCK_MATCHES.find(m => m.id === id);
+    return matchesList.find(m => m.id === id);
   };
+
+  if (loading && viewMode === 'list') {
+    return (
+      <div className="p-8 flex flex-col items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A3D91] mb-4" />
+        <p className="text-sm text-slate-500 font-bold uppercase tracking-wider animate-pulse">Loading videos from database…</p>
+      </div>
+    );
+  }
 
   if (viewMode === "add" || viewMode === "edit") {
     return (
@@ -221,11 +355,11 @@ export function Video() {
               <ArrowLeft className="w-4 h-4" />
             </button>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                {viewMode === "edit" ? "Edit Video" : "Add New Video"}
+              <h1 className="text-2xl font-black tracking-tight text-foreground uppercase">
+                {viewMode === "edit" ? "Edit Video Content" : "Upload Video Content"}
               </h1>
               <p className="text-sm text-muted-foreground mt-1 font-medium">
-                {viewMode === "edit" ? "Edit details of the published video" : "Publish a new Kun Khmer video"}
+                {viewMode === "edit" ? "Modify existing video description, metadata and assignments" : "Upload a new video, highlights or training footage"}
               </p>
             </div>
           </div>
@@ -235,20 +369,20 @@ export function Video() {
         <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Columns: Form Inputs */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Basic Information */}
+            
+            {/* General Video Details */}
             <div className="card-premium">
               <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                 <VideoIcon className="w-5 h-5 text-primary" />
                 <span>Video Information</span>
               </h2>
-              <div className="space-y-4">
-                <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                     Video Title <span className="text-secondary">*</span>
                   </label>
                   <input
                     type="text"
-                    name="title"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     required
@@ -259,255 +393,324 @@ export function Video() {
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Description
+                    YouTube URL / Embed Link
                   </label>
-                  <textarea
-                    rows={6}
-                    name="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Enter video description..."
-                    className="input-premium font-medium text-slate-700 resize-none"
+                  <input
+                    type="url"
+                    value={formData.youtubeUrl}
+                    onChange={(e) => setFormData({ ...formData, youtubeUrl: e.target.value })}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    className="input-premium font-semibold text-slate-800"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    YouTube URL <span className="text-secondary">*</span>
+                    Duration
                   </label>
                   <input
-                    type="url"
-                    name="youtubeUrl"
-                    value={formData.youtubeUrl}
-                    onChange={(e) => setFormData({ ...formData, youtubeUrl: e.target.value })}
+                    type="text"
+                    value={formData.duration}
+                    onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
                     required
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    className="input-premium font-medium text-slate-700"
+                    placeholder="e.g. 12:45"
+                    className="input-premium font-semibold text-slate-800"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Categorization & Metadata */}
+            {/* DESCRIPTION RICH EDITOR TOOL */}
+            <div className="card-premium flex flex-col">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 border-b border-slate-100 pb-3">
+                <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-primary" />
+                  <span>Video Description Editor</span>
+                </h2>
+                
+                {/* Editor Tabs */}
+                <div className="flex bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setEditorTab("write")}
+                    className={`px-4 py-1.5 rounded-md text-xs font-black uppercase tracking-wider transition-all ${
+                      editorTab === "write" 
+                        ? "bg-white text-slate-800 shadow" 
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    Write
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditorTab("preview")}
+                    className={`px-4 py-1.5 rounded-md text-xs font-black uppercase tracking-wider transition-all ${
+                      editorTab === "preview" 
+                        ? "bg-white text-slate-800 shadow" 
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    Preview
+                  </button>
+                </div>
+              </div>
+
+              {/* Formatting Toolbar */}
+              {editorTab === "write" && (
+                <div className="flex flex-wrap gap-1 mb-3 p-1.5 bg-slate-50 border border-slate-200/80 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => insertFormat("# ")}
+                    title="Heading"
+                    className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
+                  >
+                    <Heading className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormat("**%s**", "bold text")}
+                    title="Bold"
+                    className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
+                  >
+                    <Bold className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormat("*%s*", "italic text")}
+                    title="Italic"
+                    className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
+                  >
+                    <Italic className="w-4 h-4" />
+                  </button>
+                  <div className="w-px h-6 bg-slate-200 mx-1 align-middle self-center" />
+                  <button
+                    type="button"
+                    onClick={() => insertFormat("- ")}
+                    title="Bulleted List"
+                    className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormat("> ")}
+                    title="Blockquote"
+                    className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
+                  >
+                    <Quote className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormat("[Link Text](https://)")}
+                    title="Insert Link"
+                    className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
+                  >
+                    <Link2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Editor Area */}
+              <div className="flex-1 min-h-[220px]">
+                {editorTab === "write" ? (
+                  <textarea
+                    ref={textareaRef}
+                    rows={8}
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Enter descriptive details about this fight video clip or event. Markdown syntax is supported..."
+                    className="w-full bg-white border border-border/80 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-inner transition-all resize-y min-h-[200px] font-mono leading-relaxed"
+                  />
+                ) : (
+                  <div 
+                    className="w-full border border-border/60 bg-slate-50/50 rounded-xl px-5 py-4 min-h-[200px] overflow-y-auto text-left prose max-w-none"
+                    dangerouslySetInnerHTML={{ __html: renderPreviewHTML(formData.description) }}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Competitor & Match Associations (New separate section) */}
             <div className="card-premium">
-              <h2 className="text-base font-bold text-foreground mb-4">Metadata & Relations</h2>
+              <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
+                <Swords className="w-5 h-5 text-primary" />
+                <span>Competitor & Match Associations</span>
+              </h2>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Category <span className="text-secondary">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      name="category"
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      required
-                      className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none animate-fadeIn"
-                    >
-                      <option value="">Select category</option>
-                      <option value="Championship">Championship</option>
-                      <option value="Training">Training</option>
-                      <option value="Match Recording">Match Recording</option>
-                      <option value="Documentary">Documentary</option>
-                      <option value="Interview">Interview</option>
-                      <option value="Event Recap">Event Recap</option>
-                      <option value="Highlights">Highlights</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-muted-foreground">
-                      <ChevronDown className="w-4 h-4" />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Publication Status <span className="text-secondary">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      name="status"
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                      required
-                      className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none animate-fadeIn"
-                    >
-                      <option value="Draft">Draft</option>
-                      <option value="Published">Published</option>
-                      <option value="Archived">Archived</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-muted-foreground">
-                      <ChevronDown className="w-4 h-4" />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Duration <span className="text-secondary">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="duration"
-                    value={formData.duration}
-                    onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                    required
-                    placeholder="12:45"
-                    className="input-premium font-semibold text-slate-800"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Tags (comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    name="tags"
-                    value={formData.tags}
-                    onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                    placeholder="Championship, Highlights, Training"
-                    className="input-premium font-semibold text-slate-800"
-                  />
-                </div>
-
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Related Match (Optional)
+                    Related Match
                   </label>
-                  <div className="relative">
-                    <select
-                      name="matchId"
-                      value={formData.matchId}
-                      onChange={(e) => handleMatchChange(e.target.value)}
-                      className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none animate-fadeIn"
-                    >
-                      <option value="">No match assigned</option>
-                      {MOCK_MATCHES.map(match => (
+                  <select
+                    value={formData.matchId}
+                    onChange={(e) => handleMatchChange(e.target.value)}
+                    className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all cursor-pointer"
+                  >
+                    <option value="">No match assigned</option>
+                    {matchesList.map(match => {
+                      const fA = getFighterById(match.fighter_a_id || match.fighterA?.id);
+                      const fB = getFighterById(match.fighter_b_id || match.fighterB?.id);
+                      return (
                         <option key={match.id} value={match.id}>
-                          {match.fighterA?.name} vs {match.fighterB?.name} ({match.date || 'TBD'})
+                          {fA?.name || 'Fighter A'} vs {fB?.name || 'Fighter B'} ({match.date || 'TBD'})
                         </option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-muted-foreground">
-                      <ChevronDown className="w-4 h-4" />
-                    </div>
-                  </div>
+                      );
+                    })}
+                  </select>
+                  <p className="text-[10px] text-muted-foreground mt-1">Link this video to a scheduled fight card to display it in match details</p>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Fighter (Optional)
+                    Fighter Spotlight
                   </label>
-                  <div className="relative">
-                    <select
-                      name="fighterId"
-                      value={formData.fighterId}
-                      onChange={(e) => setFormData({ ...formData, fighterId: e.target.value })}
-                      className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none animate-fadeIn"
-                    >
-                      <option value="">No fighter assigned</option>
-                      {MOCK_FIGHTERS.slice(0, 20).map(fighter => (
-                        <option key={fighter.id} value={fighter.id}>
-                          {fighter.name} ({fighter.alias})
-                        </option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-muted-foreground">
-                      <ChevronDown className="w-4 h-4" />
-                    </div>
-                  </div>
+                  <select
+                    value={formData.fighterId}
+                    onChange={(e) => setFormData({ ...formData, fighterId: e.target.value })}
+                    className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all cursor-pointer"
+                  >
+                    <option value="">No fighter assigned</option>
+                    {fightersList.map(fighter => (
+                      <option key={fighter.id} value={fighter.id}>
+                        {fighter.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-muted-foreground mt-1">Associate video directly to an athlete's profile library</p>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Club (Optional)
+                    Gym / Club Assigned
                   </label>
-                  <div className="relative">
-                    <select
-                      name="clubId"
-                      value={formData.clubId}
-                      onChange={(e) => setFormData({ ...formData, clubId: e.target.value })}
-                      className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none animate-fadeIn"
-                    >
-                      <option value="">No club assigned</option>
-                      {MOCK_CLUBS.map(club => (
-                        <option key={club.id} value={club.id}>
-                          {club.name}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-muted-foreground">
-                      <ChevronDown className="w-4 h-4" />
-                    </div>
-                  </div>
+                  <select
+                    value={formData.clubId}
+                    onChange={(e) => setFormData({ ...formData, clubId: e.target.value })}
+                    className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all cursor-pointer"
+                  >
+                    <option value="">No club assigned</option>
+                    {clubsList.map(club => (
+                      <option key={club.id} value={club.id}>
+                        {club.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-muted-foreground mt-1">Showcase video on the gym's public hub page</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Right Column: Upload Thumbnail & Actions */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Thumbnail upload */}
+          {/* Right Column: Settings & Actions */}
+          <div className="space-y-6">
+            {/* Metadata Settings */}
             <div className="card-premium">
-              <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-                <Upload className="w-4 h-4 text-primary" />
-                <span>Thumbnail Image</span>
-              </h3>
+              <h2 className="text-base font-bold text-foreground mb-4">Publishing & Metadata</h2>
               
               <div className="space-y-4">
-                <div className="flex items-center justify-center w-full">
-                  <label className="flex flex-col items-center justify-center w-full h-40 border border-border/80 border-dashed rounded-xl cursor-pointer bg-muted/10 hover:bg-muted/20 transition-all duration-200">
-                    <div className="flex flex-col items-center justify-center pt-4 pb-4 px-2 text-center">
-                      <Upload className="w-7 h-7 text-muted-foreground mb-2" />
-                      <p className="text-xs font-semibold text-slate-700">
-                        <span className="text-primary hover:underline">Click to upload</span> or drag
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">PNG, JPG (MAX. 10MB)</p>
-                    </div>
-                    <input 
-                      type="file" 
-                      className="hidden" 
-                      accept="image/*"
-                      ref={thumbnailInputRef}
-                      onChange={handleThumbnailChange}
-                    />
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    Video Category
                   </label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all cursor-pointer"
+                  >
+                    {CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
                 </div>
 
-                {thumbnailPreview ? (
-                  <div className="relative w-full h-40 rounded-xl overflow-hidden border border-border/60 shadow-sm animate-fadeIn">
-                    <img src={thumbnailPreview} alt="Preview" className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={removeThumbnail}
-                      className="absolute top-2 right-2 p-1.5 bg-red-500/90 hover:bg-red-600 text-white rounded-lg transition-colors shadow-md"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="h-40 rounded-xl bg-muted/10 border border-border/40 flex items-center justify-center text-muted-foreground text-xs font-medium">
-                    No thumbnail selected
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    Publish Status
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                    className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all cursor-pointer"
+                  >
+                    <option value="Draft">Draft</option>
+                    <option value="Published">Published</option>
+                    <option value="Archived">Archived</option>
+                  </select>
+                </div>
+
+
+
+                {editingVideo && (
+                  <div>
+                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                      Views Count
+                    </label>
+                    <div className="flex items-center gap-1 text-slate-600 text-xs font-bold bg-slate-100 px-3 py-2 rounded-lg border border-slate-200 w-fit">
+                      <Eye className="w-3.5 h-3.5 text-primary" />
+                      <span>{editingVideo.views} views recorded</span>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Actions Card */}
-            <div className="bg-white rounded-xl border border-border p-4 shadow-sm flex flex-col gap-3">
-              <button
-                type="submit"
-                className="btn-primary w-full py-3"
-              >
-                <Save className="w-4 h-4" />
-                {viewMode === "edit" ? "Save Changes" : "Publish Video"}
-              </button>
+            {/* Thumbnail upload */}
+            <div className="card-premium">
+              <h2 className="text-base font-bold text-foreground mb-4">Video Thumbnail Image</h2>
+              
+              {thumbnailPreview ? (
+                <div className="relative rounded-xl overflow-hidden border border-border bg-slate-900 aspect-video group">
+                  <img
+                    src={thumbnailPreview}
+                    alt="Thumbnail Preview"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={removeThumbnail}
+                      className="p-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-lg transition-transform active:scale-95"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div 
+                  onClick={() => thumbnailInputRef.current?.click()}
+                  className="border-2 border-dashed border-border hover:border-primary/50 hover:bg-muted/10 rounded-xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center aspect-video group"
+                >
+                  <Upload className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
+                  <span className="text-xs font-bold text-foreground">Upload banner preview image</span>
+                  <span className="text-[10px] text-muted-foreground mt-1">PNG, JPG, or WEBP up to 5MB</span>
+                  <input
+                    type="file"
+                    ref={thumbnailInputRef}
+                    onChange={handleThumbnailChange}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Actions: Save & Cancel */}
+            <div className="flex gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setViewMode("list")}
-                className="btn-outline w-full py-3"
+                className="flex-1 px-4 py-3 bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-sm"
               >
-                Cancel
+                <X className="w-4 h-4" />
+                <span>Cancel</span>
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-4 py-3 bg-[#0A3D91] hover:bg-blue-800 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-blue-900/10 hover:shadow-xl hover:shadow-blue-900/20 border border-transparent"
+              >
+                <CheckCircle className="w-4 h-4" />
+                <span>Save Video</span>
               </button>
             </div>
           </div>
@@ -517,7 +720,7 @@ export function Video() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn">
+    <div className="p-4 md:p-8 space-y-6 animate-fadeIn">
       {/* Header */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -539,7 +742,7 @@ export function Video() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <input
             type="text"
-            placeholder="Search videos, tags..."
+            placeholder="Search videos, categories, description..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-white border border-border/80 rounded-xl pl-11 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all"
@@ -569,7 +772,7 @@ export function Video() {
               className="px-4 py-2.5 bg-white border border-border/80 rounded-xl text-sm font-medium text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm hover:border-slate-300 transition-all cursor-pointer min-w-[140px] appearance-none pr-10"
             >
               <option value="all">All Categories</option>
-              {categories.map(cat => (
+              {CATEGORIES.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
@@ -583,9 +786,9 @@ export function Video() {
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredVideos.map((video) => {
-          const statusBadge = getStatusBadge(video.status);
           const fighter = getFighterById(video.fighterId);
           const club = getClubById(video.clubId);
+          const match = getMatchById(video.matchId);
 
           return (
             <div
@@ -671,12 +874,12 @@ export function Video() {
                   </p>
 
                   {/* Fighter / Club / Match metadata box */}
-                  {(fighter || club || getMatchById(video.matchId)) && (
+                  {(fighter || club || match) && (
                     <div className="flex flex-wrap gap-2 mb-4">
-                      {getMatchById(video.matchId) && (
+                      {match && (
                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-[#C8102E] border border-red-100 rounded-lg text-[10px] font-bold">
                           <Swords className="w-3 h-3" />
-                          <span>Match: {getMatchById(video.matchId)?.fighterA?.name} vs {getMatchById(video.matchId)?.fighterB?.name}</span>
+                          <span>Match: {getFighterById(match.fighter_a_id || match.fighterA?.id)?.name} vs {getFighterById(match.fighter_b_id || match.fighterB?.id)?.name}</span>
                         </div>
                       )}
                       {fighter && (
@@ -714,15 +917,6 @@ export function Video() {
                 </div>
 
                 <div>
-                  {/* Tags */}
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {video.tags.slice(0, 3).map(tag => (
-                      <span key={tag} className="px-2 py-0.5 bg-muted text-muted-foreground rounded-full text-[10px] font-medium border border-border/40">
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-
                   {/* Play Action Row */}
                   <div className="flex items-center justify-between text-xs text-muted-foreground font-medium pt-3 border-t border-border/50">
                     <span className="text-primary group-hover:text-secondary font-semibold flex items-center gap-1 transition-colors">

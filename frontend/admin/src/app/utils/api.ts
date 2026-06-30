@@ -337,5 +337,63 @@ export const api = {
     async deleteBroadcastStation(id: string) {
       return request(`/settings/broadcast-stations/${id}`, { method: "DELETE" });
     }
+  },
+
+  // --- NEWS ---
+  news: {
+    async list() {
+      const res = await request("/news");
+      return res.data;
+    },
+    async get(id: string) {
+      const res = await request(`/news/${id}`);
+      return res.data;
+    },
+    async create(input: any) {
+      const res = await request("/news", {
+        method: "POST",
+        body: JSON.stringify(input)
+      });
+      return res.data;
+    },
+    async update(id: string, input: any) {
+      const res = await request(`/news/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(input)
+      });
+      return res.data;
+    },
+    async delete(id: string) {
+      return request(`/news/${id}`, { method: "DELETE" });
+    }
+  },
+
+  // --- VIDEOS ---
+  videos: {
+    async list() {
+      const res = await request("/videos");
+      return res.data;
+    },
+    async get(id: string) {
+      const res = await request(`/videos/${id}`);
+      return res.data;
+    },
+    async create(input: any) {
+      const res = await request("/videos", {
+        method: "POST",
+        body: JSON.stringify(input)
+      });
+      return res.data;
+    },
+    async update(id: string, input: any) {
+      const res = await request(`/videos/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(input)
+      });
+      return res.data;
+    },
+    async delete(id: string) {
+      return request(`/videos/${id}`, { method: "DELETE" });
+    }
   }
 };
