@@ -33,6 +33,7 @@ export function CreateEvent() {
     organizer: "",
     description: "",
     image: "",
+    status: "Draft",
     // Tournament-specific fields
     isTournament: false,
     tournamentFormat: "" as TournamentFormat | "",
@@ -302,9 +303,32 @@ export function CreateEvent() {
     }
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewEvent(prev => ({
+          ...prev,
+          image: reader.result as string
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const isTournamentEvent = newEvent.eventCategory === "National Tournament" ||
                            newEvent.eventCategory === "Club Tournament" ||
                            newEvent.eventCategory === "Regional";
+
+  const isNameValid = newEvent.name.trim() !== "";
+  const isCategoryValid = newEvent.eventCategory !== "";
+  const isStartDateValid = newEvent.startDate !== "";
+  const isLocationValid = newEvent.location.trim() !== "";
+  const isBroadcasterValid = newEvent.broadcastStationId !== "";
+  const isSponsorValid = newEvent.mainSponsorId !== "";
+
+  const isDetailsStepValid = isNameValid && isCategoryValid && isStartDateValid && isLocationValid && isBroadcasterValid && isSponsorValid;
 
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -317,13 +341,20 @@ export function CreateEvent() {
       date: newEvent.startDate,
       endDate: newEvent.eventType === "multi-week" ? newEvent.endDate : null,
       location: newEvent.location,
-      status: "Draft",
+      status: newEvent.status || "Draft",
       organizerId: currentUser?.id || "e9f0d14b-22ab-4bb3-b541-6ea88102eb92",
       broadcastStationId: newEvent.broadcastStationId || null,
       description: newEvent.description || "",
       image: finalImage,
       mainSponsorId: newEvent.mainSponsorId || null,
-      sponsorIds: newEvent.mainSponsorId ? [newEvent.mainSponsorId] : []
+      sponsorIds: newEvent.mainSponsorId ? [newEvent.mainSponsorId] : [],
+      
+      // Tournament & details mappings to match API controller inputs
+      eventType: newEvent.eventCategory || "National Event",
+      isTournament: isTournamentEvent,
+      tournamentFormat: isTournamentEvent ? (newEvent.tournamentFormat || "single-elimination") : null,
+      tournamentWeightClass: isTournamentEvent ? newEvent.tournamentWeightClass : null,
+      expectedParticipants: isTournamentEvent ? newEvent.expectedParticipants : 8
     };
 
     try {
@@ -592,23 +623,31 @@ export function CreateEvent() {
                 )}
               </div>
 
-              {/* Organizer & Location */}
+              {/* Broadcaster (Organizer) & Main Sponsor */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">
-                    Organizer *
+                    Broadcaster (Organizer) *
                   </label>
                   <div className="relative">
                     <select
                       required
-                      value={newEvent.organizer}
-                      onChange={(e) => setNewEvent({...newEvent, organizer: e.target.value})}
+                      value={newEvent.broadcastStationId}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const station = activeBroadcastStations.find(s => s.id === val);
+                        setNewEvent({
+                          ...newEvent,
+                          broadcastStationId: val,
+                          organizer: station ? station.name : ""
+                        });
+                      }}
                       className="w-full px-4 py-3 bg-white border border-border/80 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/5 focus:outline-none transition-all font-medium text-foreground appearance-none cursor-pointer"
                     >
-                      <option value="">Select Organizer...</option>
-                      {organizerList.map((org) => (
-                        <option key={org} value={org}>
-                          {org}
+                      <option value="">Select Broadcaster...</option>
+                      {activeBroadcastStations.map((station) => (
+                        <option key={station.id} value={station.id}>
+                          {station.name}
                         </option>
                       ))}
                     </select>
@@ -620,104 +659,122 @@ export function CreateEvent() {
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">
-                    Location *
+                    Main Sponsor *
                   </label>
-                  <input
-                    required
-                    type="text"
-                    value={newEvent.location}
-                    onChange={(e) => setNewEvent({...newEvent, location: e.target.value})}
-                    className="w-full px-4 py-3 bg-white border border-border/80 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/5 focus:outline-none transition-all font-medium text-foreground"
-                    placeholder="Click the map or type address..."
-                  />
+                  <div className="relative">
+                    <select
+                      required
+                      value={newEvent.mainSponsorId}
+                      onChange={(e) => setNewEvent({...newEvent, mainSponsorId: e.target.value})}
+                      className="w-full px-4 py-3 bg-white border border-border/80 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/5 focus:outline-none transition-all font-medium text-foreground appearance-none cursor-pointer"
+                    >
+                      <option value="">Select Main Sponsor...</option>
+                      {activeSponsors.map((sponsor) => (
+                        <option key={sponsor.id} value={sponsor.id}>
+                          {sponsor.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-muted-foreground">
+                      <ChevronDown className="w-4 h-4" />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Broadcast Station & Sponsor */}
+              {/* Event Status Selector */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">
-                    Broadcast Station *
+                    Event Status *
                   </label>
-                  <select
-                    required
-                    value={newEvent.broadcastStationId}
-                    onChange={(e) => setNewEvent({...newEvent, broadcastStationId: e.target.value})}
-                    className="w-full px-4 py-3 bg-white border border-border/80 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/5 focus:outline-none transition-all font-medium text-foreground"
-                  >
-                    <option value="">Select Broadcast Station...</option>
-                    {activeBroadcastStations.map((station) => (
-                      <option key={station.id} value={station.id}>
-                        {station.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">
-                    Main Sponsor *
-                  </label>
-                  <select
-                    required
-                    value={newEvent.mainSponsorId}
-                    onChange={(e) => setNewEvent({...newEvent, mainSponsorId: e.target.value})}
-                    className="w-full px-4 py-3 bg-white border border-border/80 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/5 focus:outline-none transition-all font-medium text-foreground"
-                  >
-                    <option value="">Select Main Sponsor...</option>
-                    {activeSponsors.map((sponsor) => (
-                      <option key={sponsor.id} value={sponsor.id}>
-                        {sponsor.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      required
+                      value={newEvent.status}
+                      onChange={(e) => setNewEvent({...newEvent, status: e.target.value})}
+                      className="w-full px-4 py-3 bg-white border border-border/80 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/5 focus:outline-none transition-all font-medium text-foreground appearance-none cursor-pointer"
+                    >
+                      <option value="Draft">Draft (Hidden from Public)</option>
+                      <option value="Published">Published (Publicly Visible)</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-muted-foreground">
+                      <ChevronDown className="w-4 h-4" />
+                    </div>
+                  </div>
                 </div>
               </div>
 
 
-              {/* Location Map Picker */}
+              {/* Location & Map Pinpoint Picker */}
               <div className="card-premium border border-border/60 bg-muted/5 p-5 rounded-2xl space-y-4">
-                <div>
-                  <h3 className="text-sm font-bold text-foreground mb-1 flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-secondary" />
-                    <span>Venue Location Map Pinpoint</span>
-                  </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                  {/* Venue Location Input */}
+                  <div>
+                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-secondary" />
+                      Location / Venue Address *
+                    </label>
+                    <input
+                      required
+                      type="text"
+                      value={newEvent.location}
+                      onChange={(e) => setNewEvent({...newEvent, location: e.target.value})}
+                      className="w-full px-4 py-3 bg-white border border-border/80 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/5 focus:outline-none transition-all font-medium text-foreground"
+                      placeholder="Click map, select arena below, or type address..."
+                    />
+                  </div>
+
+                  {/* Address Search Bar for Real-world Map */}
+                  <div>
+                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">
+                      Pinpoint Location Search
+                    </label>
+                    {mapLoaded && !leafletError ? (
+                      <div className="flex gap-2">
+                        <div className="relative flex-1 group">
+                          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                          <input
+                            type="text"
+                            placeholder="Search arena or area in Cambodia (e.g. Olympic Stadium)..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleMapSearch(e);
+                              }
+                            }}
+                            className="w-full bg-white border border-border/80 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-800 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleMapSearch}
+                          disabled={searchingMap}
+                          className="btn-primary py-2 px-5 text-xs h-[42px] shrink-0"
+                        >
+                          {searchingMap ? "Searching..." : "Search"}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="py-2.5 text-xs text-muted-foreground italic bg-slate-100/50 border border-slate-200/60 rounded-xl px-4">
+                        Pinpoint search is online when map services are loaded.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="border-t border-border/40 pt-4">
+                  <h4 className="text-sm font-bold text-foreground mb-1 flex items-center gap-2">
+                    <span>Geographic Pinpoint Canvas</span>
+                  </h4>
                   <p className="text-xs text-muted-foreground">
                     {mapLoaded && !leafletError
-                      ? "Search an address below, drag the red marker, or click anywhere on the map to place the venue pinpoint."
+                      ? "Search an address above, drag the red marker, or click anywhere on the map to place the venue pinpoint."
                       : "Click on the Cambodia map to drop a pin, or select a quick-select boxing arena below."}
                   </p>
                 </div>
-
-                {/* Address Search Bar for Real-world Map */}
-                {mapLoaded && !leafletError && (
-                  <div className="flex gap-2 animate-fadeIn">
-                    <div className="relative flex-1 group">
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                      <input
-                        type="text"
-                        placeholder="Search arena or area in Cambodia (e.g. Olympic Stadium, Phnom Penh)..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleMapSearch(e);
-                          }
-                        }}
-                        className="w-full bg-white border border-border/80 rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleMapSearch}
-                      disabled={searchingMap}
-                      className="btn-primary py-2 px-5 text-xs h-[42px] shrink-0"
-                    >
-                      {searchingMap ? "Searching..." : "Search"}
-                    </button>
-                  </div>
-                )}
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
                   {/* Map Canvas Frame */}
@@ -797,6 +854,72 @@ export function CreateEvent() {
                 )}
               </div>
 
+              {/* Event Banner Image */}
+              <div className="card-premium border border-border/60 bg-muted/5 p-5 rounded-2xl space-y-4">
+                <div>
+                  <h3 className="text-sm font-bold text-foreground mb-1 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    <span>Event Cover Banner</span>
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Upload a custom event poster or banner file (JPEG, PNG, WebP) to display on public listings.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="md:col-span-2">
+                    <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-2">
+                      Upload Banner Image File
+                    </label>
+                    <div className="border-2 border-dashed border-border/80 rounded-2xl p-6 hover:border-primary/50 hover:bg-muted/10 transition-all flex flex-col items-center justify-center text-center relative group cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      />
+                      <div className="w-12 h-12 bg-primary/5 text-primary rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <Save className="w-6 h-6 rotate-180" />
+                      </div>
+                      <p className="text-xs font-bold text-foreground">Click to upload file</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">Supports PNG, JPG, JPEG, or WebP</p>
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-1">
+                    <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-2 flex justify-between items-center">
+                      <span>Cover Banner Preview</span>
+                      {newEvent.image && (
+                        <button
+                          type="button"
+                          onClick={() => setNewEvent({ ...newEvent, image: "" })}
+                          className="text-[10px] text-red-500 font-bold hover:underline"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </label>
+                    <div className="aspect-[16/9] w-full bg-slate-900 rounded-xl overflow-hidden border border-border/80 flex items-center justify-center relative group">
+                      {newEvent.image ? (
+                        <>
+                          <img
+                            src={newEvent.image}
+                            alt="Banner Preview"
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
+                        </>
+                      ) : (
+                        <div className="text-center p-3">
+                          <span className="text-[10px] font-semibold text-muted-foreground block">No banner uploaded</span>
+                          <span className="text-[9px] text-muted-foreground/60 block mt-0.5">Defaults to Standard Arena banner</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Description */}
               <div>
                 <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">
@@ -812,6 +935,23 @@ export function CreateEvent() {
               </div>
             </div>
 
+            {!isDetailsStepValid && (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-800 font-semibold flex items-start gap-2.5 animate-fadeIn">
+                <span className="text-base leading-none">⚠️</span>
+                <div>
+                  <p className="font-bold text-amber-900 mb-0.5">Missing Required Information:</p>
+                  <ul className="list-disc pl-4 space-y-0.5 mt-1 font-medium">
+                    {!isNameValid && <li>Event Name is required.</li>}
+                    {!isCategoryValid && <li>Event Category (e.g. National Event) must be selected.</li>}
+                    {!isStartDateValid && <li>Start Date is required.</li>}
+                    {!isLocationValid && <li>Location / Venue Address is required (type or click map).</li>}
+                    {!isBroadcasterValid && <li>Broadcaster (Organizer) is required.</li>}
+                    {!isSponsorValid && <li>Main Sponsor is required (for KKF workflow approval).</li>}
+                  </ul>
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-4 pt-4 border-t border-border/60">
               <button
                 type="button"
@@ -825,7 +965,8 @@ export function CreateEvent() {
                 <button
                   type="button"
                   onClick={() => setStep(3)}
-                  className="btn-primary py-2.5 px-6 inline-flex items-center gap-2 ml-auto"
+                  disabled={!isDetailsStepValid}
+                  className="btn-primary py-2.5 px-6 inline-flex items-center gap-2 ml-auto disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span>Tournament Setup</span>
                   <ArrowRight className="w-4 h-4" />
@@ -833,7 +974,8 @@ export function CreateEvent() {
               ) : (
                 <button
                   type="submit"
-                  className="btn-primary py-2.5 px-6 inline-flex items-center gap-2 ml-auto"
+                  disabled={!isDetailsStepValid}
+                  className="btn-primary py-2.5 px-6 inline-flex items-center gap-2 ml-auto disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Save className="w-4 h-4" />
                   <span>Create Event</span>

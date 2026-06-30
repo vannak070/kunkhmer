@@ -67,6 +67,8 @@ export function EventDetailNew() {
   const [editEventOrganizer, setEditEventOrganizer] = useState("");
   const [editBroadcastStationId, setEditBroadcastStationId] = useState("");
   const [editMainSponsorId, setEditMainSponsorId] = useState("");
+  const [editEventStatus, setEditEventStatus] = useState("");
+  const [editEventImage, setEditEventImage] = useState("");
   
   const [approvalComments, setApprovalComments] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
@@ -444,6 +446,17 @@ export function EventDetailNew() {
     setExpandedBatches(newExpanded);
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditEventImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleEditEvent = () => {
     setEditEventName(event.name);
     setEditEventDate(event.date);
@@ -451,6 +464,8 @@ export function EventDetailNew() {
     setEditEventOrganizer(event.organizer || "");
     setEditBroadcastStationId(event.broadcast_station_id || "");
     setEditMainSponsorId(event.main_sponsor_id || "");
+    setEditEventStatus(event.kkfStatus || "Draft");
+    setEditEventImage(event.image || "");
     
     setShowEditEvent(true);
     setShowApprovalModal(false);
@@ -471,6 +486,8 @@ export function EventDetailNew() {
         location: editEventLocation,
         broadcastStationId: editBroadcastStationId || null,
         mainSponsorId: editMainSponsorId || null,
+        status: editEventStatus,
+        image: editEventImage || null,
       });
       toast.success("Event updated successfully!");
       setShowEditEvent(false);
@@ -563,17 +580,16 @@ export function EventDetailNew() {
   // Stepper steps configuration
   const timelineSteps = [
     { key: "Draft", label: "Draft", desc: "Setting up event details" },
-    { key: "Pending KKF Approval", label: "Pending Approval", desc: "KKF compliance review" },
-    { key: "Approved", label: "Approved", desc: "Sanctioned & Matchmaking" },
+    { key: "Published", label: "Published", desc: "Sanctioned & Matchmaking" },
     { key: "Ongoing", label: "In Progress", desc: "Live event broadcast" },
     { key: "Completed", label: "Completed", desc: "Results finalized" }
   ];
 
   const getStepIndex = (status: string) => {
-    const idx = timelineSteps.findIndex(s => s.key === status);
-    if (idx !== -1) return idx;
-    if (status === "Cancelled") return -1;
-    if (status === "Draft" || status === "Rejected") return 0;
+    if (status === "Draft") return 0;
+    if (status === "Published" || status === "Approved") return 1;
+    if (status === "Ongoing") return 2;
+    if (status === "Completed") return 3;
     return 0;
   };
 
@@ -601,52 +617,13 @@ export function EventDetailNew() {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2.5">
-          {canEditEvent && event.kkfStatus === "Draft" && (
+          {canEditEvent && event.kkfStatus !== "Completed" && event.kkfStatus !== "Cancelled" && (
             <button
               onClick={handleEditEvent}
               className="btn-outline inline-flex items-center gap-1.5 py-2 px-4 shadow-sm"
             >
               <Edit className="w-4 h-4" />
               <span>Edit Event</span>
-            </button>
-          )}
-
-          {canSubmitForApproval && (
-            <button
-              onClick={handleSubmitForApproval}
-              className="btn-primary py-2 px-4 inline-flex items-center gap-1.5 uppercase text-xs tracking-wider"
-            >
-              <Send className="w-4 h-4" />
-              <span>Submit for Approval</span>
-            </button>
-          )}
-
-          {event.kkfStatus === "Pending KKF Approval" && permissions.role === "kkf-admin" && (
-            <>
-              <button
-                onClick={() => setShowApprovalModal(true)}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-700 text-white hover:from-emerald-700 hover:to-emerald-800 text-xs font-semibold uppercase tracking-wider transition-all shadow-sm hover:shadow active:scale-[0.98]"
-              >
-                <CheckCircle className="w-4 h-4" />
-                <span>Approve Event</span>
-              </button>
-              <button
-                onClick={() => setShowRejectionModal(true)}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-br from-red-600 to-rose-600 text-white hover:from-red-700 hover:to-rose-755 text-xs font-semibold uppercase tracking-wider transition-all shadow-sm hover:shadow active:scale-[0.98]"
-              >
-                <XCircle className="w-4 h-4" />
-                <span>Reject Event</span>
-              </button>
-            </>
-          )}
-
-          {(event.kkfStatus === "Approved" || event.kkfStatus === "Ongoing") && permissions.role === "kkf-admin" && (
-            <button
-              onClick={() => setShowCancelEvent(true)}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-br from-red-600 to-rose-600 text-white hover:from-red-700 hover:to-rose-755 text-xs font-semibold uppercase tracking-wider transition-all shadow-sm hover:shadow active:scale-[0.98]"
-            >
-              <Ban className="w-4 h-4" />
-              <span>Cancel Event</span>
             </button>
           )}
         </div>
@@ -880,6 +857,86 @@ export function EventDetailNew() {
                 ))}
               </select>
             </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Event Status *</label>
+              <select
+                id="edit-status-input"
+                value={editEventStatus}
+                onChange={(e) => setEditEventStatus(e.target.value)}
+                className="input-premium py-2.5 cursor-pointer font-bold text-slate-850"
+              >
+                <option value="Draft">Draft (Hidden from Public)</option>
+                <option value="Published">Published (Active / Matchmaking)</option>
+                <option value="Ongoing">Ongoing (Live broadcast in progress)</option>
+                <option value="Completed">Completed (Event results finalized)</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+
+            <div className="md:col-span-2 border-t border-border/40 pt-4 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1.5">
+                  Event Cover Banner
+                </label>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Upload a custom event poster or banner file (JPEG, PNG, WebP) to display on public listings.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="md:col-span-2">
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-2">
+                    Upload Banner Image File
+                  </label>
+                  <div className="border-2 border-dashed border-border/80 rounded-2xl p-6 hover:border-primary/50 hover:bg-muted/10 transition-all flex flex-col items-center justify-center text-center relative group cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
+                    <div className="w-12 h-12 bg-primary/5 text-primary rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <Save className="w-6 h-6 rotate-180" />
+                    </div>
+                    <p className="text-xs font-bold text-foreground">Click to upload file</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Supports PNG, JPG, JPEG, or WebP</p>
+                  </div>
+                </div>
+
+                <div className="md:col-span-1">
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-2 flex justify-between items-center">
+                    <span>Cover Banner Preview</span>
+                    {editEventImage && (
+                      <button
+                        type="button"
+                        onClick={() => setEditEventImage("")}
+                        className="text-[10px] text-red-500 font-bold hover:underline"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </label>
+                  <div className="aspect-[16/9] w-full bg-slate-900 rounded-xl overflow-hidden border border-border/80 flex items-center justify-center relative group">
+                    {editEventImage ? (
+                      <>
+                        <img
+                          src={editEventImage}
+                          alt="Banner Preview"
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
+                      </>
+                    ) : (
+                      <div className="text-center p-3">
+                        <span className="text-[10px] font-semibold text-muted-foreground block">No banner uploaded</span>
+                        <span className="text-[9px] text-muted-foreground/60 block mt-0.5">Defaults to Standard Arena banner</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-3">
@@ -894,147 +951,6 @@ export function EventDetailNew() {
               className="btn-primary px-5 py-2 text-xs uppercase tracking-wider"
             >
               Save Changes
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showApprovalModal && (
-        <div id="approve-event-inline-panel" className="bg-emerald-50/20 border border-emerald-100 rounded-xl p-6 mb-8 animate-fadeIn space-y-4">
-          <div className="flex items-center gap-3 pb-3 border-b border-emerald-250/20">
-            <div className="w-10 h-10 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center">
-              <CheckCircle className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-emerald-950 uppercase tracking-tight">Approve Event</h3>
-              <p className="text-xs text-emerald-800">Officially sanction this event and release matchmaking</p>
-            </div>
-          </div>
-
-          <p className="text-sm text-emerald-800/90 font-medium">
-            Approving this event will unlock it for match creation, weight checks, and fighter card preparation.
-          </p>
-
-          <div>
-            <label className="block text-xs font-semibold text-emerald-850 mb-2 uppercase tracking-wide">Approval Comments (Optional)</label>
-            <textarea
-              value={approvalComments}
-              onChange={(e) => setApprovalComments(e.target.value)}
-              placeholder="Add feedback or notes for the event organizer..."
-              rows={3}
-              className="input-premium py-2 bg-white/80 border-emerald-250/60 focus:border-emerald-500 focus:ring-emerald-500/10"
-            />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              onClick={() => {
-                setShowApprovalModal(false);
-                setApprovalComments("");
-              }}
-              className="px-5 py-2 rounded-lg border border-emerald-200 bg-white hover:bg-emerald-50 text-emerald-950 text-xs font-semibold uppercase tracking-wider transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleConfirmApproval}
-              className="inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-700 text-white hover:from-emerald-700 hover:to-emerald-800 text-xs font-semibold uppercase tracking-wider transition-all shadow-sm"
-            >
-              Confirm Approval
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showRejectionModal && (
-        <div id="reject-event-inline-panel" className="bg-red-50/20 border border-red-100 rounded-xl p-6 mb-8 animate-fadeIn space-y-4">
-          <div className="flex items-center gap-3 pb-3 border-b border-red-250/20">
-            <div className="w-10 h-10 bg-red-100 text-red-700 rounded-xl flex items-center justify-center">
-              <XCircle className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-red-950 uppercase tracking-tight">Reject Event Proposal</h3>
-              <p className="text-xs text-red-800">Send event back to Draft status with change requirements</p>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-red-850 mb-2 uppercase tracking-wide">Rejection Reason *</label>
-            <textarea
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="Describe what needs to be fixed before this event can be approved..."
-              rows={3}
-              className="input-premium py-2 bg-white/80 border-red-205 focus:border-red-500 focus:ring-red-500/10"
-            />
-            {!rejectionReason && (
-              <p className="text-[10px] text-destructive font-bold mt-1.5">⚠️ Rejection reason is required</p>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              onClick={() => {
-                setShowRejectionModal(false);
-                setRejectionReason("");
-              }}
-              className="px-5 py-2 rounded-lg border border-red-200 bg-white hover:bg-red-50 text-red-950 text-xs font-semibold uppercase tracking-wider transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleConfirmRejection}
-              disabled={!rejectionReason}
-              className="inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-lg bg-gradient-to-br from-red-600 to-rose-600 text-white hover:from-red-700 hover:to-rose-755 text-xs font-semibold uppercase tracking-wider transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Confirm Rejection
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showCancelEvent && (
-        <div id="cancel-event-inline-panel" className="bg-red-50/20 border border-red-100 rounded-xl p-6 mb-8 animate-fadeIn space-y-4">
-          <div className="flex items-center gap-3 pb-3 border-b border-red-250/20">
-            <div className="w-10 h-10 bg-red-100 text-red-700 rounded-xl flex items-center justify-center">
-              <Ban className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-red-955 uppercase tracking-tight">Cancel Sanctioned Event</h3>
-              <p className="text-xs text-red-800">Archive this event as Cancelled</p>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-red-850 mb-2 uppercase tracking-wide">Cancellation Reason *</label>
-            <textarea
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              placeholder="Describe the reason for cancelling this sanctioned event..."
-              rows={3}
-              className="input-premium py-2 bg-white/80 border-red-205 focus:border-red-500 focus:ring-red-500/10"
-            />
-            {!cancelReason && (
-              <p className="text-[10px] text-destructive font-bold mt-1.5">⚠️ Cancellation reason is required</p>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              onClick={() => {
-                setShowCancelEvent(false);
-                setCancelReason("");
-              }}
-              className="px-5 py-2 rounded-lg border border-red-200 bg-white hover:bg-red-50 text-red-955 text-xs font-semibold uppercase tracking-wider transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleConfirmCancel}
-              disabled={!cancelReason}
-              className="inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-lg bg-gradient-to-br from-red-600 to-rose-600 text-white hover:from-red-700 hover:to-rose-755 text-xs font-semibold uppercase tracking-wider transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Confirm Cancellation
             </button>
           </div>
         </div>
@@ -1155,77 +1071,14 @@ export function EventDetailNew() {
         </div>
       </div>
 
-      {/* Validation Checklist */}
-      {event.kkfStatus === "Draft" && (
-        <div className="card-premium p-6 sm:p-8 mb-8 space-y-6">
-          <h2 className="text-lg font-bold text-foreground uppercase tracking-tight pb-3 border-b border-border/60">Submission Requirements</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {validationChecks.map((check) => (
-              <div
-                key={check.id}
-                className={clsx(
-                  "flex items-center justify-between gap-3 p-3.5 rounded-xl border transition-all",
-                  check.passed
-                    ? "bg-emerald-50/20 border-emerald-100/50 text-emerald-900"
-                    : "bg-red-50/20 border-red-100/50 text-red-900"
-                )}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  {check.passed ? (
-                    <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-                  )}
-                  <span className="font-semibold text-xs truncate">
-                    {check.label}
-                  </span>
-                </div>
-                
-                {!check.passed && (
-                  <button
-                    onClick={() => handleCheckAction(check.id)}
-                    className="inline-flex items-center gap-1 text-[10px] font-bold px-3 py-1.5 bg-red-100 hover:bg-red-200/80 text-red-700 rounded-lg transition-all shadow-sm active:scale-95 shrink-0"
-                  >
-                    {check.id === 4 || check.id === 5 ? (
-                      <>
-                        <Plus className="w-3 h-3" />
-                        <span>Create</span>
-                      </>
-                    ) : (
-                      <>
-                        <Edit className="w-3 h-3" />
-                        <span>Fix</span>
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
 
-          {allChecksPassed && (
-            <div className="p-4 bg-emerald-50/30 border border-emerald-150 rounded-xl">
-              <div className="flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="font-bold text-emerald-950 text-xs uppercase tracking-tight mb-0.5">Ready for Submission!</h3>
-                  <p className="text-emerald-800 text-xs font-medium">
-                    All compliance requirements have been successfully met. You can now submit this event for KKF official approval.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Batches & Matches */}
       <div className="card-premium p-6 sm:p-8 space-y-6">
         <div className="flex items-center justify-between pb-3 border-b border-border/60">
           <h2 className="text-lg font-bold text-foreground uppercase tracking-tight">Batches & Matches</h2>
           
-          {canEditEvent && event.kkfStatus === "Draft" && (
+          {canEditEvent && event.kkfStatus !== "Completed" && event.kkfStatus !== "Cancelled" && (
             <button
               onClick={() => {
                 setNewBatchDate(event.date || "");
@@ -1244,7 +1097,7 @@ export function EventDetailNew() {
             <CalendarDays className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-muted-foreground font-semibold text-base mb-1">No batches created yet</p>
             <p className="text-muted-foreground/60 text-xs font-medium mb-5">Create your first batch to start adding matches</p>
-            {canEditEvent && event.kkfStatus === "Draft" && (
+            {canEditEvent && event.kkfStatus !== "Completed" && event.kkfStatus !== "Cancelled" && (
               <button
                 onClick={() => {
                   setNewBatchDate(event.date || "");
@@ -1422,9 +1275,8 @@ export function EventDetailNew() {
                                     </div>
                                   )}
                                 </Link>
-
-                                {/* Delete match button inside Draft mode */}
-                                {canEditEvent && event.kkfStatus === "Draft" && (
+                                                            {/* Delete match button inside Draft mode */}
+                                {canEditEvent && event.kkfStatus !== "Completed" && event.kkfStatus !== "Cancelled" && (
                                   <button
                                     onClick={(e) => {
                                       e.preventDefault();
@@ -1448,7 +1300,7 @@ export function EventDetailNew() {
                         </div>
                       )}
 
-                      {canEditEvent && event.kkfStatus === "Draft" && (
+                      {canEditEvent && event.kkfStatus !== "Completed" && event.kkfStatus !== "Cancelled" && (
                         <div className="mt-4 pt-3 border-t border-border/60 flex justify-between items-center">
                           <button
                             onClick={() => {

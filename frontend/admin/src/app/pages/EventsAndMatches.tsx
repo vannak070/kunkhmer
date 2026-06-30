@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
-import { Plus, Calendar, MapPin, Tv, DollarSign, Search, Trophy, Clock, CheckCircle, AlertTriangle, TrendingUp, Users, ListChecks, Building2, Crown, ArrowRight } from "lucide-react";
+import { Plus, Calendar, MapPin, Tv, DollarSign, Search, Trophy, Clock, CheckCircle, AlertTriangle, TrendingUp, Users, ListChecks, Building2, Crown, ArrowRight, Trash2 } from "lucide-react";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
+import { clsx } from "clsx";
 
 export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
   const permissions = usePermissions();
@@ -13,6 +14,66 @@ export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
   const [subEvents, setSubEvents] = useState<any[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+
+  const toggleEventExpansion = (eventId: string) => {
+    setExpandedEventId(prev => prev === eventId ? null : eventId);
+  };
+
+  const handleCreateQuickBatch = async (eventId: string, eventDate: string, eventName: string, eventLocation: string) => {
+    const formattedDate = eventDate ? new Date(eventDate).toISOString().split("T")[0] : new Date().toISOString().split("T")[0];
+    const name = window.prompt("Enter batch name (e.g. Week 1, Fight Night Card):", `Week ${subEvents.filter(s => s.event_id === eventId).length + 1}`);
+    if (!name) return;
+
+    const dateStr = window.prompt("Enter date for this fight card batch (YYYY-MM-DD):", formattedDate);
+    if (!dateStr) return;
+
+    try {
+      const eventBatches = subEvents.filter(s => s.event_id === eventId);
+      const weekNumber = eventBatches.length + 1;
+
+      await api.batches.create({
+        eventId: eventId,
+        name: name,
+        weekNumber: weekNumber,
+        date: dateStr,
+        location: eventLocation || "Olympic Stadium Arena",
+        phase: "Qualifier",
+        status: "Draft",
+        batchNumber: `BATCH-${Date.now().toString().slice(-6)}`,
+      });
+      toast.success("✅ Fight card batch created successfully!");
+      loadData();
+    } catch (err: any) {
+      toast.error(`Failed to create batch: ${err.message}`);
+    }
+  };
+
+  const handleDeleteMatch = async (matchId: string) => {
+    const confirmed = window.confirm("Are you sure you want to delete this match?");
+    if (!confirmed) return;
+
+    try {
+      await api.matches.delete(matchId);
+      toast.success("🗑️ Match deleted successfully!");
+      loadData();
+    } catch (err: any) {
+      toast.error("Failed to delete match: " + err.message);
+    }
+  };
+
+  const handleDeleteBatch = async (batchId: string, batchNumber: string) => {
+    const confirmed = window.confirm(`Are you sure you want to delete "${batchNumber}"? All matches inside will be unassigned.`);
+    if (!confirmed) return;
+
+    try {
+      await api.batches.delete(batchId);
+      toast.success(`🗑️ Batch "${batchNumber}" deleted successfully!`);
+      loadData();
+    } catch (err: any) {
+      toast.error("Failed to delete batch: " + err.message);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -32,6 +93,19 @@ export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
       toast.error("Failed to load events: " + err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string, eventName: string) => {
+    const confirmed = window.confirm(`Are you sure you want to delete "${eventName}"? This action will permanently remove it and all associated matches.`);
+    if (!confirmed) return;
+
+    try {
+      await api.events.delete(eventId);
+      toast.success(`Event "${eventName}" deleted successfully!`);
+      loadData();
+    } catch (err: any) {
+      toast.error(`Failed to delete event: ${err.message}`);
     }
   };
 
@@ -68,10 +142,10 @@ export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
   // Filter events
   const filteredEvents = enhancedEvents.filter(event => {
     // Search filter
-    const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          event.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          event.broadcastStation.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          event.mainSponsor.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (event.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (event.location || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (event.broadcastStation || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (event.mainSponsor || "").toLowerCase().includes(searchTerm.toLowerCase());
     
     // Status filter
     const matchesStatus = statusFilter === "all" || event.status === statusFilter;
@@ -89,11 +163,13 @@ export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
           icon: "📝" 
         };
       case "Published":
+      case "Approved":
         return { 
           bg: "bg-[#0A3D91] text-white border-[#0A3D91]", 
           label: "Published",
           icon: "📢" 
         };
+      case "Ongoing":
       case "In Progress":
         return { 
           bg: "bg-[#C8102E] text-white border-[#C8102E]", 
@@ -105,6 +181,12 @@ export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
           bg: "bg-emerald-600 text-white border-emerald-600", 
           label: "Completed",
           icon: "✅" 
+        };
+      case "Cancelled":
+        return {
+          bg: "bg-rose-50 text-rose-700 border-rose-200",
+          label: "Cancelled",
+          icon: "🚫"
         };
       default:
         return { 
@@ -118,9 +200,12 @@ export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
   const getEventBadgeClass = (status: string) => {
     switch (status) {
       case "Draft": return "bg-white/10 text-white border-white/20";
-      case "Published": return "badge-blue shadow-sm bg-blue-50/95 border-blue-200/50";
+      case "Published":
+      case "Approved": return "badge-blue shadow-sm bg-blue-50/95 border-blue-200/50";
+      case "Ongoing":
       case "In Progress": return "badge-red shadow-sm bg-red-50/95 border-red-200/50";
       case "Completed": return "badge-emerald shadow-sm bg-emerald-50/95 border-emerald-200/50";
+      case "Cancelled": return "bg-rose-50/95 text-rose-700 border-rose-200/50";
       default: return "bg-white/10 text-white border-white/20";
     }
   };
@@ -128,9 +213,12 @@ export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
   const getEventDotClass = (status: string) => {
     switch (status) {
       case "Draft": return "bg-slate-400";
-      case "Published": return "bg-[#0A3D91]";
+      case "Published":
+      case "Approved": return "bg-[#0A3D91]";
+      case "Ongoing":
       case "In Progress": return "bg-[#C8102E]";
       case "Completed": return "bg-emerald-500";
+      case "Cancelled": return "bg-rose-600";
       default: return "bg-slate-400";
     }
   };
@@ -223,7 +311,12 @@ export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
           return (
             <div
               key={event.id}
-              className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-border/75 hover:border-primary/20 hover:-translate-y-1.5 transition-all duration-300 flex flex-col group"
+              className={clsx(
+                "bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border flex flex-col group transition-all duration-300",
+                expandedEventId === event.id
+                  ? "border-primary ring-4 ring-primary/5 lg:col-span-2 shadow-lg scale-[1.01]"
+                  : "border-border/75 hover:border-primary/20 hover:-translate-y-1"
+              )}
             >
               {/* Event Header with background image/gradient */}
               <div className="relative h-44 bg-gradient-to-br from-[#121826] via-[#0A3D91]/95 to-[#051C42] overflow-hidden">
@@ -310,14 +403,135 @@ export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
                   </div>
                 </div>
 
-                {/* View Details Button */}
-                <Link
-                  to={`/home/events/${event.id}`}
-                  className="btn-primary w-full py-2 flex items-center justify-center gap-1.5 text-sm font-semibold hover:-translate-y-[1px]"
-                >
-                  <span>View Full Details</span>
-                  <ArrowRight className="w-4 h-4 shrink-0 transition-transform duration-200" />
-                </Link>
+                {/* Footer Actions */}
+                <div className="flex gap-2.5 w-full mt-auto">
+                  <Link
+                    to={`/home/events/${event.id}`}
+                    className="btn-outline flex-1 py-2 flex items-center justify-center gap-1.5 text-xs font-bold hover:bg-slate-50"
+                  >
+                    <span>View Details</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => toggleEventExpansion(event.id)}
+                    className={clsx(
+                      "flex-1 py-2 flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl transition-all border",
+                      expandedEventId === event.id
+                        ? "bg-slate-800 text-white border-slate-800"
+                        : "bg-[#0A3D91]/5 text-[#0A3D91] border-[#0A3D91]/10 hover:bg-[#0A3D91]/10"
+                    )}
+                  >
+                    <span>{expandedEventId === event.id ? "Hide Fight Card" : "Quick Manage"}</span>
+                    <ListChecks className="w-3.5 h-3.5" />
+                  </button>
+                  {(permissions.hasPermission("events.delete") || permissions.role === "Super Admin") && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteEvent(event.id, event.name)}
+                      className="p-2 border border-red-200 hover:border-red-500 hover:bg-red-50 text-red-605 rounded-xl transition-all shadow-sm active:scale-95 shrink-0"
+                      title="Delete Event"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Collapsible Match Drawer */}
+                {expandedEventId === event.id && (
+                  <div className="mt-4 pt-4 border-t border-slate-100 bg-slate-50/50 -mx-5 -mb-5 p-5 space-y-4 animate-fadeIn">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <Swords className="w-3.5 h-3.5 text-primary" />
+                        <span>Fight Card Batches</span>
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => handleCreateQuickBatch(event.id, event.date, event.name, event.location)}
+                        className="text-[10px] text-primary font-bold uppercase tracking-wider flex items-center gap-1 hover:underline"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Add Batch</span>
+                      </button>
+                    </div>
+
+                    {subEvents.filter(s => s.event_id === event.id).length === 0 ? (
+                      <div className="text-center py-6 bg-white rounded-xl border border-dashed border-slate-200">
+                        <p className="text-xs text-slate-500 font-semibold mb-2">No batches scheduled yet</p>
+                        <button
+                          type="button"
+                          onClick={() => handleCreateQuickBatch(event.id, event.date, event.name, event.location)}
+                          className="btn-primary inline-flex py-1 px-3 text-[10px] uppercase font-bold"
+                        >
+                          Create First Batch
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {subEvents.filter(s => s.event_id === event.id).map((batch) => {
+                          const batchMatches = matches.filter(m => m.sub_event_id === batch.id);
+
+                          return (
+                            <div key={batch.id} className="bg-white border border-slate-150 rounded-xl p-3.5 shadow-sm space-y-2.5">
+                              <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                                <div>
+                                  <span className="text-xs font-bold text-slate-900">{batch.name || `Batch #${batch.week_number}`}</span>
+                                  <span className="text-[10px] text-slate-500 font-medium ml-2">({batch.date?.split("T")[0]})</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Link
+                                    to={`/home/matches/${batch.id}/create-match`}
+                                    className="text-[10px] text-primary font-bold hover:underline flex items-center gap-0.5"
+                                  >
+                                    <Plus className="w-2.5 h-2.5" /> Match
+                                  </Link>
+                                  <span className="text-slate-300">|</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteBatch(batch.id, batch.name || `Batch #${batch.week_number}`)}
+                                    className="text-red-500 hover:text-red-755"
+                                    title="Delete Batch"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {batchMatches.length === 0 ? (
+                                <p className="text-[10px] text-slate-400 font-medium italic py-1 text-center">No matches added yet</p>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  {batchMatches.map((match) => {
+                                    const isChampionship = match.isTitleMatch || match.is_title_match;
+                                    return (
+                                      <div key={match.id} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors group/match">
+                                        <div className="min-w-0 flex-1 flex items-center gap-1.5 text-[11px] font-semibold text-slate-800">
+                                          {isChampionship && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
+                                          <span className="truncate">{match.fighter_a_name || "TBD"}</span>
+                                          <span className="text-muted-foreground font-normal">vs</span>
+                                          <span className="truncate">{match.fighter_b_name || "TBD"}</span>
+                                          <span className="text-[9px] text-slate-505 bg-slate-200/50 px-1.5 py-0.5 rounded ml-2 shrink-0">{match.agreed_weight || match.weight_class} kg</span>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteMatch(match.id)}
+                                          className="opacity-0 group-hover/match:opacity-100 text-red-500 hover:text-red-700 transition-opacity p-0.5"
+                                          title="Delete Match"
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           );
