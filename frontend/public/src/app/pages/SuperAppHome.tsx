@@ -250,6 +250,31 @@ export function SuperAppHome() {
     fetchFighters();
   }, []);
 
+  const [clubsList, setClubsList] = useState<any[]>([]);
+  const [broadcastersList, setBroadcastersList] = useState<any[]>([]);
+  const [sponsorsList, setSponsorsList] = useState<any[]>([]);
+  const [loadingPartners, setLoadingPartners] = useState(true);
+
+  useEffect(() => {
+    const fetchPartners = async () => {
+      try {
+        const [clubsData, broadcastersData, sponsorsData] = await Promise.all([
+          api.clubs.list(),
+          api.settings.listBroadcastStations(),
+          api.settings.listSponsors(),
+        ]);
+        setClubsList(clubsData || []);
+        setBroadcastersList(broadcastersData || []);
+        setSponsorsList(sponsorsData || []);
+      } catch (err) {
+        console.error("Failed to fetch strategic partners:", err);
+      } finally {
+        setLoadingPartners(false);
+      }
+    };
+    fetchPartners();
+  }, []);
+
   // Scroll detection for header
   const [showHeader, setShowHeader] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -480,47 +505,46 @@ export function SuperAppHome() {
   });
 
   // CLUBS & GYMS: Transform club data from Digital Platform
-  const clubs: Club[] = MOCK_CLUBS.map(club => ({
-    id: club.id,
-    name: club.name,
-    location: club.location,
-    headCoach: club.headCoach,
-    activeFighters: club.activeFighters,
-    rating: club.rating,
-    status: club.status,
-    image: club.image
-  }));
+  const clubs: Club[] = clubsList.map((club, index) => {
+    return {
+      id: club.id,
+      name: club.name,
+      location: club.location || "Cambodia",
+      headCoach: club.headCoach || club.head_coach || "Head Coach",
+      activeFighters: parseInt(club.activeFighters || club.active_fighters || "0"),
+      rating: parseFloat(club.rating || "4.5"),
+      status: club.status || "active",
+      image: club.image || `https://images.unsplash.com/photo-1593375547549-29fe3bf5c94f?w=400&sig=${index % 10}`
+    };
+  });
 
   // BROADCAST PARTNERS: Transform broadcast station data from Digital Platform
-  const broadcastStations: BroadcastStation[] = BROADCAST_STATIONS.filter(station => station.active).map(station => {
-    // Count events for each station
-    const eventsCount = MOCK_EVENTS.filter(event => event.stationId === station.id || event.broadcastStationId === station.id).length;
-    
+  const broadcastStations: BroadcastStation[] = broadcastersList.map((station, index) => {
+    const typeStr = station.type || "National TV";
+    const reachStr = station.reach || "National";
     return {
       id: station.id,
       name: station.name,
-      logo: station.logo,
-      image: station.image || "https://images.unsplash.com/photo-1768222935380-0a3a76fbb42e?w=400", // Use station image or fallback
-      description: `${station.type} - ${station.reach}`,
-      eventsCount
+      logo: station.logo || `https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=100&sig=${index % 10}`,
+      image: station.image || `https://images.unsplash.com/photo-1650984661525-7e6b1b874e47?w=400&sig=${index % 10}`,
+      description: `${typeStr} - ${reachStr}`,
+      eventsCount: 0
     };
   });
 
   // SPONSORS: Transform sponsor data from Digital Platform
-  const sponsors: Sponsor[] = SPONSORS.filter(sponsor => sponsor.active).map(sponsor => {
-    // Count events for each sponsor
-    const eventsSponsored = MOCK_EVENTS.filter(event => 
-      event.sponsorIds?.includes(sponsor.id) || event.mainSponsorId === sponsor.id
-    ).length;
-    
+  const sponsors: Sponsor[] = sponsorsList.map((sponsor, index) => {
+    const tier = (sponsor.tier || "platinum").toLowerCase() as "platinum" | "gold" | "silver";
     return {
       id: sponsor.id,
       name: sponsor.name,
-      logo: sponsor.logo,
-      image: sponsor.image || "https://images.unsplash.com/photo-1764176910668-a2f3a7babbd1?w=400", // Use sponsor image or fallback
-      industry: sponsor.industry,
-      tier: sponsor.tier.toLowerCase() as "platinum" | "gold" | "silver",
-      eventsSponsored
+      logo: sponsor.logoUrl || sponsor.logo_url || `https://images.unsplash.com/photo-1622543925917-763c34f1f161?w=100&sig=${index % 10}`,
+      image: sponsor.image || `https://images.unsplash.com/photo-1771764678001-aa0f28e90f7f?w=400&sig=${index % 10}`,
+      industry: sponsor.industry || "General Sponsor",
+      tier,
+      eventsSponsored: 0,
+      website_url: sponsor.website_url || sponsor.websiteUrl || null,
+      websiteUrl: sponsor.websiteUrl || sponsor.website_url || null,
     };
   });
 
@@ -2247,8 +2271,17 @@ export function SuperAppHome() {
   };
 
 
-  const renderStrategicPartners = () => (
-    <div className="space-y-6">
+  const renderStrategicPartners = () => {
+    if (loadingPartners) {
+      return (
+        <div className="flex items-center justify-center min-h-[400px] py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A3D91]"></div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
       <div>
         <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">Strategic Partners</h2>
         <p className="text-gray-500">Official partners supporting Kun Khmer</p>
@@ -2705,6 +2738,7 @@ export function SuperAppHome() {
       )}
     </div>
   );
+  };
 
   const renderSponsors = () => (
     <div className="space-y-6">
