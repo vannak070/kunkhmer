@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router";
 import { Search, Plus, MapPin, Calendar, Users, Weight, Activity, UserCheck, Clock, ChevronDown, ShieldAlert } from "lucide-react";
 import { MOCK_FIGHTERS, MOCK_MATCHES } from "../data/mock";
@@ -8,18 +8,25 @@ import { FighterApprovalBadge } from "../components/FighterApprovalBadge";
 import type { FighterStatus } from "../data/fighterStatuses";
 import type { FighterApprovalStatus } from "../data/fighterApproval";
 import unknownFighterImg from "figma:asset/b9f2c3f9c8bd58ed74f9c92de40fb83809a138b3.png";
+import { api } from "../utils/api";
 
 // Helper function to derive advanced fighter status based on matches and mock rules
-const getFighterStatus = (fighter: any) => {
+const getFighterStatus = (fighter: any, matches: any[] = []) => {
   if (fighter.status === 'Injured') return { label: 'Not Eligible', style: 'bg-red-100 text-[#C8102E] border-red-200', upcoming: null };
   
   // Find matches for this fighter
-  const fighterMatches = MOCK_MATCHES.filter(m => m.fighterA.id === fighter.id || m.fighterB.id === fighter.id);
+  const fighterMatches = matches.filter(m => 
+    (m.fighter_a_id === fighter.id || m.fighter_b_id === fighter.id) ||
+    (m.fighterA?.id === fighter.id || m.fighterB?.id === fighter.id)
+  );
   
   // Check for upcoming scheduled fights
   const upcomingFight = fighterMatches.find(m => m.status === 'Scheduled');
   if (upcomingFight) {
-    const opponent = upcomingFight.fighterA.id === fighter.id ? upcomingFight.fighterB : upcomingFight.fighterA;
+    const isA = upcomingFight.fighter_a_id === fighter.id || upcomingFight.fighterA?.id === fighter.id;
+    const opponent = isA 
+      ? (upcomingFight.fighterB || { name: 'Opponent' }) 
+      : (upcomingFight.fighterA || { name: 'Opponent' });
     return { 
       label: 'Scheduled', 
       style: 'bg-blue-100 text-[#0A3D91] border-blue-200',
@@ -31,7 +38,7 @@ const getFighterStatus = (fighter: any) => {
   const completedFights = fighterMatches.filter(m => m.status === 'Completed').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   if (completedFights.length > 0) {
     const lastFightDate = new Date(completedFights[0].date);
-    const today = new Date("2026-03-19"); // System date
+    const today = new Date();
     const daysSince = Math.floor((today.getTime() - lastFightDate.getTime()) / (1000 * 60 * 60 * 24));
     
     if (daysSince < 10 && daysSince >= 0) {
@@ -57,8 +64,38 @@ export function Fighters() {
   const [filterApproval, setFilterApproval] = useState<string>('all'); // NEW: Approval filter
   const [filterAvailability, setFilterAvailability] = useState<string>('all');
 
+  const [fightersList, setFightersList] = useState<any[]>([]);
+  const [matchesList, setMatchesList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [fightersData, matchesData] = await Promise.all([
+          api.fighters.list(),
+          api.matches.list()
+        ]);
+        
+        const mappedFighters = fightersData.map((f: any) => ({
+          ...f,
+          weight: parseFloat(f.currentWeight || f.current_weight || "0"),
+          origin: f.nationality === 'Cambodian' ? 'Local' : 'Foreigner',
+          gym: f.clubName || f.club_name || "Independent"
+        }));
+
+        setFightersList(mappedFighters);
+        setMatchesList(matchesData || []);
+      } catch (err) {
+        console.error("Failed to load data from database:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
   // Filter fighters based on nationality
-  let fighters = MOCK_FIGHTERS;
+  let fighters = fightersList;
   if (isKunKhmer) {
     fighters = fighters.filter(f => f.origin === 'Local');
   } else if (isForeigner) {
@@ -71,17 +108,17 @@ export function Fighters() {
                           f.gym.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = filterStatus === 'all' || f.status === filterStatus;
     
-    // NEW: Approval filter (mock: first 3 fighters are approved, others pending)
+    // NEW: Approval filter
     let matchesApproval = true;
     if (filterApproval !== 'all') {
-      const approvalStatus = ['f1', 'f2', 'f5'].includes(f.id) ? 'approved' : 'pending';
+      const approvalStatus = f.status === 'Active' ? 'approved' : 'pending';
       matchesApproval = approvalStatus === filterApproval;
     }
     
     // Availability filter
     let matchesAvailability = true;
     if (filterAvailability !== 'all') {
-      const status = getFighterStatus(f);
+      const status = getFighterStatus(f, matchesList);
       matchesAvailability = status.label === filterAvailability;
     }
     
@@ -100,7 +137,14 @@ export function Fighters() {
     return '/fighters/kunkhmer/new'; // Default to Kun Khmer
   };
 
-  // Active filter count
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px] py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A3D91]"></div>
+      </div>
+    );
+  }
+
   const activeFilterCount = [filterStatus, filterApproval, filterAvailability].filter(f => f !== 'all').length;
 
   return (
@@ -245,9 +289,9 @@ export function Fighters() {
         )}
         
         {filteredFighters.map((fighter) => {
-          const availability = getFighterStatus(fighter);
-          // Mock approval status: first 3 fighters approved, others pending
-          const approvalStatus: FighterApprovalStatus = ['f1', 'f2', 'f5'].includes(fighter.id) ? 'approved' : 'pending';
+          const availability = getFighterStatus(fighter, matchesList);
+          // Approval status based on status 'Active'
+          const approvalStatus: FighterApprovalStatus = fighter.status === 'Active' ? 'approved' : 'pending';
           const isApproved = approvalStatus === 'approved';
           
           return (
@@ -258,7 +302,7 @@ export function Fighters() {
           >
             <div className="relative h-56 overflow-hidden bg-gradient-to-br from-[#0A3D91] to-[#051C42]">
               <img
-                src={unknownFighterImg}
+                src={fighter.image || unknownFighterImg}
                 alt={fighter.name}
                 className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
               />

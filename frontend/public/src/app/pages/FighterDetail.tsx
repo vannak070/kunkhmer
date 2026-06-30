@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router";
 import { MOCK_FIGHTERS, MOCK_MATCHES, MOCK_CLUBS } from "../data/mock";
+import { api } from "../utils/api";
 import { MOCK_AWARDS } from "../data/awards";
 import { AwardCard } from "../components/AwardCard";
 import { FighterApprovalBadge } from "../components/FighterApprovalBadge";
@@ -19,14 +20,64 @@ const tabs = [
 
 export function FighterDetail() {
   const { id } = useParams();
-  const fighter = MOCK_FIGHTERS.find((f) => f.id === id) || MOCK_FIGHTERS[0];
+  const [fighter, setFighter] = useState<any>(null);
+  const [club, setClub] = useState<any>(null);
+  const [fights, setFights] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
 
-  // Get club information
-  const club = MOCK_CLUBS.find(c => c.id === fighter.clubId);
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const f = await api.fighters.get(id!);
+        if (f) {
+          const mappedFighter = {
+            ...f,
+            gym: f.clubName || f.club_name || "Independent",
+            weight: parseFloat(f.currentWeight || f.current_weight || "0"),
+            origin: f.nationality === "Cambodian" ? "Local" : "Foreigner",
+            type: "Professional",
+            dob: f.dateOfBirth || f.date_of_birth,
+            pob: f.province
+          };
+          setFighter(mappedFighter);
 
-  // Get fighter's matches
-  const fights = MOCK_MATCHES.filter(m => m.fighterA.id === id || m.fighterB.id === id);
+          const clubId = f.clubId || f.club_id;
+          if (clubId) {
+            try {
+              const c = await api.clubs.get(clubId);
+              if (c) {
+                setClub(c);
+              }
+            } catch (cErr) {
+              console.error("Failed to load club details:", cErr);
+            }
+          }
+        }
+
+        try {
+          const allMatches = await api.matches.list();
+          // Filter matches for this fighter
+          const fighterMatches = allMatches.filter((m: any) => 
+            m.fighter_a_id === id || m.fighter_b_id === id ||
+            m.fighterA?.id === id || m.fighterB?.id === id
+          );
+          setFights(fighterMatches);
+        } catch (mErr) {
+          console.error("Failed to load matches:", mErr);
+        }
+      } catch (err) {
+        console.error("Failed to load fighter details:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (id) {
+      loadData();
+    }
+  }, [id]);
+
   const completedFights = fights.filter(m => m.status === "Completed").sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const upcomingFights = fights.filter(m => m.status === "Scheduled").sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   
@@ -39,23 +90,39 @@ export function FighterDetail() {
   
   if (lastFight) {
     const fightDate = new Date(lastFight.date);
-    const today = new Date("2026-03-19");
+    const today = new Date();
     const diffTime = today.getTime() - fightDate.getTime();
     daysSinceFight = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
     isAvailable = daysSinceFight >= 10;
   }
 
-  if (fighter.status === "Injured") {
-    isAvailable = false;
-  }
-
   // Get approval status
-  const approvalRecord = getApprovalByFighter(fighter.id);
-  const approvalStatus: FighterApprovalStatus = approvalRecord?.status || 'pending';
+  const approvalStatus: FighterApprovalStatus = (fighter && fighter.status === 'Active') ? 'approved' : 'pending';
   const approvalConfig = APPROVAL_STATUS_CONFIG[approvalStatus];
   
   // Only show availability if fighter is approved
   const canShowAvailability = approvalStatus === 'approved';
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#F4F5F8]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A3D91]"></div>
+      </div>
+    );
+  }
+
+  if (!fighter) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#F4F5F8] p-4 text-center">
+        <h2 className="text-xl font-bold text-foreground">Fighter Profile Not Found</h2>
+        <Link to="/home/fighters" className="mt-4 text-[#0A3D91] font-bold hover:underline">Back to Fighters List</Link>
+      </div>
+    );
+  }
+
+  if (fighter.status === "Injured") {
+    isAvailable = false;
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F4F5F8]">

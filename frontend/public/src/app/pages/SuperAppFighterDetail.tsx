@@ -2,6 +2,7 @@ import { useParams, Link, useNavigate } from "react-router";
 import { ArrowLeft, Calendar, MapPin, Target, Weight, Ruler, Trophy, XCircle, Minus, Flame, TrendingUp, Users, Award, Clock, Heart, Share2, ShoppingBag, Bell, ShoppingCart, User, Menu, Home as HomeIcon, BookOpen, Handshake, Building2, Play, X } from "lucide-react";
 import { MOCK_FIGHTERS, MOCK_MATCHES } from "../data/mock";
 import { MEDIA_CONTENT, MediaContent } from "../data/mediaContent";
+import { api } from "../utils/api";
 import { useState, useEffect } from "react";
 import exampleFighterBg from 'figma:asset/fe303cee6544597f8a53fd9b8b29e64c2c9ca382.png';
 import kkfLogo from "figma:asset/a66d0715b1669c88badc1b57f275bd3b2182d59e.png";
@@ -44,8 +45,41 @@ export function SuperAppFighterDetail() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [lastScrollY]);
   
-  // Find fighter from mock data
-  const fighter = MOCK_FIGHTERS.find(f => f.id === id);
+  const [fighter, setFighter] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFighter = async () => {
+      setLoading(true);
+      try {
+        const f = await api.fighters.get(id!);
+        if (f) {
+          const mapped = {
+            ...f,
+            weight: parseFloat(f.currentWeight || f.current_weight || "0").toString(),
+            gym: f.clubName || f.club_name || "Independent",
+            record: f.record || "0-0-0"
+          };
+          setFighter(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to load fighter details:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (id) {
+      fetchFighter();
+    }
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A3D91]"></div>
+      </div>
+    );
+  }
 
   if (!fighter) {
     return (

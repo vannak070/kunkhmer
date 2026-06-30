@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router";
+import { api } from "../utils/api";
 import { Search, Bell, ShoppingCart, User, Heart, Star, Flame, Zap, Crown, ChevronRight, Package, Plus, Minus, X, CreditCard, Play, Calendar, MapPin, Clock, Award, Users, BookOpen, Video, Menu, Home as HomeIcon, Trophy, TrendingUp, Sparkles, ArrowRight, ArrowLeft, Check, ChevronDown, ChevronUp, Filter, Grid3x3, Eye, ShoppingBag, Building2, Tv, Handshake, Weight, Share2 } from "lucide-react";
 import { useWallet } from "../contexts/WalletContext";
 import { useOrders } from "../contexts/OrderContext";
@@ -28,7 +29,7 @@ import HeroSection from "../components/home/HeroSection";
  * reflect in both the Digital Platform and Super App.
  */
 import { MOCK_FIGHTERS, MOCK_CLUBS, MOCK_EVENTS } from "../data/mock";
-import { BROADCAST_STATIONS, SPONSORS } from "../data/masterData";
+import { BROADCAST_STATIONS, SPONSORS, getWeightRangeCategory } from "../data/masterData";
 import { MOCK_BATCHES } from "../data/batches";
 import { NEWS_ARTICLES } from "../data/newsArticles";
 import { MEDIA_CONTENT } from "../data/mediaContent";
@@ -70,6 +71,7 @@ interface Fighter {
   image: string;
   record: string;
   weight: string;
+  weightClass: string;
   gym: string;
   wins: number;
   losses: number;
@@ -79,6 +81,7 @@ interface Fighter {
   championships: number;
   age: number;
   type: "Professional" | "Amateur";
+  clubId?: string;
 }
 
 interface NewsArticle {
@@ -229,6 +232,23 @@ export function SuperAppHome() {
     city: "",
     phone: ""
   });
+
+  const [fightersList, setFightersList] = useState<any[]>([]);
+  const [loadingFighters, setLoadingFighters] = useState(true);
+
+  useEffect(() => {
+    const fetchFighters = async () => {
+      try {
+        const data = await api.fighters.list();
+        setFightersList(data || []);
+      } catch (err) {
+        console.error("Failed to fetch fighters:", err);
+      } finally {
+        setLoadingFighters(false);
+      }
+    };
+    fetchFighters();
+  }, []);
 
   // Scroll detection for header
   const [showHeader, setShowHeader] = useState(true);
@@ -395,8 +415,8 @@ export function SuperAppHome() {
   ];
 
   // Transform Digital Platform fighters data to Super APP format
-  const fighters: Fighter[] = MOCK_FIGHTERS.slice(0, 20).map((fighter, index) => {
-    const recordParts = fighter.record.split('-');
+  const fighters: Fighter[] = fightersList.map((fighter, index) => {
+    const recordParts = (fighter.record || "0-0-0").split('-');
     const wins = parseInt(recordParts[0] || '0');
     const losses = parseInt(recordParts[1] || '0');
     const draws = parseInt(recordParts[2] || '0');
@@ -404,18 +424,20 @@ export function SuperAppHome() {
     return {
       id: fighter.id,
       name: fighter.name,
-      image: typeof fighter.image === 'string' ? fighter.image : fighterImages[index % fighterImages.length],
-      record: fighter.record,
-      weight: `${fighter.weight}kg`,
-      gym: fighter.gym,
+      image: fighter.image || fighterImages[index % fighterImages.length],
+      record: fighter.record || "0-0-0",
+      weight: parseFloat(fighter.currentWeight || fighter.current_weight || "0").toString(),
+      weightClass: getWeightRangeCategory(parseFloat(fighter.currentWeight || fighter.current_weight || "0")),
+      gym: fighter.clubName || fighter.club_name || "Club Name",
       wins,
       losses,
       draws,
-      verified: fighter.grade === 'A',
-      followers: Math.floor(Math.random() * 20000) + 5000, // Simulated followers
+      verified: fighter.status === 'Active',
+      followers: Math.floor(Math.random() * 20000) + 5000,
       championships: fighter.grade === 'A' ? Math.floor(Math.random() * 3) + 1 : fighter.grade === 'B' ? 1 : 0,
-      age: Math.floor(Math.random() * 15) + 20, // Random age between 20-34
-      type: fighter.type as "Professional" | "Amateur"
+      age: Math.floor(Math.random() * 15) + 20,
+      type: (fighter.professionalStatus || fighter.professional_status || "Professional") as "Professional" | "Amateur",
+      clubId: fighter.clubId || fighter.club_id
     };
   });
 
@@ -1274,10 +1296,7 @@ export function SuperAppHome() {
     if (!club) return null;
 
     // Filter fighters from this club
-    const clubFighters = fighters.filter(f => {
-      const mockFighter = MOCK_FIGHTERS.find(mf => mf.id === f.id);
-      return mockFighter?.clubId === selectedClubId;
-    });
+    const clubFighters = fighters.filter(f => f.clubId === selectedClubId);
 
     return (
       <ClubDetailPage
@@ -1986,6 +2005,14 @@ export function SuperAppHome() {
   );
 
   const renderFighters = () => {
+    if (loadingFighters) {
+      return (
+        <div className="flex items-center justify-center min-h-[400px] py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A3D91]"></div>
+        </div>
+      );
+    }
+
     // Filter fighters based on selected type and search query
     const filteredFighters = fighters.filter(fighter => {
       // Type filter
@@ -2196,8 +2223,7 @@ export function SuperAppHome() {
                 <div className="absolute bottom-3 left-3 right-3">
                   <div className="flex items-center gap-2 px-3 py-2 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg">
                     <Weight className="w-4 h-4 text-[#0A3D91]" />
-                    <span className="text-sm font-black text-gray-900">{fighter.weight}kg</span>
-                    <span className="text-xs text-gray-500">Weight Class</span>
+                    <span className="text-sm font-black text-gray-900">{fighter.weightClass} ({fighter.weight} kg)</span>
                   </div>
                 </div>
               </div>
@@ -2242,18 +2268,6 @@ export function SuperAppHome() {
 
                 {/* Bottom Section */}
                 <div className="space-y-3">
-                  {/* Followers Bar */}
-                  <div className="flex items-center justify-between py-2.5 px-4 bg-gray-50 rounded-xl border border-gray-200">
-                    <div className="flex items-center gap-2">
-                      <Heart className="w-4 h-4 text-[#C8102E]" />
-                      <span className="text-sm font-bold text-gray-900">{(fighter.followers / 1000).toFixed(1)}k</span>
-                      <span className="text-xs text-gray-500">followers</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                      <span className="text-xs font-bold text-green-600">Active</span>
-                    </div>
-                  </div>
 
                   {/* View Profile Button */}
                   <button className="w-full px-5 py-3 bg-gradient-to-r from-[#0A3D91] to-blue-700 hover:from-blue-800 hover:to-blue-900 text-white rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 group/btn">
