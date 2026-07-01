@@ -4505,79 +4505,29 @@ export function SuperAppHome() {
 
             {/* Right Actions */}
             <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
-              <button className="relative p-2.5 md:p-3 hover:bg-gray-100 rounded-xl transition-all group">
-                <Bell className="w-5 h-5 text-gray-600 group-hover:text-[#0A3D91] transition-colors" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-[#C8102E] rounded-full ring-2 ring-white animate-pulse" />
-              </button>
-              
-              {/* Cart with Dropdown Preview */}
+              {/* Bell — display only, not clickable */}
+              <div className="relative p-2.5 md:p-3 rounded-xl cursor-default select-none opacity-60">
+                <Bell className="w-5 h-5 text-gray-600" />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-[#C8102E] rounded-full ring-2 ring-white" />
+              </div>
+
+              {/* Cart — display only, not clickable */}
               <div className="relative">
-                <button
-                  onClick={() => setCartDropdownOpen(!cartDropdownOpen)}
-                  onMouseEnter={() => setCartDropdownOpen(true)}
-                  onMouseLeave={() => setCartDropdownOpen(false)}
-                  className="relative p-2.5 md:p-3 hover:bg-gray-100 rounded-xl transition-all group"
-                >
-                  <ShoppingCart className="w-5 h-5 text-gray-600 group-hover:text-[#0A3D91] transition-colors" />
+                <div className="relative p-2.5 md:p-3 rounded-xl cursor-default select-none opacity-60">
+                  <ShoppingCart className="w-5 h-5 text-gray-600" />
                   {cartItemCount > 0 && (
                     <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 bg-gradient-to-r from-[#C8102E] to-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-lg">
                       {cartItemCount}
                     </span>
                   )}
-                </button>
+                </div>
                 
-                {/* Cart Dropdown */}
-                {cartDropdownOpen && cartItemCount > 0 && (
-                  <div
-                    className="absolute right-0 top-full mt-3 w-80 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 p-5 animate-fadeIn"
-                    onMouseEnter={() => setCartDropdownOpen(true)}
-                    onMouseLeave={() => setCartDropdownOpen(false)}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-sm font-bold text-gray-900">Shopping Cart</h4>
-                      <span className="px-2.5 py-1 bg-[#0A3D91]/10 text-[#0A3D91] text-xs font-bold rounded-full">
-                        {cartItemCount} {cartItemCount === 1 ? 'item' : 'items'}
-                      </span>
-                    </div>
-                    <div className="space-y-3 max-h-64 overflow-y-auto mb-4">
-                      {cart.slice(0, 3).map((item) => (
-                        <div key={item.id} className="flex gap-3 items-center p-2 rounded-xl hover:bg-gray-50 transition-colors">
-                          <img src={item.image} alt={item.name} className="w-14 h-14 rounded-xl object-cover ring-1 ring-gray-200" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-gray-900 line-clamp-1">{item.name}</p>
-                            <p className="text-xs text-gray-500 font-medium">Qty: {item.quantity}</p>
-                          </div>
-                          <span className="text-sm font-black text-[#C8102E]">
-                            ${((item.discount ? item.price * (1 - item.discount / 100) : item.price) * item.quantity).toFixed(2)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="border-t border-gray-200 pt-4 mb-4">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-medium text-gray-600">Subtotal:</span>
-                        <span className="text-2xl font-black text-gray-900">${cartTotal.toFixed(2)}</span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        handleSectionChange("cart");
-                        setCartDropdownOpen(false);
-                      }}
-                      className="w-full px-4 py-3 bg-gradient-to-r from-[#0A3D91] to-blue-600 hover:from-[#0B4AAD] hover:to-blue-700 text-white rounded-xl text-sm font-bold shadow-lg hover:shadow-xl transition-all"
-                    >
-                      View Full Cart
-                    </button>
-                  </div>
-                )}
               </div>
 
-              <button
-                onClick={() => handleSectionChange("profile")}
-                className="p-2.5 md:p-3 hover:bg-gray-100 rounded-xl transition-all group"
-              >
-                <User className="w-5 h-5 text-gray-600 group-hover:text-[#0A3D91] transition-colors" />
-              </button>
+              {/* Profile — display only, not clickable */}
+              <div className="p-2.5 md:p-3 rounded-xl cursor-default select-none opacity-60">
+                <User className="w-5 h-5 text-gray-600" />
+              </div>
 
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -4696,177 +4646,206 @@ export function SuperAppHome() {
         {currentSection === "profile" && renderProfile()}
       </main>
 
-      {/* Modern Compact Footer */}
-      <footer className="relative bg-gradient-to-r from-[#0A3D91] via-[#0B4AAD] to-[#0A3D91] text-white py-8 mt-20 overflow-hidden">
-        {/* Subtle Background Effect */}
-        <div className="absolute inset-0 opacity-30 pointer-events-none" style={{
-          backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(200, 16, 46, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(242, 201, 76, 0.1) 0%, transparent 50%)'
-        }} />
-        
-        <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-6">
-          {/* Main Content */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-6">
-            {/* Brand Column */}
-            <div className="md:col-span-1">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="relative flex items-center justify-center p-1.5 bg-white rounded-lg">
-                  <img 
-                    src={kkfLogo} 
-                    alt="KKF Logo" 
-                    className="w-10 h-10 object-contain"
-                  />
+      {/* Premium Footer */}
+      <footer className="relative bg-[#051C42] text-white overflow-hidden mt-20">
+        {/* Layered Background Glows */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(circle, #0A3D91 0%, transparent 65%)' }} />
+          <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-[0.08]" style={{ background: 'radial-gradient(circle, #C8102E 0%, transparent 70%)' }} />
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[900px] h-64 opacity-[0.06]" style={{ background: 'radial-gradient(ellipse, #1565C0 0%, transparent 70%)' }} />
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-8">
+
+          {/* Top section — Brand + Nav Grid */}
+          <div className="pt-16 pb-12 grid grid-cols-1 md:grid-cols-12 gap-10 lg:gap-14">
+
+            {/* Brand Column — spans 4 cols */}
+            <div className="md:col-span-4">
+              {/* Logo + Name */}
+              <div className="flex items-center gap-3 mb-5">
+                <div className="flex items-center justify-center w-12 h-12 bg-white rounded-xl shadow-lg shadow-black/40 shrink-0">
+                  <img src={kkfLogo} alt="KKF Logo" className="w-9 h-9 object-contain" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black tracking-tight leading-tight">KUNKHMER</h3>
-                  <p className="text-[9px] text-[#F2C94C] font-bold tracking-[0.1em] uppercase leading-tight">Official Platform</p>
+                  <div className="text-xl font-black tracking-tight leading-none">KUNKHMER</div>
+                  <div className="text-[10px] text-[#F2C94C] font-bold tracking-[0.15em] uppercase mt-0.5">Official Digital Platform</div>
                 </div>
               </div>
-              <p className="text-white/60 text-xs leading-relaxed mb-4">
-                Official digital platform for Cambodian Martial Arts excellence and tradition.
+
+              {/* Tagline */}
+              <p className="text-white/50 text-sm leading-relaxed mb-6 max-w-xs">
+                The official home of Cambodian martial arts — connecting fighters, fans, and the global Kun Khmer community.
               </p>
-              
-              {/* Social Media Icons */}
-              <div className="flex gap-2">
-                <a href="#" className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all duration-200">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                </a>
-                <a href="#" className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all duration-200">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
-                </a>
-                <a href="#" className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all duration-200">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
-                </a>
-                <a href="#" className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all duration-200">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-                </a>
+
+              {/* Social Icons */}
+              <div className="flex gap-2.5">
+                {[
+                  { label: 'Facebook', path: 'M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z' },
+                  { label: 'Instagram', path: 'M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z' },
+                  { label: 'Twitter/X', path: 'M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z' },
+                  { label: 'YouTube', path: 'M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z' },
+                ].map((social) => (
+                  <a
+                    key={social.label}
+                    href="#"
+                    aria-label={social.label}
+                    className="group w-9 h-9 rounded-xl bg-white/5 border border-white/8 hover:bg-[#0A3D91]/60 hover:border-[#0A3D91] flex items-center justify-center transition-all duration-200 hover:scale-110"
+                  >
+                    <svg className="w-3.5 h-3.5 text-white/50 group-hover:text-white transition-colors" fill="currentColor" viewBox="0 0 24 24">
+                      <path d={social.path} />
+                    </svg>
+                  </a>
+                ))}
               </div>
             </div>
 
-            {/* Platform Column */}
-            <div>
-              <h4 className="font-bold text-[13px] mb-3 text-[#F2C94C] tracking-wide uppercase">Platform</h4>
-              <ul className="space-y-2">
-                <li>
-                  <button
-                    onClick={() => handleSectionChange("home")}
-                    className="text-white/60 hover:text-white transition-colors text-xs"
-                  >
-                    Home
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => handleSectionChange("matches")}
-                    className="text-white/60 hover:text-white transition-colors text-xs"
-                  >
-                    Matches & Events
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => handleSectionChange("news-events")}
-                    className="text-white/60 hover:text-white transition-colors text-xs"
-                  >
-                    News & Media
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => handleSectionChange("fighters")}
-                    className="text-white/60 hover:text-white transition-colors text-xs"
-                  >
-                    Fighters
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => handleSectionChange("strategic-partners")}
-                    className="text-white/60 hover:text-white transition-colors text-xs"
-                  >
-                    Strategic Partners
-                  </button>
-                </li>
-              </ul>
-            </div>
+            {/* Nav Columns — span 8 cols, split into 4 equal sub-cols */}
+            <div className="md:col-span-8 grid grid-cols-2 sm:grid-cols-4 gap-8">
 
-            {/* Shop Column */}
-            <div>
-              <h4 className="font-bold text-[13px] mb-3 text-[#F2C94C] tracking-wide uppercase">Shop</h4>
-              <ul className="space-y-2">
-                <li>
-                  <button
-                    onClick={() => handleSectionChange("shop")}
-                    className="text-white/60 hover:text-white transition-colors text-xs"
-                  >
-                    All Products
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => handleSectionChange("cart")}
-                    className="text-white/60 hover:text-white transition-colors text-xs"
-                  >
-                    Cart
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => handleSectionChange("orders")}
-                    className="text-white/60 hover:text-white transition-colors text-xs"
-                  >
-                    My Orders
-                  </button>
-                </li>
-              </ul>
-            </div>
+              {/* Platform */}
+              <div>
+                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Platform</h4>
+                <ul className="space-y-2.5">
+                  {[
+                    { label: 'Home', section: 'home' as Section },
+                    { label: 'Matches & Events', section: 'matches' as Section },
+                    { label: 'News & Media', section: 'news-events' as Section },
+                    { label: 'Fighters', section: 'fighters' as Section },
+                    { label: 'Partners', section: 'strategic-partners' as Section },
+                  ].map(({ label, section }) => (
+                    <li key={label}>
+                      <button
+                        onClick={() => handleSectionChange(section)}
+                        className="text-white/45 hover:text-white text-xs font-medium transition-colors duration-150 text-left leading-snug hover:translate-x-0.5 transform transition-transform"
+                      >
+                        {label}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
-            {/* Account Column */}
+              {/* Shop */}
+              <div>
+                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Shop</h4>
+                <ul className="space-y-2.5">
+                  {[
+                    { label: 'All Products', section: 'shop' as Section },
+                    { label: 'My Cart', section: 'cart' as Section },
+                    { label: 'My Orders', section: 'orders' as Section },
+                  ].map(({ label, section }) => (
+                    <li key={label}>
+                      <button
+                        onClick={() => handleSectionChange(section)}
+                        className="text-white/45 hover:text-white text-xs font-medium transition-colors duration-150 text-left leading-snug hover:translate-x-0.5 transform transition-transform"
+                      >
+                        {label}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Account */}
+              <div>
+                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Account</h4>
+                <ul className="space-y-2.5">
+                  {[
+                    { label: 'My Profile', section: 'profile' as Section },
+                    { label: 'Subscription', section: 'subscription' as Section },
+                  ].map(({ label, section }) => (
+                    <li key={label}>
+                      <button
+                        onClick={() => handleSectionChange(section)}
+                        className="text-white/45 hover:text-white text-xs font-medium transition-colors duration-150 text-left leading-snug hover:translate-x-0.5 transform transition-transform"
+                      >
+                        {label}
+                      </button>
+                    </li>
+                  ))}
+                  <li>
+                    <Link
+                      to="/home"
+                      className="text-white/45 hover:text-white text-xs font-medium transition-colors duration-150 text-left leading-snug hover:translate-x-0.5 transform transition-transform inline-block"
+                    >
+                      Admin Platform
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Contact */}
+              <div>
+                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Contact</h4>
+                <ul className="space-y-2.5">
+                  <li className="flex items-start gap-2">
+                    <MapPin className="w-3.5 h-3.5 text-white/30 shrink-0 mt-0.5" />
+                    <span className="text-white/45 text-xs leading-snug">Phnom Penh, Cambodia</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <svg className="w-3.5 h-3.5 text-white/30 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                    <span className="text-white/45 text-xs leading-snug">info@kunkhmer.com</span>
+                  </li>
+                  <li className="mt-3">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Platform Online
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Newsletter Strip */}
+          <div className="py-7 px-8 mb-10 rounded-2xl bg-gradient-to-r from-[#0A3D91]/40 via-[#0B4AAD]/30 to-[#0A3D91]/40 border border-white/[0.07] flex flex-col sm:flex-row items-center justify-between gap-5">
             <div>
-              <h4 className="font-bold text-[13px] mb-3 text-[#F2C94C] tracking-wide uppercase">Account</h4>
-              <ul className="space-y-2">
-                <li>
-                  <button
-                    onClick={() => handleSectionChange("profile")}
-                    className="text-white/60 hover:text-white transition-colors text-xs"
-                  >
-                    My Profile
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => handleSectionChange("subscription")}
-                    className="text-white/60 hover:text-white transition-colors text-xs"
-                  >
-                    Subscription
-                  </button>
-                </li>
-                <li>
-                  <Link
-                    to="/home"
-                    className="text-white/60 hover:text-white transition-colors text-xs"
-                  >
-                    Admin Platform
-                  </Link>
-                </li>
-              </ul>
+              <p className="font-bold text-sm text-white">Stay updated with Kun Khmer</p>
+              <p className="text-white/40 text-xs mt-0.5">Get match results, fighter news & event announcements.</p>
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <input
+                type="email"
+                placeholder="Your email address"
+                className="flex-1 sm:w-64 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[#0A3D91] transition-colors"
+              />
+              <button className="px-5 py-2.5 rounded-xl bg-[#0A3D91] hover:bg-blue-700 text-white text-sm font-bold transition-colors whitespace-nowrap">
+                Subscribe
+              </button>
             </div>
           </div>
 
           {/* Divider */}
-          <div className="border-t border-white/10 my-5" />
+          <div className="h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
 
-          {/* Bottom Section */}
-          <div className="flex flex-col md:flex-row justify-between items-center gap-3 text-xs">
-            <div className="text-white/40">
-              © 2026 KUNKHMER. All rights reserved.
+          {/* Bottom Bar */}
+          <div className="py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Copyright + Flag */}
+            <div className="flex items-center gap-3">
+              <span className="text-2xl" role="img" aria-label="Cambodia flag">🇰🇭</span>
+              <div>
+                <p className="text-white/35 text-xs font-medium">© 2026 KUNKHMER Federation. All rights reserved.</p>
+                <p className="text-white/20 text-[10px] mt-0.5">Preserving & promoting Cambodian martial arts heritage.</p>
+              </div>
             </div>
-            
-            <div className="flex gap-5 text-white/40">
-              <button className="hover:text-white transition-colors">Privacy Policy</button>
-              <button className="hover:text-white transition-colors">Terms of Service</button>
-              <button className="hover:text-white transition-colors">Cookie Policy</button>
+
+            {/* Legal Links */}
+            <div className="flex items-center gap-1 flex-wrap justify-center">
+              {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map((item, i, arr) => (
+                <span key={item} className="flex items-center gap-1">
+                  <button className="text-white/30 hover:text-white/70 text-[11px] font-medium transition-colors px-1">
+                    {item}
+                  </button>
+                  {i < arr.length - 1 && <span className="text-white/15 text-xs">·</span>}
+                </span>
+              ))}
             </div>
           </div>
+
         </div>
       </footer>
     </div>

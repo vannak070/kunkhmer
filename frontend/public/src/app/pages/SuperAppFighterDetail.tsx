@@ -715,50 +715,189 @@ export function SuperAppFighterDetail() {
       )}
 
       {/* ── Footer ── */}
-      <footer className="relative bg-gradient-to-r from-[#0A3D91] via-[#0B4AAD] to-[#0A3D91] text-white py-12 overflow-hidden">
-        <div className="absolute inset-0 opacity-20 pointer-events-none" style={{
-          backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(200, 16, 46, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(242, 201, 76, 0.1) 0%, transparent 50%)'
-        }} />
-        <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-            <div className="md:col-span-1">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="relative flex items-center justify-center p-1.5 bg-white rounded-xl">
-                  <img src={kkfLogo} alt="KKF Logo" className="w-10 h-10 object-contain" />
+      <footer className="relative bg-[#051C42] text-white overflow-hidden">
+        {/* Layered Background Glows */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(circle, #0A3D91 0%, transparent 65%)' }} />
+          <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-[0.08]" style={{ background: 'radial-gradient(circle, #C8102E 0%, transparent 70%)' }} />
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[900px] h-64 opacity-[0.06]" style={{ background: 'radial-gradient(ellipse, #1565C0 0%, transparent 70%)' }} />
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-8">
+
+          {/* Top section — Brand + Nav Grid */}
+          <div className="pt-16 pb-12 grid grid-cols-1 md:grid-cols-12 gap-10 lg:gap-14">
+
+            {/* Brand Column — spans 4 cols */}
+            <div className="md:col-span-4">
+              {/* Logo + Name */}
+              <div className="flex items-center gap-3 mb-5">
+                <div className="flex items-center justify-center w-12 h-12 bg-white rounded-xl shadow-lg shadow-black/40 shrink-0">
+                  <img src={kkfLogo} alt="KKF Logo" className="w-9 h-9 object-contain" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black tracking-tight leading-none uppercase">KUNKHMER</h3>
-                  <p className="text-[9px] text-[#F2C94C] font-bold tracking-[0.1em] uppercase mt-1">Official Platform</p>
+                  <div className="text-xl font-black tracking-tight leading-none">KUNKHMER</div>
+                  <div className="text-[10px] text-[#F2C94C] font-bold tracking-[0.15em] uppercase mt-0.5">Official Digital Platform</div>
                 </div>
               </div>
-              <p className="text-slate-300 text-xs leading-relaxed">Official digital platform for Cambodian Martial Arts excellence and tradition.</p>
+
+              {/* Tagline */}
+              <p className="text-white/50 text-sm leading-relaxed mb-6 max-w-xs">
+                The official home of Cambodian martial arts — connecting fighters, fans, and the global Kun Khmer community.
+              </p>
+
+              {/* Social Icons */}
+              <div className="flex gap-2.5">
+                {[
+                  { label: 'Facebook', path: 'M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z' },
+                  { label: 'Instagram', path: 'M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z' },
+                  { label: 'Twitter/X', path: 'M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z' },
+                  { label: 'YouTube', path: 'M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z' },
+                ].map((social) => (
+                  <a
+                    key={social.label}
+                    href="#"
+                    aria-label={social.label}
+                    className="group w-9 h-9 rounded-xl bg-white/5 border border-white/8 hover:bg-[#0A3D91]/60 hover:border-[#0A3D91] flex items-center justify-center transition-all duration-200 hover:scale-110"
+                  >
+                    <svg className="w-3.5 h-3.5 text-white/50 group-hover:text-white transition-colors" fill="currentColor" viewBox="0 0 24 24">
+                      <path d={social.path} />
+                    </svg>
+                  </a>
+                ))}
+              </div>
             </div>
-            {[
-              { title: "Platform", links: [{ label: "News & Events", to: "/news-events" }, { label: "Fighters", to: "/fighters" }] },
-              { title: "Shop", links: [{ label: "All Products", to: "/shop" }, { label: "My Orders", to: "/orders" }] },
-              { title: "Support", links: [{ label: "Help Center", to: "#" }, { label: "Contact Us", to: "#" }] },
-            ].map(({ title, links }) => (
-              <div key={title}>
-                <h4 className="font-bold text-[13px] mb-4 text-[#F2C94C] tracking-wide uppercase">{title}</h4>
+
+            {/* Nav Columns — span 8 cols, split into 4 equal sub-cols */}
+            <div className="md:col-span-8 grid grid-cols-2 sm:grid-cols-4 gap-8">
+
+              {/* Platform */}
+              <div>
+                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Platform</h4>
                 <ul className="space-y-2.5">
-                  {links.map(({ label, to }) => (
+                  {[
+                    { label: 'Home', to: '/' },
+                    { label: 'Matches & Events', to: '/matches' },
+                    { label: 'News & Media', to: '/news-events' },
+                    { label: 'Fighters', to: '/fighters' },
+                    { label: 'Partners', to: '/strategic-partners' },
+                  ].map(({ label, to }) => (
                     <li key={label}>
-                      <Link to={to} className="text-slate-300 hover:text-white transition-colors text-xs font-semibold">{label}</Link>
+                      <Link to={to} className="text-white/45 hover:text-white text-xs font-medium transition-colors duration-150 leading-snug">
+                        {label}
+                      </Link>
                     </li>
                   ))}
                 </ul>
               </div>
-            ))}
+
+              {/* Shop */}
+              <div>
+                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Shop</h4>
+                <ul className="space-y-2.5">
+                  {[
+                    { label: 'All Products', to: '/shop' },
+                    { label: 'My Cart', to: '/cart' },
+                    { label: 'My Orders', to: '/orders' },
+                  ].map(({ label, to }) => (
+                    <li key={label}>
+                      <Link to={to} className="text-white/45 hover:text-white text-xs font-medium transition-colors duration-150 leading-snug">
+                        {label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Account */}
+              <div>
+                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Account</h4>
+                <ul className="space-y-2.5">
+                  {[
+                    { label: 'My Profile', to: '/profile' },
+                    { label: 'Subscription', to: '/subscription' },
+                    { label: 'Admin Platform', to: '/home' },
+                  ].map(({ label, to }) => (
+                    <li key={label}>
+                      <Link to={to} className="text-white/45 hover:text-white text-xs font-medium transition-colors duration-150 leading-snug">
+                        {label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Contact */}
+              <div>
+                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Contact</h4>
+                <ul className="space-y-2.5">
+                  <li className="flex items-start gap-2">
+                    <MapPin className="w-3.5 h-3.5 text-white/30 shrink-0 mt-0.5" />
+                    <span className="text-white/45 text-xs leading-snug">Phnom Penh, Cambodia</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <svg className="w-3.5 h-3.5 text-white/30 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                    <span className="text-white/45 text-xs leading-snug">info@kunkhmer.com</span>
+                  </li>
+                  <li className="mt-3">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Platform Online
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </div>
           </div>
-          <div className="border-t border-white/10 my-6" />
-          <div className="flex flex-col md:flex-row justify-between items-center gap-3 text-xs">
-            <div className="text-slate-400 font-medium">© 2026 KUNKHMER. All rights reserved.</div>
-            <div className="flex gap-5 text-slate-400 font-semibold">
-              {["Privacy Policy", "Terms of Service", "Cookie Policy"].map(t => (
-                <button key={t} className="hover:text-white transition-colors">{t}</button>
+
+          {/* Newsletter Strip */}
+          <div className="py-7 px-8 mb-10 rounded-2xl bg-gradient-to-r from-[#0A3D91]/40 via-[#0B4AAD]/30 to-[#0A3D91]/40 border border-white/[0.07] flex flex-col sm:flex-row items-center justify-between gap-5">
+            <div>
+              <p className="font-bold text-sm text-white">Stay updated with Kun Khmer</p>
+              <p className="text-white/40 text-xs mt-0.5">Get match results, fighter news & event announcements.</p>
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <input
+                type="email"
+                placeholder="Your email address"
+                className="flex-1 sm:w-64 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[#0A3D91] transition-colors"
+              />
+              <button className="px-5 py-2.5 rounded-xl bg-[#0A3D91] hover:bg-blue-700 text-white text-sm font-bold transition-colors whitespace-nowrap">
+                Subscribe
+              </button>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
+
+          {/* Bottom Bar */}
+          <div className="py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Copyright + Flag */}
+            <div className="flex items-center gap-3">
+              <span className="text-2xl" role="img" aria-label="Cambodia flag">🇰🇭</span>
+              <div>
+                <p className="text-white/35 text-xs font-medium">© 2026 KUNKHMER Federation. All rights reserved.</p>
+                <p className="text-white/20 text-[10px] mt-0.5">Preserving & promoting Cambodian martial arts heritage.</p>
+              </div>
+            </div>
+
+            {/* Legal Links */}
+            <div className="flex items-center gap-1 flex-wrap justify-center">
+              {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map((item, i, arr) => (
+                <span key={item} className="flex items-center gap-1">
+                  <button className="text-white/30 hover:text-white/70 text-[11px] font-medium transition-colors px-1">
+                    {item}
+                  </button>
+                  {i < arr.length - 1 && <span className="text-white/15 text-xs">·</span>}
+                </span>
               ))}
             </div>
           </div>
+
         </div>
       </footer>
     </div>

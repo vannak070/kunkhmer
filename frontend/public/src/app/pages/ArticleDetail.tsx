@@ -326,30 +326,84 @@ export function ArticleDetail() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white mt-auto border-t-4 border-[#C8102E]">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 md:py-16">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-8 border-b border-white/10 pb-10 mb-10">
-            <div className="flex items-center gap-3">
-              <img
-                src={kkfLogo}
-                alt="KKF Logo"
-                className="w-16 h-16 object-contain filter brightness-0 invert"
-              />
+      <footer className="relative bg-[#051C42] text-white overflow-hidden">
+        {/* Layered Background Glows */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(circle, #0A3D91 0%, transparent 65%)' }} />
+          <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-[0.08]" style={{ background: 'radial-gradient(circle, #C8102E 0%, transparent 70%)' }} />
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[900px] h-64 opacity-[0.06]" style={{ background: 'radial-gradient(ellipse, #1565C0 0%, transparent 70%)' }} />
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-8">
+          {/* Main Grid */}
+          <div className="pt-14 pb-10 grid grid-cols-1 md:grid-cols-12 gap-10">
+            {/* Brand */}
+            <div className="md:col-span-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center justify-center w-11 h-11 bg-white rounded-xl shadow-lg shadow-black/40 shrink-0">
+                  <img src={kkfLogo} alt="KKF Logo" className="w-8 h-8 object-contain" />
+                </div>
+                <div>
+                  <div className="text-lg font-black tracking-tight leading-none">KUNKHMER</div>
+                  <div className="text-[10px] text-[#F2C94C] font-bold tracking-[0.15em] uppercase mt-0.5">Official Digital Platform</div>
+                </div>
+              </div>
+              <p className="text-white/45 text-sm leading-relaxed max-w-xs">
+                The official home of Cambodian martial arts — connecting fighters, fans, and the global Kun Khmer community.
+              </p>
+            </div>
+
+            {/* Nav Links */}
+            <div className="md:col-span-7 flex flex-wrap gap-10 md:justify-end items-start pt-2">
               <div>
-                <h3 className="text-xl font-black tracking-wider leading-none">KUNKHMER</h3>
-                <p className="text-xs text-white/50 font-semibold tracking-wider mt-1">FEDERATION OF CAMBODIA</p>
+                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-3">Platform</h4>
+                <ul className="space-y-2">
+                  {[
+                    { label: 'News & Events', to: '/news-events' },
+                    { label: 'Fighters', to: '/fighters' },
+                    { label: 'Matches & Cards', to: '/matches' },
+                    { label: 'Official Shop', to: '/shop' },
+                  ].map(({ label, to }) => (
+                    <li key={label}>
+                      <Link to={to} className="text-white/45 hover:text-white text-xs font-medium transition-colors">{label}</Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-3">Contact</h4>
+                <ul className="space-y-2">
+                  <li><span className="text-white/45 text-xs">Phnom Penh, Cambodia</span></li>
+                  <li><span className="text-white/45 text-xs">info@kunkhmer.com</span></li>
+                  <li className="mt-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Platform Online
+                    </span>
+                  </li>
+                </ul>
               </div>
             </div>
-            <div className="flex flex-wrap justify-center gap-6 md:gap-10">
-              <Link to="/news-events" className="text-sm font-semibold text-white/70 hover:text-white transition-colors">News & Events</Link>
-              <Link to="/fighters" className="text-sm font-semibold text-white/70 hover:text-white transition-colors">Fighters</Link>
-              <Link to="/matches" className="text-sm font-semibold text-white/70 hover:text-white transition-colors">Matches & Cards</Link>
-              <Link to="/shop" className="text-sm font-semibold text-white/70 hover:text-white transition-colors">Official Shop</Link>
-            </div>
           </div>
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-white/40 font-semibold">
-            <p>© 2026 Kun Khmer Federation of Cambodia. All rights reserved.</p>
-            <p>Built for the Athlete Portal System Ecosystem</p>
+
+          {/* Divider */}
+          <div className="h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
+
+          {/* Bottom Bar */}
+          <div className="py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl" role="img" aria-label="Cambodia flag">🇰🇭</span>
+              <p className="text-white/30 text-xs font-medium">© 2026 KUNKHMER Federation. All rights reserved.</p>
+            </div>
+            <div className="flex items-center gap-1">
+              {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map((item, i, arr) => (
+                <span key={item} className="flex items-center gap-1">
+                  <button className="text-white/25 hover:text-white/60 text-[11px] font-medium transition-colors px-1">{item}</button>
+                  {i < arr.length - 1 && <span className="text-white/15 text-xs">·</span>}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </footer>
