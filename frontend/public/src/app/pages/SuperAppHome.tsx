@@ -762,19 +762,23 @@ export function SuperAppHome() {
   const broadcastStations: BroadcastStation[] = broadcastersList.map((station, index) => {
     const typeStr = station.type || "National TV";
     const reachStr = station.reach || "National";
+    const eventsCount = (dbEvents || []).filter(e => e.broadcast_station_id === station.id).length;
     return {
       id: station.id,
       name: station.name,
-      logo: station.logo || `https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=100&sig=${index % 10}`,
+      logo: station.logo_url || station.logoUrl || station.logo || `https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=100&sig=${index % 10}`,
       image: station.image || `https://images.unsplash.com/photo-1650984661525-7e6b1b874e47?w=400&sig=${index % 10}`,
       description: `${typeStr} - ${reachStr}`,
-      eventsCount: 0
+      eventsCount
     };
   });
 
   // SPONSORS: Transform sponsor data from Digital Platform
   const sponsors: Sponsor[] = sponsorsList.map((sponsor, index) => {
     const tier = (sponsor.tier || "platinum").toLowerCase() as "platinum" | "gold" | "silver";
+    const eventsSponsored = (dbEvents || []).filter(e => 
+      e.main_sponsor_id === sponsor.id || (e.sponsorIds && e.sponsorIds.includes(sponsor.id))
+    ).length;
     return {
       id: sponsor.id,
       name: sponsor.name,
@@ -782,7 +786,7 @@ export function SuperAppHome() {
       image: sponsor.image || `https://images.unsplash.com/photo-1771764678001-aa0f28e90f7f?w=400&sig=${index % 10}`,
       industry: sponsor.industry || "General Sponsor",
       tier,
-      eventsSponsored: 0,
+      eventsSponsored,
       website_url: sponsor.website_url || sponsor.websiteUrl || null,
       websiteUrl: sponsor.websiteUrl || sponsor.website_url || null,
     };
@@ -2228,8 +2232,8 @@ export function SuperAppHome() {
               className="group bg-white rounded-2xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-200"
             >
               <div className="flex items-start gap-4">
-                <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden group-hover:bg-[#0A3D91] transition-colors">
-                  <img src={station.logo} alt={station.name} className="w-12 h-12 object-contain" />
+                <div className="w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  <img src={station.logo} alt={station.name} className="w-full h-full object-cover rounded-full" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-lg font-black text-gray-900 mb-1 group-hover:text-[#0A3D91] transition-colors">{station.name}</h3>
@@ -2693,8 +2697,8 @@ export function SuperAppHome() {
                     <span className="text-[11px] font-black text-white uppercase">Live</span>
                   </div>
                   {/* Logo — bottom right */}
-                  <div className="absolute bottom-3 right-3 w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg border border-purple-100 overflow-hidden">
-                    <img src={station.logo} alt={station.name} className="w-full h-full object-contain p-1" />
+                  <div className="absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center overflow-hidden">
+                    <img src={station.logo} alt={station.name} className="w-full h-full object-cover rounded-full" />
                   </div>
                 </div>
 
@@ -2770,8 +2774,8 @@ export function SuperAppHome() {
                             <span className="text-[11px] font-black text-white uppercase">{m.label}</span>
                           </div>
                           {/* Logo — bottom right */}
-                          <div className="absolute bottom-3 right-3 w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg border border-white/60 overflow-hidden">
-                            <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-contain p-1" />
+                          <div className="absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center overflow-hidden">
+                            <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-cover rounded-full" />
                           </div>
                         </div>
 
@@ -2858,8 +2862,8 @@ export function SuperAppHome() {
                 key={sponsor.id}
                 className="group bg-white rounded-2xl p-8 hover:shadow-2xl transition-all duration-300 border-2 border-gray-300 hover:border-gray-400"
               >
-                <div className="w-24 h-24 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl flex items-center justify-center mb-4 mx-auto group-hover:scale-110 group-hover:shadow-xl transition-all overflow-hidden">
-                  <img src={sponsor.logo} alt={sponsor.name} className="w-20 h-20 object-contain" />
+                <div className="w-24 h-24 rounded-full flex items-center justify-center mb-4 mx-auto group-hover:scale-110 group-hover:shadow-xl transition-all overflow-hidden">
+                  <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-cover rounded-full" />
                 </div>
                 <h3 className="text-lg font-black text-gray-900 text-center mb-3">{sponsor.name}</h3>
                 <div className="text-center">
@@ -2887,8 +2891,8 @@ export function SuperAppHome() {
                 key={sponsor.id}
                 className="group bg-white rounded-2xl p-8 hover:shadow-2xl transition-all duration-300 border-2 border-yellow-200 hover:border-yellow-300"
               >
-                <div className="w-24 h-24 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-2xl flex items-center justify-center mb-4 mx-auto group-hover:scale-110 group-hover:shadow-xl transition-all overflow-hidden">
-                  <img src={sponsor.logo} alt={sponsor.name} className="w-20 h-20 object-contain" />
+                <div className="w-24 h-24 rounded-full flex items-center justify-center mb-4 mx-auto group-hover:scale-110 group-hover:shadow-xl transition-all overflow-hidden">
+                  <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-cover rounded-full" />
                 </div>
                 <h3 className="text-lg font-black text-gray-900 text-center mb-3">{sponsor.name}</h3>
                 <div className="text-center">
@@ -2916,8 +2920,8 @@ export function SuperAppHome() {
                 key={sponsor.id}
                 className="group bg-white rounded-2xl p-8 hover:shadow-2xl transition-all duration-300 border-2 border-gray-200 hover:border-gray-300"
               >
-                <div className="w-24 h-24 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl flex items-center justify-center mb-4 mx-auto group-hover:scale-110 group-hover:shadow-xl transition-all overflow-hidden">
-                  <img src={sponsor.logo} alt={sponsor.name} className="w-20 h-20 object-contain" />
+                <div className="w-24 h-24 rounded-full flex items-center justify-center mb-4 mx-auto group-hover:scale-110 group-hover:shadow-xl transition-all overflow-hidden">
+                  <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-cover rounded-full" />
                 </div>
                 <h3 className="text-lg font-black text-gray-900 text-center mb-3">{sponsor.name}</h3>
                 <div className="text-center">
@@ -3106,142 +3110,150 @@ export function SuperAppHome() {
 
       {matchesEventsTab === "events" && (
         <>
-          {/* Events List - Clean Professional Layout */}
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] p-6 md:p-8">
-            <div className="space-y-6">
-            {events.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                  <Calendar className="w-8 h-8 text-gray-400" />
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] overflow-hidden">
+
+            {/* Section Header — matches the MatchBatchCard dark header style */}
+            <div className="relative bg-gradient-to-r from-[#051C42] via-[#0A3D91] to-[#051C42] px-6 md:px-8 py-5 overflow-hidden">
+              <div className="absolute inset-0 opacity-10 pointer-events-none"
+                style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.03) 10px, rgba(255,255,255,0.03) 20px)' }} />
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center">
+                    <Calendar className="w-5 h-5 text-[#F2C94C]" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-white tracking-tight">Upcoming Events</h3>
+                    <p className="text-white/50 text-xs font-medium">Official Kun Khmer championship events</p>
+                  </div>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">No Upcoming Events</h3>
-                <p className="text-sm text-gray-500 font-medium max-w-sm mx-auto">There are no upcoming or running Kun Khmer championship events scheduled in our database.</p>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 border border-white/20 rounded-xl">
+                  <Trophy className="w-3.5 h-3.5 text-[#F2C94C]" />
+                  <span className="text-white font-black text-sm">{events.length}</span>
+                  <span className="text-white/60 text-xs font-medium">Events</span>
+                </div>
               </div>
-            ) : (
-              events.map((event) => (
-                <div
-                  key={event.id}
-                  onClick={() => {
-                    setSelectedEventId(event.id);
-                  }}
-                  className="group relative bg-gradient-to-br from-white to-gray-50/50 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-300 border-2 border-gray-100 hover:border-[#0A3D91]/30 cursor-pointer"
-                >
-                  {/* Event Header with gradient background */}
-                  <div className="relative bg-gradient-to-r from-[#0A3D91] via-blue-700 to-blue-800 px-6 py-5">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                      {/* Event Title & Date */}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Calendar className="w-5 h-5 text-white/90" />
-                          <span className="text-sm font-bold text-white/90">
-                            {formatEventDate(event.date)}
-                          </span>
-                        </div>
-                        <h3 className="text-2xl md:text-3xl font-black text-white mb-1 leading-tight">
-                          {event.name}
-                        </h3>
-                        <p className="text-sm text-white/80 line-clamp-1">{event.description}</p>
-                      </div>
+            </div>
 
-                      {/* Status & Bout Count */}
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg border border-white/30">
-                          <Trophy className="w-4 h-4 text-white" />
-                          <span className="text-sm font-black text-white">{event.matchesCount} Bouts</span>
-                        </div>
-                        <span className={`px-4 py-2 rounded-lg text-xs font-black uppercase ${
-                          event.status.toLowerCase() === 'upcoming' || event.status === 'Published' || event.status === 'Approved' ? 'bg-green-500 text-white' :
-                          event.status.toLowerCase() === 'live' || event.status === 'Ongoing' || event.status === 'In Progress' ? 'bg-red-500 text-white animate-pulse' :
-                          event.status.toLowerCase() === 'completed' ? 'bg-gray-700 text-white' :
-                          'bg-blue-500 text-white'
-                        }`}>
-                          {event.status}
-                        </span>
-                      </div>
-                    </div>
+            {/* Events List */}
+            <div className="p-6 md:p-8 space-y-4">
+              {events.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                  <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+                    <Calendar className="w-8 h-8 text-gray-400" />
                   </div>
-
-                  {/* Event Content */}
-                  <div className="p-6">
-                    {/* Event Details - Clean Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                      {/* Venue */}
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <MapPin className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Venue</span>
-                          <p className="text-sm font-black text-gray-900 leading-tight">{event.venue}</p>
-                        </div>
-                      </div>
-
-                      {/* Organizer */}
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Building2 className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Organizer</span>
-                          <p className="text-sm font-black text-gray-900 leading-tight">{event.organizer}</p>
-                        </div>
-                      </div>
-
-                      {/* Broadcast */}
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Tv className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Broadcast</span>
-                          <p className="text-sm font-black text-gray-900 leading-tight">{event.station}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Sponsors Section */}
-                    {event.sponsors && event.sponsors.length > 0 && (
-                      <div className="mb-6">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Award className="w-5 h-5 text-[#F2C94C]" />
-                          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Official Sponsors</span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {event.sponsors.map((sponsor, idx) => (
-                            <span key={idx} className="px-3 py-1.5 bg-gray-50 text-gray-900 text-sm font-bold rounded-lg border border-gray-200">
-                              {sponsor}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Trophy className="w-4 h-4" />
-                        <span className="font-bold">{event.matchesCount} championship bouts scheduled</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedEventId(event.id);
-                        }}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#0A3D91] to-blue-700 hover:from-blue-800 hover:to-blue-900 text-white rounded-xl transition-all font-bold text-sm shadow-md hover:shadow-lg"
-                      >
-                        <Eye className="w-4 h-4" />
-                        <span>View Event</span>
-                        <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Hover Effect */}
-                  <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-[#0A3D91] via-blue-600 to-[#C8102E] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <h3 className="text-xl font-bold text-gray-900 mb-1">No Upcoming Events</h3>
+                  <p className="text-sm text-gray-500 font-medium max-w-sm mx-auto">There are no upcoming Kun Khmer championship events scheduled yet.</p>
                 </div>
-              ))
-            )}
+              ) : (
+                events.map((event, index) => (
+                  <div
+                    key={event.id}
+                    onClick={() => setSelectedEventId(event.id)}
+                    className="group relative bg-white rounded-2xl border border-gray-100 hover:border-[#0A3D91]/20 hover:shadow-[0_8px_30px_rgba(10,61,145,0.08)] transition-all duration-300 cursor-pointer overflow-hidden"
+                  >
+                    {/* Left brand accent bar */}
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-[#0A3D91] via-[#1565C0] to-[#C8102E] opacity-70 group-hover:opacity-100 transition-opacity" />
+
+                    <div className="pl-5 pr-5 py-5">
+                      <div className="flex flex-col md:flex-row md:items-start gap-4">
+
+                        {/* Left: Event number badge + info */}
+                        <div className="flex items-start gap-4 flex-1 min-w-0">
+                          {/* Index badge */}
+                          <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-gradient-to-br from-[#0A3D91] to-[#1565C0] flex items-center justify-center shadow-md shadow-blue-900/20">
+                            <span className="text-white font-black text-sm">{String(index + 1).padStart(2, '0')}</span>
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            {/* Status + date row */}
+                            <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                event.status.toLowerCase() === 'upcoming' || event.status === 'Published' || event.status === 'Approved'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : event.status.toLowerCase() === 'live' || event.status === 'Ongoing' || event.status === 'In Progress'
+                                  ? 'bg-red-50 text-red-600 border border-red-200 animate-pulse'
+                                  : event.status.toLowerCase() === 'completed'
+                                  ? 'bg-gray-100 text-gray-600 border border-gray-200'
+                                  : 'bg-blue-50 text-blue-700 border border-blue-200'
+                              }`}>
+                                {event.status.toLowerCase() === 'live' || event.status === 'Ongoing' ? (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping inline-block" />
+                                ) : (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-current inline-block" />
+                                )}
+                                {event.status}
+                              </span>
+                              <span className="flex items-center gap-1 text-xs text-gray-400 font-medium">
+                                <Calendar className="w-3 h-3" />
+                                {formatEventDate(event.date)}
+                              </span>
+                            </div>
+
+                            {/* Event name */}
+                            <h3 className="text-base md:text-lg font-black text-gray-900 leading-tight mb-1 truncate group-hover:text-[#0A3D91] transition-colors">
+                              {event.name}
+                            </h3>
+
+                            {/* Description */}
+                            {event.description && (
+                              <p className="text-xs text-gray-500 leading-relaxed line-clamp-1 mb-3">
+                                {event.description}
+                              </p>
+                            )}
+
+                            {/* Info pills row */}
+                            <div className="flex flex-wrap gap-2">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-100 rounded-lg text-xs font-semibold text-gray-600">
+                                <MapPin className="w-3 h-3 text-red-400" />
+                                {event.venue}
+                              </span>
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-100 rounded-lg text-xs font-semibold text-gray-600">
+                                <Building2 className="w-3 h-3 text-blue-400" />
+                                {event.organizer}
+                              </span>
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-100 rounded-lg text-xs font-semibold text-gray-600">
+                                <Tv className="w-3 h-3 text-purple-400" />
+                                {event.station}
+                              </span>
+                              {event.sponsors && event.sponsors.length > 0 && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-100 rounded-lg text-xs font-semibold text-amber-700">
+                                  <Award className="w-3 h-3" />
+                                  {event.sponsors[0]}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right: Bouts count + CTA */}
+                        <div className="flex md:flex-col items-center md:items-end justify-between md:justify-start gap-3 flex-shrink-0 md:pt-1">
+                          {/* Bouts badge */}
+                          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0A3D91]/5 border border-[#0A3D91]/10 rounded-xl">
+                            <Trophy className="w-3.5 h-3.5 text-[#0A3D91]" />
+                            <span className="text-sm font-black text-[#0A3D91]">{event.matchesCount}</span>
+                            <span className="text-xs text-[#0A3D91]/70 font-medium">Bouts</span>
+                          </div>
+
+                          {/* View button */}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setSelectedEventId(event.id); }}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#0A3D91] to-[#1565C0] hover:from-[#051C42] hover:to-[#0A3D91] text-white rounded-xl text-xs font-bold shadow-sm hover:shadow-md transition-all duration-200 group/btn"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>View Event</span>
+                            <ArrowRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
+                          </button>
+                        </div>
+
+                      </div>
+                    </div>
+
+                    {/* Bottom hover accent */}
+                    <div className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-[#0A3D91] via-[#1565C0] to-[#C8102E] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </>

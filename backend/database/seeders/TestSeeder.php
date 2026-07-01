@@ -590,10 +590,46 @@ class TestSeeder extends Seeder
 
         // 5. Seed Broadcast Stations
         $stations = [
-            ['id' => (string) Str::uuid(), 'name' => 'Town Full HDTV', 'stream_url' => 'https://stream.townfullhdtv.com/live', 'type' => 'Cable TV', 'reach' => 'National', 'active' => true],
-            ['id' => (string) Str::uuid(), 'name' => 'Bayon TV', 'stream_url' => 'https://stream.bayontv.com/live', 'type' => 'Cable TV', 'reach' => 'National', 'active' => true],
-            ['id' => (string) Str::uuid(), 'name' => 'PNN', 'stream_url' => 'https://stream.pnn.com/live', 'type' => 'Cable TV', 'reach' => 'National', 'active' => true],
-            ['id' => (string) Str::uuid(), 'name' => 'CTN', 'stream_url' => 'https://stream.ctn.com/live', 'type' => 'Cable TV', 'reach' => 'National', 'active' => true],
+            [
+                'id' => (string) Str::uuid(),
+                'name' => 'Town Full HDTV',
+                'stream_url' => 'https://stream.townfullhdtv.com/live',
+                'type' => 'Cable TV',
+                'reach' => 'National',
+                'active' => true,
+                'logo_url' => 'https://images.unsplash.com/photo-1593784991095-a205069470b6?w=400&h=400&fit=crop',
+                'image' => 'https://images.unsplash.com/photo-1768222935380-0a3a76fbb42e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080'
+            ],
+            [
+                'id' => (string) Str::uuid(),
+                'name' => 'Bayon TV',
+                'stream_url' => 'https://stream.bayontv.com/live',
+                'type' => 'Cable TV',
+                'reach' => 'National',
+                'active' => true,
+                'logo_url' => 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
+                'image' => 'https://images.unsplash.com/photo-1650984661525-7e6b1b874e47?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080'
+            ],
+            [
+                'id' => (string) Str::uuid(),
+                'name' => 'PNN',
+                'stream_url' => 'https://stream.pnn.com/live',
+                'type' => 'Cable TV',
+                'reach' => 'National',
+                'active' => true,
+                'logo_url' => 'https://images.unsplash.com/photo-1522152302542-71a8e5172aa1?w=400&h=400&fit=crop',
+                'image' => 'https://images.unsplash.com/photo-1693993367105-d2c37d9b60ce?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080'
+            ],
+            [
+                'id' => (string) Str::uuid(),
+                'name' => 'CTN',
+                'stream_url' => 'https://stream.ctn.com/live',
+                'type' => 'Cable TV',
+                'reach' => 'National',
+                'active' => true,
+                'logo_url' => 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=400&h=400&fit=crop',
+                'image' => 'https://images.unsplash.com/photo-1650984661525-7e6b1b874e47?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080'
+            ],
         ];
         DB::table('broadcast_stations')->insert($stations);
 
