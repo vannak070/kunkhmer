@@ -18,8 +18,6 @@ import { useEffect } from "react";
 import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
 import { clsx } from "clsx";
-import html2canvas from "html2canvas-pro";
-import { ShareFightCard } from "../components/ShareFightCard";
 import kkfLogo from "../../assets/modern_logo.png";
 import { getJudges, getReferees } from "../utils/officialsStore";
 
@@ -37,7 +35,6 @@ export function BatchDetail() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showOfficialModal, setShowOfficialModal] = useState(false);
   const [selectedMatchForOfficials, setSelectedMatchForOfficials] = useState<string | null>(null);
-  const [showShareModal, setShowShareModal] = useState(false);
   const [selectedReferee, setSelectedReferee] = useState<string>("");
   const [selectedJudges, setSelectedJudges] = useState<string[]>([]);
 
@@ -589,7 +586,7 @@ export function BatchDetail() {
   };
 
   const handleShare = () => {
-    setShowShareModal(true);
+    navigate(`/home/batches/${batch.id}/share`);
   };
 
   const handleDownloadReport = () => {
@@ -1787,13 +1784,7 @@ export function BatchDetail() {
         </div>
       )}
 
-      {/* Share Modal */}
-      {showShareModal && (
-        <ShareFightCard 
-          batch={batch} 
-          onClose={() => setShowShareModal(false)} 
-        />
-      )}
+
     </div>
   </div>
   );
