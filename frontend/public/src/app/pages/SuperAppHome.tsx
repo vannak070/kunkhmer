@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useParams, useNavigate } from "react-router";
+import { Link, useParams, useNavigate, useLocation } from "react-router";
 import { api } from "../utils/api";
 import { Search, Bell, ShoppingCart, User, Heart, Star, Flame, Zap, Crown, ChevronRight, Package, Plus, Minus, X, CreditCard, Play, Calendar, MapPin, Clock, Award, Users, BookOpen, Video, Menu, Home as HomeIcon, Trophy, TrendingUp, Sparkles, ArrowRight, ArrowLeft, Check, ChevronDown, ChevronUp, Filter, Grid3x3, Eye, ShoppingBag, Building2, Tv, Handshake, Weight, Share2 } from "lucide-react";
 import { useWallet } from "../contexts/WalletContext";
@@ -185,6 +185,7 @@ export function SuperAppHome() {
   const { orders, createOrder } = useOrders();
   const params = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [currentSection, setCurrentSection] = useState<Section>("home");
   const [selectedCategory, setSelectedCategory] = useState<Category>("all");
@@ -231,6 +232,21 @@ export function SuperAppHome() {
     phone: ""
   });
 
+  const formatEventDate = (dateStr: any, isShort: boolean = false) => {
+    try {
+      if (!dateStr) return "TBD Date";
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return "TBD Date";
+      return d.toLocaleDateString('en-US', isShort ? {
+        weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+      } : {
+        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+      });
+    } catch (e) {
+      return "TBD Date";
+    }
+  };
+
   const [fightersList, setFightersList] = useState<any[]>([]);
   const [loadingFighters, setLoadingFighters] = useState(true);
 
@@ -247,6 +263,83 @@ export function SuperAppHome() {
     };
     fetchFighters();
   }, []);
+
+  const [dbBatches, setDbBatches] = useState<any[]>([]);
+  const [dbMatches, setDbMatches] = useState<any[]>([]);
+  const [dbEvents, setDbEvents] = useState<any[]>([]);
+  const [loadingDbData, setLoadingDbData] = useState(true);
+
+  useEffect(() => {
+    const fetchDbData = async () => {
+      try {
+        const [batchesList, matchesList, eventsList] = await Promise.all([
+          api.batches.list(),
+          api.matches.list(),
+          api.events.list()
+        ]);
+        setDbBatches(batchesList || []);
+        setDbMatches(matchesList || []);
+        setDbEvents(eventsList || []);
+      } catch (err) {
+        console.error("Failed to load matches/batches/events from API:", err);
+      } finally {
+        setLoadingDbData(false);
+      }
+    };
+    fetchDbData();
+  }, []);
+
+  const mappedBatches = (dbBatches || []).map((b: any) => {
+    const batchMatches = (dbMatches || []).filter((m: any) => m.sub_event_id === b.id).map((m: any) => {
+      const isChampionship = m.isTitleMatch || m.is_title_match || false;
+      const fA = fightersList.find((f: any) => f.id === m.fighter_a_id);
+      const fB = fightersList.find((f: any) => f.id === m.fighter_b_id);
+
+      return {
+        id: m.id,
+        status: m.status,
+        rounds: m.rounds,
+        weightClass: m.agreed_weight ? `${m.agreed_weight} kg` : "Catchweight",
+        matchType: isChampionship ? "Championship Bout" : "Ranking Fight",
+        isChampionshipBout: isChampionship,
+        winnerId: m.winner_id,
+        winnerMethod: m.winner_method,
+        winnerRound: m.winner_round,
+        winnerTime: m.winner_time,
+        fighterA: {
+          id: m.fighter_a_id,
+          name: m.fighter_a_name || fA?.name || "TBD Fighter A",
+          image: m.fighter_a_image || fA?.image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100",
+          clubName: m.club_a_name || fA?.clubName || "Independent",
+          grade: m.fighter_a_grade || fA?.grade || "C",
+          weight: parseFloat(m.fighter_a_weight || m.agreed_weight || fA?.currentWeight || 0)
+        },
+        fighterB: {
+          id: m.fighter_b_id,
+          name: m.fighter_b_name || fB?.name || "TBD Fighter B",
+          image: m.fighter_b_image || fB?.image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100",
+          clubName: m.club_b_name || fB?.clubName || "Independent",
+          grade: m.fighter_b_grade || fB?.grade || "C",
+          weight: parseFloat(m.fighter_b_weight || m.agreed_weight || fB?.currentWeight || 0)
+        }
+      };
+    });
+
+    return {
+      id: b.id,
+      eventId: b.event_id,
+      event_id: b.event_id,
+      batchNumber: b.name || b.batch_number || `BATCH-${b.week_number}`,
+      eventName: b.event_name || b.event?.name || "Weekly Fight Card",
+      location: b.location || "Olympic Stadium Arena",
+      date: b.date ? b.date.split("T")[0] : "",
+      status: b.status || "Draft",
+      totalMatches: batchMatches.length,
+      matches: batchMatches,
+      organizerClub: b.creator_name,
+      createdBy: b.creator_name
+    };
+  });
 
   const [newsArticles, setNewsArticles] = useState<any[]>([]);
   const [loadingNews, setLoadingNews] = useState(true);
@@ -398,6 +491,27 @@ export function SuperAppHome() {
     }
   }, [currentSection]);
 
+  // Sync matches sub-tab with query parameter (e.g. ?tab=events or ?tab=previous)
+  useEffect(() => {
+    if (currentSection === "matches") {
+      const queryParams = new URLSearchParams(location.search);
+      const tabParam = queryParams.get("tab");
+      const eventParam = queryParams.get("event") || queryParams.get("eventId");
+      
+      if (tabParam === "events") {
+        setMatchesEventsTab("events");
+      } else if (tabParam === "previous" || tabParam === "results") {
+        setMatchesEventsTab("previous");
+      } else if (tabParam === "matches" || tabParam === "batches") {
+        setMatchesEventsTab("matches");
+      }
+      
+      if (eventParam) {
+        setSelectedEventId(eventParam);
+      }
+    }
+  }, [currentSection, location.search]);
+
   // Scroll to top when section changes
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -445,6 +559,10 @@ export function SuperAppHome() {
   // Update URL when section changes (without page reload)
   const handleSectionChange = (section: Section) => {
     setCurrentSection(section);
+    if (section === "matches") {
+      setSelectedEventId(null);
+      setSelectedMatchId(null);
+    }
     if (section === "home") {
       navigate("/", { replace: true });
     } else {
@@ -596,20 +714,30 @@ export function SuperAppHome() {
   });
 
   // EVENTS: Transform event data from Digital Platform
-  const events: Event[] = MOCK_EVENTS.map(event => {
+  const events: Event[] = (dbEvents || [])
+    .filter(event => event.status !== 'Draft')
+    .map(event => {
+    const eventBatches = (dbBatches || []).filter((b: any) => b.event_id === event.id);
+    const eventBatchIds = eventBatches.map((b: any) => b.id);
+    const matchesCount = (dbMatches || []).filter((m: any) => eventBatchIds.includes(m.sub_event_id)).length;
+
     return {
       id: event.id,
       name: event.name,
       date: event.date,
-      venue: event.location,
-      image: event.image || "https://images.unsplash.com/photo-1504309092620-4d0ec726efa4?w=800",
-      matches: event.matchesCount || 0,
-      matchesCount: event.matchesCount || 0,
-      status: event.status,
+      venue: event.location || "TBD Arena",
+      image: event.banner_image_url || event.image || "https://images.unsplash.com/photo-1504309092620-4d0ec726efa4?w=800",
+      matches: matchesCount,
+      matchesCount: matchesCount,
+      status: event.status || "upcoming",
       description: event.description || "",
-      station: event.station,
-      organizer: event.organizer,
-      sponsors: event.sponsors || []
+      station: typeof event.station === 'object' && event.station !== null
+        ? (event.station.name || "TBD TV")
+        : (event.broadcast_station_name || event.station || "TBD TV"),
+      organizer: typeof event.organizer === 'object' && event.organizer !== null
+        ? (event.organizer.full_name || event.organizer.username || "Kun Khmer Federation")
+        : (event.organizer || "Kun Khmer Federation"),
+      sponsors: event.main_sponsor_name ? [event.main_sponsor_name] : []
     };
   });
 
@@ -669,10 +797,10 @@ export function SuperAppHome() {
    */
   
   // MATCHES: Transform batch/match data from Digital Platform
-  const matches: Match[] = MOCK_BATCHES.slice(0, 10).flatMap(batch => 
-    batch.matches.slice(0, 3).map(match => {
-      const fighterAClub = MOCK_CLUBS.find(c => c.id === match.fighterA.clubId);
-      const fighterBClub = MOCK_CLUBS.find(c => c.id === match.fighterB.clubId);
+  const matches: Match[] = (mappedBatches || []).flatMap(batch => 
+    batch.matches.map(match => {
+      const fighterAClub = MOCK_CLUBS.find(c => c.id === match.fighterA.id);
+      const fighterBClub = MOCK_CLUBS.find(c => c.id === match.fighterB.id);
       
       return {
         id: match.id,
@@ -1385,28 +1513,24 @@ export function SuperAppHome() {
         </div>
       </div>
 
-      {/* Floating Tabs Above Content */}
-      <div className="relative -mb-4">
-        <div className="flex items-center justify-start gap-1 relative z-10">
+      {/* Premium Segmented Control Tabs */}
+      <div className="flex justify-center md:justify-start mb-6">
+        <div className="flex bg-slate-100/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/50 shadow-md">
           {/* News Tab */}
           <button
             onClick={() => setNewsEventsTab("news")}
-            className={`group relative px-8 py-4 transition-all duration-300 flex items-center gap-3 ${
+            className={`px-6 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all duration-300 flex items-center gap-2.5 ${
               newsEventsTab === "news"
-                ? "bg-white text-gray-900 rounded-t-xl"
-                : "bg-white/40 text-gray-500 hover:bg-white/60 rounded-t-xl"
+                ? "bg-white text-gray-900 shadow-sm border border-slate-200/40"
+                : "text-gray-500 hover:text-gray-700 hover:bg-white/30"
             }`}
           >
-            <div className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300 ${
-              newsEventsTab === "news"
-                ? "bg-[#0A3D91]/10"
-                : "bg-gray-200/50"
-            }`}>
-              <BookOpen className={`w-4 h-4 ${newsEventsTab === "news" ? "text-[#0A3D91]" : ""}`} />
-            </div>
-            <span className={`font-bold text-xs tracking-wide uppercase ${newsEventsTab === "news" ? "text-gray-900" : ""}`}>Latest News</span>
+            <BookOpen className={`w-4 h-4 ${newsEventsTab === "news" ? "text-[#0A3D91]" : "text-gray-400"}`} />
+            <span>Latest News</span>
             {newsArticles.length > 0 && (
-              <span className="px-2 py-0.5 bg-blue-100 text-[#0A3D91] text-[10px] font-black rounded-full">
+              <span className={`px-2 py-0.5 text-[10px] font-black rounded-full ${
+                newsEventsTab === "news" ? "bg-blue-100 text-[#0A3D91]" : "bg-slate-200 text-slate-500"
+              }`}>
                 {newsArticles.length}
               </span>
             )}
@@ -1415,22 +1539,18 @@ export function SuperAppHome() {
           {/* Media Tab */}
           <button
             onClick={() => setNewsEventsTab("media")}
-            className={`group relative px-8 py-4 transition-all duration-300 flex items-center gap-3 ${
+            className={`px-6 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all duration-300 flex items-center gap-2.5 ${
               newsEventsTab === "media"
-                ? "bg-white text-gray-900 rounded-t-xl"
-                : "bg-white/40 text-gray-500 hover:bg-white/60 rounded-t-xl"
+                ? "bg-white text-gray-900 shadow-sm border border-slate-200/40"
+                : "text-gray-500 hover:text-gray-700 hover:bg-white/30"
             }`}
           >
-            <div className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300 ${
-              newsEventsTab === "media"
-                ? "bg-yellow-500/10"
-                : "bg-gray-200/50"
-            }`}>
-              <Video className={`w-4 h-4 ${newsEventsTab === "media" ? "text-yellow-600" : ""}`} />
-            </div>
-            <span className={`font-bold text-xs tracking-wide uppercase ${newsEventsTab === "media" ? "text-gray-900" : ""}`}>Media Hub</span>
+            <Video className={`w-4 h-4 ${newsEventsTab === "media" ? "text-yellow-600" : "text-gray-400"}`} />
+            <span>Media Hub</span>
             {mediaContent.length > 0 && (
-              <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-[10px] font-black rounded-full">
+              <span className={`px-2 py-0.5 text-[10px] font-black rounded-full ${
+                newsEventsTab === "media" ? "bg-yellow-100 text-yellow-800" : "bg-slate-200 text-slate-500"
+              }`}>
                 {mediaContent.length}
               </span>
             )}
@@ -1440,7 +1560,7 @@ export function SuperAppHome() {
 
       {/* Tab Content */}
       {newsEventsTab === "news" && !selectedArticle && (
-        <div className="bg-white rounded-2xl rounded-tl-none p-6 md:p-8 border border-gray-100">
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] p-6 md:p-8">
           {/* Filters Bar */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-100">
             {/* Search Input */}
@@ -1605,7 +1725,7 @@ export function SuperAppHome() {
 
       {/* Article Detail View - Inline */}
       {newsEventsTab === "news" && selectedArticle && (
-        <div className="bg-white rounded-2xl rounded-tl-none border border-gray-100">
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] overflow-hidden">
           {/* Back Button */}
           <div className="p-6 md:p-8 border-b border-gray-100">
             <button
@@ -1803,7 +1923,7 @@ export function SuperAppHome() {
       )}
 
       {newsEventsTab === "media" && (
-        <div className="bg-white rounded-2xl rounded-tl-none p-6 md:p-8 border border-gray-100">
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] p-6 md:p-8">
           {/* Filters Bar */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-100">
             {/* Search Input */}
@@ -2417,71 +2537,53 @@ export function SuperAppHome() {
         <p className="text-gray-500">Official partners supporting Kun Khmer</p>
       </div>
 
-      {/* Floating Tabs Above Content */}
-      <div className="relative -mb-4">
-        <div className="flex items-center justify-start gap-1 relative z-10">
+      {/* Premium Segmented Control Tabs */}
+      <div className="flex justify-center md:justify-start mb-6">
+        <div className="flex bg-slate-100/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/50 shadow-md">
           {/* Clubs Tab */}
           <button
             onClick={() => setStrategicPartnersTab("clubs")}
-            className={`group relative px-8 py-4 transition-all duration-300 flex items-center gap-3 ${
+            className={`px-6 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all duration-300 flex items-center gap-2.5 ${
               strategicPartnersTab === "clubs"
-                ? "bg-white text-gray-900 rounded-t-xl"
-                : "bg-white/40 text-gray-500 hover:bg-white/60 rounded-t-xl"
+                ? "bg-white text-gray-900 shadow-sm border border-slate-200/40"
+                : "text-gray-500 hover:text-gray-700 hover:bg-white/30"
             }`}
           >
-            <div className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300 ${
-              strategicPartnersTab === "clubs"
-                ? "bg-[#0A3D91]/10"
-                : "bg-gray-200/50"
-            }`}>
-              <Building2 className={`w-4 h-4 ${strategicPartnersTab === "clubs" ? "text-[#0A3D91]" : ""}`} />
-            </div>
-            <span className={`font-bold text-xs tracking-wide uppercase ${strategicPartnersTab === "clubs" ? "text-gray-900" : ""}`}>Clubs & Gyms</span>
+            <Building2 className={`w-4 h-4 ${strategicPartnersTab === "clubs" ? "text-[#0A3D91]" : "text-gray-400"}`} />
+            <span>Clubs & Gyms</span>
           </button>
 
           {/* Broadcasts Tab */}
           <button
             onClick={() => setStrategicPartnersTab("broadcasts")}
-            className={`group relative px-8 py-4 transition-all duration-300 flex items-center gap-3 ${
+            className={`px-6 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all duration-300 flex items-center gap-2.5 ${
               strategicPartnersTab === "broadcasts"
-                ? "bg-white text-gray-900 rounded-t-xl"
-                : "bg-white/40 text-gray-500 hover:bg-white/60 rounded-t-xl"
+                ? "bg-white text-gray-900 shadow-sm border border-slate-200/40"
+                : "text-gray-500 hover:text-gray-700 hover:bg-white/30"
             }`}
           >
-            <div className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300 ${
-              strategicPartnersTab === "broadcasts"
-                ? "bg-purple-500/10"
-                : "bg-gray-200/50"
-            }`}>
-              <Tv className={`w-4 h-4 ${strategicPartnersTab === "broadcasts" ? "text-purple-600" : ""}`} />
-            </div>
-            <span className={`font-bold text-xs tracking-wide uppercase ${strategicPartnersTab === "broadcasts" ? "text-gray-900" : ""}`}>Broadcast Partners</span>
+            <Tv className={`w-4 h-4 ${strategicPartnersTab === "broadcasts" ? "text-purple-600" : "text-gray-400"}`} />
+            <span>Broadcast Partners</span>
           </button>
 
           {/* Sponsors Tab */}
           <button
             onClick={() => setStrategicPartnersTab("sponsors")}
-            className={`group relative px-8 py-4 transition-all duration-300 flex items-center gap-3 ${
+            className={`px-6 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all duration-300 flex items-center gap-2.5 ${
               strategicPartnersTab === "sponsors"
-                ? "bg-white text-gray-900 rounded-t-xl"
-                : "bg-white/40 text-gray-500 hover:bg-white/60 rounded-t-xl"
+                ? "bg-white text-gray-900 shadow-sm border border-slate-200/40"
+                : "text-gray-500 hover:text-gray-700 hover:bg-white/30"
             }`}
           >
-            <div className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300 ${
-              strategicPartnersTab === "sponsors"
-                ? "bg-yellow-500/10"
-                : "bg-gray-200/50"
-            }`}>
-              <Handshake className={`w-4 h-4 ${strategicPartnersTab === "sponsors" ? "text-yellow-600" : ""}`} />
-            </div>
-            <span className={`font-bold text-xs tracking-wide uppercase ${strategicPartnersTab === "sponsors" ? "text-gray-900" : ""}`}>Official Sponsors</span>
+            <Handshake className={`w-4 h-4 ${strategicPartnersTab === "sponsors" ? "text-yellow-600" : "text-gray-400"}`} />
+            <span>Official Sponsors</span>
           </button>
         </div>
       </div>
 
       {/* Tab Content */}
       {strategicPartnersTab === "clubs" && (
-        <div className="bg-white rounded-2xl rounded-tl-none p-8 border border-gray-100">
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] p-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {clubs.map((club) => (
               <div
@@ -2570,7 +2672,7 @@ export function SuperAppHome() {
 
 
       {strategicPartnersTab === "broadcasts" && (
-        <div className="bg-white rounded-2xl rounded-tl-none rounded-tr-none p-8 border border-gray-100">
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] p-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {broadcastStations.map((station) => (
               <div
@@ -2847,10 +2949,10 @@ export function SuperAppHome() {
         </div>
       </div>
 
-      {/* Floating Tabs Above Content */}
-      <div className="relative -mb-4">
-        <div className="flex items-center justify-start gap-1 relative z-10">
-          {/* Fight Matches Tab */}
+      {/* Premium Segmented Control Tabs */}
+      <div className="flex justify-center md:justify-start mb-6">
+        <div className="flex bg-slate-100/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/50 shadow-md">
+          {/* Matches Tab */}
           <button
             onClick={() => {
               setMatchesEventsTab("matches");
@@ -2858,24 +2960,19 @@ export function SuperAppHome() {
               setMatchFilter("all");
               setSelectedWeightClass("all");
               setSelectedLocation("all");
+              window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className={`group relative px-8 py-4 transition-all duration-300 flex items-center gap-3 ${
+            className={`px-6 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all duration-300 flex items-center gap-2.5 ${
               matchesEventsTab === "matches"
-                ? "bg-white text-gray-900 rounded-t-xl"
-                : "bg-white/40 text-gray-500 hover:bg-white/60 rounded-t-xl"
+                ? "bg-white text-gray-900 shadow-sm border border-slate-200/40"
+                : "text-gray-500 hover:text-gray-700 hover:bg-white/30"
             }`}
           >
-            <div className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300 ${
-              matchesEventsTab === "matches"
-                ? "bg-[#0A3D91]/10"
-                : "bg-gray-200/50"
-            }`}>
-              <Trophy className={`w-4 h-4 ${matchesEventsTab === "matches" ? "text-[#0A3D91]" : ""}`} />
-            </div>
-            <span className={`font-bold text-xs tracking-wide uppercase ${matchesEventsTab === "matches" ? "text-gray-900" : ""}`}>Fight Matches</span>
+            <Trophy className={`w-4 h-4 ${matchesEventsTab === "matches" ? "text-[#0A3D91]" : "text-gray-400"}`} />
+            <span>Matches</span>
           </button>
 
-          {/* All Matches Tab */}
+          {/* Results Tab */}
           <button
             onClick={() => {
               setMatchesEventsTab("previous");
@@ -2885,21 +2982,16 @@ export function SuperAppHome() {
               setSelectedWeightClass("all");
               setSelectedLocation("all");
               setSelectedMatchType("all");
+              window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className={`group relative px-8 py-4 transition-all duration-300 flex items-center gap-3 ${
+            className={`px-6 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all duration-300 flex items-center gap-2.5 ${
               matchesEventsTab === "previous"
-                ? "bg-white text-gray-900 rounded-t-xl"
-                : "bg-white/40 text-gray-500 hover:bg-white/60 rounded-t-xl"
+                ? "bg-white text-gray-900 shadow-sm border border-slate-200/40"
+                : "text-gray-500 hover:text-gray-700 hover:bg-white/30"
             }`}
           >
-            <div className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300 ${
-              matchesEventsTab === "previous"
-                ? "bg-[#0A3D91]/10"
-                : "bg-gray-200/50"
-            }`}>
-              <Trophy className={`w-4 h-4 ${matchesEventsTab === "previous" ? "text-[#0A3D91]" : ""}`} />
-            </div>
-            <span className={`font-bold text-xs tracking-wide uppercase ${matchesEventsTab === "previous" ? "text-gray-900" : ""}`}>All Matches</span>
+            <Trophy className={`w-4 h-4 ${matchesEventsTab === "previous" ? "text-[#0A3D91]" : "text-gray-400"}`} />
+            <span>Results</span>
           </button>
 
           {/* Upcoming Events Tab */}
@@ -2907,30 +2999,25 @@ export function SuperAppHome() {
             onClick={() => {
               setMatchesEventsTab("events");
               setSelectedEventId(null);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className={`group relative px-8 py-4 transition-all duration-300 flex items-center gap-3 ${
+            className={`px-6 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all duration-300 flex items-center gap-2.5 ${
               matchesEventsTab === "events"
-                ? "bg-white text-gray-900 rounded-t-xl"
-                : "bg-white/40 text-gray-500 hover:bg-white/60 rounded-t-xl"
+                ? "bg-white text-gray-900 shadow-sm border border-slate-200/40"
+                : "text-gray-500 hover:text-gray-700 hover:bg-white/30"
             }`}
           >
-            <div className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300 ${
-              matchesEventsTab === "events"
-                ? "bg-[#0A3D91]/10"
-                : "bg-gray-200/50"
-            }`}>
-              <Calendar className={`w-4 h-4 ${matchesEventsTab === "events" ? "text-[#0A3D91]" : ""}`} />
-            </div>
-            <span className={`font-bold text-xs tracking-wide uppercase ${matchesEventsTab === "events" ? "text-gray-900" : ""}`}>Upcoming Events</span>
+            <Calendar className={`w-4 h-4 ${matchesEventsTab === "events" ? "text-[#0A3D91]" : "text-gray-400"}`} />
+            <span>Upcoming Events</span>
           </button>
         </div>
       </div>
 
       {matchesEventsTab === "matches" && (
         <>
-      <div className="bg-white rounded-2xl rounded-tr-xl border border-gray-200 shadow-sm">
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] overflow-hidden">
         <MatchFilters
-          batches={MOCK_BATCHES}
+          batches={mappedBatches}
           matchFilter={matchFilter}
           setMatchFilter={setMatchFilter}
           selectedWeightClass={selectedWeightClass}
@@ -2946,9 +3033,9 @@ export function SuperAppHome() {
       {/* Batches & Fight Cards List */}
       <div className="p-6 md:p-8 space-y-8">
         {(() => {
-          const filteredBatches = MOCK_BATCHES.slice(0, 10)
+          const filteredBatches = mappedBatches
             .filter(batch => {
-              if (batch.status !== 'Approved') return false;
+              if (batch.status === 'Completed') return false;
 
               // Filter by location
               if (selectedLocation !== "all" && batch.location !== selectedLocation) {
@@ -3020,129 +3107,141 @@ export function SuperAppHome() {
       {matchesEventsTab === "events" && (
         <>
           {/* Events List - Clean Professional Layout */}
-          <div className="bg-white rounded-2xl rounded-tl-none p-6 md:p-8 border border-gray-100">
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] p-6 md:p-8">
             <div className="space-y-6">
-            {events.map((event) => (
-              <div
-                key={event.id}
-                onClick={() => setSelectedEventId(event.id)}
-                className="group relative bg-gradient-to-br from-white to-gray-50/50 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-300 border-2 border-gray-100 hover:border-[#0A3D91]/30 cursor-pointer"
-              >
-                {/* Event Header with gradient background */}
-                <div className="relative bg-gradient-to-r from-[#0A3D91] via-blue-700 to-blue-800 px-6 py-5">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    {/* Event Title & Date */}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Calendar className="w-5 h-5 text-white/90" />
-                        <span className="text-sm font-bold text-white/90">
-                          {new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+            {events.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <Calendar className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">No Upcoming Events</h3>
+                <p className="text-sm text-gray-500 font-medium max-w-sm mx-auto">There are no upcoming or running Kun Khmer championship events scheduled in our database.</p>
+              </div>
+            ) : (
+              events.map((event) => (
+                <div
+                  key={event.id}
+                  onClick={() => {
+                    setSelectedEventId(event.id);
+                  }}
+                  className="group relative bg-gradient-to-br from-white to-gray-50/50 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-300 border-2 border-gray-100 hover:border-[#0A3D91]/30 cursor-pointer"
+                >
+                  {/* Event Header with gradient background */}
+                  <div className="relative bg-gradient-to-r from-[#0A3D91] via-blue-700 to-blue-800 px-6 py-5">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                      {/* Event Title & Date */}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <Calendar className="w-5 h-5 text-white/90" />
+                          <span className="text-sm font-bold text-white/90">
+                            {formatEventDate(event.date)}
+                          </span>
+                        </div>
+                        <h3 className="text-2xl md:text-3xl font-black text-white mb-1 leading-tight">
+                          {event.name}
+                        </h3>
+                        <p className="text-sm text-white/80 line-clamp-1">{event.description}</p>
+                      </div>
+
+                      {/* Status & Bout Count */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg border border-white/30">
+                          <Trophy className="w-4 h-4 text-white" />
+                          <span className="text-sm font-black text-white">{event.matchesCount} Bouts</span>
+                        </div>
+                        <span className={`px-4 py-2 rounded-lg text-xs font-black uppercase ${
+                          event.status.toLowerCase() === 'upcoming' || event.status === 'Published' || event.status === 'Approved' ? 'bg-green-500 text-white' :
+                          event.status.toLowerCase() === 'live' || event.status === 'Ongoing' || event.status === 'In Progress' ? 'bg-red-500 text-white animate-pulse' :
+                          event.status.toLowerCase() === 'completed' ? 'bg-gray-700 text-white' :
+                          'bg-blue-500 text-white'
+                        }`}>
+                          {event.status}
                         </span>
                       </div>
-                      <h3 className="text-2xl md:text-3xl font-black text-white mb-1 leading-tight">
-                        {event.name}
-                      </h3>
-                      <p className="text-sm text-white/80 line-clamp-1">{event.description}</p>
-                    </div>
-
-                    {/* Status & Bout Count */}
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg border border-white/30">
-                        <Trophy className="w-4 h-4 text-white" />
-                        <span className="text-sm font-black text-white">{event.matchesCount} Bouts</span>
-                      </div>
-                      <span className={`px-4 py-2 rounded-lg text-xs font-black uppercase ${
-                        event.status === 'upcoming' ? 'bg-green-500 text-white' :
-                        event.status === 'live' ? 'bg-red-500 text-white animate-pulse' :
-                        event.status === 'completed' ? 'bg-gray-700 text-white' :
-                        'bg-blue-500 text-white'
-                      }`}>
-                        {event.status}
-                      </span>
                     </div>
                   </div>
+
+                  {/* Event Content */}
+                  <div className="p-6">
+                    {/* Event Details - Clean Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      {/* Venue */}
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <MapPin className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Venue</span>
+                          <p className="text-sm font-black text-gray-900 leading-tight">{event.venue}</p>
+                        </div>
+                      </div>
+
+                      {/* Organizer */}
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Building2 className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Organizer</span>
+                          <p className="text-sm font-black text-gray-900 leading-tight">{event.organizer}</p>
+                        </div>
+                      </div>
+
+                      {/* Broadcast */}
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Tv className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Broadcast</span>
+                          <p className="text-sm font-black text-gray-900 leading-tight">{event.station}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sponsors Section */}
+                    {event.sponsors && event.sponsors.length > 0 && (
+                      <div className="mb-6">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Award className="w-5 h-5 text-[#F2C94C]" />
+                          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Official Sponsors</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {event.sponsors.map((sponsor, idx) => (
+                            <span key={idx} className="px-3 py-1.5 bg-gray-50 text-gray-900 text-sm font-bold rounded-lg border border-gray-200">
+                              {sponsor}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Trophy className="w-4 h-4" />
+                        <span className="font-bold">{event.matchesCount} championship bouts scheduled</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedEventId(event.id);
+                        }}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#0A3D91] to-blue-700 hover:from-blue-800 hover:to-blue-900 text-white rounded-xl transition-all font-bold text-sm shadow-md hover:shadow-lg"
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span>View Event</span>
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Hover Effect */}
+                  <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-[#0A3D91] via-blue-600 to-[#C8102E] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
-
-                {/* Event Content */}
-                <div className="p-6">
-                  {/* Event Details - Clean Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    {/* Venue */}
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <MapPin className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Venue</span>
-                        <p className="text-sm font-black text-gray-900 leading-tight">{event.venue}</p>
-                      </div>
-                    </div>
-
-                    {/* Organizer */}
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Building2 className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Organizer</span>
-                        <p className="text-sm font-black text-gray-900 leading-tight">{event.organizer}</p>
-                      </div>
-                    </div>
-
-                    {/* Broadcast */}
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Tv className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Broadcast</span>
-                        <p className="text-sm font-black text-gray-900 leading-tight">{event.station}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Sponsors Section */}
-                  {event.sponsors && event.sponsors.length > 0 && (
-                    <div className="mb-6">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Award className="w-5 h-5 text-[#F2C94C]" />
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Official Sponsors</span>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {event.sponsors.map((sponsor, idx) => (
-                          <span key={idx} className="px-3 py-1.5 bg-gray-50 text-gray-900 text-sm font-bold rounded-lg border border-gray-200">
-                            {sponsor}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Trophy className="w-4 h-4" />
-                      <span className="font-bold">{event.matchesCount} championship bouts scheduled</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedEventId(event.id);
-                      }}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#0A3D91] to-blue-700 hover:from-blue-800 hover:to-blue-900 text-white rounded-xl transition-all font-bold text-sm shadow-md hover:shadow-lg"
-                    >
-                      <Eye className="w-4 h-4" />
-                      <span>View Event</span>
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Hover Effect */}
-                <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-[#0A3D91] via-blue-600 to-[#C8102E] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              </div>
-            ))}
+              ))
+            )}
             </div>
           </div>
         </>
@@ -3150,9 +3249,9 @@ export function SuperAppHome() {
 
       {matchesEventsTab === "previous" && (
         <>
-      <div className="bg-white rounded-2xl rounded-tr-xl border border-gray-200 shadow-sm">
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] overflow-hidden">
         <MatchFilters
-          batches={MOCK_BATCHES.filter(b => b.status === 'Completed')}
+          batches={mappedBatches.filter(b => b.status === 'Completed')}
           matchFilter={matchFilter}
           setMatchFilter={setMatchFilter}
           selectedWeightClass={selectedWeightClass}
@@ -3168,7 +3267,7 @@ export function SuperAppHome() {
       {/* All Matches with Pagination */}
       <div className="p-6 md:p-8 space-y-8">
         {(() => {
-          const completedBatches = MOCK_BATCHES.filter(batch => {
+          const completedBatches = mappedBatches.filter(batch => {
             if (batch.status !== 'Completed') return false;
 
             // Filter by location
@@ -3506,14 +3605,16 @@ export function SuperAppHome() {
     if (!event) return null;
 
     // Get all batches for this event
-    const eventBatches = MOCK_BATCHES.filter(batch => batch.eventName === event.name);
+    const eventBatches = mappedBatches.filter(batch => batch.eventId === event.id || batch.eventName === event.name);
     const totalMatches = eventBatches.reduce((sum, batch) => sum + batch.matches.length, 0);
 
     return (
       <div className="space-y-8">
         {/* Back Button */}
         <button
-          onClick={() => setSelectedEventId(null)}
+          onClick={() => {
+            setSelectedEventId(null);
+          }}
           className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-white bg-white hover:bg-[#0A3D91] rounded-xl font-bold transition-all border border-gray-200 hover:border-[#0A3D91]"
         >
           <ChevronRight className="w-4 h-4 rotate-180" />
@@ -3529,9 +3630,9 @@ export function SuperAppHome() {
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-4">
                   <span className={`px-4 py-2 rounded-lg text-xs font-black uppercase ${
-                    event.status === 'upcoming' ? 'bg-green-500 text-white' :
-                    event.status === 'live' ? 'bg-red-500 text-white animate-pulse' :
-                    event.status === 'completed' ? 'bg-gray-700 text-white' :
+                    event.status.toLowerCase() === 'upcoming' || event.status === 'Published' || event.status === 'Approved' ? 'bg-green-500 text-white' :
+                    event.status.toLowerCase() === 'live' || event.status === 'Ongoing' || event.status === 'In Progress' ? 'bg-red-500 text-white animate-pulse' :
+                    event.status.toLowerCase() === 'completed' ? 'bg-gray-700 text-white' :
                     'bg-blue-500 text-white'
                   }`}>
                     {event.status}
@@ -3571,7 +3672,7 @@ export function SuperAppHome() {
               <div>
                 <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Date</span>
                 <p className="text-sm font-black text-gray-900">
-                  {new Date(event.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                  {formatEventDate(event.date, true)}
                 </p>
               </div>
             </div>
@@ -3629,7 +3730,7 @@ export function SuperAppHome() {
         </div>
 
         {/* Fight Card */}
-        {eventBatches.length > 0 && (
+        {eventBatches.length > 0 ? (
           <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-lg">
             {/* Fight Card Header */}
             <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 md:px-8 py-6 border-b-2 border-gray-200">
@@ -3663,149 +3764,164 @@ export function SuperAppHome() {
                       }`}>
                         {batch.status}
                       </span>
-                      <span className="text-sm text-gray-500 font-bold">• {batch.matches.length} Bouts</span>
                     </div>
                   </div>
 
                   {/* Matches List */}
                   <div className="space-y-5">
                     {batch.matches.map((match, idx) => {
-                      const isCompleted = batch.status === 'Completed';
-                      const hasWinner = isCompleted && match.winner;
+                      const isCompleted = batch.status === 'Completed' || match.status === 'Completed';
+                      
+                      const fAName = match.fighterA?.name || "Fighter A";
+                      const fBName = match.fighterB?.name || "Fighter B";
+                      const fAClub = match.fighterA?.clubName || "Independent";
+                      const fBClub = match.fighterB?.clubName || "Independent";
+                      const fARecord = match.fighterA?.record || "0-0-0";
+                      const fBRecord = match.fighterB?.record || "0-0-0";
+                      const fAGrade = match.fighterA?.grade || "A";
+                      const fBGrade = match.fighterB?.grade || "A";
+
+                      const fighterAImage = typeof match.fighterA.image === 'string' ? match.fighterA.image : "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=100";
+                      const fighterBImage = typeof match.fighterB.image === 'string' ? match.fighterB.image : "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=100";
+
+                      // Determine winner & loser
+                      let isWinnerA = false;
+                      let isWinnerB = false;
+                      let winnerName = "";
+                      
+                      if (isCompleted) {
+                        if (match.winnerId) {
+                          isWinnerA = match.winnerId === match.fighterA.id;
+                          isWinnerB = match.winnerId === match.fighterB.id;
+                        } else if (match.winner) {
+                          isWinnerA = match.winner === 'fighterA' || match.winner === fAName;
+                          isWinnerB = match.winner === 'fighterB' || match.winner === fBName;
+                        }
+                        if (isWinnerA) winnerName = fAName;
+                        else if (isWinnerB) winnerName = fBName;
+                      }
 
                       return (
                         <div
                           key={match.id}
-                          className="relative bg-white rounded-2xl border-2 border-gray-100 hover:border-[#0A3D91]/30 hover:shadow-lg transition-all overflow-hidden"
+                          className="relative bg-white rounded-2xl border-2 border-gray-100 hover:border-[#0A3D91]/30 hover:shadow-lg transition-all overflow-hidden p-5"
                         >
                           {/* Match Header */}
-                          <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-3 border-b border-gray-200">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <span className="px-3 py-1.5 bg-[#0A3D91] text-white text-xs font-black rounded-lg">
-                                  BOUT #{match.matchOrder}
-                                </span>
-                                <span className="text-sm font-black text-gray-900">{match.matchType}</span>
-                                <span className="w-1 h-1 bg-gray-400 rounded-full" />
-                                <span className="px-2.5 py-1 bg-white border border-gray-300 text-gray-700 text-xs font-bold rounded-lg">
-                                  {match.weightClass}
-                                </span>
-                                <span className="px-2.5 py-1 bg-blue-50 text-[#0A3D91] text-xs font-bold rounded-lg">
-                                  {match.rounds} Rounds
-                                </span>
+                          <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
+                            <div className="flex items-center gap-3">
+                              <span className="px-3 py-1 bg-[#0A3D91]/10 text-[#0A3D91] text-xs font-black rounded-lg">
+                                BOUT #{idx + 1}
+                              </span>
+                              <span className="text-sm font-black text-gray-900">{match.matchType || "Ranking Fight"}</span>
+                              <span className="px-2.5 py-1 bg-white border border-gray-200 text-gray-700 text-xs font-bold rounded-lg">
+                                {match.weightClass}
+                              </span>
+                            </div>
+                            <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase ${
+                              isCompleted ? 'bg-gray-600 text-white' :
+                              match.status === 'Ready' ? 'bg-green-500 text-white' :
+                              match.status === 'In Progress' || match.status === 'Live' ? 'bg-red-500 text-white animate-pulse' :
+                              'bg-blue-500 text-white'
+                            }`}>
+                              {isCompleted ? 'Completed' : match.status || 'Upcoming'}
+                            </span>
+                          </div>
+
+                          {/* Fighters Grid */}
+                          <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
+                            {/* Fighter A */}
+                            <div className={`relative flex items-center gap-2.5 min-w-0 text-left rounded-xl p-3 border-2 ${
+                              isWinnerA ? 'bg-emerald-50/50 border-emerald-400' :
+                              isWinnerB ? 'bg-gray-50 border-gray-200 opacity-60' : 'border-transparent'
+                            }`}>
+                              <img
+                                src={fighterAImage}
+                                alt={fAName}
+                                className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0"
+                              />
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <span className="font-bold text-gray-900 text-xs truncate block">{fAName}</span>
+                                  <span className="text-[8px] font-bold px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-gray-500 uppercase shrink-0">
+                                    {fAGrade}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-gray-500 font-medium truncate mb-0.5">{fAClub}</div>
+                                <div className="text-[9px] text-gray-500/80 font-semibold">{fARecord} record</div>
                               </div>
-                              {hasWinner && (
-                                <span className="px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white text-xs font-black rounded-lg flex items-center gap-1.5">
-                                  <Trophy className="w-3.5 h-3.5" />
-                                  RESULT
+                              {isCompleted && (
+                                <span className={`absolute -top-2.5 -right-2.5 px-1.5 py-0.5 text-[8px] font-black uppercase rounded ${
+                                  isWinnerA ? 'bg-emerald-600 text-white shadow-sm' : 'bg-gray-400 text-white'
+                                }`}>
+                                  {isWinnerA ? '🏆 WINNER' : 'LOSER'}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Center Spec Badge */}
+                            <div className="flex flex-col items-center shrink-0">
+                              <span className="text-[9px] font-bold text-gray-700 px-2 py-0.5 bg-gray-100 border border-gray-250/50 rounded-full font-mono mb-1">
+                                VS
+                              </span>
+                              <div className="text-[9px] text-gray-500 font-bold text-center leading-normal">
+                                <div>{match.weightClass || "Catchweight"}</div>
+                                <div>{match.rounds}R</div>
+                              </div>
+                            </div>
+
+                            {/* Fighter B */}
+                            <div className={`relative flex items-center justify-end gap-2.5 min-w-0 text-right rounded-xl p-3 border-2 ${
+                              isWinnerB ? 'bg-emerald-50/50 border-emerald-400' :
+                              isWinnerA ? 'bg-gray-50 border-gray-200 opacity-60' : 'border-transparent'
+                            }`}>
+                              <div className="min-w-0 text-right">
+                                <div className="flex items-center justify-end gap-1.5 mb-0.5">
+                                  <span className="text-[8px] font-bold px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-gray-500 uppercase shrink-0">
+                                    {fBGrade}
+                                  </span>
+                                  <span className="font-bold text-gray-900 text-xs truncate block">{fBName}</span>
+                                </div>
+                                <div className="text-[10px] text-gray-500 font-medium truncate mb-0.5">{fBClub}</div>
+                                <div className="text-[9px] text-gray-500/80 font-semibold">{fBRecord} record</div>
+                              </div>
+                              <img
+                                src={fighterBImage}
+                                alt={fBName}
+                                className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0"
+                              />
+                              {isCompleted && (
+                                <span className={`absolute -top-2.5 -left-2.5 px-1.5 py-0.5 text-[8px] font-black uppercase rounded ${
+                                  isWinnerB ? 'bg-emerald-600 text-white shadow-sm' : 'bg-gray-400 text-white'
+                                }`}>
+                                  {isWinnerB ? '🏆 WINNER' : 'LOSER'}
                                 </span>
                               )}
                             </div>
                           </div>
 
-                          {/* Fighters Section */}
-                          <div className="p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                              {/* Fighter A */}
-                              <div className={`relative rounded-xl p-5 transition-all ${
-                                hasWinner && match.winner === match.fighterA.name
-                                  ? 'bg-gradient-to-br from-yellow-50 via-yellow-100/50 to-yellow-50 border-2 border-yellow-400 shadow-md'
-                                  : 'bg-gray-50 border-2 border-gray-200'
-                              }`}>
-                                {hasWinner && match.winner === match.fighterA.name && (
-                                  <div className="absolute -top-3 -right-3 px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-lg flex items-center gap-1.5 shadow-xl z-10">
-                                    <Trophy className="w-4 h-4 text-white" />
-                                    <span className="text-xs font-black text-white uppercase">Winner</span>
-                                  </div>
-                                )}
-                                <div className="mb-4">
-                                  <h4 className={`text-xl font-black mb-2 leading-tight ${
-                                    hasWinner && match.winner === match.fighterA.name
-                                      ? 'text-yellow-900'
-                                      : 'text-gray-900'
-                                  }`}>
-                                    {match.fighterA.name}
-                                  </h4>
-                                  <p className="text-sm text-gray-600 flex items-center gap-1.5">
-                                    <Building2 className="w-3.5 h-3.5" />
-                                    {match.fighterA.clubName}
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="px-3 py-1.5 bg-white text-gray-900 text-xs font-bold rounded-lg border border-gray-300 shadow-sm">
-                                    {match.fighterA.record}
-                                  </span>
-                                  <span className="px-3 py-1.5 bg-blue-100 text-[#0A3D91] text-xs font-bold rounded-lg">
-                                    {match.fighterA.weight}kg
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Fighter B */}
-                              <div className={`relative rounded-xl p-5 transition-all ${
-                                hasWinner && match.winner === match.fighterB.name
-                                  ? 'bg-gradient-to-br from-yellow-50 via-yellow-100/50 to-yellow-50 border-2 border-yellow-400 shadow-md'
-                                  : 'bg-gray-50 border-2 border-gray-200'
-                              }`}>
-                                {hasWinner && match.winner === match.fighterB.name && (
-                                  <div className="absolute -top-3 -right-3 px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-lg flex items-center gap-1.5 shadow-xl z-10">
-                                    <Trophy className="w-4 h-4 text-white" />
-                                    <span className="text-xs font-black text-white uppercase">Winner</span>
-                                  </div>
-                                )}
-                                <div className="mb-4">
-                                  <h4 className={`text-xl font-black mb-2 leading-tight ${
-                                    hasWinner && match.winner === match.fighterB.name
-                                      ? 'text-yellow-900'
-                                      : 'text-gray-900'
-                                  }`}>
-                                    {match.fighterB.name}
-                                  </h4>
-                                  <p className="text-sm text-gray-600 flex items-center gap-1.5">
-                                    <Building2 className="w-3.5 h-3.5" />
-                                    {match.fighterB.clubName}
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="px-3 py-1.5 bg-white text-gray-900 text-xs font-bold rounded-lg border border-gray-300 shadow-sm">
-                                    {match.fighterB.record}
-                                  </span>
-                                  <span className="px-3 py-1.5 bg-blue-100 text-[#0A3D91] text-xs font-bold rounded-lg">
-                                    {match.fighterB.weight}kg
-                                  </span>
-                                </div>
-                              </div>
+                          {/* Championship Title Bout Gilded Bar */}
+                          {match.isChampionshipBout && (
+                            <div className="mt-3 pt-2 border-t border-dashed border-amber-250 flex items-center justify-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50/20 rounded-lg py-1 px-2">
+                              <Trophy className="w-3 h-3 text-amber-500 shrink-0" />
+                              <span>CHAMPIONSHIP TITLE BOUT</span>
                             </div>
+                          )}
 
-                            {/* Result Info */}
-                            {hasWinner ? (
-                              <div className="mt-5 pt-5 border-t-2 border-gray-200">
-                                <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-xl p-4">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                      <Trophy className="w-5 h-5 text-white" />
-                                      <span className="text-sm font-bold text-white uppercase">Official Result</span>
-                                    </div>
-                                    <div className="text-right">
-                                      <div className="text-lg font-black text-white">
-                                        {match.winner}
-                                      </div>
-                                      <div className="text-sm font-bold text-white/90">
-                                        {match.winnerMethod} • Round {match.winnerRound}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
+                          {/* Winner details outcome at bottom */}
+                          {isCompleted && winnerName && (
+                            <div className="mt-4 pt-3 border-t border-gray-150 flex flex-col items-center gap-1 text-center">
+                              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-[10px] font-semibold text-emerald-700 border border-emerald-200 rounded-lg shadow-sm">
+                                <Trophy className="w-3.5 h-3.5 text-emerald-600 fill-emerald-100" />
+                                <span>Official Result: {winnerName} won by {match.winnerMethod || 'Decision'}</span>
                               </div>
-                            ) : (
-                              <div className="mt-5 pt-5 border-t border-gray-200">
-                                <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 rounded-lg border border-blue-200">
-                                  <Clock className="w-4 h-4 text-blue-600" />
-                                  <span className="text-sm font-bold text-blue-900">Scheduled bout - Results pending</span>
+                              {(match.winnerRound || match.winnerTime) && (
+                                <div className="text-[10px] text-gray-500 font-semibold">
+                                  {match.winnerRound && `Round ${match.winnerRound}`}
+                                  {match.winnerTime && ` (${match.winnerTime})`}
                                 </div>
-                              </div>
-                            )}
-                          </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -3813,6 +3929,12 @@ export function SuperAppHome() {
                 </div>
               ))}
             </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl p-8 border border-gray-100 text-center shadow-lg">
+            <Trophy className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <h3 className="text-lg font-black text-gray-900 mb-1">Fight Card Pending</h3>
+            <p className="text-sm text-gray-500 font-semibold">The matchmaking card and bout lineup for this event will be announced soon.</p>
           </div>
         )}
       </div>

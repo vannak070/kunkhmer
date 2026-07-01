@@ -26,50 +26,76 @@ export function MatchBatchCard({
   const displayImage = batchEvent?.image || eventPosterImage;
 
   const headerBgClass = variant === 'previous'
-    ? 'bg-gradient-to-r from-gray-700 to-gray-800'
-    : 'bg-gradient-to-r from-[#0A3D91] to-blue-700';
+    ? 'bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border-b border-zinc-800'
+    : 'bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 border-b border-slate-800';
 
   const buttonClass = variant === 'previous'
-    ? 'bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900'
-    : 'bg-gradient-to-r from-[#0A3D91] to-blue-700 hover:from-blue-800 hover:to-blue-900';
+    ? 'bg-gradient-to-r from-zinc-800 to-zinc-700 hover:from-zinc-700 hover:to-zinc-600 border border-zinc-700'
+    : 'bg-gradient-to-r from-[#0A3D91] to-blue-700 hover:from-blue-700 hover:to-blue-600 shadow-[0_4px_12px_rgba(10,61,145,0.25)] hover:shadow-[0_6px_20px_rgba(10,61,145,0.4)]';
 
   const statusBadge = variant === 'previous'
-    ? 'bg-gray-900 text-white border border-white/20'
-    : batch.status === 'Approved' ? 'bg-green-500 text-white' :
-      batch.status === 'Scheduled' ? 'bg-blue-500 text-white' :
-      batch.status === 'Completed' ? 'bg-gray-700 text-white' :
-      'bg-gray-500 text-white';
+    ? 'bg-zinc-800/80 text-zinc-300 border border-zinc-700'
+    : batch.status === 'Published' || batch.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' :
+      batch.status === 'Ready' || batch.status === 'Scheduled' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30' :
+      batch.status === 'Ongoing' || batch.status === 'In Progress' ? 'bg-rose-500 text-white animate-pulse border border-rose-500/30 shadow-[0_0_12px_rgba(244,63,94,0.4)]' :
+      batch.status === 'Draft' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' :
+      batch.status === 'Completed' ? 'bg-zinc-800 text-zinc-400 border border-zinc-750' :
+      'bg-slate-500/10 text-slate-400 border border-slate-500/30';
+
+  const formatBatchDate = (dateStr: any) => {
+    try {
+      if (!dateStr) return "TBD Date";
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return "TBD Date";
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch (e) {
+      return "TBD Date";
+    }
+  };
 
   return (
     <div className="space-y-4">
       {/* Main Event Card */}
-      <div className="group relative bg-gradient-to-br from-white to-gray-50/50 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-300 border-2 border-gray-100 hover:border-[#0A3D91]/30">
+      <div 
+        onClick={() => {
+          onToggleExpansion(batch.id);
+        }}
+        className="group relative bg-white rounded-3xl overflow-hidden hover:shadow-[0_20px_50px_rgba(10,61,145,0.06)] transition-all duration-500 border border-slate-100/80 cursor-pointer"
+      >
+        {/* Glow Top Accent Bar */}
+        <div className={`h-1.5 w-full ${variant === 'previous' ? 'bg-zinc-600' : 'bg-gradient-to-r from-red-600 via-amber-500 to-[#0A3D91]'}`} />
+
         {/* Event Header */}
-        <div className={`${headerBgClass} px-6 py-4`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-lg border border-white/30">
-                <span className="text-sm font-black text-white tracking-wide">{batch.batchNumber}</span>
+        <div className={`${headerBgClass} px-6 py-5`}>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="px-3 py-1 bg-amber-500/10 rounded-lg border border-amber-500/20 shrink-0">
+                <span className="text-[10px] font-black text-amber-400 tracking-widest uppercase">MATCH CARD</span>
               </div>
-              <div>
-                <h3 className="text-xl md:text-2xl font-black text-white mb-1">{batch.eventName}</h3>
-                <div className="flex items-center gap-3 text-sm text-white/90">
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span className="font-semibold">{new Date(batch.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              <div className="min-w-0">
+                <h3 className="text-lg md:text-xl font-black text-white mb-1.5 truncate tracking-tight">{batch.batchNumber}</h3>
+                <div className="flex items-center gap-3 text-xs text-slate-300 flex-wrap font-medium">
+                  <span className="font-extrabold text-amber-400">{batch.eventName}</span>
+                  <span className="text-slate-600 font-normal">•</span>
+                  <div className="flex items-center gap-1.5 text-slate-300">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{formatBatchDate(batch.date)}</span>
                   </div>
-                  <span className="text-white/50">•</span>
-                  <div className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5" />
-                    <span className="font-semibold">{batch.location}</span>
+                  <span className="text-slate-600 font-normal">•</span>
+                  <div className="flex items-center gap-1.5 text-slate-300">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="truncate">{batch.location}</span>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span className={`px-4 py-2 rounded-lg text-xs font-black uppercase ${statusBadge}`}>
+            <div className="flex items-center gap-3 shrink-0">
+              <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black tracking-wider uppercase border ${statusBadge}`}>
                 {variant === 'previous' ? 'Completed' : batch.status}
               </span>
+              <div className="p-2 bg-slate-800/80 hover:bg-slate-800 rounded-xl border border-slate-700/60 text-slate-300 transition-all duration-300 group-hover:border-slate-500 group-hover:text-white">
+                <ChevronRight className={`w-4 h-4 transition-transform duration-350 ${isExpanded ? 'rotate-90' : ''}`} />
+              </div>
             </div>
           </div>
         </div>
@@ -77,209 +103,280 @@ export function MatchBatchCard({
         {/* Event Content */}
         <div className="p-6">
           {/* Stats Bar */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className={`bg-gradient-to-br ${variant === 'previous' ? 'from-gray-50 to-gray-100/50 border-gray-200/50' : 'from-blue-50 to-blue-100/50 border-blue-200/50'} rounded-xl p-4 border`}>
-              <div className="flex items-center gap-2 mb-1">
-                <Trophy className={`w-4 h-4 ${variant === 'previous' ? 'text-gray-700' : 'text-[#0A3D91]'}`} />
-                <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Total Bouts</span>
+          <div className="grid grid-cols-3 gap-4 mb-5">
+            <div className={`bg-gradient-to-br ${variant === 'previous' ? 'from-zinc-50/50 to-zinc-100/30 border-zinc-200/50' : 'from-blue-50/50 to-indigo-50/30 border-blue-100/50'} rounded-2xl p-4 border transition-all duration-300 hover:shadow-sm`}>
+              <div className="flex items-center gap-2 mb-1.5">
+                <Trophy className={`w-4 h-4 ${variant === 'previous' ? 'text-zinc-500' : 'text-[#0A3D91]'}`} />
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Bouts</span>
               </div>
-              <p className="text-2xl font-black text-gray-900">{batch.totalMatches}</p>
+              <p className="text-xl font-black text-slate-900">{batch.totalMatches}</p>
             </div>
             {batch.organizerClub && (
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl p-4 border border-purple-200/50">
-                <div className="flex items-center gap-2 mb-1">
-                  <Building2 className="w-4 h-4 text-purple-600" />
-                  <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Organizer</span>
+              <div className="bg-gradient-to-br from-violet-50/50 to-purple-50/30 rounded-2xl p-4 border border-violet-100/50 transition-all duration-300 hover:shadow-sm">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Building2 className="w-4 h-4 text-violet-600" />
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Organizer</span>
                 </div>
-                <p className="text-sm font-black text-gray-900 truncate">{batch.organizerClub}</p>
+                <p className="text-sm font-black text-slate-800 truncate">{batch.organizerClub}</p>
               </div>
             )}
             {batch.broadcastStation && (
-              <div className="bg-gradient-to-br from-red-50 to-red-100/50 rounded-xl p-4 border border-red-200/50">
-                <div className="flex items-center gap-2 mb-1">
-                  <Tv className="w-4 h-4 text-red-600" />
-                  <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Broadcast</span>
+              <div className="bg-gradient-to-br from-rose-50/50 to-red-50/30 rounded-2xl p-4 border border-rose-100/50 transition-all duration-300 hover:shadow-sm">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Tv className="w-4 h-4 text-rose-600" />
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Broadcast</span>
                 </div>
-                <p className="text-sm font-black text-gray-900 truncate">{batch.broadcastStation}</p>
+                <p className="text-sm font-black text-slate-800 truncate">{batch.broadcastStation}</p>
               </div>
             )}
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Users className="w-4 h-4" />
-              <span className="font-bold">{batch.totalMatches} matches in this event</span>
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+              <Users className="w-4 h-4 text-slate-400" />
+              <span>{batch.totalMatches} bouts scheduled for this card</span>
             </div>
             <div className="flex items-center gap-3">
-              {otherMatches.length > 0 && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleExpansion(batch.id);
-                  }}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-sm transition-all"
-                >
-                  <span>{isExpanded ? 'Hide' : 'View All'} Matches ({batch.totalMatches})</span>
-                  <ChevronRight className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`} />
-                </button>
-              )}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onViewDetails(mainMatch.id);
+                  onToggleExpansion(batch.id);
                 }}
-                className={`flex items-center gap-2 px-5 py-2.5 ${buttonClass} text-white rounded-xl transition-all font-bold text-sm shadow-md hover:shadow-lg`}
+                className={`flex items-center gap-2 px-5 py-2.5 ${buttonClass} text-white rounded-xl transition-all font-bold text-xs uppercase tracking-wider`}
               >
                 <Eye className="w-4 h-4" />
-                <span>View Details</span>
+                <span>{isExpanded ? 'Hide Details' : 'View Details'}</span>
+                <ChevronRight className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`} />
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Other Matches - Collapsible */}
-      {isExpanded && otherMatches.length > 0 && (
-        <div className="ml-0 md:ml-4 space-y-3">
-          {otherMatches.map((match: any) => {
-            const fighterAImage = typeof match.fighterA.image === 'string' ? match.fighterA.image : "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=400";
-            const fighterBImage = typeof match.fighterB.image === 'string' ? match.fighterB.image : "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=400";
+      {/* All Matches - Collapsible */}
+      {isExpanded && (
+        <div className="ml-0 md:ml-4 space-y-4 animate-tab-content">
+          {/* Headliner Match (Fight Card format) */}
+          {mainMatch && (
+            <div 
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewDetails(mainMatch.id);
+              }}
+              className="p-6 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 rounded-2xl border-2 border-amber-500/20 hover:border-amber-500/40 hover:shadow-[0_10px_30px_rgba(245,158,11,0.06)] transition-all duration-300 cursor-pointer text-white relative overflow-hidden"
+            >
+              {/* Gold light sheen background effect */}
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-500/5 via-transparent to-transparent pointer-events-none" />
 
-            return (
-              <div
-                key={match.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewMatch(match.id);
-                }}
-                className={`group relative bg-white rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 border cursor-pointer ${
-                  variant === 'previous' ? 'border-gray-200 hover:border-gray-400' : 'border-gray-200 hover:border-[#0A3D91]/50'
-                }`}
-              >
-                {/* Match Header */}
-                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`px-2.5 py-1 text-white text-xs font-black rounded-lg ${variant === 'previous' ? 'bg-gray-700' : 'bg-[#0A3D91]'}`}>
-                        BOUT #{match.matchOrder}
-                      </div>
-                      <span className="text-sm font-black text-gray-900">{match.matchType}</span>
-                      <span className="px-2.5 py-1 bg-white border border-gray-300 text-gray-700 text-xs font-bold rounded-lg">{match.weightClass}</span>
+              <div className="text-center mb-4 relative z-10">
+                <span className="px-4 py-1 bg-gradient-to-r from-amber-500/25 via-amber-500/10 to-amber-500/25 text-[9px] font-black text-amber-400 border border-amber-500/30 rounded-full tracking-widest uppercase shadow-sm">
+                  ⭐ MAIN EVENT HEADLINER ⭐
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center relative z-10">
+                {/* Fighter A (Red Corner) */}
+                <div className="flex items-center gap-4 min-w-0 text-left">
+                  <div className="relative shrink-0">
+                    <img
+                      src={typeof mainMatch.fighterA.image === 'string' ? mainMatch.fighterA.image : "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=100"}
+                      alt={mainMatch.fighterA.name}
+                      className="w-16 h-16 rounded-full object-cover border-2 border-rose-600 shadow-[0_0_15px_rgba(244,63,94,0.25)]"
+                    />
+                    <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 bg-rose-600 text-[8px] font-black text-white rounded uppercase border border-rose-500">
+                      RED
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="font-black text-white text-base truncate block tracking-tight">{mainMatch.fighterA.name}</span>
+                      <span className="text-[8px] font-extrabold px-1.5 py-0.5 bg-white/10 border border-white/20 rounded text-slate-300 uppercase shrink-0">
+                        {mainMatch.fighterA.grade || "A"}
+                      </span>
                     </div>
-                    <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase ${
-                      variant === 'previous' ? 'bg-gray-600 text-white' :
-                      match.status === 'Completed' ? 'bg-gray-600 text-white' :
-                      match.status === 'Ready' ? 'bg-green-500 text-white' :
-                      match.status === 'In Progress' ? 'bg-red-500 text-white animate-pulse' :
-                      'bg-blue-500 text-white'
-                    }`}>
-                      {variant === 'previous' ? 'Completed' : match.status}
+                    <p className="text-xs text-slate-400 font-bold truncate">{mainMatch.fighterA.clubName || "Independent"}</p>
+                    <p className="text-[10px] text-amber-400 font-extrabold tracking-wider uppercase mt-1">{mainMatch.fighterA.record} Record</p>
+                  </div>
+                </div>
+
+                {/* VS Divider */}
+                <div className="flex flex-col items-center justify-center px-4 shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 text-slate-950 text-xs font-black flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.3)] border border-amber-300">
+                    VS
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2">{mainMatch.weightClass}</span>
+                </div>
+
+                {/* Fighter B (Blue Corner) */}
+                <div className="flex items-center gap-4 min-w-0 text-right justify-end">
+                  <div className="min-w-0">
+                    <div className="flex items-center justify-end gap-1.5 mb-1">
+                      <span className="text-[8px] font-extrabold px-1.5 py-0.5 bg-white/10 border border-white/20 rounded text-slate-300 uppercase shrink-0">
+                        {mainMatch.fighterB.grade || "A"}
+                      </span>
+                      <span className="font-black text-white text-base truncate block tracking-tight">{mainMatch.fighterB.name}</span>
+                    </div>
+                    <p className="text-xs text-slate-400 font-bold truncate">{mainMatch.fighterB.clubName || "Independent"}</p>
+                    <p className="text-[10px] text-amber-400 font-extrabold tracking-wider uppercase mt-1">{mainMatch.fighterB.record} Record</p>
+                  </div>
+                  <div className="relative shrink-0">
+                    <img
+                      src={typeof mainMatch.fighterB.image === 'string' ? mainMatch.fighterB.image : "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=100"}
+                      alt={mainMatch.fighterB.name}
+                      className="w-16 h-16 rounded-full object-cover border-2 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.25)]"
+                    />
+                    <span className="absolute -bottom-1 -left-1 px-1.5 py-0.5 bg-blue-600 text-[8px] font-black text-white rounded uppercase border border-blue-500">
+                      BLUE
                     </span>
                   </div>
                 </div>
-
-                {/* Match Content */}
-                <div className="p-5">
-                  {/* Fighters Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    {/* Fighter A */}
-                    <div className={`relative rounded-xl p-4 transition-all ${
-                      (variant === 'previous' || batch.status === 'Completed') && match.winner === match.fighterA.name
-                        ? 'bg-gradient-to-br from-yellow-50 to-yellow-100/50 border-2 border-yellow-400'
-                        : 'bg-gray-50 border-2 border-gray-100'
-                    }`}>
-                      {(variant === 'previous' || batch.status === 'Completed') && match.winner === match.fighterA.name && (
-                        <div className="absolute -top-2 -right-2 px-2.5 py-1 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-lg flex items-center gap-1 shadow-lg">
-                          <Trophy className="w-3 h-3 text-white" />
-                          <span className="text-xs font-black text-white uppercase">Winner</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-gray-200 to-gray-300 overflow-hidden flex-shrink-0">
-                          <img src={fighterAImage} alt={match.fighterA.name} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className={`text-base font-black mb-0.5 truncate ${
-                            (variant === 'previous' || batch.status === 'Completed') && match.winner === match.fighterA.name
-                              ? 'text-yellow-900' : 'text-gray-900'
-                          }`}>{match.fighterA.name}</h4>
-                          <p className="text-xs text-gray-600 truncate flex items-center gap-1">
-                            <Building2 className="w-3 h-3" />
-                            {match.fighterA.clubName}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-1 bg-white text-gray-900 text-xs font-bold rounded-lg border border-gray-200">
-                          {match.fighterA.record}
-                        </span>
-                        <span className="px-2.5 py-1 bg-blue-50 text-[#0A3D91] text-xs font-bold rounded-lg">
-                          {match.fighterA.weight}kg
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Fighter B */}
-                    <div className={`relative rounded-xl p-4 transition-all ${
-                      (variant === 'previous' || batch.status === 'Completed') && match.winner === match.fighterB.name
-                        ? 'bg-gradient-to-br from-yellow-50 to-yellow-100/50 border-2 border-yellow-400'
-                        : 'bg-gray-50 border-2 border-gray-100'
-                    }`}>
-                      {(variant === 'previous' || batch.status === 'Completed') && match.winner === match.fighterB.name && (
-                        <div className="absolute -top-2 -right-2 px-2.5 py-1 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-lg flex items-center gap-1 shadow-lg">
-                          <Trophy className="w-3 h-3 text-white" />
-                          <span className="text-xs font-black text-white uppercase">Winner</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-gray-200 to-gray-300 overflow-hidden flex-shrink-0">
-                          <img src={fighterBImage} alt={match.fighterB.name} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className={`text-base font-black mb-0.5 truncate ${
-                            (variant === 'previous' || batch.status === 'Completed') && match.winner === match.fighterB.name
-                              ? 'text-yellow-900' : 'text-gray-900'
-                          }`}>{match.fighterB.name}</h4>
-                          <p className="text-xs text-gray-600 truncate flex items-center gap-1">
-                            <Building2 className="w-3 h-3" />
-                            {match.fighterB.clubName}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-1 bg-white text-gray-900 text-xs font-bold rounded-lg border border-gray-200">
-                          {match.fighterB.record}
-                        </span>
-                        <span className="px-2.5 py-1 bg-blue-50 text-[#0A3D91] text-xs font-bold rounded-lg">
-                          {match.fighterB.weight}kg
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Match Info Footer */}
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-lg">
-                        <Clock className="w-3.5 h-3.5 text-gray-600" />
-                        <span className="text-xs font-bold text-gray-900">{match.rounds} Rounds</span>
-                      </div>
-                      {match.agreedWeight && (
-                        <span className="text-xs text-gray-600 font-semibold">Catchweight: {match.agreedWeight}kg</span>
-                      )}
-                    </div>
-                    {(variant === 'previous' || batch.status === 'Completed') && match.winner && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-lg shadow-md">
-                        <Trophy className="w-3.5 h-3.5 text-white" />
-                        <span className="text-xs font-black text-white">{match.winnerMethod} • R{match.winnerRound}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
               </div>
-            );
-          })}
+            </div>
+          )}
+
+          {/* Other Matches */}
+          {otherMatches && otherMatches.length > 0 && (
+            <div className="space-y-3">
+              {otherMatches.map((match: any, idx: number) => {
+                const fighterAImage = typeof match.fighterA.image === 'string' ? match.fighterA.image : "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=100";
+                const fighterBImage = typeof match.fighterB.image === 'string' ? match.fighterB.image : "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=100";
+                const fAName = match.fighterA?.name || "Fighter A";
+                const fBName = match.fighterB?.name || "Fighter B";
+                const fAClub = match.fighterA?.clubName || "Independent";
+                const fBClub = match.fighterB?.clubName || "Independent";
+                const fARecord = match.fighterA?.record || "0-0-0";
+                const fBRecord = match.fighterB?.record || "0-0-0";
+                const fAGrade = match.fighterA?.grade || "A";
+                const fBGrade = match.fighterB?.grade || "A";
+
+                // Determine winner name
+                let winnerName = "";
+                if (match.winnerId) {
+                  if (match.winnerId === match.fighterA.id) winnerName = fAName;
+                  else if (match.winnerId === match.fighterB.id) winnerName = fBName;
+                } else if (match.winner) {
+                  if (match.winner === 'fighterA') winnerName = fAName;
+                  else if (match.winner === 'fighterB') winnerName = fBName;
+                  else winnerName = match.winner;
+                }
+
+                return (
+                  <div
+                    key={match.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onViewMatch(match.id);
+                    }}
+                    className={`group relative bg-white rounded-2xl overflow-hidden hover:shadow-[0_12px_30px_rgba(10,61,145,0.05)] transition-all duration-300 border border-slate-100 cursor-pointer`}
+                  >
+                    {/* Match Header */}
+                    <div className="bg-slate-50/80 px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`px-2.5 py-1 text-white text-[10px] font-black tracking-wider uppercase rounded-lg ${variant === 'previous' ? 'bg-zinc-700' : 'bg-[#0A3D91]'}`}>
+                          BOUT #{idx + 2}
+                        </div>
+                        <span className="text-xs font-black text-slate-800 tracking-tight">{match.matchType}</span>
+                        <span className="px-2 py-0.5 bg-white border border-slate-200 text-slate-600 text-[10px] font-extrabold rounded">{match.weightClass}</span>
+                      </div>
+                      <span className={`px-2.5 py-1 rounded text-[9px] font-extrabold tracking-wider uppercase border ${
+                        variant === 'previous' ? 'bg-zinc-100 text-zinc-500 border-zinc-200' :
+                        match.status === 'Completed' ? 'bg-zinc-100 text-zinc-500 border-zinc-200' :
+                        match.status === 'Ready' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                        match.status === 'In Progress' ? 'bg-rose-50 text-rose-600 border-rose-200 animate-pulse' :
+                        'bg-sky-50 text-sky-600 border-sky-200'
+                      }`}>
+                        {variant === 'previous' ? 'Completed' : match.status}
+                      </span>
+                    </div>
+
+                    {/* Match Content */}
+                    <div className="p-5">
+                      {/* Fighters Grid */}
+                      <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
+                        {/* Fighter A */}
+                        <div className="flex items-center gap-3 min-w-0 text-left">
+                          <img
+                            src={fighterAImage}
+                            alt={fAName}
+                            className="w-11 h-11 rounded-full object-cover border border-slate-200 shadow-sm shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              <span className="font-bold text-slate-900 text-sm truncate block tracking-tight">{fAName}</span>
+                              <span className="text-[8px] font-bold px-1 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-500 uppercase shrink-0">
+                                {fAGrade}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 font-semibold truncate mb-0.5">{fAClub}</div>
+                            <div className="text-[9px] text-[#0A3D91] font-bold">{fARecord} Record</div>
+                          </div>
+                        </div>
+
+                        {/* Center Spec Badge */}
+                        <div className="flex flex-col items-center shrink-0">
+                          <span className="text-[8px] font-black text-slate-400 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded-full font-mono mb-1">
+                            VS
+                          </span>
+                          <div className="text-[9px] text-slate-500 font-bold text-center leading-normal">
+                            <div>{match.weightClass || "Catchweight"}</div>
+                            <div>{match.rounds} Rounds</div>
+                          </div>
+                        </div>
+
+                        {/* Fighter B */}
+                        <div className="flex items-center justify-end gap-3 min-w-0 text-right">
+                          <div className="min-w-0">
+                            <div className="flex items-center justify-end gap-1.5 mb-0.5">
+                              <span className="text-[8px] font-bold px-1 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-500 uppercase shrink-0">
+                                {fBGrade}
+                              </span>
+                              <span className="font-bold text-slate-900 text-sm truncate block tracking-tight">{fBName}</span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 font-semibold truncate mb-0.5">{fBClub}</div>
+                            <div className="text-[9px] text-[#0A3D91] font-bold">{fBRecord} Record</div>
+                          </div>
+                          <img
+                            src={fighterBImage}
+                            alt={fBName}
+                            className="w-11 h-11 rounded-full object-cover border border-slate-200 shadow-sm shrink-0"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Championship Bout Gilded Bar */}
+                      {match.isChampionshipBout && (
+                        <div className="mt-3 pt-2.5 border-t border-dashed border-amber-200 flex items-center justify-center gap-1.5 text-[10px] font-extrabold text-amber-700 bg-amber-50/30 rounded-lg py-1.5 px-2">
+                          <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                          <span>CHAMPIONSHIP TITLE BOUT</span>
+                        </div>
+                      )}
+
+                      {/* Winner Outcome */}
+                      {winnerName && (
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex flex-col items-center gap-2 text-center">
+                          <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-[10px] font-black text-emerald-600 border border-emerald-500/20 rounded-lg shadow-sm">
+                            <Trophy className="w-3 h-3 text-emerald-500 fill-emerald-100" />
+                            <span>
+                              Winner: {winnerName}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-bold leading-normal">
+                            <span className="text-emerald-600 font-black">Outcome: Win/Loss</span>
+                            {match.winnerMethod && <span className="mx-1.5 text-slate-300">•</span>}
+                            {match.winnerMethod && <span>Method: {match.winnerMethod}</span>}
+                            {match.winnerRound && <span className="mx-1.5 text-slate-300">•</span>}
+                            {match.winnerRound && <span>Round {match.winnerRound}</span>}
+                            {match.winnerTime && <span className="text-slate-400 font-semibold ml-1">({match.winnerTime})</span>}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>
