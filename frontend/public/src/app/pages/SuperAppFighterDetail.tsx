@@ -11,6 +11,7 @@ export function SuperAppFighterDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [selectedVideo, setSelectedVideo] = useState<MediaContent | null>(null);
+  const [fighterVideos, setFighterVideos] = useState<any[]>([]);
   const [isFollowed, setIsFollowed] = useState(false);
 
   // Scroll detection for header
@@ -52,8 +53,52 @@ export function SuperAppFighterDetail() {
           };
           setFighter(mapped);
         }
+
+        // Fetch and map videos
+        const vids = await api.videos.list();
+        if (vids && vids.length > 0) {
+          const mappedVids = vids.map((vid: any) => {
+            let youtubeId = "dQw4w9WgXcQ";
+            if (vid.youtube_url || vid.youtubeUrl) {
+              const url = vid.youtube_url || vid.youtubeUrl;
+              const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+              const match = url.match(regExp);
+              if (match && match[2].length === 11) {
+                youtubeId = match[2];
+              }
+            }
+
+            const viewsVal = vid.views || 0;
+            let formattedViews = "0";
+            if (viewsVal >= 1000000) {
+              formattedViews = (viewsVal / 1000000).toFixed(1) + "M";
+            } else if (viewsVal >= 1000) {
+              formattedViews = (viewsVal / 1000).toFixed(1) + "K";
+            } else {
+              formattedViews = viewsVal.toString();
+            }
+
+            return {
+              id: vid.id,
+              title: vid.title,
+              thumbnail: vid.thumbnail || "https://images.unsplash.com/photo-1504309092620-4d0ec726efa4?w=600",
+              duration: vid.duration || "00:00",
+              views: formattedViews,
+              date: vid.created_at ? new Date(vid.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : "Recently",
+              youtubeId,
+              category: vid.category || "Highlights",
+              fighterId: vid.fighter_id || vid.fighterId || ""
+            };
+          });
+
+          // Filter videos related to this fighter ONLY
+          const related = mappedVids.filter((v: any) => v.fighterId === id);
+          setFighterVideos(related);
+        } else {
+          setFighterVideos([]);
+        }
       } catch (err) {
-        console.error("Failed to load fighter details:", err);
+        console.error("Failed to load fighter details/videos:", err);
       } finally {
         setLoading(false);
       }
@@ -146,8 +191,7 @@ export function SuperAppFighterDetail() {
       : "Former Opponent",
   }));
 
-  // Get fighter-related videos (mock: first 4 videos)
-  const fighterVideos = MEDIA_CONTENT.slice(0, 4);
+  // Get fighter-related videos from database (state)
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -600,6 +644,12 @@ export function SuperAppFighterDetail() {
                 </div>
               </button>
             ))}
+            {fighterVideos.length === 0 && (
+              <div className="col-span-full text-center py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                <Play className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <p className="text-slate-500 text-sm font-semibold">No video highlights available for this fighter</p>
+              </div>
+            )}
           </div>
         </section>
 
