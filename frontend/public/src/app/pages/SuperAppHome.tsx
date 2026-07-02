@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router";
 import { api } from "../utils/api";
-import { Search, Bell, ShoppingCart, User, Heart, Star, Flame, Zap, Crown, ChevronRight, Package, Plus, Minus, X, CreditCard, Play, Calendar, MapPin, Clock, Award, Users, BookOpen, Video, Menu, Home as HomeIcon, Trophy, TrendingUp, Sparkles, ArrowRight, ArrowLeft, Check, ChevronDown, ChevronUp, Filter, Grid3x3, Eye, ShoppingBag, Building2, Tv, Handshake, Weight, Share2 } from "lucide-react";
+import { Search, Bell, ShoppingCart, User, Heart, Star, Flame, Zap, Crown, ChevronRight, Package, Plus, Minus, X, CreditCard, Play, Calendar, MapPin, Clock, Award, Users, BookOpen, Video, Menu, Home as HomeIcon, Trophy, TrendingUp, Sparkles, ArrowRight, ArrowLeft, Check, ChevronDown, ChevronUp, Filter, Grid3x3, Eye, ShoppingBag, Building2, Tv, Handshake, Weight, Share2, Mail } from "lucide-react";
 import { useWallet } from "../contexts/WalletContext";
 import { useOrders } from "../contexts/OrderContext";
 import { toast } from "sonner";
@@ -10,6 +10,8 @@ import eventPosterImage from 'figma:asset/76de12a848bf50a1769fa454bf2dab5cb85ea3
 import SponsorsSection from "../components/home/SponsorsSection";
 import TrendingFightersSection from "../components/home/TrendingFightersSection";
 import ClubDetailPage from "../components/home/ClubDetailPage";
+import SponsorDetailPage from "../components/home/SponsorDetailPage";
+import BroadcastDetailPage from "../components/home/BroadcastDetailPage";
 import HeroSection from "../components/home/HeroSection";
 
 /**
@@ -35,7 +37,7 @@ import { MatchBatchCard } from "../components/MatchBatchCard";
 import { FighterFilters } from "../components/FighterFilters";
 import { MatchFilters } from "../components/MatchFilters";
 
-type Section = "home" | "news-events" | "fighters" | "matches" | "match-detail" | "media" | "shop" | "strategic-partners" | "club-detail" | "cart" | "checkout" | "orders" | "profile" | "subscription";
+type Section = "home" | "news-events" | "fighters" | "matches" | "match-detail" | "media" | "shop" | "strategic-partners" | "club-detail" | "sponsor-detail" | "broadcast-detail" | "cart" | "checkout" | "orders" | "profile" | "subscription";
 type Category = "all" | "gloves" | "shorts" | "equipment" | "apparel";
 type SearchFilter = "all" | "fighters" | "events" | "products";
 type NewsEventsTab = "news" | "media";
@@ -118,6 +120,10 @@ interface Club {
   activeFighters: number;
   rating: number;
   status: string;
+  description?: string;
+  phone?: string;
+  email?: string;
+  established?: string;
 }
 
 interface BroadcastStation {
@@ -127,6 +133,10 @@ interface BroadcastStation {
   image: string; // Added for broadcast station thumbnail images
   description: string;
   eventsCount: number;
+  contactPerson?: string;
+  contactEmail?: string;
+  type?: string;
+  reach?: string;
 }
 
 interface Sponsor {
@@ -137,6 +147,9 @@ interface Sponsor {
   industry: string; // Added for sponsor industry display
   tier: "platinum" | "gold" | "silver";
   eventsSponsored: number;
+  contactPerson?: string;
+  contactEmail?: string;
+  websiteUrl?: string | null;
 }
 
 interface MediaContent {
@@ -153,18 +166,22 @@ interface Match {
   id: string;
   eventName: string;
   fighterA: {
+    id: string;
     name: string;
     image: string;
     record: string;
     weight: number;
     club: string;
+    clubId?: string;
   };
   fighterB: {
+    id: string;
     name: string;
     image: string;
     record: string;
     weight: number;
     club: string;
+    clubId?: string;
   };
   date: string;
   time: string;
@@ -222,6 +239,8 @@ export function SuperAppHome() {
   const [sponsorSlideIndex, setSponsorSlideIndex] = useState(0);
   const [selectedMatchType, setSelectedMatchType] = useState<string>("all");
   const [selectedClubId, setSelectedClubId] = useState<string | null>(null);
+  const [selectedSponsor, setSelectedSponsor] = useState<any | null>(null);
+  const [selectedBroadcastId, setSelectedBroadcastId] = useState<string | null>(null);
   const newsPerPage = 6;
   const mediaPerPage = 6;
   const previousMatchesPerPage = 5;
@@ -361,7 +380,8 @@ export function SuperAppHome() {
             featured: Boolean(art.featured),
             content: art.content || ""
           }));
-          setNewsArticles(mapped);
+          const sorted = mapped.sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+          setNewsArticles(sorted);
         } else {
           setNewsArticles([]);
         }
@@ -412,12 +432,14 @@ export function SuperAppHome() {
               duration: vid.duration || "00:00",
               views: formattedViews,
               date: vid.created_at ? new Date(vid.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : "Recently",
+              created_at: vid.created_at || "",
               youtubeId,
               category: vid.category || "Highlights",
               fighterId: vid.fighter_id || vid.fighterId || ""
             };
           });
-          setMediaContent(mapped);
+          const sorted = mapped.sort((a: any, b: any) => new Date(b.created_at || b.date || 0).getTime() - new Date(a.created_at || a.date || 0).getTime());
+          setMediaContent(sorted);
         } else {
           setMediaContent([]);
         }
@@ -469,7 +491,7 @@ export function SuperAppHome() {
   // Sync URL parameter with current section
   useEffect(() => {
     if (params.section) {
-      const validSections: Section[] = ["home", "news-events", "fighters", "matches", "match-detail", "shop", "strategic-partners", "club-detail", "cart", "checkout", "orders", "profile", "subscription"];
+      const validSections: Section[] = ["home", "news-events", "fighters", "matches", "match-detail", "shop", "strategic-partners", "club-detail", "sponsor-detail", "broadcast-detail", "cart", "checkout", "orders", "profile", "subscription"];
       if (validSections.includes(params.section as Section)) {
         setCurrentSection(params.section as Section);
       }
@@ -754,7 +776,11 @@ export function SuperAppHome() {
       rating: parseFloat(club.rating || "4.5"),
       status: club.status || "active",
       // image is stored directly in the DB column
-      image: club.image || `https://images.unsplash.com/photo-1593375547549-29fe3bf5c94f?w=400&sig=${index % 10}`
+      image: club.image || `https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1200&auto=format&fit=crop&sig=${index % 10}`,
+      description: club.description || "Phnom Penh Top Team is a premier combat sports academy located in the heart of Cambodia. We offer high-quality instruction in Kun Khmer, Brazilian Jiu-Jitsu, and Wrestling, training both local champions and international athletes.",
+      phone: club.phone || "+855 12 345 678",
+      email: club.email || "contact@pptopteam.com",
+      established: club.established || "2015"
     };
   });
 
@@ -769,7 +795,11 @@ export function SuperAppHome() {
       logo: station.logo_url || station.logoUrl || station.logo || `https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=100&sig=${index % 10}`,
       image: station.image || `https://images.unsplash.com/photo-1650984661525-7e6b1b874e47?w=400&sig=${index % 10}`,
       description: `${typeStr} - ${reachStr}`,
-      eventsCount
+      eventsCount,
+      contactPerson: station.contact_person || station.contactPerson || "Mr. Srey Vicheka",
+      contactEmail: station.contact_email || station.contactEmail || "contact@townfull.tv",
+      type: typeStr,
+      reach: reachStr
     };
   });
 
@@ -789,6 +819,8 @@ export function SuperAppHome() {
       eventsSponsored,
       website_url: sponsor.website_url || sponsor.websiteUrl || null,
       websiteUrl: sponsor.websiteUrl || sponsor.website_url || null,
+      contactPerson: sponsor.contact_person || sponsor.contactPerson || "Mr. Phanna Sok",
+      contactEmail: sponsor.contact_email || sponsor.contactEmail || "marketing@carabao.kh",
     };
   });
 
@@ -803,25 +835,31 @@ export function SuperAppHome() {
   // MATCHES: Transform batch/match data from Digital Platform
   const matches: Match[] = (mappedBatches || []).flatMap(batch => 
     batch.matches.map(match => {
-      const fighterAClub = MOCK_CLUBS.find(c => c.id === match.fighterA.id);
-      const fighterBClub = MOCK_CLUBS.find(c => c.id === match.fighterB.id);
+      const fA = fightersList.find((f: any) => f.id === match.fighterA.id);
+      const fB = fightersList.find((f: any) => f.id === match.fighterB.id);
+      const fighterAClub = clubsList.find((c: any) => c.id === (fA?.club_id || fA?.clubId));
+      const fighterBClub = clubsList.find((c: any) => c.id === (fB?.club_id || fB?.clubId));
       
       return {
         id: match.id,
         eventName: batch.eventName,
         fighterA: {
+          id: match.fighterA.id,
           name: match.fighterA.name,
           image: typeof match.fighterA.image === 'string' ? match.fighterA.image : "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=600",
           record: match.fighterA.record,
           weight: match.fighterA.weight,
-          club: fighterAClub?.name || match.fighterA.clubName || "Unknown Club"
+          club: fighterAClub?.name || match.fighterA.clubName || "Unknown Club",
+          clubId: fA?.club_id || fA?.clubId
         },
         fighterB: {
+          id: match.fighterB.id,
           name: match.fighterB.name,
           image: typeof match.fighterB.image === 'string' ? match.fighterB.image : "https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=600",
           record: match.fighterB.record,
           weight: match.fighterB.weight,
-          club: fighterBClub?.name || match.fighterB.clubName || "Unknown Club"
+          club: fighterBClub?.name || match.fighterB.clubName || "Unknown Club",
+          clubId: fB?.club_id || fB?.clubId
         },
         date: match.date || batch.date,
         time: "20:00", // Default time
@@ -1008,8 +1046,9 @@ export function SuperAppHome() {
       <HeroSection 
         onExploreFighters={() => handleSectionChange("fighters")}
         onViewEvents={() => {
-          handleSectionChange("news-events");
-          setNewsEventsTab("events");
+          handleSectionChange("matches");
+          setMatchesEventsTab("events");
+          navigate("/matches?tab=events");
         }}
       />
 
@@ -1140,202 +1179,101 @@ export function SuperAppHome() {
         </div>
       </div>
 
-      {/* Live Events & Streaming Section */}
-      <div className="relative bg-gradient-to-br from-[#1A1A24] via-[#051C42] to-[#0A3D91] rounded-3xl p-4 md:p-6 overflow-hidden border-2 border-white/10 shadow-2xl">
-        {/* Background texture */}
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#C8102E]/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-[#F2C94C]/10 rounded-full blur-3xl" />
+      {/* Latest Videos Section */}
+      <div className="relative bg-gradient-to-br from-white via-gray-50/50 to-white rounded-2xl p-6 md:p-8 border-2 border-gray-200 shadow-lg overflow-hidden">
+        {/* Decorative Elements */}
+        <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-purple-600/5 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-[#0A3D91]/5 to-transparent rounded-full blur-3xl" />
 
-        <div className="relative z-10">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="w-12 h-12 bg-gradient-to-br from-[#C8102E] to-red-600 rounded-xl flex items-center justify-center shadow-xl animate-pulse">
-                  <Play className="w-6 h-6 text-white fill-white" />
-                </div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-lg animate-pulse" />
-              </div>
-              <div>
-                <h2 className="text-2xl md:text-3xl font-black text-white mb-1">Live Events & Streaming</h2>
-                <p className="text-sm text-white/80 font-medium">Watch Kun Khmer matches live and on-demand</p>
+        <div className="relative flex items-center justify-between mb-6">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-[#0A3D91]/10 to-blue-600/10 rounded-full border border-[#0A3D91]/20">
+                <Video className="w-4 h-4 text-[#0A3D91]" />
+                <span className="text-xs font-black text-[#0A3D91] uppercase tracking-wider">Highlights</span>
               </div>
             </div>
-            <button
-              onClick={() => {
-                handleSectionChange("strategic-partners");
-                setStrategicPartnersTab("broadcasts");
-              }}
-              className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-lg rounded-xl text-sm font-black text-white transition-all border border-white/20 hover:border-white/40"
+            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">Latest Videos</h2>
+            <p className="text-gray-600 font-medium">Catch up on match highlights, fighter interviews, and historical moments</p>
+          </div>
+          <button
+            onClick={() => {
+              handleSectionChange("news-events");
+              setNewsEventsTab("media");
+            }}
+            className="hidden md:flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300 hover:shadow-lg"
+          >
+            View All Videos <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {mediaContent.slice(0, 3).map((video) => (
+            <div
+              key={video.id}
+              onClick={() => setSelectedVideo(video)}
+              className="group relative bg-white rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-500 border-2 border-gray-200 hover:border-[#0A3D91] cursor-pointer hover:-translate-y-2 flex flex-col"
             >
-              All Broadcasts <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Live Now Banner */}
-          <div className="mb-6 bg-gradient-to-r from-red-600 via-red-700 to-red-600 rounded-2xl p-6 border-2 border-red-400/30 shadow-2xl relative overflow-hidden">
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20 pointer-events-none" />
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32" />
-
-            <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className="w-16 h-16 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center border-2 border-white/30 shadow-xl">
-                    <Video className="w-8 h-8 text-white" />
-                  </div>
-                  <div className="absolute -top-2 -right-2 px-3 py-1 bg-white rounded-full text-red-600 text-xs font-black uppercase shadow-lg animate-pulse">
-                    LIVE
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black text-white mb-1">Championship Night - Round 3</h3>
-                  <p className="text-sm text-white/90 font-medium">Broadcasting now on {broadcastStations[0]?.name || "Official Channel"}</p>
-                  <div className="flex items-center gap-3 mt-2">
-                    <span className="flex items-center gap-1.5 text-xs font-bold text-white/90">
-                      <Eye className="w-3.5 h-3.5" />
-                      12.4K viewers
-                    </span>
-                    <span className="text-white/60">•</span>
-                    <span className="text-xs font-bold text-white/90">Started 45 min ago</span>
-                  </div>
-                </div>
-              </div>
-              <button className="w-full md:w-auto px-8 py-4 bg-white text-red-600 rounded-xl font-black text-base hover:bg-white/90 transition-all shadow-xl hover:shadow-2xl hover:scale-105 flex items-center justify-center gap-2">
-                <Play className="w-5 h-5 fill-current" />
-                Watch Now
-              </button>
-            </div>
-          </div>
-
-          {/* Upcoming Streams Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Upcoming Stream 1 */}
-            <div className="group bg-white/5 backdrop-blur-lg rounded-2xl overflow-hidden border border-white/10 hover:border-white/30 transition-all hover:shadow-2xl hover:-translate-y-1">
-              <div className="relative aspect-video bg-gradient-to-br from-gray-800 to-gray-900 overflow-hidden">
+              <div className="relative aspect-video bg-slate-900 overflow-hidden shrink-0">
                 <img
-                  src={events[1]?.image || eventPosterImage}
-                  alt="Event"
-                  className="w-full h-full object-cover opacity-60 group-hover:opacity-80 group-hover:scale-110 transition-all duration-700"
+                  src={video.thumbnail}
+                  alt={video.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-
-                {/* Stream Time Badge */}
-                <div className="absolute top-3 left-3">
-                  <span className="px-3 py-1.5 bg-[#0A3D91]/90 backdrop-blur-sm text-white text-xs font-black uppercase rounded-lg shadow-lg border border-blue-400/30">
-                    Tomorrow 8PM
-                  </span>
-                </div>
-
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                
                 {/* Duration Badge */}
-                <div className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-black/60 backdrop-blur-sm text-white rounded-lg border border-white/20">
+                <div className="absolute bottom-3 right-3 flex items-center gap-1 px-2.5 py-1 bg-black/75 backdrop-blur-sm text-white rounded-lg border border-white/10 text-[10px] font-black">
                   <Clock className="w-3.5 h-3.5" />
-                  <span className="text-xs font-bold">2.5 hrs</span>
+                  <span>{video.duration}</span>
                 </div>
 
-                {/* Play Icon Overlay */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center shadow-2xl">
-                    <Play className="w-8 h-8 text-[#0A3D91] fill-current ml-1" />
+                {/* Category Badge */}
+                <div className="absolute top-3 left-3 px-2 py-0.5 bg-gradient-to-r from-[#0A3D91] to-blue-600 text-white rounded-lg text-[9px] font-black uppercase tracking-wider">
+                  {video.category}
+                </div>
+
+                {/* Play Button Overlay */}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-2xl scale-75 group-hover:scale-100 transition-transform duration-300">
+                    <Play className="w-5 h-5 text-[#0A3D91] fill-current ml-0.5" />
                   </div>
                 </div>
               </div>
 
-              <div className="p-5">
-                <h4 className="text-base font-black text-white mb-2 line-clamp-1 group-hover:text-[#F2C94C] transition-colors">
-                  Warriors of Angkor Championship
+              <div className="p-5 flex flex-col justify-between flex-1">
+                <h4 className="text-sm font-black text-gray-900 mb-3 line-clamp-2 leading-snug group-hover:text-[#0A3D91] transition-colors">
+                  {video.title}
                 </h4>
-                <div className="flex items-center gap-2 mb-3">
-                  <Tv className="w-4 h-4 text-[#C8102E]" />
-                  <span className="text-sm text-white/70 font-medium line-clamp-1">{broadcastStations[0]?.name || "Official Channel"}</span>
-                </div>
-                <button className="w-full px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition-all border border-white/20 hover:border-white/40">
-                  Set Reminder
-                </button>
-              </div>
-            </div>
-
-            {/* Upcoming Stream 2 */}
-            <div className="group bg-white/5 backdrop-blur-lg rounded-2xl overflow-hidden border border-white/10 hover:border-white/30 transition-all hover:shadow-2xl hover:-translate-y-1">
-              <div className="relative aspect-video bg-gradient-to-br from-gray-800 to-gray-900 overflow-hidden">
-                <img
-                  src={events[2]?.image || eventPosterImage}
-                  alt="Event"
-                  className="w-full h-full object-cover opacity-60 group-hover:opacity-80 group-hover:scale-110 transition-all duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-
-                <div className="absolute top-3 left-3">
-                  <span className="px-3 py-1.5 bg-[#C8102E]/90 backdrop-blur-sm text-white text-xs font-black uppercase rounded-lg shadow-lg border border-red-400/30">
-                    Friday 7PM
-                  </span>
-                </div>
-
-                <div className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-black/60 backdrop-blur-sm text-white rounded-lg border border-white/20">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span className="text-xs font-bold">3 hrs</span>
-                </div>
-
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center shadow-2xl">
-                    <Play className="w-8 h-8 text-[#C8102E] fill-current ml-1" />
+                <div className="flex items-center justify-between text-[11px] font-semibold text-gray-400">
+                  <div className="flex items-center gap-1">
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>{video.views} views</span>
                   </div>
+                  <span>{video.date}</span>
                 </div>
-              </div>
-
-              <div className="p-5">
-                <h4 className="text-base font-black text-white mb-2 line-clamp-1 group-hover:text-[#F2C94C] transition-colors">
-                  National Tournament Finals
-                </h4>
-                <div className="flex items-center gap-2 mb-3">
-                  <Tv className="w-4 h-4 text-[#C8102E]" />
-                  <span className="text-sm text-white/70 font-medium line-clamp-1">{broadcastStations[1]?.name || "Sports Network"}</span>
-                </div>
-                <button className="w-full px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition-all border border-white/20 hover:border-white/40">
-                  Set Reminder
-                </button>
               </div>
             </div>
-
-            {/* Broadcast Partners Info */}
-            <div className="bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <Tv className="w-6 h-6 text-[#F2C94C]" />
-                  <h4 className="text-lg font-black text-white">Official Broadcast Partners</h4>
-                </div>
-                <p className="text-sm text-white/70 font-medium mb-6 leading-relaxed">
-                  Watch live on our official TV and streaming networks broadcasting Kun Khmer events worldwide
-                </p>
-
-                {/* Partner Logos */}
-                <div className="space-y-3 mb-6">
-                  {broadcastStations.slice(0, 2).map((station) => (
-                    <div key={station.id} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-all">
-                      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
-                        <img src={station.logo} alt={station.name} className="w-8 h-8 object-contain" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-white line-clamp-1">{station.name}</p>
-                        <p className="text-xs text-white/60 line-clamp-1">{station.eventsCount} events broadcast</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
-                  handleSectionChange("strategic-partners");
-                  setStrategicPartnersTab("broadcasts");
-                }}
-                className="w-full px-4 py-3 bg-gradient-to-r from-[#F2C94C] to-yellow-600 text-[#1A1A24] rounded-xl font-black text-sm hover:shadow-xl hover:shadow-yellow-600/30 transition-all flex items-center justify-center gap-2 group"
-              >
-                View All Partners
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
+          ))}
+          {mediaContent.length === 0 && (
+            <div className="col-span-full text-center py-12 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl">
+              <Video className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+              <p className="text-gray-500 text-sm font-semibold">No latest videos available</p>
             </div>
-          </div>
+          )}
+        </div>
+
+        {/* Mobile View All Button */}
+        <div className="md:hidden mt-6 text-center">
+          <button
+            onClick={() => {
+              handleSectionChange("news-events");
+              setNewsEventsTab("media");
+            }}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300 hover:shadow-lg"
+          >
+            View All Videos <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -1371,6 +1309,12 @@ export function SuperAppHome() {
           {newsArticles.slice(0, 2).map((article) => (
             <div
               key={article.id}
+              onClick={() => {
+                setSelectedArticle(article);
+                setNewsEventsTab("news");
+                setCurrentSection("news-events");
+                navigate("/news-events?tab=news");
+              }}
               className="group relative bg-white rounded-2xl overflow-hidden hover:shadow-lg hover:-translate-y-2 transition-all duration-500 border-2 border-gray-200 hover:border-[#F2C94C] cursor-pointer flex flex-col"
             >
               {/* Article Image */}
@@ -1458,10 +1402,17 @@ export function SuperAppHome() {
     // Filter fighters from this club
     const clubFighters = fighters.filter(f => f.clubId === selectedClubId);
 
+    // Filter matches involving fighters of this club
+    const clubFighterIds = clubFighters.map(f => f.id);
+    const clubMatches = matches.filter(m => 
+      clubFighterIds.includes(m.fighterA.id) || clubFighterIds.includes(m.fighterB.id)
+    );
+
     return (
       <ClubDetailPage
         club={club}
         fighters={clubFighters}
+        matches={clubMatches}
         onBack={() => {
           setCurrentSection("strategic-partners");
           setStrategicPartnersTab("clubs");
@@ -1470,6 +1421,65 @@ export function SuperAppHome() {
         onFighterClick={(fighterId) => {
           const f = fighters.find(x => x.id === fighterId);
           navigate(`/fighters/${f ? getFighterSlug(f) : fighterId}`);
+        }}
+      />
+    );
+  };
+
+  const renderSponsorDetail = () => {
+    if (!selectedSponsor) return null;
+
+    // Filter events sponsored by this sponsor
+    const sponsorEvents = events.filter(e => {
+      const dbEvent = dbEvents.find(de => de.id === e.id);
+      return dbEvent && (dbEvent.main_sponsor_id === selectedSponsor.id || (dbEvent.sponsorIds && dbEvent.sponsorIds.includes(selectedSponsor.id)));
+    });
+
+    return (
+      <SponsorDetailPage
+        sponsor={selectedSponsor}
+        events={sponsorEvents}
+        onBack={() => {
+          setCurrentSection("strategic-partners");
+          setStrategicPartnersTab("sponsors");
+          navigate("/strategic-partners");
+        }}
+        onEventClick={(eventId) => {
+          setSelectedEventId(eventId);
+          setMatchesEventsTab("events");
+          setCurrentSection("matches");
+          navigate(`/matches?tab=events&event=${eventId}`);
+        }}
+      />
+    );
+  };
+
+  const renderBroadcastDetail = () => {
+    if (!selectedBroadcastId) return null;
+
+    const station = broadcastStations.find(s => s.id === selectedBroadcastId);
+    if (!station) return null;
+
+    // Filter events broadcasted by this station
+    const stationEvents = events.filter(e => {
+      const dbEvent = dbEvents.find(de => de.id === e.id);
+      return dbEvent && dbEvent.broadcast_station_id === selectedBroadcastId;
+    });
+
+    return (
+      <BroadcastDetailPage
+        station={station}
+        events={stationEvents}
+        onBack={() => {
+          setCurrentSection("strategic-partners");
+          setStrategicPartnersTab("broadcasts");
+          navigate("/strategic-partners");
+        }}
+        onEventClick={(eventId) => {
+          setSelectedEventId(eventId);
+          setMatchesEventsTab("events");
+          setCurrentSection("matches");
+          navigate(`/matches?tab=events&event=${eventId}`);
         }}
       />
     );
@@ -1503,15 +1513,6 @@ export function SuperAppHome() {
             <div>
               <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">News & Media</h2>
               <p className="text-base text-gray-600 font-semibold mt-1">Stay updated with latest stories and exclusive content</p>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
-            <Sparkles className="w-5 h-5 text-[#F2C94C]" />
-            <div className="text-left">
-              <p className="text-xs font-semibold text-gray-500">Updates</p>
-              <p className="text-lg font-black leading-none text-gray-900">{newsArticles.length}</p>
             </div>
           </div>
         </div>
@@ -2101,49 +2102,6 @@ export function SuperAppHome() {
         </div>
       )}
 
-      {/* Video Player Modal */}
-      {selectedVideo && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
-          onClick={() => setSelectedVideo(null)}
-        >
-          <div
-            className="relative w-full max-w-5xl bg-gray-900 rounded-2xl overflow-hidden shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close Button */}
-            <button
-              onClick={() => setSelectedVideo(null)}
-              className="absolute top-4 right-4 z-10 w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center transition-all border border-white/20 hover:border-white/40"
-            >
-              <X className="w-5 h-5 text-white" />
-            </button>
-
-            {/* Video Header */}
-            <div className="bg-gradient-to-r from-gray-900 to-gray-800 px-6 py-4 border-b border-white/10">
-              <h3 className="text-xl font-black text-white pr-12">{selectedVideo.title}</h3>
-              <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
-                <Calendar className="w-4 h-4" />
-                <span className="font-semibold">{selectedVideo.date}</span>
-              </div>
-            </div>
-
-            {/* YouTube Video */}
-            <div className="relative aspect-video bg-black">
-              <iframe
-                width="100%"
-                height="100%"
-                src={`https://www.youtube.com/embed/${selectedVideo.youtubeId}?autoplay=1`}
-                title={selectedVideo.title}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="absolute inset-0 w-full h-full"
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -2536,10 +2494,19 @@ export function SuperAppHome() {
 
     return (
       <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">Strategic Partners</h2>
-        <p className="text-gray-500">Official partners supporting Kun Khmer</p>
-      </div>
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-14 h-14 bg-gradient-to-br from-[#0A3D91] to-blue-700 rounded-xl flex items-center justify-center shadow-md">
+                <Handshake className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">Strategic Partners</h2>
+                <p className="text-base text-gray-600 font-semibold mt-1">Official partners supporting Kun Khmer federation and fighters</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
       {/* Premium Segmented Control Tabs */}
       <div className="flex justify-center md:justify-start mb-6">
@@ -2681,6 +2648,11 @@ export function SuperAppHome() {
             {broadcastStations.map((station) => (
               <div
                 key={station.id}
+                onClick={() => {
+                  setSelectedBroadcastId(station.id);
+                  setCurrentSection("broadcast-detail");
+                  navigate(`/broadcast-detail`);
+                }}
                 className="group relative bg-white rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500 border border-purple-100 hover:-translate-y-1 hover:border-purple-300/50 cursor-pointer flex flex-col"
               >
                 {/* Banner */}
@@ -2718,7 +2690,7 @@ export function SuperAppHome() {
 
                   <div className="mt-auto pt-1">
                     <div className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl font-black text-xs uppercase tracking-wider text-center group-hover:shadow-lg group-hover:shadow-purple-600/30 transition-all relative overflow-hidden">
-                      <span className="relative z-10">View Schedule</span>
+                      <span className="relative z-10">View Details</span>
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                     </div>
                   </div>
@@ -2758,6 +2730,11 @@ export function SuperAppHome() {
                     {tierSponsors.map((sponsor) => (
                       <div
                         key={sponsor.id}
+                        onClick={() => {
+                          setSelectedSponsor(sponsor);
+                          setCurrentSection("sponsor-detail");
+                          navigate(`/sponsor-detail`);
+                        }}
                         className={`group relative bg-white rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500 border hover:-translate-y-1 cursor-pointer flex flex-col ${m.border}`}
                       >
                         {/* Banner */}
@@ -2860,17 +2837,25 @@ export function SuperAppHome() {
             {sponsors.filter(s => s.tier === 'platinum').map((sponsor) => (
               <div
                 key={sponsor.id}
-                className="group bg-white rounded-2xl p-8 hover:shadow-2xl transition-all duration-300 border-2 border-gray-300 hover:border-gray-400"
+                onClick={() => setSelectedSponsor(sponsor)}
+                className="group bg-white rounded-2xl p-8 hover:shadow-2xl transition-all duration-300 border-2 border-gray-300 hover:border-gray-400 cursor-pointer active:scale-98 flex flex-col justify-between"
               >
-                <div className="w-24 h-24 rounded-full flex items-center justify-center mb-4 mx-auto group-hover:scale-110 group-hover:shadow-xl transition-all overflow-hidden">
-                  <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-cover rounded-full" />
-                </div>
-                <h3 className="text-lg font-black text-gray-900 text-center mb-3">{sponsor.name}</h3>
-                <div className="text-center">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full">
-                    <Trophy className="w-4 h-4 text-gray-600" />
-                    <span className="text-sm font-bold text-gray-700">{sponsor.eventsSponsored} Events</span>
+                <div>
+                  <div className="w-24 h-24 rounded-full flex items-center justify-center mb-4 mx-auto group-hover:scale-110 group-hover:shadow-xl transition-all overflow-hidden">
+                    <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-cover rounded-full" />
                   </div>
+                  <h3 className="text-lg font-black text-gray-900 text-center mb-3">{sponsor.name}</h3>
+                  <div className="text-center mb-4">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full">
+                      <Trophy className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm font-bold text-gray-700">{sponsor.eventsSponsored} Events</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-center mt-2">
+                  <span className="text-xs font-black text-[#0A3D91] group-hover:underline flex items-center justify-center gap-1">
+                    View Details <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
                 </div>
               </div>
             ))}
@@ -2889,17 +2874,25 @@ export function SuperAppHome() {
             {sponsors.filter(s => s.tier === 'gold').map((sponsor) => (
               <div
                 key={sponsor.id}
-                className="group bg-white rounded-2xl p-8 hover:shadow-2xl transition-all duration-300 border-2 border-yellow-200 hover:border-yellow-300"
+                onClick={() => setSelectedSponsor(sponsor)}
+                className="group bg-white rounded-2xl p-8 hover:shadow-2xl transition-all duration-300 border-2 border-yellow-200 hover:border-yellow-300 cursor-pointer active:scale-98 flex flex-col justify-between"
               >
-                <div className="w-24 h-24 rounded-full flex items-center justify-center mb-4 mx-auto group-hover:scale-110 group-hover:shadow-xl transition-all overflow-hidden">
-                  <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-cover rounded-full" />
-                </div>
-                <h3 className="text-lg font-black text-gray-900 text-center mb-3">{sponsor.name}</h3>
-                <div className="text-center">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-50 rounded-full">
-                    <Trophy className="w-4 h-4 text-yellow-600" />
-                    <span className="text-sm font-bold text-yellow-700">{sponsor.eventsSponsored} Events</span>
+                <div>
+                  <div className="w-24 h-24 rounded-full flex items-center justify-center mb-4 mx-auto group-hover:scale-110 group-hover:shadow-xl transition-all overflow-hidden">
+                    <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-cover rounded-full" />
                   </div>
+                  <h3 className="text-lg font-black text-gray-900 text-center mb-3">{sponsor.name}</h3>
+                  <div className="text-center mb-4">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-50 rounded-full">
+                      <Trophy className="w-4 h-4 text-yellow-600" />
+                      <span className="text-sm font-bold text-yellow-700">{sponsor.eventsSponsored} Events</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-center mt-2">
+                  <span className="text-xs font-black text-[#0A3D91] group-hover:underline flex items-center justify-center gap-1">
+                    View Details <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
                 </div>
               </div>
             ))}
@@ -2918,17 +2911,25 @@ export function SuperAppHome() {
             {sponsors.filter(s => s.tier === 'silver').map((sponsor) => (
               <div
                 key={sponsor.id}
-                className="group bg-white rounded-2xl p-8 hover:shadow-2xl transition-all duration-300 border-2 border-gray-200 hover:border-gray-300"
+                onClick={() => setSelectedSponsor(sponsor)}
+                className="group bg-white rounded-2xl p-8 hover:shadow-2xl transition-all duration-300 border-2 border-gray-200 hover:border-gray-300 cursor-pointer active:scale-98 flex flex-col justify-between"
               >
-                <div className="w-24 h-24 rounded-full flex items-center justify-center mb-4 mx-auto group-hover:scale-110 group-hover:shadow-xl transition-all overflow-hidden">
-                  <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-cover rounded-full" />
-                </div>
-                <h3 className="text-lg font-black text-gray-900 text-center mb-3">{sponsor.name}</h3>
-                <div className="text-center">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full">
-                    <Trophy className="w-4 h-4 text-gray-600" />
-                    <span className="text-sm font-bold text-gray-700">{sponsor.eventsSponsored} Events</span>
+                <div>
+                  <div className="w-24 h-24 rounded-full flex items-center justify-center mb-4 mx-auto group-hover:scale-110 group-hover:shadow-xl transition-all overflow-hidden">
+                    <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-cover rounded-full" />
                   </div>
+                  <h3 className="text-lg font-black text-gray-900 text-center mb-3">{sponsor.name}</h3>
+                  <div className="text-center mb-4">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full">
+                      <Trophy className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm font-bold text-gray-700">{sponsor.eventsSponsored} Events</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-center mt-2">
+                  <span className="text-xs font-black text-[#0A3D91] group-hover:underline flex items-center justify-center gap-1">
+                    View Details <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
                 </div>
               </div>
             ))}
@@ -2946,10 +2947,17 @@ export function SuperAppHome() {
 
     return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-black text-gray-900 mb-2">Matches & Events</h2>
-          <p className="text-gray-500">Official Kun Khmer championship bouts and upcoming events</p>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-14 h-14 bg-gradient-to-br from-[#0A3D91] to-blue-700 rounded-xl flex items-center justify-center shadow-md">
+              <Trophy className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">Matches & Events</h2>
+              <p className="text-base text-gray-600 font-semibold mt-1">Official Kun Khmer championship bouts and upcoming events</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -4650,6 +4658,8 @@ export function SuperAppHome() {
         {currentSection === "match-detail" && renderMatchDetail()}
         {currentSection === "strategic-partners" && renderStrategicPartners()}
         {currentSection === "club-detail" && renderClubDetail()}
+        {currentSection === "sponsor-detail" && renderSponsorDetail()}
+        {currentSection === "broadcast-detail" && renderBroadcastDetail()}
         {currentSection === "shop" && renderShop()}
         {currentSection === "cart" && renderCart()}
         {currentSection === "checkout" && renderCheckout()}
@@ -4713,8 +4723,8 @@ export function SuperAppHome() {
               </div>
             </div>
 
-            {/* Nav Columns — span 8 cols, split into 4 equal sub-cols */}
-            <div className="md:col-span-8 grid grid-cols-2 sm:grid-cols-4 gap-8">
+            {/* Nav Columns — span 8 cols, split into 3 equal sub-cols */}
+            <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-8">
 
               {/* Platform */}
               <div>
@@ -4739,44 +4749,10 @@ export function SuperAppHome() {
                 </ul>
               </div>
 
-              {/* Shop */}
+              {/* Resources */}
               <div>
-                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Shop</h4>
+                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Resources</h4>
                 <ul className="space-y-2.5">
-                  {[
-                    { label: 'All Products', section: 'shop' as Section },
-                    { label: 'My Cart', section: 'cart' as Section },
-                    { label: 'My Orders', section: 'orders' as Section },
-                  ].map(({ label, section }) => (
-                    <li key={label}>
-                      <button
-                        onClick={() => handleSectionChange(section)}
-                        className="text-white/45 hover:text-white text-xs font-medium transition-colors duration-150 text-left leading-snug hover:translate-x-0.5 transform transition-transform"
-                      >
-                        {label}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Account */}
-              <div>
-                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Account</h4>
-                <ul className="space-y-2.5">
-                  {[
-                    { label: 'My Profile', section: 'profile' as Section },
-                    { label: 'Subscription', section: 'subscription' as Section },
-                  ].map(({ label, section }) => (
-                    <li key={label}>
-                      <button
-                        onClick={() => handleSectionChange(section)}
-                        className="text-white/45 hover:text-white text-xs font-medium transition-colors duration-150 text-left leading-snug hover:translate-x-0.5 transform transition-transform"
-                      >
-                        {label}
-                      </button>
-                    </li>
-                  ))}
                   <li>
                     <Link
                       to="/home"
@@ -4785,6 +4761,13 @@ export function SuperAppHome() {
                       Admin Platform
                     </Link>
                   </li>
+                  {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map((item) => (
+                    <li key={item}>
+                      <button className="text-white/45 hover:text-white text-xs font-medium transition-colors duration-150 text-left leading-snug hover:translate-x-0.5 transform transition-transform text-left">
+                        {item}
+                      </button>
+                    </li>
+                  ))}
                 </ul>
               </div>
 
@@ -4860,6 +4843,49 @@ export function SuperAppHome() {
 
         </div>
       </footer>
+      {/* Video Player Modal */}
+      {selectedVideo && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+          onClick={() => setSelectedVideo(null)}
+        >
+          <div
+            className="relative w-full max-w-5xl bg-gray-900 rounded-2xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setSelectedVideo(null)}
+              className="absolute top-4 right-4 z-10 w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center transition-all border border-white/20 hover:border-white/40"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+
+            {/* Video Header */}
+            <div className="bg-gradient-to-r from-gray-900 to-gray-800 px-6 py-4 border-b border-white/10">
+              <h3 className="text-xl font-black text-white pr-12">{selectedVideo.title}</h3>
+              <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
+                <Calendar className="w-4 h-4" />
+                <span className="font-semibold">{selectedVideo.date}</span>
+              </div>
+            </div>
+
+            {/* YouTube Video */}
+            <div className="relative aspect-video bg-black">
+              <iframe
+                width="100%"
+                height="100%"
+                src={`https://www.youtube.com/embed/${selectedVideo.youtubeId}?autoplay=1`}
+                title={selectedVideo.title}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="absolute inset-0 w-full h-full"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
