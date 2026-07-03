@@ -1086,8 +1086,9 @@ export function SuperAppHome() {
           </div>
           <button
             onClick={() => {
-              handleSectionChange("news-events");
-              setNewsEventsTab("events");
+              handleSectionChange("matches");
+              setMatchesEventsTab("events");
+              navigate("/matches?tab=events");
             }}
             className="hidden md:flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300 hover:shadow-lg"
           >
@@ -1099,7 +1100,12 @@ export function SuperAppHome() {
           {events.slice(0, 2).map((event) => (
             <div
               key={event.id}
-              onClick={() => setSelectedEventId(event.id)}
+              onClick={() => {
+                setSelectedEventId(event.id);
+                setMatchesEventsTab("events");
+                handleSectionChange("matches");
+                navigate(`/matches?tab=events&event=${event.id}`);
+              }}
               className="group relative bg-white rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-500 border-2 border-gray-200 hover:border-[#0A3D91] cursor-pointer hover:-translate-y-2"
             >
               <div className="relative h-56 overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800">
@@ -1148,6 +1154,9 @@ export function SuperAppHome() {
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedEventId(event.id);
+                    setMatchesEventsTab("events");
+                    handleSectionChange("matches");
+                    navigate(`/matches?tab=events&event=${event.id}`);
                   }}
                   className="relative w-full px-4 py-3 bg-gradient-to-r from-[#0A3D91] to-[#1565C0] text-white rounded-xl font-black text-sm uppercase tracking-wider hover:shadow-xl hover:shadow-[#0A3D91]/30 transition-all group/btn overflow-hidden"
                 >
@@ -1169,8 +1178,9 @@ export function SuperAppHome() {
         <div className="md:hidden mt-6 text-center">
           <button
             onClick={() => {
-              handleSectionChange("news-events");
-              setNewsEventsTab("events");
+              handleSectionChange("matches");
+              setMatchesEventsTab("events");
+              navigate("/matches?tab=events");
             }}
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300 hover:shadow-lg"
           >
