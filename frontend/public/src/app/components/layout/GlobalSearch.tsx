@@ -67,7 +67,7 @@ function loadIndex(): Promise<SearchItem[]> {
               detail: e.location,
               date: e.date,
               image: e.image,
-              href: `/matches?tab=events&event=${e.id}`,
+              href: `/events/${e.id}`,
               haystack: [e.name, e.location, e.description].filter(Boolean).join(" ").toLowerCase(),
             });
           }

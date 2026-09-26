@@ -25,7 +25,10 @@ export interface Bout {
   id: string;
   eventId?: string;
   eventName?: string;
+  cardId?: string;
   cardName?: string;
+  /** Running order on its card (lowest first). */
+  sortOrder: number;
   date?: string;
   status?: string;
   weightKg?: number | null;
@@ -118,6 +121,7 @@ function demoBouts(fighters: any[]): Bout[] {
         id: `demo-${n}`,
         eventName: "Demo Fight Night",
         cardName: `Demo Card ${n + 1}`,
+        sortOrder: 0,
         date: date.toISOString().slice(0, 10),
         status: "Completed",
         weightKg: parseFloat(a.currentWeight) || null,
@@ -140,6 +144,7 @@ function demoBouts(fighters: any[]): Bout[] {
   out.push({
     id: "demo-next",
     eventName: "Demo Fight Night",
+    sortOrder: 0,
     date: soon.toISOString().slice(0, 10),
     status: "Scheduled",
     weightKg: parseFloat(fighters[0].currentWeight) || null,
@@ -192,6 +197,8 @@ function mapBout(m: any, fightersById: Map<string, any>): Bout {
     id: m.id,
     eventId: m.event_id,
     eventName: m.event_name || m.sub_event?.event_name || undefined,
+    cardId: m.sub_event_id || m.sub_event?.id || undefined,
+    sortOrder: Number(m.sort_order ?? m.sortOrder ?? 0) || 0,
     cardName: m.sub_event_name || m.sub_event?.name || undefined,
     date: m.date || m.sub_event?.date || undefined,
     status: m.status,
@@ -229,8 +236,19 @@ export function loadFanData(): Promise<FanData> {
       const fightersById = new Map(fighters.map((x) => [x.id, x]));
       let bouts: Bout[] = val(m, [] as any[]).map((x: any) => mapBout(x, fightersById));
       let champions: any[] = val(c, [] as any[]).filter((x: any) => (x.approval_status ?? "approved") === "approved");
+      const events: any[] = val(e, [] as any[]).filter((x: any) => x.status !== "Draft");
       if (demo) {
-        if (!bouts.some((x) => x.completed)) bouts = [...bouts, ...demoBouts(fighters)];
+        if (!bouts.some((x) => x.completed)) {
+          const extra = demoBouts(fighters);
+          // Put a few sample results on the latest event so its Results tab can be reviewed.
+          const ev = events[0];
+          if (ev) {
+            extra.slice(0, 3).forEach((x, i) => Object.assign(x, {
+              eventId: ev.id, eventName: ev.name, cardId: "demo-card", cardName: "Demo Card", date: String(ev.date).slice(0, 10), sortOrder: i + 1,
+            }));
+          }
+          bouts = [...bouts, ...extra];
+        }
         if (champions.length === 0) champions = demoChampions(fighters);
       }
       const broadcasters: Broadcaster[] = val(b, [] as any[])
@@ -247,7 +265,7 @@ export function loadFanData(): Promise<FanData> {
       return {
         fighters,
         bouts,
-        events: val(e, [] as any[]).filter((x: any) => x.status !== "Draft"),
+        events,
         broadcasters,
         champions,
         demo,
@@ -365,4 +383,17 @@ export function divisions(data: FanData): Division[] {
 export function broadcasterForEvent(data: FanData, event: any): Broadcaster | null {
   const id = event?.broadcast_station_id;
   return (id && data.broadcasters.find((b) => b.id === id)) || null;
+}
+
+/** An event's bouts in programme order: cards by date, then running order on each card. */
+export function eventBouts(data: FanData, eventId: string): Bout[] {
+  const time = (b: Bout) => new Date(b.date || 0).getTime();
+  return data.bouts
+    .filter((b) => b.eventId === eventId)
+    .sort((a, b) => time(a) - time(b) || (a.cardName || "").localeCompare(b.cardName || "") || a.sortOrder - b.sortOrder);
+}
+
+/** The bout to headline an event: the first title bout, otherwise the first bout on the card. */
+export function mainEventBout(bouts: Bout[]): Bout | null {
+  return bouts.find((b) => b.isTitle) || bouts[0] || null;
 }

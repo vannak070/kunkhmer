@@ -7,6 +7,7 @@ import { AboutKunKhmer } from "./pages/AboutKunKhmer";
 import { Rankings } from "./pages/Rankings";
 import { Compare } from "./pages/Compare";
 import { Account } from "./pages/Account";
+import { EventDetail } from "./pages/EventDetail";
 
 function LegacySuperAppRedirect() {
   const { section } = useParams();
@@ -48,6 +49,14 @@ export const router = createBrowserRouter(
   {
     path: "/account",
     element: <Account />,
+  },
+  {
+    path: "/events",
+    element: <Navigate to="/matches?tab=events" replace />,
+  },
+  {
+    path: "/events/:id",
+    element: <EventDetail />,
   },
   {
     path: "/about",

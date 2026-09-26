@@ -6,7 +6,7 @@ import { Link } from "react-router";
 import { ArrowRight, Calendar, ChevronRight, Clock, MapPin, Play, Swords, Tv } from "lucide-react";
 import { useI18n } from "../../i18n/LanguageContext";
 import { getFighterSlug } from "../../data/masterData";
-import { latestResults, useFanData, type Bout } from "../../data/fanData";
+import { latestResults, mainEventBout, useFanData, type Bout } from "../../data/fanData";
 import { CountdownChip, DemoBanner, FormGuide, ResultRow } from "../fan/FanWidgets";
 import { fightHistory } from "../../data/fanData";
 import SponsorsSection from "./SponsorsSection";
@@ -158,7 +158,7 @@ function NextFightNight({ event, upcoming, bouts, onOpenEvent, onAllEvents }: {
       </Band>
     );
   }
-  const main = bouts.find((b) => b.eventId === event.id);
+  const main = mainEventBout(bouts.filter((b) => b.eventId === event.id).sort((a, b) => a.sortOrder - b.sortOrder));
   return (
     <Band tone="day" label={t(upcoming ? "home.nextFightNight" : "home.lastFightNight")}>
       <div className="grid md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-8 md:gap-12 items-center">

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress — phases 1–4 done; Fight Night home (brand step 1) built, not yet committed; event page redesign (step 2) next |
+| **Status** | In progress — phases 1–4 done; brand step 1 (Fight Night home) and step 2 (event page) built, not yet committed; step 3 (menu consolidation) next |
 | **Jira** | TBD |
 | **Figma** | TBD — brand guideline: design system artifact "Kun Khmer Brand" (https://claude.ai/artifact/5dHcDztT7toqRYCFrcKFLT, owner-private) |
 
@@ -31,7 +31,7 @@ federation's records.
    Mark database text with `lang={textLang(text)}` (it can be Khmer on the English
    site and vice versa); fonts and line height follow it.
 4. **Real URLs** for everything shareable: `/fighters/:slug`, `/article/:id`,
-   `/matches?tab=events&event=<id>`, `/compare?red=<slug>&blue=<slug>`,
+   `/events/:id?view=card|results|watch` (old `/matches?tab=events&event=<id>` links redirect), `/compare?red=<slug>&blue=<slug>`,
    `/rankings?division=<slug>`, `/about`, `/account`. Back/Forward must work.
 5. **Brand**: tokens in `src/styles/brand.css` mirror the brand guideline
    (colours measured from the KKF emblem). Red corner left, blue right, always.
@@ -41,7 +41,8 @@ federation's records.
 |---|---|---|
 | Layout | `components/layout/SiteHeader.tsx`, `SiteFooter.tsx`, `GlobalSearch.tsx`, `HeaderAccount.tsx` | Shared by every page. Search indexes fighters, events and news on first focus. |
 | Home | `components/home/FightNightHome.tsx` | Full-width bands: top stories (night) → next fight night (day) → featured fighters (night) → results + news (day, only unseen stories) → videos (night) → partners (day) → manifesto + social (night). Old `renderHome` removed. |
-| Sections | `pages/SuperAppHome.tsx` | Still one large file for matches, news, fighters, partners, shop. Section comes from `/:section`; event detail from `?event=`. |
+| Event | `pages/EventDetail.tsx`, `components/event/EventParts.tsx` | Fight Night poster header (event image, or the main-event face-off when there is none), day countdown, stats, add to calendar, share. Tabs Fight card · Results · Where to watch; a tab without data is hidden, past events open on Results. Main event = first title bout, else first bout (`mainEventBout`). Phones stack each bout (fighters side by side, result underneath). |
+| Sections | `pages/SuperAppHome.tsx` | Still one large file for matches, news, fighters, partners, shop. Section comes from `/:section`; `?event=` only redirects to `/events/:id`. |
 | Fighter | `pages/SuperAppFighterDetail.tsx`, `components/fan/FighterHistory.tsx`, `FollowButton.tsx` | Fight history, next fight, teammates from the API. |
 | Article | `pages/ArticleDetail.tsx`, `components/ShareButtons.tsx` | Share: Facebook, X, Telegram, copy link (execCommand fallback). |
 | Rankings | `pages/Rankings.tsx` | Division standings by record; champion from `/champions`. |
@@ -53,7 +54,8 @@ federation's records.
 | Head / SEO | `index.html`, `hooks/usePageTitle.ts` (`usePageMeta`) | OG image `public/og-image.png`; `SITE_URL` env at build (see `vite.config.ts`). |
 
 **Demo mode** (development builds only): `?demo=1` fills empty results and
-champions with sample data and shows a purple banner; `?demo=0` turns it off.
+champions with sample data (three sample results go on the latest event so its
+Results tab can be reviewed) and shows a purple banner; `?demo=0` turns it off.
 Production builds never enable it.
 
 ## Base code / patterns
@@ -69,9 +71,11 @@ and Khmer (`claude/tests/test-admin-ui.md` pattern), and run `vite build` in the
 `kunkhmer_frontend_public` container.
 
 ## Open questions / next steps
-- **Step 2**: event page redesign (poster header, live countdown, tabs for fight
-  card / results / where to watch), then a dark header for Fight Night pages,
-  menu consolidation (Events · Fighters · News · About), tickets per event.
+- **Step 3**: dark header for Fight Night pages, menu consolidation
+  (Events · Fighters · News · About), then tickets per event (step 4).
+- Event countdown is in days because events store a date only; switch to
+  hh:mm:ss once events get a start time. Where to watch shows for upcoming
+  events with a broadcast station only (one station per event).
 - The federation should review all Khmer copy (`messages.ts`, About page) and
   approve the proposed fonts, Fight Night theme and ring-rope ornament.
 - Needed from the federation: YouTube / Instagram / TikTok URLs

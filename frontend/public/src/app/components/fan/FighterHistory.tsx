@@ -9,7 +9,7 @@ import { CountdownChip, FormGuide, OutcomeBadge, useResultText } from "./FanWidg
 const PREVIEW_ROWS = 5;
 
 function eventHref(eventId?: string) {
-  return eventId ? `/matches?tab=events&event=${eventId}` : "/matches";
+  return eventId ? `/events/${eventId}` : "/matches";
 }
 
 /** "Next fight" banner for a fighter profile. Renders nothing without a scheduled bout. */

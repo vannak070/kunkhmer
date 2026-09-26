@@ -14,13 +14,11 @@ import BroadcastDetailPage from "../components/home/BroadcastDetailPage";
 import FightNightHome from "../components/home/FightNightHome";
 import { SiteHeader } from "../components/layout/SiteHeader";
 import { SiteFooter } from "../components/layout/SiteFooter";
-import { ShareButtons } from "../components/ShareButtons";
 import { PublicStatusBadge } from "../components/PublicStatusBadge";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useI18n } from "../i18n/LanguageContext";
-import { downloadCalendarEvent } from "../utils/calendar";
-import { broadcasterForEvent, latestResults, useFanData } from "../data/fanData";
-import { CountdownChip, DemoBanner, ResultRow, WhereToWatch } from "../components/fan/FanWidgets";
+import { latestResults, useFanData } from "../data/fanData";
+import { DemoBanner, ResultRow } from "../components/fan/FanWidgets";
 import { publicName, publicStatus, pluralize, readTimeMinutes, formatVideoDuration, formatViews, isCompletedStatus, FEDERATION_NAME } from "../utils/publicDisplay";
 
 /**
@@ -219,7 +217,6 @@ export function SuperAppHome() {
   const [selectedCategory, setSelectedCategory] = useState<Category>("all");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [fighterSearchQuery, setFighterSearchQuery] = useState("");
   const [cartDropdownOpen, setCartDropdownOpen] = useState(false);
   const [newsEventsTab, setNewsEventsTab] = useState<NewsEventsTab>("news");
@@ -517,14 +514,13 @@ export function SuperAppHome() {
         setMatchesEventsTab("matches");
       }
       
-      // The URL is the source of truth for the open event, so Back/Forward and shared links work.
-      setSelectedEventId(eventParam || null);
+      // Event pages moved to /events/:id; keep old shared links working.
+      if (eventParam) navigate(`/events/${eventParam}`, { replace: true });
     }
   }, [currentSection, location.search]);
 
   const openEvent = (eventId: string) => {
-    setMatchesEventsTab("events");
-    navigate(`/matches?tab=events&event=${eventId}`);
+    navigate(`/events/${eventId}`);
     window.scrollTo(0, 0);
   };
 
@@ -548,7 +544,6 @@ export function SuperAppHome() {
   const handleSectionChange = (section: Section) => {
     setCurrentSection(section);
     if (section === "matches") {
-      setSelectedEventId(null);
       setSelectedMatchId(null);
     }
     if (section === "home") {
@@ -983,10 +978,7 @@ export function SuperAppHome() {
     "broadcast-detail": t("nav.partners"),
     shop: t("footer.shop"),
   };
-  const openEventName = currentSection === "matches" && selectedEventId
-    ? events.find(e => e.id === selectedEventId)?.name
-    : undefined;
-  usePageTitle(openEventName || SECTION_TITLES[currentSection]);
+  usePageTitle(SECTION_TITLES[currentSection]);
 
   // Render Functions
 
@@ -2344,10 +2336,6 @@ export function SuperAppHome() {
   );
 
   const renderMatches = () => {
-    // Show event detail if an event is selected
-    if (selectedEventId && matchesEventsTab === "events") {
-      return renderEventDetail();
-    }
 
     return (
     <div className="space-y-6">
@@ -3042,382 +3030,6 @@ export function SuperAppHome() {
   };
 
 
-
-  const renderEventDetail = () => {
-    const event = events.find(e => e.id === selectedEventId);
-    if (!event) return null;
-
-    // Get all batches for this event
-    const eventBatches = mappedBatches.filter(batch => batch.eventId === event.id || batch.eventName === event.name);
-    const totalMatches = eventBatches.reduce((sum, batch) => sum + batch.matches.length, 0);
-
-    return (
-      <div className="space-y-8">
-        {/* Back Button */}
-        <div className="flex items-center justify-between gap-3">
-          <button
-            onClick={() => navigate("/matches?tab=events")}
-            className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-white bg-white hover:bg-[#0A3D91] rounded-xl font-bold transition-all border border-gray-200 hover:border-[#0A3D91]"
-          >
-            <ChevronRight className="w-4 h-4 rotate-180" />
-            {t("matches.backToEvents")}
-          </button>
-          <div className="flex items-center gap-2">
-            {event.date && new Date(event.date).getTime() >= new Date().setHours(0, 0, 0, 0) && (
-              <button
-                type="button"
-                onClick={() => downloadCalendarEvent({
-                  id: event.id,
-                  title: event.name,
-                  date: event.date,
-                  location: event.venue,
-                  description: event.description,
-                  url: window.location.href,
-                })}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white text-gray-700 hover:text-[#0A3D91] border border-gray-200 hover:border-[#0A3D91] rounded-xl font-bold text-sm transition-all"
-              >
-                <Calendar className="w-4 h-4" aria-hidden />
-                <span className="hidden sm:inline">{t("common.addToCalendar")}</span>
-              </button>
-            )}
-            <ShareButtons
-              variant="compact"
-              title={`${event.name} — Kun Khmer`}
-              label={t("common.shareEvent")}
-              className="px-4 py-2 bg-white text-gray-700 hover:text-[#0A3D91] border border-gray-200 hover:border-[#0A3D91] font-bold text-sm"
-            />
-          </div>
-        </div>
-
-        {/* Event Hero Section - Clean Design */}
-        <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-lg">
-          {/* Header Banner */}
-          <div className="relative bg-gradient-to-r from-[#0A3D91] via-blue-700 to-blue-800 px-6 md:px-8 py-8">
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
-              {/* Event Info */}
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-4 empty:hidden">
-                  <PublicStatusBadge status={event.status} surface="dark" />
-                  <CountdownChip date={event.date} surface="dark" />
-                  {eventBatches.some(batch => batch.status === 'Completed') && (
-                    <span className="px-3 py-1.5 rounded-lg text-xs font-black uppercase bg-white/20 text-white border border-white/30">
-                      Results Available
-                    </span>
-                  )}
-                </div>
-                <h1 className="text-3xl md:text-4xl font-black text-white mb-3 leading-tight">
-                  {event.name}
-                </h1>
-                <p className="text-base text-white/90 leading-relaxed max-w-2xl">
-                  {event.description}
-                </p>
-              </div>
-
-              {/* Bout Count Badge */}
-              <div className="flex items-center gap-3 px-6 py-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
-                <Trophy className="w-8 h-8 text-white" />
-                <div>
-                  <p className="text-xs font-bold text-white/70 uppercase">{tn("common.bout", totalMatches)}</p>
-                  <p className="text-3xl font-black text-white">{totalMatches}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Event Details Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 p-6 md:p-8">
-            {/* Date */}
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Calendar className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">{t("matches.date")}</span>
-                <p className="text-sm font-black text-gray-900">
-                  {formatEventDate(event.date, true)}
-                </p>
-              </div>
-            </div>
-
-            {/* Venue */}
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                <MapPin className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">{t("matches.venue")}</span>
-                <p className="text-sm font-black text-gray-900 leading-tight">{event.venue}</p>
-              </div>
-            </div>
-
-            {/* Organizer */}
-            {event.organizer && (
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Building2 className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">{t("matches.organizer")}</span>
-                <p className="text-sm font-black text-gray-900 leading-tight">{event.organizer}</p>
-              </div>
-            </div>
-            )}
-
-            {/* Broadcast */}
-            {event.station && (
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Tv className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">{t("matches.broadcast")}</span>
-                <p className="text-sm font-black text-gray-900 leading-tight">{event.station}</p>
-              </div>
-            </div>
-            )}
-          </div>
-
-          {/* Sponsors Section */}
-          {event.sponsors && event.sponsors.length > 0 && (
-            <div className="px-6 md:px-8 pb-6 md:pb-8">
-              <div className="flex items-center gap-3 mb-3">
-                <Award className="w-5 h-5 text-[#F2C94C]" />
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">{t("matches.sponsors")}</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {event.sponsors.map((sponsor, idx) => (
-                  <span key={idx} className="px-4 py-2 bg-gray-50 text-gray-900 text-sm font-bold rounded-lg border border-gray-200">
-                    {sponsor}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Where to watch (upcoming events only) */}
-        {isUpcomingEvent(event) && (
-          <WhereToWatch
-            broadcaster={fanData ? broadcasterForEvent(fanData, (dbEvents || []).find((e: any) => e.id === event.id)) : null}
-            stationName={event.station}
-          />
-        )}
-
-        {/* Fight Card */}
-        {eventBatches.length > 0 ? (
-          <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-lg">
-            {/* Fight Card Header */}
-            <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 md:px-8 py-6 border-b-2 border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-[#C8102E] to-red-600 rounded-xl flex items-center justify-center">
-                    <Trophy className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl md:text-3xl font-black text-gray-900">{t("matches.fightCard")}</h2>
-                    <p className="text-sm text-gray-600 font-semibold">{tn("common.bouts", totalMatches)}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Batches List */}
-            <div className="p-6 md:p-8 space-y-10">
-              {eventBatches.map((batch, batchIdx) => (
-                <div key={batch.id}>
-                  {/* Batch Header */}
-                  <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-gray-200">
-                    <div className="flex items-center gap-3">
-                      <span className="px-5 py-2.5 bg-gradient-to-r from-[#0A3D91] to-blue-700 text-white text-sm font-black rounded-xl shadow-md">
-                        {batch.batchNumber}
-                      </span>
-                      <PublicStatusBadge status={batch.status} />
-                    </div>
-                  </div>
-
-                  {/* Matches List */}
-                  <div className="space-y-5">
-                    {batch.matches.map((match, idx) => {
-                      const isCompleted = batch.status === 'Completed' || match.status === 'Completed';
-                      
-                      const fAName = localName(match.fighterA?.name, match.fighterA?.nameKhmer) || "TBD";
-                      const fBName = localName(match.fighterB?.name, match.fighterB?.nameKhmer) || "TBD";
-                      const fAClub = match.fighterA?.clubName || "Independent";
-                      const fBClub = match.fighterB?.clubName || "Independent";
-                      const fARecord = match.fighterA?.record || "";
-                      const fBRecord = match.fighterB?.record || "";
-                      const fAGrade = match.fighterA?.grade || "";
-                      const fBGrade = match.fighterB?.grade || "";
-
-                      const fighterAImage = typeof match.fighterA.image === 'string' ? match.fighterA.image : "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=100";
-                      const fighterBImage = typeof match.fighterB.image === 'string' ? match.fighterB.image : "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=100";
-
-                      // Determine winner & loser
-                      let isWinnerA = false;
-                      let isWinnerB = false;
-                      let winnerName = "";
-                      
-                      if (isCompleted) {
-                        if (match.winnerId) {
-                          isWinnerA = match.winnerId === match.fighterA.id;
-                          isWinnerB = match.winnerId === match.fighterB.id;
-                        } else if (match.winner) {
-                          isWinnerA = match.winner === 'fighterA' || match.winner === fAName;
-                          isWinnerB = match.winner === 'fighterB' || match.winner === fBName;
-                        }
-                        if (isWinnerA) winnerName = fAName;
-                        else if (isWinnerB) winnerName = fBName;
-                      }
-
-                      return (
-                        <div
-                          key={match.id}
-                          className="relative bg-white rounded-2xl border-2 border-gray-100 hover:border-[#0A3D91]/30 hover:shadow-lg transition-all overflow-hidden p-5"
-                        >
-                          {/* Match Header */}
-                          <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
-                            <div className="flex items-center gap-3">
-                              <span className="px-3 py-1 bg-[#0A3D91]/10 text-[#0A3D91] text-xs font-black rounded-lg">
-                                {t("matches.boutNumber", { n: idx + 1 })}
-                              </span>
-                              <span className="text-sm font-black text-gray-900">{match.isChampionshipBout ? t("matches.championshipBout") : t("matches.rankingFight")}</span>
-                              <span className="px-2.5 py-1 bg-white border border-gray-200 text-gray-700 text-xs font-bold rounded-lg">
-                                {match.agreedWeight ? formatWeight(match.agreedWeight) : t("matches.catchweight")}
-                              </span>
-                            </div>
-                            <PublicStatusBadge status={isCompleted ? "Completed" : match.status} />
-                          </div>
-
-                          {/* Fighters Grid */}
-                          <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
-                            {/* Fighter A */}
-                            <div className={`relative flex items-center gap-2.5 min-w-0 text-left rounded-xl p-3 border-2 ${
-                              isWinnerA ? 'bg-emerald-50/50 border-emerald-400' :
-                              isWinnerB ? 'bg-gray-50 border-gray-200 opacity-60' : 'border-transparent'
-                            }`}>
-                              <img
-                                src={fighterAImage}
-                                alt={fAName}
-                                className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0"
-                              />
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-1.5 mb-0.5">
-                                  <span className="font-bold text-gray-900 text-xs truncate block">{fAName}</span>
-                                  {fAGrade && (
-                                    <span title={t("common.gradeHint")} className="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-gray-500 shrink-0">
-                                      {t("common.grade", { grade: fAGrade })}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-[10px] text-gray-500 font-medium truncate mb-0.5">{fAClub}</div>
-                                {fARecord && <div className="text-[10px] text-gray-500 font-semibold">{fARecord} ({t("common.wld")})</div>}
-                              </div>
-                              {isCompleted && (
-                                <span className={`absolute -top-2.5 -right-2.5 px-1.5 py-0.5 text-[8px] font-black uppercase rounded ${
-                                  isWinnerA ? 'bg-emerald-600 text-white shadow-sm' : 'bg-gray-400 text-white'
-                                }`}>
-                                  {isWinnerA ? '🏆 WINNER' : 'LOSER'}
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Center Spec Badge */}
-                            <div className="flex flex-col items-center shrink-0">
-                              <span className="text-[9px] font-bold text-gray-700 px-2 py-0.5 bg-gray-100 border border-gray-250/50 rounded-full font-mono mb-1">
-                                VS
-                              </span>
-                              <div className="text-[9px] text-gray-500 font-bold text-center leading-normal">
-                                <div>{match.agreedWeight ? formatWeight(match.agreedWeight) : t("matches.catchweight")}</div>
-                                {match.rounds && <div>{tn("common.rounds", Number(match.rounds))}</div>}
-                              </div>
-                            </div>
-
-                            {/* Fighter B */}
-                            <div className={`relative flex items-center justify-end gap-2.5 min-w-0 text-right rounded-xl p-3 border-2 ${
-                              isWinnerB ? 'bg-emerald-50/50 border-emerald-400' :
-                              isWinnerA ? 'bg-gray-50 border-gray-200 opacity-60' : 'border-transparent'
-                            }`}>
-                              <div className="min-w-0 text-right">
-                                <div className="flex items-center justify-end gap-1.5 mb-0.5">
-                                  {fBGrade && (
-                                    <span title={t("common.gradeHint")} className="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-gray-500 shrink-0">
-                                      {t("common.grade", { grade: fBGrade })}
-                                    </span>
-                                  )}
-                                  <span className="font-bold text-gray-900 text-xs truncate block">{fBName}</span>
-                                </div>
-                                <div className="text-[10px] text-gray-500 font-medium truncate mb-0.5">{fBClub}</div>
-                                {fBRecord && <div className="text-[10px] text-gray-500 font-semibold">{fBRecord} ({t("common.wld")})</div>}
-                              </div>
-                              <img
-                                src={fighterBImage}
-                                alt={fBName}
-                                className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0"
-                              />
-                              {isCompleted && (
-                                <span className={`absolute -top-2.5 -left-2.5 px-1.5 py-0.5 text-[8px] font-black uppercase rounded ${
-                                  isWinnerB ? 'bg-emerald-600 text-white shadow-sm' : 'bg-gray-400 text-white'
-                                }`}>
-                                  {isWinnerB ? '🏆 WINNER' : 'LOSER'}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {match.fighterA?.id && match.fighterB?.id && (
-                            <div className="mt-3 flex justify-center">
-                              <Link
-                            to={`/compare?red=${getFighterSlug(match.fighterA)}&blue=${getFighterSlug(match.fighterB)}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#0A3D91] bg-blue-50 hover:bg-blue-100 transition-colors"
-                          >
-                            <Swords className="w-3.5 h-3.5" aria-hidden />
-                            {t("matchup.preview")}
-                          </Link>
-                            </div>
-                          )}
-
-                          {/* Championship Title Bout Gilded Bar */}
-                          {match.isChampionshipBout && (
-                            <div className="mt-3 pt-2 border-t border-dashed border-amber-250 flex items-center justify-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50/20 rounded-lg py-1 px-2">
-                              <Trophy className="w-3 h-3 text-amber-500 shrink-0" />
-                              <span className="uppercase">{t("matches.titleBout")}</span>
-                            </div>
-                          )}
-
-                          {/* Winner details outcome at bottom */}
-                          {isCompleted && winnerName && (
-                            <div className="mt-4 pt-3 border-t border-gray-150 flex flex-col items-center gap-1 text-center">
-                              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-[10px] font-semibold text-emerald-700 border border-emerald-200 rounded-lg shadow-sm">
-                                <Trophy className="w-3.5 h-3.5 text-emerald-600 fill-emerald-100" />
-                                <span>{t("result.by", { winner: winnerName, method: match.winnerMethod || t("result.decision") })}</span>
-                              </div>
-                              {(match.winnerRound || match.winnerTime) && (
-                                <div className="text-[10px] text-gray-500 font-semibold">
-                                  {match.winnerRound ? t("matches.round", { n: match.winnerRound }) : ""}
-                                  {match.winnerTime && ` · ${match.winnerTime}`}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl p-8 border border-gray-100 text-center shadow-lg">
-            <Trophy className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="text-lg font-black text-gray-900 mb-1">{t("matches.pendingCard")}</h3>
-            <p className="text-sm text-gray-500 font-semibold">The matchmaking card and bout lineup for this event will be announced soon.</p>
-          </div>
-        )}
-      </div>
-    );
-  };
 
   const renderShop = () => (
     <div className="space-y-6 max-w-4xl mx-auto py-12 px-4 text-center">
