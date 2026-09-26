@@ -11,6 +11,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { prisma } from "../db.ts";
 import type { User } from "../generated/prisma/client.ts";
 import { now } from "./dates.ts";
+import { FAN_TOKEN_PREFIX } from "./fanAuth.ts";
 import { forbidden } from "./http.ts";
 
 const TOKENABLE_TYPE = "App\\Models\\User";
@@ -78,6 +79,8 @@ export async function resolveUser(request: FastifyRequest) {
   request.tokenId = null;
   const header = request.headers.authorization;
   if (!header?.startsWith("Bearer ")) return;
+  // Fan tokens are handled by resolveFan and never grant staff access.
+  if (header.startsWith(`Bearer ${FAN_TOKEN_PREFIX}`)) return;
 
   const token = await findToken(header.slice(7).trim());
   if (!token || token.tokenable_type !== TOKENABLE_TYPE) return;

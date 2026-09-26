@@ -9,6 +9,7 @@ import authRoutes from "./modules/auth/routes.ts";
 import championRoutes from "./modules/champions/routes.ts";
 import clubRoutes from "./modules/clubs/routes.ts";
 import eventRoutes from "./modules/events/routes.ts";
+import fanRoutes from "./modules/fans/routes.ts";
 import fighterRoutes from "./modules/fighters/routes.ts";
 import matchRoutes from "./modules/matches/routes.ts";
 import newsRoutes from "./modules/news/routes.ts";
@@ -83,6 +84,7 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
       await api.register(championRoutes);
       await api.register(newsRoutes);
       await api.register(videoRoutes);
+      await api.register(fanRoutes);
     },
     { prefix: "/api" },
   );

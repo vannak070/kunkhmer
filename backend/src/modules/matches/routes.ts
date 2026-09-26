@@ -23,6 +23,7 @@ import { type Input, inputOf, phpBool } from "../../lib/input.ts";
 import { visibleFighter } from "../fighters/routes.ts";
 import { formatMatch, formatSubEvent, matchArray, matchRelations, subEventArray, subEventRelations } from "./format.ts";
 import { recordMatchResult } from "./results.ts";
+import { notifyFollowers } from "../fans/notify.ts";
 
 const ORGANIZERS = [...STAFF, Role.Organizer];
 
@@ -191,6 +192,7 @@ export default async function matchRoutes(app: FastifyInstance) {
           updated_at: at,
         },
       });
+      await notifyFollowers(match.id, "bout_scheduled", request.log);
       return ok(reply, await loadMatch(match.id));
     });
 
@@ -232,6 +234,7 @@ export default async function matchRoutes(app: FastifyInstance) {
         round: int(input.required("round"))!,
         duration: input.get("duration"),
       });
+      await notifyFollowers(id, "bout_result", request.log);
       return ok(reply, await loadMatch(id));
     });
   });

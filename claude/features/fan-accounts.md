@@ -43,6 +43,8 @@ Notification: `{id, type, data, read, createdAt}`.
 - `fan_follows`: (fan, fighter) primary key.
 - `fan_notifications`: `type` `bout_scheduled` | `bout_result`, `data` (JSONB),
   `read_at`; unique (fan, type, match, fighter) so re-saves don't repeat.
+  `seq` (migration `20260927000001_fan_notification_order`) records insertion
+  order: `created_at` is whole seconds, so lists sort by `created_at, seq`.
 
 ## Business rules
 - Email is trimmed and lowercased; password ≥ 8 characters; display name 2–50.
@@ -68,13 +70,9 @@ Notification: `{id, type, data, read, createdAt}`.
 
 ## Tests
 `api-tests/tests/fans.test.ts` (uncommitted): sign-up/in/out, token
-separation, profile, follows, notifications. 13/14 pass — see the first note below.
+separation, profile, follows, notifications. 14/14 pass.
 
 ## Open questions / review notes
-- **Notification order ties within a second** (failing test): `created_at` is
-  whole seconds, so a `bout_scheduled` and a `bout_result` created in the same
-  second come back in arbitrary order. Needs a tie-breaker (e.g. millisecond
-  timestamp column or a sequence).
 - `notifyEmail` uses `Boolean(...)`, so the string `"false"` counts as true;
   `phpBool()` from `lib/input.ts` would match the rest of the API.
 - `notify_email` is stored but no email is sent yet — only in-app notifications.

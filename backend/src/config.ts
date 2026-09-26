@@ -13,4 +13,6 @@ export const config = {
   port: Number(process.env.PORT ?? 3001),
   host: process.env.HOST ?? "0.0.0.0",
   logLevel: process.env.LOG_LEVEL ?? "info",
+  /** Fan sign-in / sign-up attempts allowed per 15 minutes (per IP, and per IP + email for sign-in). */
+  fanRateLimit: Number(process.env.FAN_RATE_LIMIT ?? 10),
 };

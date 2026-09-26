@@ -52,6 +52,8 @@ services:
       DATABASE_URL: postgresql://kunkhmer:kunkhmer123@postgres:5432/kunkhmer_test
       RESET_DATABASE: "true"
       LOG_LEVEL: warn
+      # Tests sign fans up and in repeatedly; keep brute-force limits out of the way.
+      FAN_RATE_LIMIT: "1000"
     depends_on:
       postgres:
         condition: service_healthy

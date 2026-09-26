@@ -116,6 +116,8 @@ model Fighter {
   titlesHeld           Champion[]
   titleDefensesAgainst ChampionDefense[]
   videos               Video[]
+  followers            FanFollow[]
+  fanNotifications     FanNotification[]
 
   @@map("fighters")
 }
@@ -268,6 +270,7 @@ model Match {
   championship Champion? @relation("MatchChampionship", fields: [championship_id], references: [id], onUpdate: NoAction, map: "matches_championship_id_foreign")
 
   result           BoutResult?
+  fanNotifications FanNotification[]
   titlesWon        Champion[]        @relation("ChampionWinningMatch")
   championDefenses ChampionDefense[]
   videos           Video[]
@@ -389,4 +392,82 @@ model Video {
   match   Match?   @relation(fields: [match_id], references: [id], onUpdate: NoAction, map: "videos_match_id_foreign")
 
   @@map("videos")
+}
+
+// ─── Fan accounts ────────────────────────────────────────────────────────────
+// Public-site accounts, deliberately separate from staff `users`: a fan token can
+// never reach the admin API, and staff roles never apply to fans.
+
+model Fan {
+  id            String    @id @db.Uuid
+  email         String    @unique @db.VarChar(255)
+  display_name  String    @db.VarChar(100)
+  password_hash String    @db.VarChar(255)
+  /// UI and notification language: "en" or "km".
+  language      String    @default("en") @db.VarChar(5)
+  notify_email  Boolean   @default(true)
+  last_login    DateTime? @db.Timestamp(0)
+  created_at    DateTime  @db.Timestamp(0)
+  updated_at    DateTime  @db.Timestamp(0)
+
+  sessions      FanSession[]
+  follows       FanFollow[]
+  notifications FanNotification[]
+
+  @@map("fans")
+}
+
+/// Bearer tokens for fans. Only the SHA-256 of the token is stored.
+model FanSession {
+  id           String    @id @db.Uuid
+  fan_id       String    @db.Uuid
+  token_hash   String    @unique @db.VarChar(64)
+  created_at   DateTime  @db.Timestamp(0)
+  last_used_at DateTime? @db.Timestamp(0)
+  expires_at   DateTime  @db.Timestamp(0)
+
+  fan Fan @relation(fields: [fan_id], references: [id], onDelete: Cascade)
+
+  @@index([fan_id])
+  @@index([expires_at])
+  @@map("fan_sessions")
+}
+
+model FanFollow {
+  fan_id     String   @db.Uuid
+  fighter_id String   @db.Uuid
+  created_at DateTime @db.Timestamp(0)
+
+  fan     Fan     @relation(fields: [fan_id], references: [id], onDelete: Cascade)
+  fighter Fighter @relation(fields: [fighter_id], references: [id], onDelete: Cascade)
+
+  @@id([fan_id, fighter_id])
+  @@index([fighter_id])
+  @@map("fan_follows")
+}
+
+/// In-app notifications. `data` holds the facts (names, event, outcome); the
+/// site renders the message in the fan's language.
+model FanNotification {
+  id         String    @id @db.Uuid
+  fan_id     String    @db.Uuid
+  /// "bout_scheduled" | "bout_result"
+  type       String    @db.VarChar(40)
+  fighter_id String    @db.Uuid
+  match_id   String    @db.Uuid
+  data       Json
+  read_at    DateTime? @db.Timestamp(0)
+  created_at DateTime  @db.Timestamp(0)
+  /// Insertion order. created_at has whole-second precision, so this breaks
+  /// ties when listing newest first.
+  seq        BigInt    @default(autoincrement())
+
+  fan     Fan     @relation(fields: [fan_id], references: [id], onDelete: Cascade)
+  fighter Fighter @relation(fields: [fighter_id], references: [id], onDelete: Cascade)
+  match   Match   @relation(fields: [match_id], references: [id], onDelete: Cascade)
+
+  /// One notification per fan, event type, bout and followed fighter (re-saving a result doesn't repeat it).
+  @@unique([fan_id, type, match_id, fighter_id])
+  @@index([fan_id, created_at, seq])
+  @@map("fan_notifications")
 }
