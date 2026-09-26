@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress — API done (`0fec0f75`); public-site UI not built yet |
+| **Status** | Done — API `0fec0f75`, public-site UI `2643d65f`; email delivery not built |
 | **Jira** | TBD |
 | **Figma** | TBD |
 
@@ -60,9 +60,22 @@ Notification: `{id, type, data, read, createdAt}`.
     fan's language.
   - Failures are logged and never block the match action.
 
-## Frontend
-- Public site: not built yet (sign-up/sign-in, follow button on fighter
-  profiles, notification bell, account settings in `en`/`km`).
+## Frontend (public site, `frontend/public/src/app/`)
+- `utils/fanApi.ts`: separate client with its own token (`localStorage`
+  `kk-fan-token`). Never use `utils/api.ts` for fans: it sends the staff token
+  and redirects to `/login` on 401.
+- `contexts/FanContext.tsx` (`useFan()`): session restore, follows (optimistic,
+  rolled back on failure), notifications polled every 60 s while the tab is
+  visible, any 401 signs out locally. The profile `language` wins on sign-in and
+  restore; the header language switch saves back to the profile.
+- `components/layout/HeaderAccount.tsx`: "Sign in" link or the fan's initial,
+  plus the notification bell. `useNotificationText()` renders `data` in the
+  current language and links to the event.
+- `components/fan/FollowButton.tsx` on fighter profiles (with follower count);
+  signed-out visitors go to `/account?next=<path>` (same-site paths only).
+- `pages/Account.tsx` at `/account`: sign in / create account; signed in:
+  followed fighters, profile (name, language, email preference), password
+  change, account deletion.
 
 ## Base code
 `lib/fanAuth.ts` (tokens, `requireFan`, rate limit), `modules/fans/routes.ts`,

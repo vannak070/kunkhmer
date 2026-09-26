@@ -116,3 +116,16 @@ export function formatPublicDate(date?: string | null, style: "short" | "long" =
       ? { weekday: "long", month: "long", day: "numeric", year: "numeric" }
       : { month: "short", day: "numeric", year: "numeric" });
 }
+
+/**
+ * The script a piece of content is written in, for its lang attribute. Content from the
+ * database can be English or Khmer regardless of the site language, so mark it explicitly:
+ * fonts, line height and screen-reader voice all follow it.
+ */
+export function textLang(text?: string | null): "km" | "en" | undefined {
+  if (!text) return undefined;
+  const khmer = (text.match(/[\u1780-\u17FF]/g) || []).length;
+  const latin = (text.match(/[A-Za-z]/g) || []).length;
+  if (!khmer && !latin) return undefined;
+  return khmer > latin ? "km" : "en";
+}

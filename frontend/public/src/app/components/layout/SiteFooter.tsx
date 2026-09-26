@@ -7,7 +7,7 @@ import { appPath } from "../../utils/basePath";
 import { useI18n } from "../../i18n/LanguageContext";
 
 /** Official channels. Leave `url` empty to hide a network until the federation has an account. */
-const SOCIAL_LINKS: { label: string; url: string; path: string }[] = [
+export const SOCIAL_LINKS: { label: string; url: string; path: string }[] = [
   {
     label: "Facebook",
     url: "https://www.facebook.com/kkfcambodia",
@@ -29,9 +29,11 @@ const CONTACT_EMAIL = "info@kunkhmer.com";
 
 interface SiteFooterProps {
   onSectionChange?: (section: NavSection) => void;
+  /** Sit directly under a full-width band (no top margin). */
+  flush?: boolean;
 }
 
-export function SiteFooter({ onSectionChange }: SiteFooterProps) {
+export function SiteFooter({ onSectionChange, flush = false }: SiteFooterProps) {
   const { t } = useI18n();
   const go = useNavigateSection(onSectionChange);
   const [email, setEmail] = useState("");
@@ -49,7 +51,7 @@ export function SiteFooter({ onSectionChange }: SiteFooterProps) {
   };
 
   return (
-    <footer className="relative bg-[#051C42] text-white overflow-hidden mt-20">
+    <footer className={`relative bg-[#051C42] text-white overflow-hidden ${flush ? "" : "mt-20"}`}>
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
         <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-[0.12]" style={{ background: "radial-gradient(circle, #0A3D91 0%, transparent 65%)" }} />

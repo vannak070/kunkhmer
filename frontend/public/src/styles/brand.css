@@ -1,0 +1,85 @@
+/*
+ * Kun Khmer brand tokens — mirrors the "Kun Khmer" brand guideline (design system artifact).
+ * Core colours are measured from the federation emblem. Change values there first, then here.
+ */
+:root {
+  --kk-blue: #1a4797;
+  --kk-red: #b92034;
+  --kk-navy: #24336f;
+  --kk-silver: #a4a4a4;
+  --kk-gold: #f2c94c;
+
+  /* Fight Night theme (home, events, fight previews) */
+  --kk-night: #0b1024;
+  --kk-night-raised: #141b36;
+  --kk-night-sunken: #070b19;
+  --kk-night-ink: #f2f4fa;
+  --kk-night-muted: #a9b0c8;
+  --kk-night-accent: #7fa2ee;
+  --kk-night-border: #26304f;
+  --kk-night-red-text: #f07c82;
+  --kk-corner-blue-night: #2f5fc4;
+
+  --kk-font-display: "Barlow Condensed", "Koulen", "Arial Narrow", sans-serif;
+  --kk-font-khmer-display: "Koulen", "Noto Sans Khmer", sans-serif;
+}
+
+/* Display type: condensed, athletic, poster-like. */
+.kk-display {
+  font-family: var(--kk-font-display);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.005em;
+}
+.kk-heading {
+  font-family: var(--kk-font-display);
+  font-weight: 700;
+  line-height: 1.05;
+}
+.kk-stat {
+  font-family: var(--kk-font-display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.kk-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* Khmer headlines use Koulen and need room for subscript consonants. */
+.kk-display:lang(km),
+.kk-heading:lang(km) {
+  font-family: var(--kk-font-khmer-display);
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+/* Fight Night band */
+.kk-night {
+  background: var(--kk-night);
+  color: var(--kk-night-ink);
+  color-scheme: dark;
+}
+
+/* The ring-rope rule: the brand's single ornament (ring ropes / national flag bands). */
+.kk-ropes {
+  display: grid;
+  gap: 6px;
+}
+.kk-ropes > span {
+  display: block;
+  height: 6px;
+}
+.kk-ropes > span:nth-child(1),
+.kk-ropes > span:nth-child(3) { background: var(--kk-blue); }
+.kk-ropes > span:nth-child(2) { background: var(--kk-red); }
+
+.kk-focus:focus-visible {
+  outline: 2px solid var(--kk-night-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kk-motion { transition: none !important; transform: none !important; }
+}

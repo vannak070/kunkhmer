@@ -458,6 +458,23 @@ const en = {
   "notify.byMethod": " by {method}",
   "notify.inRound": " in round {n}",
   "common.error": "Something went wrong. Please try again.",
+
+  // Fight Night home (brand redesign)
+  "home.topStories": "Top stories",
+  "home.nextFightNight": "Next fight night",
+  "home.lastFightNight": "Last fight night",
+  "home.viewFightCard": "View fight card",
+  "home.allEvents": "All events",
+  "home.mainEventVs": "{red} vs {blue}",
+  "home.broadcastOn": "Live on {name}",
+  "home.noEventYet": "The next fight night will be announced here.",
+  "home.resultsAndNews": "Results and news",
+  "home.manifestoTitle": "Eight weapons. Five rounds. Live music.",
+  "home.manifestoBody": "Kun Khmer is Cambodia's own fighting art, carved into the temples of Angkor and fought today in arenas across the country. Before the first bell, fighters honour their teachers with the Kun Kru. A live ensemble drives every round. Respect comes first, and the fight is decided in the ring.",
+  "home.stayConnected": "Stay connected",
+  "home.stayConnectedText": "Fight-night photos, results and videos from the federation.",
+  "home.followOn": "Follow on {network}",
+  "home.playVideo": "Play video",
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -901,6 +918,22 @@ const km: Messages = {
   "notify.byMethod": " ដោយ {method}",
   "notify.inRound": " នៅទឹកទី {n}",
   "common.error": "មានបញ្ហាកើតឡើង។ សូមព្យាយាមម្ដងទៀត។",
+
+  "home.topStories": "រឿងសំខាន់ៗ",
+  "home.nextFightNight": "រាត្រីប្រកួតបន្ទាប់",
+  "home.lastFightNight": "រាត្រីប្រកួតចុងក្រោយ",
+  "home.viewFightCard": "មើលកម្មវិធីប្រកួត",
+  "home.allEvents": "ព្រឹត្តិការណ៍ទាំងអស់",
+  "home.mainEventVs": "{red} ទល់នឹង {blue}",
+  "home.broadcastOn": "ផ្សាយផ្ទាល់តាម {name}",
+  "home.noEventYet": "រាត្រីប្រកួតបន្ទាប់នឹងប្រកាសនៅទីនេះ។",
+  "home.resultsAndNews": "លទ្ធផល និងព័ត៌មាន",
+  "home.manifestoTitle": "អាវុធប្រាំបី។ ប្រាំទឹក។ តន្ត្រីផ្ទាល់។",
+  "home.manifestoBody": "គុនខ្មែរ ជាក្បាច់គុនរបស់កម្ពុជា ដែលឆ្លាក់លើជញ្ជាំងប្រាសាទអង្គរ ហើយនៅតែប្រកួតសព្វថ្ងៃនៅក្នុងសង្វៀនទូទាំងប្រទេស។ មុនស្គរដំបូង កីឡាករថ្វាយបង្គំគ្រូ។ វង់ភ្លេងលេងផ្ទាល់គ្រប់ទឹក។ ការគោរពមកមុន ហើយការប្រកួតត្រូវបានសម្រេចនៅលើសង្វៀន។",
+  "home.stayConnected": "តាមដានយើង",
+  "home.stayConnectedText": "រូបថត លទ្ធផល និងវីដេអូរាត្រីប្រកួតពីសហព័ន្ធ។",
+  "home.followOn": "តាមដានលើ {network}",
+  "home.playVideo": "ចាក់វីដេអូ",
 };
 
 export type Lang = "en" | "km";

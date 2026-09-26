@@ -3,7 +3,8 @@
  * fonts, so English text keeps the system font while Khmer glyphs render in Noto.
  */
 :root {
-  --font-sans-stack: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+  /* Brand text face Barlow first (see brand guideline), Khmer glyphs fall through to Noto Sans Khmer. */
+  --font-sans-stack: "Barlow", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
     "Noto Sans Khmer", "Khmer OS Battambang", sans-serif;
 }
 

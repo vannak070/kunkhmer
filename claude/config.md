@@ -87,6 +87,14 @@ the untracked `docker-compose.override.yml`. Default login: `admin` / `admin123`
 - Serializers per model (`userArray`, `fighterArray`, `eventArray`, ...) are
   exported from their module; reuse them for nested relations.
 
+## Public site conventions (`frontend/public/`)
+
+Read `claude/features/public-site.md` first. In short: show only real data (hide
+what's missing), never show internal statuses or system account names, put every
+string in `i18n/messages.ts` (English + Khmer), give shareable views a real URL,
+and use the brand tokens in `src/styles/brand.css`. Check UI changes at desktop
+and phone width in both languages.
+
 ## Database
 
 - Prisma owns the schema: `backend/prisma/schema.prisma` + `prisma/migrations/`.

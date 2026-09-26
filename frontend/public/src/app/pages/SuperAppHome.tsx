@@ -11,7 +11,7 @@ import TrendingFightersSection from "../components/home/TrendingFightersSection"
 import ClubDetailPage from "../components/home/ClubDetailPage";
 import SponsorDetailPage from "../components/home/SponsorDetailPage";
 import BroadcastDetailPage from "../components/home/BroadcastDetailPage";
-import HeroSection from "../components/home/HeroSection";
+import FightNightHome from "../components/home/FightNightHome";
 import { SiteHeader } from "../components/layout/SiteHeader";
 import { SiteFooter } from "../components/layout/SiteFooter";
 import { ShareButtons } from "../components/ShareButtons";
@@ -989,411 +989,6 @@ export function SuperAppHome() {
   usePageTitle(openEventName || SECTION_TITLES[currentSection]);
 
   // Render Functions
-  const renderHome = () => (
-    <div className="space-y-8">
-      <HeroSection 
-        onExploreFighters={() => handleSectionChange("fighters")}
-        onViewEvents={() => {
-          handleSectionChange("matches");
-          setMatchesEventsTab("events");
-          navigate("/matches?tab=events");
-        }}
-      />
-
-      {/* Newcomer primer */}
-      <Link
-        to="/about"
-        className="group flex flex-col sm:flex-row sm:items-center gap-4 bg-white rounded-2xl border border-gray-200 hover:border-[#0A3D91]/40 hover:shadow-md p-5 md:p-6 transition-all"
-      >
-        <div className="w-12 h-12 rounded-xl bg-[#F2C94C]/20 text-[#0A3D91] flex items-center justify-center shrink-0">
-          <BookOpen className="w-6 h-6" aria-hidden />
-        </div>
-        <div className="flex-1">
-          <h2 className="text-lg font-black text-gray-900">{t("home.aboutTitle")}</h2>
-          <p className="text-sm text-gray-600 leading-relaxed">{t("home.aboutText")}</p>
-        </div>
-        <span className="inline-flex items-center gap-1.5 text-sm font-bold text-[#0A3D91] whitespace-nowrap">
-          {t("home.aboutCta")}
-          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" aria-hidden />
-        </span>
-      </Link>
-
-      <SponsorsSection 
-        sponsors={sponsors}
-        onViewAllClick={() => {
-          handleSectionChange("strategic-partners");
-          setStrategicPartnersTab("sponsors");
-        }}
-      />
-      <TrendingFightersSection 
-        fighters={fighters}
-        onViewAllClick={() => handleSectionChange("fighters")}
-        onFighterClick={(fighterId) => {
-          const f = fighters.find(x => x.id === fighterId);
-          navigate(`/fighters/${f ? getFighterSlug(f) : fighterId}`);
-        }}
-      />
-      {/* Upcoming Events Section */}
-      <div className="relative bg-gradient-to-br from-white via-gray-50/50 to-white rounded-2xl p-6 md:p-8 border-2 border-gray-200 shadow-lg overflow-hidden">
-        {/* Decorative Elements */}
-        <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-[#0A3D91]/5 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-green-500/5 to-transparent rounded-full blur-3xl" />
-
-        <div className="relative flex items-center justify-between mb-6">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-green-600/10 to-green-700/10 rounded-full border border-green-600/20">
-                <Calendar className="w-4 h-4 text-green-600" />
-                <span className="text-xs font-black text-green-600 uppercase tracking-wider">{upcomingEvents.length ? t("home.upcomingBadge") : t("home.recentBadge")}</span>
-              </div>
-            </div>
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">{upcomingEvents.length ? t("home.upcomingTitle") : t("home.recentTitle")}</h2>
-            <p className="text-gray-600 font-medium">{upcomingEvents.length ? t("home.upcomingText") : t("home.recentText")}</p>
-          </div>
-          <button
-            onClick={() => {
-              handleSectionChange("matches");
-              setMatchesEventsTab("events");
-              navigate("/matches?tab=events");
-            }}
-            className="hidden md:flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300 hover:shadow-lg"
-          >
-            {t("common.viewAll")} <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {(upcomingEvents.length ? upcomingEvents : pastEvents).slice(0, 2).map((event) => (
-            <div
-              key={event.id}
-              onClick={() => {
-                openEvent(event.id);
-              }}
-              className="group relative bg-white rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-500 border-2 border-gray-200 hover:border-[#0A3D91] cursor-pointer hover:-translate-y-2"
-            >
-              <div className="relative h-56 overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800">
-                <img
-                  src={event.image}
-                  alt={event.name}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-
-                {(() => {
-                  const st = publicStatus(event.status);
-                  const isFuture = event.date && new Date(event.date).getTime() >= new Date().setHours(0, 0, 0, 0);
-                  const label = st ? t(st.labelKey) : isFuture ? t("common.upcoming") : null;
-                  if (!label) return null;
-                  return (
-                    <div className="absolute top-4 left-4">
-                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg shadow-lg text-xs font-bold uppercase tracking-wide ${
-                        st?.tone === 'live' ? 'bg-red-600 text-white' :
-                        st?.tone === 'completed' ? 'bg-gray-800 text-white' :
-                        'bg-white text-[#0A3D91]'
-                      }`}>
-                        {label}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              <div className="p-5 bg-gradient-to-br from-white to-gray-50">
-                <CountdownChip date={event.date} className="mb-3" />
-                <h3 className="text-xl font-black text-gray-900 mb-4 line-clamp-2 group-hover:text-[#0A3D91] transition-colors">
-                  {event.name}
-                </h3>
-
-                <div className="space-y-3 mb-4">
-                  <div className="flex items-center gap-3 text-sm text-gray-700">
-                    <div className="w-8 h-8 bg-[#0A3D91]/10 rounded-lg flex items-center justify-center">
-                      <Calendar className="w-4 h-4 text-[#0A3D91]" />
-                    </div>
-                    <span className="font-semibold">{formatDate(event.date)}</span>
-                  </div>
-
-                  <div className="flex items-center gap-3 text-sm text-gray-700">
-                    <div className="w-8 h-8 bg-[#0A3D91]/10 rounded-lg flex items-center justify-center">
-                      <MapPin className="w-4 h-4 text-[#0A3D91]" />
-                    </div>
-                    <span className="line-clamp-1 font-semibold">{event.venue}</span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openEvent(event.id);
-                  }}
-                  className="relative w-full px-4 py-3 bg-gradient-to-r from-[#0A3D91] to-[#1565C0] text-white rounded-xl font-black text-sm uppercase tracking-wider hover:shadow-xl hover:shadow-[#0A3D91]/30 transition-all group/btn overflow-hidden"
-                >
-                  <span className="relative z-10 flex items-center justify-center gap-2">
-                    {t("common.viewDetails")}
-                    <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#1565C0] to-[#0A3D91] opacity-0 group-hover/btn:opacity-100 transition-opacity" />
-                </button>
-              </div>
-
-              {/* Shine Effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
-            </div>
-          ))}
-        </div>
-
-        {/* Mobile View All Button */}
-        <div className="md:hidden mt-6 text-center">
-          <button
-            onClick={() => {
-              handleSectionChange("matches");
-              setMatchesEventsTab("events");
-              navigate("/matches?tab=events");
-            }}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300 hover:shadow-lg"
-          >
-            {t("common.viewAll")} <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Latest Results */}
-      {fanData && latestResults(fanData).length > 0 && (
-        <section className="bg-white rounded-2xl p-6 md:p-8 border-2 border-gray-200 shadow-lg">
-          <div className="flex items-end justify-between gap-4 mb-4">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">{t("results.latest")}</h2>
-              <p className="text-gray-600 font-medium">{t("results.latestText")}</p>
-            </div>
-            <button
-              onClick={() => {
-                setMatchesEventsTab("previous");
-                navigate("/matches?tab=results");
-              }}
-              className="hidden md:flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300"
-            >
-              {t("results.viewAll")} <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-          <DemoBanner show={fanData.demo} />
-          <div className="divide-y divide-gray-100">
-            {latestResults(fanData, 4).map((bout) => <ResultRow key={bout.id} bout={bout} />)}
-          </div>
-        </section>
-      )}
-
-      {/* Latest Videos Section */}
-      <div className="relative bg-gradient-to-br from-white via-gray-50/50 to-white rounded-2xl p-6 md:p-8 border-2 border-gray-200 shadow-lg overflow-hidden">
-        {/* Decorative Elements */}
-        <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-purple-600/5 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-[#0A3D91]/5 to-transparent rounded-full blur-3xl" />
-
-        <div className="relative flex items-center justify-between mb-6">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-[#0A3D91]/10 to-blue-600/10 rounded-full border border-[#0A3D91]/20">
-                <Video className="w-4 h-4 text-[#0A3D91]" />
-                <span className="text-xs font-black text-[#0A3D91] uppercase tracking-wider">{t("home.videosBadge")}</span>
-              </div>
-            </div>
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">{t("home.videosTitle")}</h2>
-            <p className="text-gray-600 font-medium">{t("home.videosText")}</p>
-          </div>
-          <button
-            onClick={() => {
-              handleSectionChange("news-events");
-              setNewsEventsTab("media");
-            }}
-            className="hidden md:flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300 hover:shadow-lg"
-          >
-            {t("home.viewAllVideos")} <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {mediaContent.slice(0, 3).map((video) => (
-            <div
-              key={video.id}
-              onClick={() => setSelectedVideo(video)}
-              className="group relative bg-white rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-500 border-2 border-gray-200 hover:border-[#0A3D91] cursor-pointer hover:-translate-y-2 flex flex-col"
-            >
-              <div className="relative aspect-video bg-slate-900 overflow-hidden shrink-0">
-                <img
-                  src={video.thumbnail}
-                  alt={video.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                
-                {/* Duration Badge */}
-                {video.duration && (
-                  <div className="absolute bottom-3 right-3 flex items-center gap-1 px-2.5 py-1 bg-black/75 backdrop-blur-sm text-white rounded-lg border border-white/10 text-[10px] font-black">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>{video.duration}</span>
-                  </div>
-                )}
-
-                {/* Category Badge */}
-                <div className="absolute top-3 left-3 px-2 py-0.5 bg-gradient-to-r from-[#0A3D91] to-blue-600 text-white rounded-lg text-[9px] font-black uppercase tracking-wider">
-                  {video.category}
-                </div>
-
-                {/* Play Button Overlay */}
-                <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-2xl scale-75 group-hover:scale-100 transition-transform duration-300">
-                    <Play className="w-5 h-5 text-[#0A3D91] fill-current ml-0.5" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-5 flex flex-col justify-between flex-1">
-                <h4 className="text-sm font-black text-gray-900 mb-3 line-clamp-2 leading-snug group-hover:text-[#0A3D91] transition-colors">
-                  {video.title}
-                </h4>
-                <div className="flex items-center justify-between text-[11px] font-semibold text-gray-400">
-                  {video.views ? (
-                    <div className="flex items-center gap-1">
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>{video.views}</span>
-                    </div>
-                  ) : <span />}
-                  <span>{formatDate(video.date)}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-          {mediaContent.length === 0 && (
-            <div className="col-span-full text-center py-12 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl">
-              <Video className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-              <p className="text-gray-500 text-sm font-semibold">{t("home.noVideos")}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Mobile View All Button */}
-        <div className="md:hidden mt-6 text-center">
-          <button
-            onClick={() => {
-              handleSectionChange("news-events");
-              setNewsEventsTab("media");
-            }}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300 hover:shadow-lg"
-          >
-            {t("home.viewAllVideos")} <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Latest News Section */}
-      <div className="relative bg-gradient-to-br from-white via-gray-50/50 to-white rounded-2xl p-6 md:p-8 border-2 border-gray-200 shadow-lg overflow-hidden">
-        {/* Decorative Elements */}
-        <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-[#F2C94C]/5 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-[#0A3D91]/5 to-transparent rounded-full blur-3xl" />
-
-        <div className="relative flex items-center justify-between mb-6">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-[#F2C94C]/10 to-yellow-600/10 rounded-full border border-[#F2C94C]/20">
-                <BookOpen className="w-4 h-4 text-[#F2C94C]" />
-                <span className="text-xs font-black text-yellow-700 uppercase tracking-wider">{t("home.newsBadge")}</span>
-              </div>
-            </div>
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">{t("home.newsTitle")}</h2>
-            <p className="text-gray-600 font-medium">{t("home.newsText")}</p>
-          </div>
-          <button
-            onClick={() => {
-              handleSectionChange("news-events");
-              setNewsEventsTab("news");
-            }}
-            className="hidden md:flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300 hover:shadow-lg"
-          >
-            {t("common.viewAll")} <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {newsArticles.slice(0, 2).map((article) => (
-            <Link
-              key={article.id}
-              to={`/article/${article.id}`}
-              className="group relative bg-white rounded-2xl overflow-hidden hover:shadow-lg hover:-translate-y-2 transition-all duration-500 border-2 border-gray-200 hover:border-[#F2C94C] cursor-pointer flex flex-col"
-            >
-              {/* Article Image */}
-              <div className="relative h-48 bg-gradient-to-br from-gray-200 to-gray-100 overflow-hidden">
-                <img
-                  src={article.image}
-                  alt={article.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-                
-                {/* Featured Badge */}
-                {article.featured && (
-                  <div className="absolute top-3 left-3">
-                    <span className="px-3 py-1.5 bg-gradient-to-r from-[#C8102E] to-red-700 text-white text-xs font-black uppercase rounded-full shadow-xl border border-white/30">
-                      Featured
-                    </span>
-                  </div>
-                )}
-
-                {/* Category Badge */}
-                <div className="absolute top-3 right-3">
-                  <span className={`px-3 py-1.5 rounded-full text-xs font-black uppercase shadow-xl border-2 backdrop-blur-sm ${
-                    article.category === 'Events' ? 'bg-[#0A3D91]/90 text-white border-blue-400/50' :
-                    article.category === 'News' ? 'bg-green-600/90 text-white border-green-400/50' :
-                    article.category === 'Training' ? 'bg-purple-600/90 text-white border-purple-400/50' :
-                    article.category === 'Fighter Spotlight' ? 'bg-[#F2C94C]/90 text-gray-900 border-yellow-400/50' :
-                    'bg-gray-600/90 text-white border-gray-400/50'
-                  }`}>
-                    {article.category}
-                  </span>
-                </div>
-
-                {/* Date Badge */}
-                <div className="absolute bottom-3 left-3 flex items-center gap-2 px-3 py-1.5 bg-white/95 backdrop-blur-sm rounded-lg shadow-xl">
-                  <Calendar className="w-3.5 h-3.5 text-[#0A3D91]" />
-                  <span className="text-xs font-black text-gray-900">
-                    {formatDate(article.date)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Article Content */}
-              <div className="p-5 flex flex-col flex-1">
-                <h3 className="text-lg font-black text-gray-900 mb-2 line-clamp-2 leading-tight group-hover:text-[#0A3D91] transition-colors">
-                  {article.title}
-                </h3>
-                <p className="text-sm text-gray-600 line-clamp-2 mb-4 leading-relaxed">{article.excerpt}</p>
-                
-                <span className="mt-auto w-full px-4 py-2.5 bg-gradient-to-r from-gray-100 to-gray-200 group-hover:from-[#0A3D91] group-hover:to-blue-700 text-gray-700 group-hover:text-white rounded-lg font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2">
-                  <span>{t("common.readArticle")}</span>
-                  <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-                </span>
-              </div>
-
-              {/* Decorative Corner */}
-              <div className="absolute bottom-0 right-0 w-16 h-16 bg-gradient-to-tl from-[#0A3D91]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-tl-[50px]" />
-            </Link>
-          ))}
-        </div>
-
-        {/* Mobile View All Button */}
-        <div className="md:hidden mt-6 text-center">
-          <button
-            onClick={() => {
-              handleSectionChange("news-events");
-              setNewsEventsTab("news");
-            }}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300 hover:shadow-lg"
-          >
-            {t("home.viewAllNews")} <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-    </div>
-  );
 
   const renderClubDetail = () => {
     if (!selectedClubId) return null;
@@ -4301,8 +3896,22 @@ export function SuperAppHome() {
       <SiteHeader activeSection={currentSection} onSectionChange={(s) => handleSectionChange(s as Section)} />
 
       {/* Main Content */}
+      {currentSection === "home" && (
+        <FightNightHome
+          articles={newsArticles}
+          upcomingEvents={upcomingEvents}
+          pastEvents={pastEvents}
+          fighters={fighters}
+          videos={mediaContent}
+          sponsors={sponsors}
+          onOpenEvent={openEvent}
+          onPlayVideo={(id) => setSelectedVideo(mediaContent.find((v) => v.id === id) ?? null)}
+          onNavigate={(section) => handleSectionChange(section)}
+        />
+      )}
+
+      {currentSection !== "home" && (
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
-        {currentSection === "home" && renderHome()}
         {currentSection === "news-events" && renderNewsEvents()}
         {currentSection === "fighters" && renderFighters()}
         {currentSection === "matches" && renderMatches()}
@@ -4318,8 +3927,9 @@ export function SuperAppHome() {
         {currentSection === "subscription" && renderSubscription()}
         {currentSection === "profile" && renderProfile()}
       </main>
+      )}
 
-      <SiteFooter onSectionChange={(s) => handleSectionChange(s as Section)} />
+      <SiteFooter flush={currentSection === "home"} onSectionChange={(s) => handleSectionChange(s as Section)} />
       {/* Video Player Modal */}
       {selectedVideo && (
         <div
