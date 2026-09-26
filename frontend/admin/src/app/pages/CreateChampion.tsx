@@ -40,7 +40,7 @@ export function CreateChampion() {
         setBatches(data || []);
       } catch (err) {
         console.error(err);
-        toast.error("Failed to load events/batches");
+        toast.error("Failed to load events/fight cards");
       } finally {
         setLoading(false);
       }
@@ -59,7 +59,7 @@ export function CreateChampion() {
     }
     
     if (!formData.batchId) {
-      newErrors.batchId = "Please select an event/batch";
+      newErrors.batchId = "Please select an event/fight card";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -122,7 +122,7 @@ export function CreateChampion() {
             <h3 className="font-semibold text-primary text-sm uppercase tracking-wide">How Championships Work</h3>
             <ul className="text-xs font-medium text-muted-foreground/90 space-y-1.5">
               <li>• <strong className="font-semibold text-foreground">Championship is a TITLE</strong>, not a fighter assignment</li>
-              <li>• The title belongs to an <strong className="font-semibold text-foreground">Event/Batch</strong></li>
+              <li>• The title belongs to an <strong className="font-semibold text-foreground">Event / Fight Card</strong></li>
               <li>• Fighters <strong className="font-semibold text-foreground">compete FOR</strong> the championship in matches</li>
               <li>• Mark matches as <strong className="font-semibold text-foreground">"Title Fight"</strong> to award the championship</li>
               <li>• The match <strong className="font-semibold text-foreground">winner</strong> becomes the champion</li>
@@ -350,7 +350,7 @@ export function CreateChampion() {
                   errors.batchId && "border-destructive focus:border-destructive focus:ring-destructive/10"
                 )}
               >
-                <option value="">-- Select Event/Batch --</option>
+                <option value="">-- Select Event / Fight Card --</option>
                 {batches.map(batch => (
                   <option key={batch.id} value={batch.id}>
                     {batch.event_name || batch.name} - {new Date(batch.date).toLocaleDateString()}

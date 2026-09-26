@@ -288,7 +288,7 @@ export function ShareFightCard() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-8 text-center shadow-lg max-w-md border border-slate-200/80">
-          <h2 className="text-2xl font-black text-slate-900 mb-4 uppercase tracking-tight">Batch Not Found</h2>
+          <h2 className="text-2xl font-black text-slate-900 mb-4 uppercase tracking-tight">Fight Card Not Found</h2>
           <p className="text-slate-500 mb-6 font-normal text-sm">The fight card you're looking for doesn't exist.</p>
           <button
             onClick={() => navigate("/home/matches")}
@@ -310,7 +310,7 @@ export function ShareFightCard() {
           <h2 className="text-2xl font-black text-amber-600 mb-4 uppercase tracking-tight">Sharing Restricted</h2>
           <p className="text-slate-500 mb-6 font-normal text-sm">
             {isCompleted
-              ? "This batch is completed but results have not been recorded for all matches. Please update match results before sharing."
+              ? "This fight card is completed but results have not been recorded for all matches. Please update match results before sharing."
               : "Sharing is only available during Draft Ready, Weight-In, Ready & Live, or Completed (with results) stages."}
           </p>
           <button
@@ -677,7 +677,7 @@ export function ShareFightCard() {
                 <div className="space-y-3">
                   <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Reference</div>
                   <div>
-                    <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Batch Code</div>
+                    <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Card Code</div>
                     <div className="text-sm font-black text-[#0A3D91] tracking-tight">{batch.batchNumber}</div>
                   </div>
                   <div>

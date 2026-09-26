@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
-import { Plus, Calendar, MapPin, Tv, DollarSign, Search, Trophy, Clock, CheckCircle, AlertTriangle, TrendingUp, Users, ListChecks, Building2, Crown, ArrowRight, Trash2 } from "lucide-react";
+import { Plus, Calendar, MapPin, Tv, DollarSign, Search, Trophy, Clock, CheckCircle, AlertTriangle, TrendingUp, Users, ListChecks, Building2, Crown, ArrowRight, Trash2, Swords } from "lucide-react";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
@@ -22,10 +22,10 @@ export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
 
   const handleCreateQuickBatch = async (eventId: string, eventDate: string, eventName: string, eventLocation: string) => {
     const formattedDate = eventDate ? new Date(eventDate).toISOString().split("T")[0] : new Date().toISOString().split("T")[0];
-    const name = window.prompt("Enter batch name (e.g. Week 1, Fight Night Card):", `Week ${subEvents.filter(s => s.event_id === eventId).length + 1}`);
+    const name = window.prompt("Enter fight card name (e.g. Week 1, Fight Night Card):", `Week ${subEvents.filter(s => s.event_id === eventId).length + 1}`);
     if (!name) return;
 
-    const dateStr = window.prompt("Enter date for this fight card batch (YYYY-MM-DD):", formattedDate);
+    const dateStr = window.prompt("Enter date for this fight card (YYYY-MM-DD):", formattedDate);
     if (!dateStr) return;
 
     try {
@@ -42,10 +42,10 @@ export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
         status: "Draft",
         batchNumber: `BATCH-${Date.now().toString().slice(-6)}`,
       });
-      toast.success("✅ Fight card batch created successfully!");
+      toast.success("✅ Fight card created successfully!");
       loadData();
     } catch (err: any) {
-      toast.error(`Failed to create batch: ${err.message}`);
+      toast.error(`Failed to create fight card: ${err.message}`);
     }
   };
 
@@ -68,10 +68,10 @@ export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
 
     try {
       await api.batches.delete(batchId);
-      toast.success(`🗑️ Batch "${batchNumber}" deleted successfully!`);
+      toast.success(`🗑️ Fight card "${batchNumber}" deleted successfully!`);
       loadData();
     } catch (err: any) {
-      toast.error("Failed to delete batch: " + err.message);
+      toast.error("Failed to delete fight card: " + err.message);
     }
   };
 
@@ -443,7 +443,7 @@ export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
                     <div className="flex justify-between items-center">
                       <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                         <Swords className="w-3.5 h-3.5 text-primary" />
-                        <span>Fight Card Batches</span>
+                        <span>Fight Cards</span>
                       </h4>
                       <button
                         type="button"
@@ -451,13 +451,13 @@ export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
                         className="text-[10px] text-primary font-bold uppercase tracking-wider flex items-center gap-1 hover:underline"
                       >
                         <Plus className="w-3 h-3" />
-                        <span>Add Batch</span>
+                        <span>Add Fight card</span>
                       </button>
                     </div>
 
                     {subEvents.filter(s => s.event_id === event.id).length === 0 ? (
                       <div className="text-center py-6 bg-white rounded-xl border border-dashed border-slate-200">
-                        <p className="text-xs text-slate-500 font-semibold mb-2">No batches scheduled yet</p>
+                        <p className="text-xs text-slate-500 font-semibold mb-2">No fight cards scheduled yet</p>
                         <button
                           type="button"
                           onClick={() => handleCreateQuickBatch(event.id, event.date, event.name, event.location)}
@@ -475,7 +475,7 @@ export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
                             <div key={batch.id} className="bg-white border border-slate-150 rounded-xl p-3.5 shadow-sm space-y-2.5">
                               <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                                 <div>
-                                  <span className="text-xs font-bold text-slate-900">{batch.name || `Batch #${batch.week_number}`}</span>
+                                  <span className="text-xs font-bold text-slate-900">{batch.name || `Fight card #${batch.week_number}`}</span>
                                   <span className="text-[10px] text-slate-500 font-medium ml-2">({batch.date?.split("T")[0]})</span>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -488,9 +488,9 @@ export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
                                   <span className="text-slate-300">|</span>
                                   <button
                                     type="button"
-                                    onClick={() => handleDeleteBatch(batch.id, batch.name || `Batch #${batch.week_number}`)}
+                                    onClick={() => handleDeleteBatch(batch.id, batch.name || `Fight card #${batch.week_number}`)}
                                     className="text-red-500 hover:text-red-755"
-                                    title="Delete Batch"
+                                    title="Delete Fight card"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>

@@ -143,7 +143,7 @@ export function MatchesEnhanced({ embedded = false }: { embedded?: boolean }) {
 
       setBatches(mappedBatches);
     } catch (err: any) {
-      toast.error("Failed to load batches: " + err.message);
+      toast.error("Failed to load fight cards: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -161,7 +161,7 @@ export function MatchesEnhanced({ embedded = false }: { embedded?: boolean }) {
       toast.success(`🗑️ ${batchNumber} deleted`);
       loadData();
     } catch (err: any) {
-      toast.error("Failed to delete batch: " + err.message);
+      toast.error("Failed to delete fight card: " + err.message);
     }
   };
 
@@ -321,7 +321,7 @@ export function MatchesEnhanced({ embedded = false }: { embedded?: boolean }) {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="card-premium border-l-4 border-l-primary hover:border-l-primary p-4 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Total Batches</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Total Fight cards</span>
             <span className="text-3xl font-extrabold tracking-tighter text-primary">{stats.total}</span>
           </div>
           <div className="card-premium border-l-4 border-l-slate-400 hover:border-l-slate-400 p-4 shadow-sm">
@@ -346,7 +346,7 @@ export function MatchesEnhanced({ embedded = false }: { embedded?: boolean }) {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <input
                 type="text"
-                placeholder="Search by batch ID, event, location, or fighter..."
+                placeholder="Search by card number, event, location, or fighter..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="input-premium rounded-xl !pl-11 !pr-10 py-2.5 text-sm font-medium border border-border focus:border-primary text-slate-800"
@@ -562,16 +562,16 @@ export function MatchesEnhanced({ embedded = false }: { embedded?: boolean }) {
             {loading ? (
               <div className="card-premium p-12 text-center">
                 <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto"></div>
-                <p className="text-sm text-slate-500 font-semibold mt-4">Loading batches...</p>
+                <p className="text-sm text-slate-500 font-semibold mt-4">Loading fight cards...</p>
               </div>
             ) : filteredBatches.length === 0 ? (
               <div className="card-premium bg-white border border-border rounded-xl p-12 text-center shadow-sm">
                 <Box className="w-16 h-16 text-muted-foreground/60 mx-auto mb-4" />
-                <h3 className="text-lg font-bold uppercase tracking-wider text-primary mb-2">No Batches Found</h3>
+                <h3 className="text-lg font-bold uppercase tracking-wider text-primary mb-2">No Fight Cards Found</h3>
                 <p className="text-muted-foreground font-medium">
                   {search || filterStatus !== "all" 
                     ? "Try adjusting your filters" 
-                    : "Create your first batch to get started"}
+                    : "Create your first fight card to get started"}
                 </p>
               </div>
             ) : (

@@ -1,18 +1,14 @@
 import { createBrowserRouter } from "react-router";
+import { ScheduleTitleBout } from "./pages/ScheduleTitleBout";
 import { getRouterBasename } from "./utils/basePath";
 import { Layout } from "./components/Layout";
 import { Home } from "./pages/Home";
 import { Fighters } from "./pages/Fighters";
 import { FighterDetail } from "./pages/FighterDetail";
 import { AddFighter } from "./pages/AddFighter";
-import { Matches } from "./pages/Matches";
 import { MatchDetail } from "./pages/MatchDetail";
-import { MatchDetailView } from "./pages/MatchDetailView";
 import { CreateEvent } from "./pages/CreateEvent";
-import { AssignFightersToEvent } from "./pages/AssignFightersToEvent";
 import { EventDetailNew } from "./pages/EventDetailNewSimple";
-import { SubEventDetail } from "./pages/SubEventDetail";
-import { AddMatchToEvent } from "./pages/AddMatchToEvent";
 import { CreateMatchFromBatch } from "./pages/CreateMatchFromBatch";
 import { MatchCreatedSuccess } from "./pages/MatchCreatedSuccess";
 import { BatchDetail } from "./pages/BatchDetail";
@@ -20,13 +16,10 @@ import { CreateBatch } from "./pages/CreateBatch";
 import { CreateChampion } from "./pages/CreateChampion";
 import { ChampionDetail } from "./pages/ChampionDetail";
 import { ChampionHistory } from "./pages/ChampionHistory";
-import { KKFWorkflow } from "./pages/KKFWorkflow";
-import { KKFWorkflowDetail } from "./pages/KKFWorkflowDetail";
 import { Profile } from "./pages/Profile";
 import { MatchProposals } from "./pages/MatchProposals";
 import { RedirectToHomeEvents } from "./pages/RedirectToHomeEvents";
 import { RedirectToFighters } from "./pages/RedirectToFighters";
-import { WorkflowDemo } from "./pages/WorkflowDemo";
 import { SystemSettings } from "./pages/SystemSettings";
 import { SystemProcessFlow } from "./pages/SystemProcessFlow";
 import { NotFound } from "./pages/NotFound";
@@ -37,15 +30,26 @@ import { AddClub } from "./pages/AddClub";
 import AssignOfficials from "./pages/AssignOfficials";
 import { ShareFightCard } from "./pages/ShareFightCard";
 import { UserManagement } from "./pages/UserManagement";
-import { Navigate } from "react-router";
+import { Navigate, useParams } from "react-router";
 import { KKFOfficers } from "./pages/KKFOfficers";
-import { StoreManagement } from "./pages/StoreManagement";
-import { CategoriesSetting } from "./pages/CategoriesSetting";
-import { StoreSettings } from "./pages/StoreSettings";
 import { News } from "./pages/News";
 import { Video } from "./pages/Video";
 import { StrategicPartners } from "./pages/StrategicPartners";
 import { ProgramDashboard } from "./pages/ProgramDashboard";
+
+/** Old or removed admin URLs → the page that does that job now (Phase 2). */
+function ToFightCard() {
+  const { subEventId } = useParams();
+  return <Navigate to={`/home/matches/${subEventId}`} replace />;
+}
+function ToEvent() {
+  const { eventId } = useParams();
+  return <Navigate to={`/home/events/${eventId}`} replace />;
+}
+function ToMatch() {
+  const { id } = useParams();
+  return <Navigate to={`/home/match/${id}`} replace />;
+}
 
 export const router = createBrowserRouter(
   [
@@ -192,22 +196,24 @@ export const router = createBrowserRouter(
       { path: "batches/:batchId/share", element: <ShareFightCard /> },
       { path: "program", element: <ProgramDashboard /> },
       { path: "matches", element: <Navigate to="/home/program?tab=matches" replace /> },
-      { path: "matches-old", element: <Matches /> },
+      { path: "matches-old", element: <Navigate to="/home/program?tab=matches" replace /> },
+      { path: "match/new", element: <ScheduleTitleBout /> },
       { path: "match/:id", element: <MatchDetail /> },
-      { path: "match/:id/update-result", element: <MatchDetailView /> },
+      { path: "match/:id/update-result", element: <ToMatch /> },
       { path: "events/new", element: <CreateEvent /> },
-      { path: "events/:eventId/assign-fighters", element: <AssignFightersToEvent /> },
+      { path: "events/:eventId/assign-fighters", element: <ToEvent /> },
       { path: "events/:id", element: <EventDetailNew /> },
-      { path: "events/:eventId/sub-events/:subEventId", element: <SubEventDetail /> },
-      { path: "events/:eventId/sub-events/:subEventId/add-match", element: <AddMatchToEvent /> },
-      { path: "events/:eventId/add-match", element: <AddMatchToEvent /> },
+      { path: "events/:eventId/sub-events/:subEventId", element: <ToFightCard /> },
+      { path: "events/:eventId/sub-events/:subEventId/add-match", element: <ToFightCard /> },
+      { path: "events/:eventId/add-match", element: <ToEvent /> },
       { path: "events", element: <Navigate to="/home/program?tab=events" replace /> },
       { path: "champion", element: <Navigate to="/home/program?tab=champions" replace /> },
       { path: "champion/new", element: <CreateChampion /> },
       { path: "champion/:id", element: <ChampionDetail /> },
+      { path: "champion/:id/schedule-defense", element: <ScheduleTitleBout /> },
       { path: "champion/:id/history", element: <ChampionHistory /> },
-      { path: "kkf-workflow", element: <KKFWorkflow /> },
-      { path: "kkf-workflow/:requestId", element: <KKFWorkflowDetail /> },
+      { path: "kkf-workflow", element: <Navigate to="/home" replace /> },
+      { path: "kkf-workflow/:requestId", element: <Navigate to="/home" replace /> },
       { path: "profile", element: <Profile /> },
       { path: "match-proposals", element: <MatchProposals /> },
       { path: "kkf-officers", element: <KKFOfficers /> },
@@ -216,13 +222,13 @@ export const router = createBrowserRouter(
       { path: "user-management/:userId/edit", element: <UserManagement /> },
       { path: "user-management/:userId", element: <UserManagement /> },
       { path: "rankings", element: <RedirectToFighters /> },
-      { path: "workflow-demo", element: <WorkflowDemo /> },
+      { path: "workflow-demo", element: <Navigate to="/home" replace /> },
       { path: "settings", element: <SystemSettings /> },
       { path: "process-flow", element: <SystemProcessFlow /> },
-      { path: "assign-officials", element: <AssignOfficials /> },
-      { path: "product-management", element: <StoreManagement /> },
-      { path: "categories-setting", element: <CategoriesSetting /> },
-      { path: "store-settings", element: <StoreSettings /> },
+      { path: "assign-officials", element: <Navigate to="/home/program?tab=matches" replace /> },
+      { path: "product-management", element: <Navigate to="/home" replace /> },
+      { path: "categories-setting", element: <Navigate to="/home" replace /> },
+      { path: "store-settings", element: <Navigate to="/home" replace /> },
       { path: "media/news", element: <News /> },
       { path: "media/video", element: <Video /> },
       { path: "strategic-partners/:partnerType/new", element: <StrategicPartners /> },

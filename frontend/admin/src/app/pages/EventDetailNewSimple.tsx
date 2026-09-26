@@ -8,10 +8,11 @@ import {
   Tv, Trophy, XCircle, Download,
   Building2, CalendarDays, Ban, DollarSign, User,
   ArrowUp, ArrowDown, Sparkles
-} from "lucide-react";
+, Save } from "lucide-react";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { EventStatusBadge } from "../components/EventStatusBadge";
+import { EventNextSteps } from "../components/EventNextSteps";
 import { clsx } from "clsx";
 import { toast } from "sonner";
 import { GLOVE_SIZES } from "../data/masterData";
@@ -200,6 +201,7 @@ export function EventDetailNew() {
             date: b.date ? new Date(b.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "TBD",
             rawDate: b.date ? formatDateStr(b.date) : "",
             weekNumber: b.week_number || 1,
+            status: b.status,
             phase: b.phase || "Quarter-Finals",
             matches: batchMatches
           };
@@ -418,8 +420,8 @@ export function EventDetailNew() {
     { id: 1, label: "Event has a name", passed: !!event.name },
     { id: 2, label: "Event has a date", passed: !!event.date },
     { id: 3, label: "Event has a location", passed: !!event.location },
-    { id: 4, label: "Event has at least one batch", passed: eventBatches.length > 0 },
-    { id: 5, label: "All batches have at least one match", passed: eventBatches.every(b => b.matches.length > 0) },
+    { id: 4, label: "Event has at least one fight card", passed: eventBatches.length > 0 },
+    { id: 5, label: "All fight cards have at least one match", passed: eventBatches.every(b => b.matches.length > 0) },
     { id: 6, label: "Event has organizer information", passed: !!event.organizer },
     { id: 7, label: "Event has broadcast station", passed: !!event.broadcast_station_id },
     { id: 8, label: "Event has main sponsor", passed: !!event.main_sponsor_id },
@@ -548,15 +550,25 @@ export function EventDetailNew() {
 
 
 
+  const handlePublish = async () => {
+    try {
+      await api.events.update(id!, { status: "Published" });
+      toast.success("Event published — fans can now see it");
+      loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "Could not publish the event.");
+    }
+  };
+
   const handleCheckAction = (checkId: number) => {
     if (checkId === 4) {
       setShowAddBatchModal(true);
     } else if (checkId === 5) {
       if (eventBatches.length === 0) {
         setShowAddBatchModal(true);
-        toast.info("Create a week/batch first before adding matches");
+        toast.info("Create a fight card first before adding matches");
       } else {
-        setShowAddMatchModal(true);
+        navigate(`/home/matches/${eventBatches[0].id}/create-match`);
       }
     } else {
       handleEditEvent();
@@ -755,6 +767,15 @@ export function EventDetailNew() {
           </div>
         )}
       </div>
+
+      <EventNextSteps
+        event={event}
+        cards={eventBatches}
+        canEdit={Boolean(canEditEvent)}
+        onEditDetails={handleEditEvent}
+        onAddFightCard={() => setShowAddBatchModal(true)}
+        onPublish={handlePublish}
+      />
 
       {/* Inline Action Forms */}
       {showEditEvent && (
@@ -1076,7 +1097,7 @@ export function EventDetailNew() {
       {/* Batches & Matches */}
       <div className="card-premium p-6 sm:p-8 space-y-6">
         <div className="flex items-center justify-between pb-3 border-b border-border/60">
-          <h2 className="text-lg font-bold text-foreground uppercase tracking-tight">Batches & Matches</h2>
+          <h2 className="text-lg font-bold text-foreground uppercase tracking-tight">Fight Cards & Matches</h2>
           
           {canEditEvent && event.kkfStatus !== "Completed" && event.kkfStatus !== "Cancelled" && (
             <button
@@ -1095,8 +1116,8 @@ export function EventDetailNew() {
         {eventBatches.length === 0 ? (
           <div className="text-center py-16">
             <CalendarDays className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground font-semibold text-base mb-1">No batches created yet</p>
-            <p className="text-muted-foreground/60 text-xs font-medium mb-5">Create your first batch to start adding matches</p>
+            <p className="text-muted-foreground font-semibold text-base mb-1">No fight cards created yet</p>
+            <p className="text-muted-foreground/60 text-xs font-medium mb-5">Create your first fight card to start adding matches</p>
             {canEditEvent && event.kkfStatus !== "Completed" && event.kkfStatus !== "Cancelled" && (
               <button
                 onClick={() => {
@@ -1296,17 +1317,14 @@ export function EventDetailNew() {
                       ) : (
                         <div className="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-border/60">
                           <Users className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                          <p className="text-xs text-muted-foreground font-semibold">No matches added to this batch yet</p>
+                          <p className="text-xs text-muted-foreground font-semibold">No matches added to this fight card yet</p>
                         </div>
                       )}
 
                       {canEditEvent && event.kkfStatus !== "Completed" && event.kkfStatus !== "Cancelled" && (
                         <div className="mt-4 pt-3 border-t border-border/60 flex justify-between items-center">
                           <button
-                            onClick={() => {
-                              setSelectedBatchId(batch.id);
-                              setShowAddMatchModal(true);
-                            }}
+                            onClick={() => navigate(`/home/matches/${batch.id}/create-match`)}
                             className="btn-primary inline-flex py-1.5 px-3 text-xs font-medium uppercase tracking-wider"
                           >
                             <Plus className="w-3.5 h-3.5" />
@@ -1320,20 +1338,20 @@ export function EventDetailNew() {
                                 const idx = eventBatches.findIndex(b => b.id === batch.id);
                                 if (idx > 0) {
                                   // swap with previous batch
-                                  toast.info("Reordering batches...");
+                                  toast.info("Reordering fight cards...");
                                 }
                               }}
                               className="p-1.5 bg-slate-50 hover:bg-slate-100 text-muted-foreground border border-border/60 rounded-lg transition-all"
-                              title="Move Batch Up"
+                              title="Move Fight Card Up"
                             >
                               <ArrowUp className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => {
-                                toast.info("Reordering batches...");
+                                toast.info("Reordering fight cards...");
                               }}
                               className="p-1.5 bg-slate-50 hover:bg-slate-100 text-muted-foreground border border-border/60 rounded-lg transition-all"
-                              title="Move Batch Down"
+                              title="Move Fight Card Down"
                             >
                               <ArrowDown className="w-3.5 h-3.5" />
                             </button>
@@ -1359,7 +1377,7 @@ export function EventDetailNew() {
                   <CalendarDays className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-foreground uppercase tracking-tight">Create Batch / Week</h3>
+                  <h3 className="font-bold text-base text-foreground uppercase tracking-tight">Create Fight Card</h3>
                   <p className="text-[11px] text-muted-foreground font-medium">Add a new fight card week to this event</p>
                 </div>
               </div>
@@ -1373,7 +1391,7 @@ export function EventDetailNew() {
             
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1.5 uppercase tracking-wide">Batch Name</label>
+                <label className="block text-xs font-bold text-foreground mb-1.5 uppercase tracking-wide">Fight Card Name</label>
                 <input
                   type="text"
                   value={newBatchName}
@@ -1411,7 +1429,7 @@ export function EventDetailNew() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1.5 uppercase tracking-wide">Batch Date</label>
+                <label className="block text-xs font-bold text-foreground mb-1.5 uppercase tracking-wide">Fight Card Date</label>
                 <input
                   type="date"
                   value={newBatchDate}

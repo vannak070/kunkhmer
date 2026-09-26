@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import html2canvas from "html2canvas-pro";
 import { useParams, useNavigate, Link } from "react-router";
 import { 
   ArrowLeft, Eye, Plus, Search, ChevronDown, ChevronUp,
@@ -152,10 +153,11 @@ export function BatchDetail() {
     }
 
     try {
+      // POST /matches/:id/result expects method + round (not winnerMethod / winnerRound).
       await api.matches.saveResult(matchId, {
         winnerId: isDrawOrNC ? null : result.winnerId,
-        winnerMethod: isDrawOrNC ? result.winnerId : result.method,
-        winnerRound: isDrawOrNC ? null : (result.method === "PTS" ? m.rounds : parseInt(result.round)),
+        method: isDrawOrNC ? result.winnerId : result.method,
+        round: isDrawOrNC || result.method === "PTS" ? Number(m.rounds) || 0 : parseInt(result.round),
       });
 
       const updatedMatches = batch.matches.map((x: any) => {
@@ -259,7 +261,7 @@ export function BatchDetail() {
         setMatches(batchMatches);
       }
     } catch (err: any) {
-      toast.error("Failed to load batch details: " + err.message);
+      toast.error("Failed to load fight card details: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -322,7 +324,7 @@ export function BatchDetail() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center">
-          <h1 className="text-2xl font-extrabold text-slate-900 mb-4 tracking-tight">Batch Not Found</h1>
+          <h1 className="text-2xl font-extrabold text-slate-900 mb-4 tracking-tight">Fight Card Not Found</h1>
           <button
             onClick={() => navigate("/home/program?tab=matches")}
             className="btn-primary px-5 py-2.5 font-semibold uppercase tracking-wider text-xs rounded-xl shadow-md"
@@ -336,12 +338,12 @@ export function BatchDetail() {
 
   const handleMoveToWeightIn = async () => {
     if (batch.matches.length === 0) {
-      toast.error("❌ Cannot proceed: Batch must have at least one match");
+      toast.error("❌ Cannot proceed: Fight card must have at least one match");
       return;
     }
     try {
       await api.batches.update(batchId!, { status: "Weight-In" });
-      toast.success(`✅ Batch ${batch.batchNumber} moved to Weight-In phase!`);
+      toast.success(`✅ Fight card ${batch.batchNumber} moved to Weight-In phase!`);
       loadData();
     } catch (err: any) {
       toast.error("Failed to move stage: " + err.message);
@@ -358,17 +360,17 @@ export function BatchDetail() {
     }
     try {
       await api.batches.update(batchId!, { status: "Scheduled" });
-      toast.success(`✅ Batch ${batch.batchNumber} has been successfully scheduled!`);
+      toast.success(`✅ Fight card ${batch.batchNumber} has been successfully scheduled!`);
       loadData();
     } catch (err: any) {
-      toast.error("Failed to schedule batch: " + err.message);
+      toast.error("Failed to schedule fight card: " + err.message);
     }
   };
 
   const handleGoLive = async () => {
     try {
       await api.batches.update(batchId!, { status: "Live" });
-      toast.success(`🔥 Batch ${batch.batchNumber} is now LIVE!`);
+      toast.success(`🔥 Fight card ${batch.batchNumber} is now LIVE!`);
       loadData();
     } catch (err: any) {
       toast.error("Failed to start event: " + err.message);
@@ -383,7 +385,7 @@ export function BatchDetail() {
     }
     try {
       await api.batches.update(batchId!, { status: "Complete" });
-      toast.success(`🏆 Batch ${batch.batchNumber} event has been finalized and completed!`);
+      toast.success(`🏆 Fight card ${batch.batchNumber} event has been finalized and completed!`);
       loadData();
     } catch (err: any) {
       toast.error("Failed to finalize event: " + err.message);
@@ -444,10 +446,10 @@ export function BatchDetail() {
   const handleDeleteBatch = async () => {
     try {
       await api.batches.delete(batchId!);
-      toast.success(`✅ Batch ${batch.batchNumber} deleted`);
+      toast.success(`✅ Fight card ${batch.batchNumber} deleted`);
       setTimeout(() => navigate("/home/program?tab=matches"), 1000);
     } catch (err: any) {
-      toast.error("Failed to delete batch: " + err.message);
+      toast.error("Failed to delete fight card: " + err.message);
     }
   };
 
@@ -598,7 +600,7 @@ export function BatchDetail() {
         link.click();
       });
     }
-    toast.success("📥 Batch report downloaded!");
+    toast.success("📥 Fight card report downloaded!");
   };
 
   const statusConfig = BATCH_STATUS_CONFIG[batch.status] || BATCH_STATUS_CONFIG["Draft"];
@@ -608,7 +610,7 @@ export function BatchDetail() {
   const isLocked = ["Completed", "Complete", "Live"].includes(batch.status);
 
   const steps = [
-    { id: "draft", label: "Draft", icon: "✏️", desc: "Batch created" },
+    { id: "draft", label: "Draft", icon: "✏️", desc: "Fight card created" },
     { id: "draft-ready", label: "Draft Ready", icon: "📋", desc: "Matches finalized" },
     { id: "weight-in", label: "Weight-In", icon: "⚖️", desc: "Fighter check" },
     { id: "live", label: "Ready & Live", icon: "🔥", desc: "Fight day" },
@@ -1172,7 +1174,7 @@ export function BatchDetail() {
                 <p className="text-slate-400 text-sm mb-6">
                   {searchQuery 
                     ? "Try adjusting your search query"
-                    : "Add matches to this batch to get started"
+                    : "Add matches to this fight card to get started"
                   }
                 </p>
                 {!searchQuery && batch.status === "Draft" && permissions.hasPermission('matches.create') && (
@@ -1544,7 +1546,7 @@ export function BatchDetail() {
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
           <div className="bg-white rounded-2xl p-6 md:p-8 max-w-md w-full border border-slate-100 shadow-xl">
-            <h3 className="text-lg font-extrabold text-red-700 mb-4 tracking-tight uppercase">Delete Batch?</h3>
+            <h3 className="text-lg font-extrabold text-red-700 mb-4 tracking-tight uppercase">Delete Fight card?</h3>
             <p className="text-slate-600 font-normal text-sm mb-6">
               Are you sure you want to delete <strong>{batch.batchNumber}</strong>? This action cannot be undone.
             </p>

@@ -5,7 +5,7 @@ import {
   Award, Star, User, CheckCircle, Clock, History, CalendarClock,
   Target, Edit, Trash2, TrendingUp, Swords, XCircle, AlertTriangle, Save, X
 } from "lucide-react";
-import { CHAMPION_TYPE_CONFIG, CHAMPION_STATUS_CONFIG, WEIGHT_CLASSES, getWeightClassName } from "../data/champion";
+import { CHAMPION_TYPE_CONFIG, CHAMPION_STATUS_CONFIG, WEIGHT_CLASSES, getWeightClassName, type ChampionType, type ChampionStatus } from "../data/champion";
 import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
 import { clsx } from "clsx";

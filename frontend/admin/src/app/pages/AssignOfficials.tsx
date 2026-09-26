@@ -58,7 +58,7 @@ export default function AssignOfficials() {
       }
     } catch (err: any) {
       console.error(err);
-      toast.error("Failed to load batch data: " + err.message);
+      toast.error("Failed to load fight card data: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -150,7 +150,7 @@ export default function AssignOfficials() {
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-4">Batch not found</h2>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-4">Fight card not found</h2>
           <button onClick={() => navigate("/home/matches")} className="btn-primary px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider">
             Back to Matches
           </button>
@@ -196,7 +196,7 @@ export default function AssignOfficials() {
                   Assign Match Officials
                 </h1>
                 <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  Set the main referee and 3 judges for each fight in {batch.batchNumber || `Batch #${batch.week_number}`}
+                  Set the main referee and 3 judges for each fight in {batch.batchNumber || `Fight card #${batch.week_number}`}
                 </p>
               </div>
             </div>
@@ -212,7 +212,7 @@ export default function AssignOfficials() {
             {matches.length === 0 ? (
               <div className="text-center py-12 text-slate-450 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
                 <Users className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                <p className="font-semibold text-sm">No matches in this batch yet</p>
+                <p className="font-semibold text-sm">No matches in this fight card yet</p>
               </div>
             ) : (
               matches.map((m: any, index: number) => {

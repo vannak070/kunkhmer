@@ -116,12 +116,12 @@ export function CreateBatch() {
     }
 
     if (!formData.name.trim()) {
-      toast.error("Please enter a batch name");
+      toast.error("Please enter a fight card name");
       return;
     }
 
     if (!formData.batchType) {
-      toast.error("Please select a batch type");
+      toast.error("Please select a fight card type");
       return;
     }
 
@@ -141,7 +141,7 @@ export function CreateBatch() {
           location: formData.location || selectedEvent?.location || "",
           phase: formData.batchType === "Main" ? "Final" : "Qualifier",
         });
-        toast.success("✅ Batch updated successfully!");
+        toast.success("✅ Fight card updated successfully!");
         navigate(`/home/batches/${batchId}`);
       } else {
         // Calculate how many batches already exist for this event to assign a week_number
@@ -159,11 +159,11 @@ export function CreateBatch() {
           batchNumber: `BATCH-${Date.now().toString().slice(-6)}`,
         });
 
-        toast.success("✅ Batch created successfully!");
+        toast.success("✅ Fight card created successfully!");
         navigate(`/home/batches/${newBatch.id}`);
       }
     } catch (err: any) {
-      toast.error(err.message || "Failed to save batch in database");
+      toast.error(err.message || "Failed to save fight card in database");
     }
   };
 
@@ -209,10 +209,10 @@ export function CreateBatch() {
           </button>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              {isEditMode ? "Edit Batch" : "Create New Batch"}
+              {isEditMode ? "Edit Fight card" : "Create New Fight card"}
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5 font-medium">
-              {isEditMode ? "Update match batch details for this event" : "Set up a new match batch for an event"}
+              {isEditMode ? "Update fight card details for this event" : "Set up a new fight card for an event"}
             </p>
           </div>
         </div>
@@ -231,7 +231,7 @@ export function CreateBatch() {
               <h2 className="text-lg font-bold text-foreground uppercase tracking-tight">
                 Event Details
               </h2>
-              <p className="text-xs text-muted-foreground">Select the host event for this match batch</p>
+              <p className="text-xs text-muted-foreground">Select the host event for this fight card</p>
             </div>
           </div>
 
@@ -389,7 +389,7 @@ export function CreateBatch() {
                 className="input-premium cursor-pointer py-2.5"
                 required
               >
-                <option value="">Choose a batch type...</option>
+                <option value="">Choose a fight card type...</option>
                 <option value="Main">Main Card</option>
                 <option value="Prelim">Preliminary Fights</option>
                 <option value="Weekly">Weekly Card</option>
@@ -539,7 +539,7 @@ export function CreateBatch() {
             className="w-full sm:w-auto btn-primary py-2.5 px-6 uppercase text-xs tracking-wider"
           >
             <Box className="w-4 h-4" />
-            {isEditMode ? "Save Changes" : "Create Batch"}
+            {isEditMode ? "Save Changes" : "Create Fight card"}
           </button>
         </div>
       </form>

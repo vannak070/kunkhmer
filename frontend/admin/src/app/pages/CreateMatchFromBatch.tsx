@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import {
   ArrowLeft, Users, CheckCircle, AlertCircle, Box, Scale,
   Trophy, Crown, ChevronRight, ChevronLeft, Search, X,
@@ -26,6 +26,8 @@ export function CreateMatchFromBatch() {
   // Multi-step state
   const [currentStep, setCurrentStep] = useState(1);
 
+  const [searchParams] = useSearchParams();
+  const presetChampionId = searchParams.get("championId") ?? "";
   const [matchData, setMatchData] = useState({
     rounds: 5,
     roundTime: 3,
@@ -34,8 +36,9 @@ export function CreateMatchFromBatch() {
     weightClass: 70,
     gloveSize: "8oz",
     gloveType: "Twins Special BGVL-3",
-    isChampionshipMatch: false,
-    championTitleId: "",
+    // Arriving from "Schedule a title bout" (?championId=…) preselects that title.
+    isChampionshipMatch: Boolean(presetChampionId),
+    championTitleId: presetChampionId,
     fighterAId: "",
     fighterBId: "",
     fighterAConfirmed: false,
@@ -107,7 +110,7 @@ export function CreateMatchFromBatch() {
     if (fighter.status === "Inactive")  return { available: false, reason: "Inactive" };
     if (fighter.status !== "Active")    return { available: false, reason: fighter.status };
     if (matches.some(m => m.fighter_a_id === fighterId || m.fighter_b_id === fighterId)) {
-      return { available: false, reason: "Already in batch" };
+      return { available: false, reason: "Already in fight card" };
     }
     return { available: true };
   };
@@ -200,7 +203,7 @@ export function CreateMatchFromBatch() {
     return (
       <div className="min-h-screen bg-[#F4F5F8] flex items-center justify-center p-8">
         <div className="text-center">
-          <h1 className="text-2xl font-extrabold text-slate-900 mb-4">Batch Not Found</h1>
+          <h1 className="text-2xl font-extrabold text-slate-900 mb-4">Fight Card Not Found</h1>
           <button onClick={() => navigate("/home/matches")} className="btn-primary px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider">
             Back to Matches
           </button>

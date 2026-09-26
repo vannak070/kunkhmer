@@ -143,7 +143,7 @@ export function MatchCreatedSuccess() {
                   <ol className="space-y-2 text-sm text-blue-700">
                     <li className="flex items-start gap-2">
                       <span className="font-black">1.</span>
-                      <span>The match is now part of the event batch and ready to proceed</span>
+                      <span>The match is now part of the event fight card and ready to proceed</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="font-black">2.</span>

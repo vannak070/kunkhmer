@@ -22,6 +22,8 @@ export interface User {
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   // 👑 1. KKF Super Admin - Full system control & approvals
   kkf_super_admin: [
+    // System (e.g. deleting a championship title)
+    'system.manage_settings',
     // Users
     'users.view',
     'users.create',
@@ -443,7 +445,7 @@ export const hasPermission = (permission: string): boolean => {
 };
 
 export const canAccessRoute = (route: string): boolean => {
-  if (!CURRENT_USER) return false;
+  if (!getCurrentUser()) return false;
   
   const routePermissionMap: Record<string, string> = {
     '/fighters': 'fighters.view',

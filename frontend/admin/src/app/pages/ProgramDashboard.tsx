@@ -29,6 +29,8 @@ export function ProgramDashboard() {
   });
 
   const [upcomingEvent, setUpcomingEvent] = useState<any>(null);
+
+  const [upcomingIsPast, setUpcomingIsPast] = useState(false);
   const [topChampions, setTopChampions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -67,8 +69,13 @@ export function ProgramDashboard() {
         return dateA - dateB;
       });
 
-      const nextEvent = sortedEvents.find((e: any) => e.status === "Published" || e.status === "In Progress") || sortedEvents[0];
-      setUpcomingEvent(nextEvent);
+      // Next fight night = today or later and not a draft/closed event; otherwise show the latest past one, labelled as such.
+      const today = new Date(new Date().toISOString().slice(0, 10)).getTime();
+      const open = (e: any) => !["Draft", "Cancelled", "Completed"].includes(e.status);
+      const nextEvent = sortedEvents.find((e: any) => new Date(e.date).getTime() >= today && open(e));
+      const lastEvent = [...sortedEvents].reverse().find((e: any) => new Date(e.date).getTime() < today && e.status !== "Draft");
+      setUpcomingEvent(nextEvent ?? lastEvent ?? null);
+      setUpcomingIsPast(!nextEvent && Boolean(lastEvent));
 
       // Top champions (sorted by defenses descending)
       const sortedChamps = [...championsList]
@@ -223,7 +230,7 @@ export function ProgramDashboard() {
                     className="bg-white p-5 rounded-2xl border border-slate-100 hover:border-primary/20 shadow-sm hover:shadow-md cursor-pointer transition-all duration-300 group flex items-center justify-between"
                   >
                     <div className="space-y-1">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Match Batches</p>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Fight Cards</p>
                       <h3 className="text-3xl font-extrabold text-slate-900 group-hover:text-primary transition-colors">{stats.batchesCount}</h3>
                       <p className="text-xs font-semibold text-slate-500">
                         <span className="text-orange-500 font-bold">{stats.liveBatches} ready/live</span> fight cards
@@ -261,7 +268,7 @@ export function ProgramDashboard() {
                     <div className="flex items-center justify-between">
                       <h2 className="text-base font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
                         <Sparkles className="w-5 h-5 text-amber-500" />
-                        Next Featured Fight Night
+                        {upcomingIsPast ? "Last Fight Night" : "Next Featured Fight Night"}
                       </h2>
                     </div>
 
@@ -271,9 +278,9 @@ export function ProgramDashboard() {
                           
                           {/* Banner upper */}
                           <div className="flex items-start justify-between">
-                            <span className="px-3 py-1 bg-red-600/90 border border-red-500/30 text-white rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm">
-                              <Activity className="w-3.5 h-3.5 animate-pulse" />
-                              Next Up
+                            <span className={`px-3 py-1 border text-white rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm ${upcomingIsPast ? "bg-slate-600/90 border-slate-500/30" : "bg-red-600/90 border-red-500/30"}`}>
+                              <Activity className={upcomingIsPast ? "w-3.5 h-3.5" : "w-3.5 h-3.5 animate-pulse"} />
+                              {upcomingIsPast ? "Finished" : "Next Up"}
                             </span>
                             <div className="flex items-center gap-2 text-xs font-bold bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
                               <Tv className="w-4 h-4 text-amber-400" />
@@ -419,7 +426,7 @@ export function ProgramDashboard() {
                         <Swords className="w-5 h-5" />
                       </span>
                       <div>
-                        <h4 className="text-sm font-bold text-orange-650">Create Fight Batch</h4>
+                        <h4 className="text-sm font-bold text-orange-650">Create Fight Card</h4>
                         <p className="text-xs text-slate-500 mt-0.5">Add match cards and pair fighters</p>
                       </div>
                     </Link>

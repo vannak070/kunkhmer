@@ -241,7 +241,7 @@ export function CalendarView({ batches }: CalendarViewProps) {
                 }
               }).length}
             </div>
-            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">Total Batches</div>
+            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">Total Fight cards</div>
           </div>
           
           <div className="text-center">

@@ -71,7 +71,7 @@ export function SystemProcessFlow() {
               </div>
               <div className="flex items-start gap-2">
                 <Zap className="w-4 h-4 text-[#C8102E] mt-0.5 shrink-0" />
-                <p className="text-sm text-red-900 font-medium">Manage fighters, clubs, events, and batches</p>
+                <p className="text-sm text-red-900 font-medium">Manage fighters, clubs, events, and fight cards</p>
               </div>
               <div className="flex items-start gap-2">
                 <Zap className="w-4 h-4 text-[#C8102E] mt-0.5 shrink-0" />
@@ -164,29 +164,29 @@ export function SystemProcessFlow() {
 
           {/* 3. Batch Creation & Match Building */}
           <WorkflowSection
-            title="Batch Creation & Match Building"
+            title="Fight Card Creation & Match Building"
             icon={<Trophy className="w-6 h-6 text-white" />}
             iconBg="bg-[#C8102E]"
             steps={[
               {
                 role: "KKF Officer",
                 roleColor: "bg-red-100 text-[#C8102E] border-red-300",
-                action: "Create Match Batch",
-                description: "Navigate to Matches → Create Batch",
+                action: "Create Match Fight card",
+                description: "Navigate to Matches → Create Fight card",
                 details: [
-                  "Enter batch details (event name, date, location)",
+                  "Enter fight card details (event name, date, location)",
                   "Add venue information",
                   "Set organizer club",
                   "Add broadcast station (optional)",
                   "Add main sponsor (optional)",
-                  "Batch starts in Draft status"
+                  "Fight card starts in Draft status"
                 ]
               },
               {
                 role: "KKF Officer",
                 roleColor: "bg-red-100 text-[#C8102E] border-red-300",
                 action: "Build Fight Card",
-                description: "Add matches to the batch",
+                description: "Add matches to the fight card",
                 details: [
                   "Select two fighters of similar weight class",
                   "Set agreed weight for the match",
@@ -215,7 +215,7 @@ export function SystemProcessFlow() {
 
           {/* 4. Batch Status Workflow (5 Stages) */}
           <WorkflowSection
-            title="Batch Status Workflow (5 Stages)"
+            title="Fight Card Status Workflow (5 Stages)"
             icon={<Target className="w-6 h-6 text-white" />}
             iconBg="bg-indigo-600"
             steps={[
@@ -223,12 +223,12 @@ export function SystemProcessFlow() {
                 role: "KKF Officer",
                 roleColor: "bg-red-100 text-[#C8102E] border-red-300",
                 action: "Stage 1: Draft",
-                description: "Initial batch creation and match building",
+                description: "Initial fight card creation and match building",
                 details: [
-                  "Create batch with event details",
+                  "Create fight card with event details",
                   "Add matches to fight card",
-                  "Edit batch information freely",
-                  "Delete batch if needed",
+                  "Edit fight card information freely",
+                  "Delete fight card if needed",
                   "Can assign officials at any time"
                 ]
               },
@@ -242,19 +242,19 @@ export function SystemProcessFlow() {
                   "System validates against agreed weight (±1kg tolerance)",
                   "Mark weigh-in as completed",
                   "Officials should be assigned before this stage",
-                  "Cannot delete batch after weigh-in starts"
+                  "Cannot delete fight card after weigh-in starts"
                 ]
               },
               {
                 role: "KKF Officer",
                 roleColor: "bg-red-100 text-[#C8102E] border-red-300",
                 action: "Stage 3: Ready",
-                description: "Batch is ready for event day",
+                description: "Fight card is ready for event day",
                 details: [
                   "All weigh-ins completed",
                   "All officials assigned",
                   "Fight card finalized",
-                  "Batch is ready to go Live",
+                  "Fight card is ready to go Live",
                   "Final preparations for event"
                 ]
               },
@@ -298,9 +298,9 @@ export function SystemProcessFlow() {
                 role: "KKF Officer",
                 roleColor: "bg-red-100 text-[#C8102E] border-red-300",
                 action: "Assign Officials",
-                description: "Navigate to Batch Detail → Assign Officials",
+                description: "Navigate to Fight Card Detail → Assign Officials",
                 details: [
-                  "View all matches in the batch",
+                  "View all matches in the fight card",
                   "Assign referee for each match",
                   "Assign 3 judges for scoring",
                   "System validates official availability",
@@ -334,14 +334,14 @@ export function SystemProcessFlow() {
                 role: "KKF Officer",
                 roleColor: "bg-red-100 text-[#C8102E] border-red-300",
                 action: "Conduct Weigh-In",
-                description: "Move batch to Weight-In stage",
+                description: "Move fight card to Weight-In stage",
                 details: [
-                  "Navigate to Batch Detail → Weigh-In tab",
+                  "Navigate to Fight Card Detail → Weigh-In tab",
                   "Record actual weight for Fighter A",
                   "Record actual weight for Fighter B",
                   "System validates against agreed weight (±1kg tolerance)",
                   "Mark weigh-in as completed for each match",
-                  "Batch moves to Ready status when all weigh-ins complete"
+                  "Fight card moves to Ready status when all weigh-ins complete"
                 ]
               },
               {
@@ -370,7 +370,7 @@ export function SystemProcessFlow() {
                 role: "KKF Officer",
                 roleColor: "bg-red-100 text-[#C8102E] border-red-300",
                 action: "Start Event (Live)",
-                description: "Move batch to Live status",
+                description: "Move fight card to Live status",
                 details: [
                   "All weigh-ins must be completed",
                   "All officials must be assigned",
@@ -412,11 +412,11 @@ export function SystemProcessFlow() {
                 role: "KKF Officer",
                 roleColor: "bg-red-100 text-[#C8102E] border-red-300",
                 action: "Complete Event",
-                description: "Finalize the batch",
+                description: "Finalize the fight card",
                 details: [
                   "Ensure all match results are entered",
-                  "Review batch for completeness",
-                  "Move batch to Complete status",
+                  "Review fight card for completeness",
+                  "Move fight card to Complete status",
                   "Event is archived",
                   "Historical record maintained",
                   "Cannot edit after completion"
@@ -434,10 +434,10 @@ export function SystemProcessFlow() {
               {
                 role: "KKF Officer",
                 roleColor: "bg-red-100 text-[#C8102E] border-red-300",
-                action: "Add to Batch",
+                action: "Add to Fight card",
                 description: "Assign sponsors and broadcast partners",
                 details: [
-                  "Add main sponsor to batch (optional)",
+                  "Add main sponsor to fight card (optional)",
                   "Add broadcast station (optional)",
                   "Configure partnership details",
                   "Sponsors displayed on fight card",
@@ -513,7 +513,7 @@ export function SystemProcessFlow() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#C8102E] font-bold">•</span>
-                  <span>Streamlined 5-stage batch workflow</span>
+                  <span>Streamlined 5-stage fight card workflow</span>
                 </li>
               </ul>
             </div>
@@ -597,7 +597,7 @@ export function SystemProcessFlow() {
               <ul className="space-y-2 text-sm text-[#1A1A24]">
                 <li className="flex items-start gap-2">
                   <span className="text-[#C8102E] font-bold">•</span>
-                  <span>Batches can only be deleted in Draft status</span>
+                  <span>Fight cards can only be deleted in Draft status</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#C8102E] font-bold">•</span>
@@ -605,7 +605,7 @@ export function SystemProcessFlow() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#C8102E] font-bold">•</span>
-                  <span>Completed batches are archived, not deleted</span>
+                  <span>Completed fight cards are archived, not deleted</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#C8102E] font-bold">•</span>

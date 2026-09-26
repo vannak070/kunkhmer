@@ -1,10 +1,12 @@
-import { Home, CalendarDays, Dumbbell, ChevronDown, Shield, LogOut, User as UserIcon, ClipboardCheck, Settings, Building2, Users, FileText, Newspaper, Search, Bell, Handshake, Menu, X } from "lucide-react";
+import { Home, CalendarDays, Dumbbell, ChevronDown, Shield, LogOut, User as UserIcon, ClipboardCheck, Settings, Building2, Users, FileText, Newspaper, Bell, Handshake, Menu, X } from "lucide-react";
 import { Outlet, NavLink, useLocation, useNavigate, Link } from "react-router";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useState, useEffect } from "react";
 import { usePermissions } from "../hooks/usePermissions";
 import { api } from "../utils/api";
+import { useAdminOverview } from "../hooks/useAdminOverview";
+import { HeaderSearch } from "./HeaderSearch";
 import logoImg from "../../assets/modern_logo.png";
 
 function cn(...inputs: ClassValue[]) {
@@ -103,6 +105,7 @@ export function Layout() {
   const [openSubmenu, setOpenSubmenu] = useState<string | null>("Program");
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
+  const todoCount = useAdminOverview().data?.todos.length ?? 0;
 
   useEffect(() => {
     const activeItem = navItems.find((item) =>
@@ -235,20 +238,23 @@ export function Layout() {
           <button type="button" onClick={() => setMobileMenu(true)} aria-label="Open menu" className="md:hidden w-10 h-10 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center w-full max-w-md relative group">
-            <Search className="w-4 h-4 text-muted-foreground absolute left-3 group-focus-within:text-primary transition-colors" />
-            <input
-              type="text"
-              placeholder="Search fighters, matches, events..."
-              className="w-full pl-9 pr-4 py-2 bg-muted/15 border border-border/60 hover:border-slate-300 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/5 rounded-xl text-sm transition-all outline-none"
-            />
-          </div>
+          <HeaderSearch />
 
           <div className="flex items-center gap-2 md:gap-4 shrink-0">
-            <button className="relative p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-muted">
+            {/* Bell = the dashboard's "Needs your attention" count. */}
+            <Link
+              to="/home#todo"
+              title={todoCount ? `${todoCount} ${todoCount === 1 ? "thing needs" : "things need"} your attention` : "Nothing needs your attention"}
+              aria-label={todoCount ? `${todoCount} to-do items` : "No to-do items"}
+              className="relative p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-muted"
+            >
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full ring-2 ring-white" />
-            </button>
+              {todoCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 rounded-full bg-destructive text-white text-[11px] font-bold flex items-center justify-center ring-2 ring-white">
+                  {todoCount > 99 ? "99+" : todoCount}
+                </span>
+              )}
+            </Link>
             <div className="hidden md:block h-8 w-px bg-border mx-2" />
             <div className="relative">
               <button

@@ -17,8 +17,13 @@ export function EventStatusBadge({
 }: EventStatusBadgeProps) {
   const config = EVENT_STATUS_CONFIG[status];
   
+  // Statuses the API stores but this list doesn't describe (e.g. "Published") show as plain text.
   if (!config) {
-    return <span className="text-[#707070] text-sm">Unknown Status</span>;
+    return status ? (
+      <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-bold border-2 bg-slate-50 text-slate-700 border-slate-200">{status}</span>
+    ) : (
+      <span className="text-[#707070] text-sm">Not set</span>
+    );
   }
 
   const sizeClasses = {

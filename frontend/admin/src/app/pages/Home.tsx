@@ -1,512 +1,244 @@
-import { useState, useEffect } from "react";
-import { 
-  Activity, Users, Calendar, Trophy, Award, MapPin, ShieldCheck, 
-  Zap, Clock, Crown, Scale, Building2, TrendingUp, ChevronRight, 
-  MoreHorizontal, FileEdit, Flame, Compass, Target, Sparkles
-} from "lucide-react";
+/**
+ * Dashboard: what needs doing today ("Needs your attention"), quick actions, and real numbers,
+ * upcoming fight nights and recent results. Every figure comes from the API; nothing is estimated.
+ */
+import { useState } from "react";
 import { Link } from "react-router";
+import { toast } from "sonner";
+import {
+  CalendarDays, CalendarPlus, CheckCircle2, ChevronRight, ClipboardList, FilePenLine, Gavel, Layers, Newspaper,
+  PartyPopper, RefreshCw, ShieldCheck, Trophy, UserCheck, UserPlus, Users,
+} from "lucide-react";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
-import { ROLE_LABELS } from "../data/users";
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, Legend 
-} from 'recharts';
+import { type TodoItem, type TodoKind, useAdminOverview } from "../hooks/useAdminOverview";
 
-const COLORS = ['#0A3D91', '#C8102E', '#F2C94C', '#64748B'];
+const GROUPS: { kind: TodoKind; title: string; hint: string; icon: typeof Gavel; tone: string; action: string }[] = [
+  { kind: "result", title: "Results to record", hint: "Bouts that already happened but have no result. Fans and rankings wait for these.", icon: Gavel, tone: "text-red-600 bg-red-50", action: "Record result" },
+  { kind: "fighter", title: "Fighters to verify", hint: "Registered fighters waiting for KKF approval before they can be matched.", icon: UserCheck, tone: "text-amber-700 bg-amber-50", action: "Review" },
+  { kind: "draftEvent", title: "Draft events", hint: "Events fans can't see yet. Finish the details and publish them.", icon: FilePenLine, tone: "text-violet-700 bg-violet-50", action: "Open event" },
+  { kind: "emptyEvent", title: "Events without a fight card", hint: "Upcoming events with no bouts scheduled.", icon: Layers, tone: "text-blue-700 bg-blue-50", action: "Add fight card" },
+  { kind: "unconfirmed", title: "Bouts to confirm", hint: "Bouts in the next 14 days where a fighter hasn't confirmed.", icon: ClipboardList, tone: "text-sky-700 bg-sky-50", action: "Open fight card" },
+  { kind: "vacantTitle", title: "Vacant titles", hint: "Championship titles with no holder.", icon: Trophy, tone: "text-amber-700 bg-amber-50", action: "Schedule title bout" },
+];
+
+const greeting = () => {
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+};
+const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }) : "");
+
+function TodoGroup({ group, items, canApprove, onApproved }: {
+  group: (typeof GROUPS)[number]; items: TodoItem[]; canApprove: boolean; onApproved: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const shown = expanded ? items : items.slice(0, 4);
+  const Icon = group.icon;
+
+  const approve = async (t: TodoItem) => {
+    if (!t.fighterId) return;
+    setBusy(t.id);
+    try {
+      await api.fighters.verify(t.fighterId);
+      toast.success(`${t.title} is verified and can now be matched`);
+      onApproved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not verify this fighter.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+      <header className="flex items-start gap-3 px-5 pt-4 pb-3">
+        <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${group.tone}`}><Icon className="w-5 h-5" aria-hidden /></span>
+        <div className="min-w-0 flex-1">
+          <h3 className="font-bold text-slate-900">{group.title} <span className="ml-1 text-sm font-semibold text-slate-400">{items.length}</span></h3>
+          <p className="text-xs text-slate-500">{group.hint}</p>
+        </div>
+      </header>
+      <ul className="divide-y divide-slate-100">
+        {shown.map((t) => (
+          <li key={t.id} className="flex items-center gap-3 px-5 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
+              <p className="text-xs text-slate-500 truncate">{t.detail}</p>
+            </div>
+            {t.kind === "fighter" && canApprove && (
+              <button type="button" disabled={busy === t.id} onClick={() => approve(t)} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold shrink-0">
+                <CheckCircle2 className="w-4 h-4" aria-hidden /> {busy === t.id ? "Verifying…" : "Verify"}
+              </button>
+            )}
+            <Link to={t.href} className="inline-flex items-center gap-1 h-9 px-3 rounded-lg border border-slate-200 hover:border-primary text-sm font-medium text-slate-700 hover:text-primary shrink-0">
+              {group.action} <ChevronRight className="w-4 h-4" aria-hidden />
+            </Link>
+          </li>
+        ))}
+      </ul>
+      {items.length > 4 && (
+        <button type="button" onClick={() => setExpanded((e) => !e)} className="w-full px-5 py-2.5 text-sm font-medium text-primary hover:bg-slate-50 border-t border-slate-100">
+          {expanded ? "Show less" : `Show all ${items.length}`}
+        </button>
+      )}
+    </section>
+  );
+}
 
 export function Home() {
   const permissions = usePermissions();
-  const currentUser = permissions.currentUser;
-  const roleLabel = currentUser ? ROLE_LABELS[currentUser.role].label : "Administrator";
+  const { data, error, refresh } = useAdminOverview();
+  const [refreshing, setRefreshing] = useState(false);
+  const me = api.auth.getCurrentUser();
+  const canApprove = me?.role === "Super Admin" || me?.role === "KKF Officer";
 
-  const [fighters, setFighters] = useState<any[]>([]);
-  const [matches, setMatches] = useState<any[]>([]);
-  const [events, setEvents] = useState<any[]>([]);
-  const [clubs, setClubs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const quick = [
+    { label: "Add a fighter", href: "/home/fighters/kunkhmer/new", icon: UserPlus, show: permissions.hasPermission("fighters.create") },
+    { label: "Create an event", href: "/home/events/new", icon: CalendarPlus, show: permissions.hasPermission("events.create") },
+    { label: "Create a fight card", href: "/home/matches/new", icon: Layers, show: permissions.hasPermission("events.create") },
+    { label: "Write news", href: "/home/media/news", icon: Newspaper, show: canApprove },
+    { label: "Manage staff", href: "/home/user-management", icon: Users, show: permissions.hasPermission("users.view") },
+  ].filter((q) => q.show);
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true);
-        const [fightersList, matchesList, eventsList, clubsList] = await Promise.all([
-          api.fighters.list(),
-          api.matches.list(),
-          api.events.list(),
-          api.clubs.list()
-        ]);
-        setFighters(fightersList || []);
-        setMatches(matchesList || []);
-        setEvents(eventsList || []);
-        setClubs(clubsList || []);
-      } catch (err) {
-        console.error("Failed to load dashboard data:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, []);
-
-  // -------------------------------------------------------------
-  // DYNAMIC METRICS & BENCHMARKS CALCULATIONS
-  // -------------------------------------------------------------
-  const processedFighters = fighters.map(f => ({
-    ...f,
-    weight: parseFloat(f.currentWeight || f.current_weight || "0"),
-    origin: f.nationality === 'Cambodian' ? 'Local' : 'Foreigner',
-    gym: f.clubName || f.club_name || "Independent Gym",
-    record: f.record || "0-0-0"
-  }));
-
-  const totalFighters = processedFighters.length;
-  const localFighters = processedFighters.filter(f => f.origin === 'Local').length;
-  const foreignFighters = processedFighters.filter(f => f.origin === 'Foreigner').length;
-  const localPercentage = totalFighters > 0 ? Math.round((localFighters / totalFighters) * 100) : 0;
-  const foreignPercentage = totalFighters > 0 ? 100 - localPercentage : 0;
-
-  const upcomingMatches = matches.filter(m => m.status !== 'Completed').length;
-
-  // Compute total wins and win rates across the system
-  let totalWins = 0;
-  let totalLosses = 0;
-  let totalEstimatedKOs = 0;
-
-  processedFighters.forEach(f => {
-    const parts = f.record.split('-');
-    if (parts.length >= 3) {
-      const wins = parseInt(parts[0]) || 0;
-      const losses = parseInt(parts[1]) || 0;
-      totalWins += wins;
-      totalLosses += losses;
-      
-      const hash = f.name.length % 5;
-      const koRate = Math.round(wins * (0.4 + hash * 0.1));
-      totalEstimatedKOs += Math.min(wins, koRate);
-    }
-  });
-  
-  const avgWinsPerFighter = totalFighters > 0 ? Math.round((totalWins / totalFighters) * 10) / 10 : 0;
-  const systemKoRate = totalWins > 0 ? Math.round((totalEstimatedKOs / totalWins) * 100) : 0;
-  
-  // Calculate Gym Win/Loss metrics dynamically
-  const gymStatsMap: Record<string, { wins: number, losses: number }> = {};
-  processedFighters.forEach(f => {
-    const gymName = f.gym;
-    const parts = f.record.split('-');
-    if (parts.length >= 3) {
-      const w = parseInt(parts[0]) || 0;
-      const l = parseInt(parts[1]) || 0;
-      if (!gymStatsMap[gymName]) {
-        gymStatsMap[gymName] = { wins: 0, losses: 0 };
-      }
-      gymStatsMap[gymName].wins += w;
-      gymStatsMap[gymName].losses += l;
-    }
-  });
-
-  const sortedGymStats = Object.entries(gymStatsMap)
-    .map(([name, stats]) => ({
-      name,
-      wins: stats.wins,
-      losses: stats.losses,
-      total: stats.wins + stats.losses,
-      winRate: Math.round((stats.wins / (stats.wins + stats.losses || 1)) * 100)
-    }))
-    .sort((a, b) => b.wins - a.wins)
-    .slice(0, 4);
-
-  // Weight class counts (Flyweight, Featherweight, Lightweight, Welterweight, Middleweight)
-  const flyweight = processedFighters.filter(f => f.weight < 54).length;
-  const featherweight = processedFighters.filter(f => f.weight >= 54 && f.weight < 59).length;
-  const lightweight = processedFighters.filter(f => f.weight >= 59 && f.weight < 64).length;
-  const welterweight = processedFighters.filter(f => f.weight >= 64 && f.weight < 69).length;
-  const middleweight = processedFighters.filter(f => f.weight >= 69).length;
-
-  const weightClassData = [
-    { name: 'Flyweight (<54kg)', count: flyweight },
-    { name: 'Featherweight (54-59kg)', count: featherweight },
-    { name: 'Lightweight (59-64kg)', count: lightweight },
-    { name: 'Welterweight (64-69kg)', count: welterweight },
-    { name: 'Middleweight (>=69kg)', count: middleweight }
-  ];
-
-  // Helper to fallback null style to deterministic value based on name length
-  const getFighterStyle = (style: string | null | undefined, name: string) => {
-    if (style) return style;
-    const styles = ['Aggressive', 'Clinch', 'Counter', 'Balanced'];
-    return styles[name.length % 4];
+  const doRefresh = async () => {
+    setRefreshing(true);
+    await refresh().catch(() => {});
+    setRefreshing(false);
   };
 
-  // Fight style count calculations
-  const aggressiveCount = processedFighters.filter(f => getFighterStyle(f.style, f.name) === 'Aggressive').length;
-  const clinchCount = processedFighters.filter(f => getFighterStyle(f.style, f.name) === 'Clinch').length;
-  const counterCount = processedFighters.filter(f => getFighterStyle(f.style, f.name) === 'Counter').length;
-  const balancedCount = processedFighters.filter(f => getFighterStyle(f.style, f.name) === 'Balanced').length;
-
-  const styleData = [
-    { name: 'Aggressive / Striker', value: aggressiveCount },
-    { name: 'Clinch / Knee Fighter', value: clinchCount },
-    { name: 'Counter / Technical', value: counterCount },
-    { name: 'Balanced / Tactical', value: balancedCount }
-  ];
-
-  // Selector for top division leaderboards
-  const getTopInDivision = (minW: number, maxW: number) => {
-    const list = processedFighters.filter(f => f.weight >= minW && f.weight < maxW);
-    if (list.length === 0) return undefined;
-    return list.sort((a, b) => {
-      const aWins = parseInt(a.record.split('-')[0]) || 0;
-      const bWins = parseInt(b.record.split('-')[0]) || 0;
-      return bWins - aWins;
-    })[0];
-  };
-
-  const topFlyweight = getTopInDivision(0, 54);
-  const topFeatherweight = getTopInDivision(54, 59);
-  const topLightweight = getTopInDivision(59, 64);
-
-  // Estimate KO rate for fighter records
-  const getFighterKoRate = (record: string, name: string) => {
-    const wins = parseInt(record.split('-')[0]) || 0;
-    const hash = name.length % 5;
-    const koRate = Math.round((wins * (0.4 + hash * 0.1)) * 10) / 10;
-    return `${Math.min(wins, Math.round(koRate))} KOs (${Math.round((koRate / (wins || 1)) * 100)}%)`;
-  };
-
-  // Top 5 fighters sorted by wins
-  const topFighters = [...processedFighters]
-    .sort((a, b) => {
-      const aWins = parseInt(a.record.split('-')[0]) || 0;
-      const bWins = parseInt(b.record.split('-')[0]) || 0;
-      return bWins - aWins;
-    })
-    .slice(0, 5);
-
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] py-16 animate-fadeIn">
-        <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
-        <p className="text-sm text-muted-foreground font-semibold">Loading system overview...</p>
-      </div>
-    );
-  }
+  const total = data?.todos.length ?? 0;
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto pb-8 animate-fadeIn">
-      
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+    <div className="max-w-6xl mx-auto space-y-8">
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight">System & Data Overview</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Logged in as <span className="font-medium text-foreground">{currentUser?.fullName || "Guest"}</span> | {roleLabel}
+          <p className="text-sm text-slate-500">{new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{greeting()}, {permissions.currentUser?.fullName?.split(" ")[0] ?? "there"}</h1>
+          <p className="text-slate-600 mt-1">
+            {!data ? "Checking what needs your attention…" : total === 0 ? "Everything is up to date." : `${total} ${total === 1 ? "thing needs" : "things need"} your attention.`}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="bg-white border border-border rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground shadow-sm flex items-center gap-2">
-            <Calendar className="w-4 h-4" />
-            <span>Morodok Techo Season 2026</span>
-          </div>
-        </div>
-      </div>
+        <button type="button" onClick={doRefresh} disabled={refreshing} className="inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:border-slate-300 self-start sm:self-auto">
+          <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} aria-hidden /> Refresh
+        </button>
+      </header>
 
-      {/* KPI Benchmarks Row - 4 Column Layout */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Athletes */}
-        <div className="card-premium flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-muted-foreground">Registered Athletes</span>
-            <Users className="w-4 h-4 text-primary" />
-          </div>
-          <div>
-            <div className="text-2xl font-semibold text-foreground">{totalFighters}</div>
-            <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
-              <span className="font-medium text-[#0A3D91]">{localPercentage}% Local</span>
-              <span>•</span>
-              <span className="font-medium text-[#C8102E]">{foreignPercentage}% Foreign</span>
-            </div>
-          </div>
-        </div>
-        
-        {/* Active Schedule */}
-        <div className="card-premium flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-muted-foreground">Upcoming Matches</span>
-            <Trophy className="w-4 h-4 text-secondary" />
-          </div>
-          <div>
-            <div className="text-2xl font-semibold text-foreground">{upcomingMatches}</div>
-            <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground">
-              <MapPin className="w-3.5 h-3.5" />
-              <span>{events.length} approved events active</span>
-            </div>
-          </div>
-        </div>
+      {quick.length > 0 && (
+        <nav aria-label="Quick actions" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {quick.map((q) => (
+            <Link key={q.href} to={q.href} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 hover:border-primary hover:shadow-md transition">
+              <span className="w-10 h-10 rounded-xl bg-[#eef3fb] text-primary flex items-center justify-center shrink-0"><q.icon className="w-5 h-5" aria-hidden /></span>
+              <span className="text-sm font-semibold text-slate-800">{q.label}</span>
+            </Link>
+          ))}
+        </nav>
+      )}
 
-        {/* Win/KO Average Benchmark */}
-        <div className="card-premium flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-muted-foreground">Average Roster Wins</span>
-            <TrendingUp className="w-4 h-4 text-emerald-600" />
+      {/* Needs your attention */}
+      <section id="todo" aria-labelledby="todo-title" className="space-y-4 scroll-mt-24">
+        <h2 id="todo-title" className="text-lg font-bold text-slate-900">Needs your attention</h2>
+        {error ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">{error}</div>
+        ) : !data ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-10 flex justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+        ) : total === 0 ? (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center">
+            <PartyPopper className="w-8 h-8 text-emerald-600 mx-auto" aria-hidden />
+            <p className="mt-2 font-semibold text-emerald-900">All caught up</p>
+            <p className="text-sm text-emerald-800">No results to record, fighters to verify or drafts to finish.</p>
           </div>
-          <div>
-            <div className="text-2xl font-semibold text-foreground">{avgWinsPerFighter} Wins</div>
-            <div className="flex items-center gap-1.5 mt-1.5 text-xs text-emerald-600 font-medium">
-              <Flame className="w-3.5 h-3.5" />
-              <span>{systemKoRate}% Est. KO Rate (Benchmark)</span>
-            </div>
+        ) : (
+          <div className="grid lg:grid-cols-2 gap-4 items-start">
+            {GROUPS.map((g) => {
+              const items = data.todos.filter((t) => t.kind === g.kind);
+              return items.length ? <TodoGroup key={g.kind} group={g} items={items} canApprove={canApprove} onApproved={doRefresh} /> : null;
+            })}
           </div>
-        </div>
+        )}
+      </section>
 
-        {/* Active Gyms */}
-        <div className="card-premium flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-muted-foreground">Affiliated Clubs</span>
-            <Building2 className="w-4 h-4 text-accent" />
-          </div>
-          <div>
-            <div className="text-2xl font-semibold text-foreground">{clubs.length} Clubs</div>
-            <div className="flex items-center gap-1.5 mt-1.5 text-xs text-amber-600 font-medium">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>{clubs.filter(c => c.status === 'inactive').length} registrations pending review</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      {data && (
+        <>
+          {/* Numbers */}
+          <section aria-label="Key numbers" className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { label: "Active fighters", value: data.stats.activeFighters, href: "/home/fighters", icon: ShieldCheck },
+              { label: "Clubs", value: data.stats.clubs, href: "/home/clubs", icon: Users },
+              { label: "Upcoming events", value: data.stats.upcomingEvents, href: "/home/program?tab=events", icon: CalendarDays },
+              { label: "Results recorded", value: data.stats.recordedResults, href: "/home/program?tab=matches", icon: Gavel },
+            ].map((s) => (
+              <Link key={s.label} to={s.href} className="rounded-2xl border border-slate-200 bg-white p-4 hover:border-primary transition">
+                <s.icon className="w-5 h-5 text-slate-400" aria-hidden />
+                <p className="mt-2 text-3xl font-bold text-slate-900 tabular-nums">{s.value}</p>
+                <p className="text-sm text-slate-600">{s.label}</p>
+              </Link>
+            ))}
+          </section>
 
-      {/* Benchmarking Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Weight Class Distribution Chart */}
-        <div className="card-premium !p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-base font-semibold text-foreground">Weight Class Distribution</h3>
-              <p className="text-xs text-muted-foreground">Athletes segmented across official KKF weight divisions</p>
-            </div>
-            <Scale className="w-5 h-5 text-muted-foreground" />
-          </div>
-          <div className="h-[260px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={weightClassData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0A3D91" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#0A3D91" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748B' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748B' }} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #E2E8F0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Area type="monotone" dataKey="count" name="Fighters" stroke="#0A3D91" strokeWidth={2} fillOpacity={1} fill="url(#colorCount)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Fight Style Distribution Chart */}
-        <div className="card-premium !p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-base font-semibold text-foreground">Combat Style Distribution</h3>
-              <p className="text-xs text-muted-foreground">Est. tactical breakdown based on match history data</p>
-            </div>
-            <Target className="w-5 h-5 text-muted-foreground" />
-          </div>
-          <div className="h-[260px] w-full flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="w-[180px] h-[180px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={styleData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={75}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {styleData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => [`${value} Fighters`, 'Count']} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex-1 space-y-3">
-              {styleData.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx] }} />
-                    <span className="text-muted-foreground font-medium">{item.name}</span>
-                  </div>
-                  <span className="font-semibold text-foreground">{item.value} ({Math.round((item.value / totalFighters) * 100)}%)</span>
+          <div className="grid lg:grid-cols-2 gap-4 items-start">
+            {/* Upcoming */}
+            <section className="rounded-2xl border border-slate-200 bg-white">
+              <header className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <h2 className="font-bold text-slate-900">Upcoming fight nights</h2>
+                <Link to="/home/program?tab=events" className="text-sm font-medium text-primary hover:underline">All events</Link>
+              </header>
+              {data.upcoming.length === 0 ? (
+                <div className="p-6 text-center text-sm text-slate-600">
+                  No upcoming events.{" "}
+                  {permissions.hasPermission("events.create") && <Link to="/home/events/new" className="font-medium text-primary hover:underline">Create one</Link>}
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Roster & Sidebar Sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Roster Table (Left Column) */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="card-premium !p-0 overflow-hidden">
-            <div className="flex items-center justify-between p-5 border-b border-border">
-              <div>
-                <h3 className="text-base font-semibold text-foreground">Fighter Roster & Combat Records</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Top performing active competitors across divisions</p>
-              </div>
-              <Link to="/home/fighters" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">View All</Link>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="table-premium">
-                <thead>
-                  <tr>
-                    <th>Athlete Name</th>
-                    <th>Club / Gym</th>
-                    <th>Record (W-L-D)</th>
-                    <th>Est. KO Rate</th>
-                    <th>Weight Class</th>
-                    <th className="text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topFighters.map((fighter) => {
-                    const wins = parseInt(fighter.record.split('-')[0]) || 0;
-                    const losses = parseInt(fighter.record.split('-')[1]) || 0;
-                    const winRate = Math.round((wins / (wins + losses || 1)) * 100);
-                    return (
-                      <tr key={fighter.id}>
-                        <td className="px-5 py-3 whitespace-nowrap">
-                          <div className="flex items-center gap-3">
-                            <img src={fighter.image || "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&q=80&w=100"} alt={fighter.name} className="w-8 h-8 rounded-full object-cover border border-border" />
-                            <div>
-                              <span className="font-semibold text-foreground block">{fighter.name}</span>
-                              <span className="text-[10px] text-muted-foreground italic font-medium">"{fighter.alias || "No Alias"}"</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-5 py-3 whitespace-nowrap text-muted-foreground">{fighter.gym}</td>
-                        <td className="px-5 py-3 whitespace-nowrap font-medium">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono bg-muted px-2 py-0.5 rounded-md text-xs">{fighter.record}</span>
-                            <span className="text-xs text-emerald-600 font-medium">{winRate}% WR</span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-3 whitespace-nowrap text-xs text-muted-foreground font-medium">
-                          {getFighterKoRate(fighter.record, fighter.name)}
-                        </td>
-                        <td className="px-5 py-3 whitespace-nowrap text-muted-foreground">{fighter.weight}kg</td>
-                        <td className="px-5 py-3 whitespace-nowrap text-right text-muted-foreground">
-                          <div className="flex items-center justify-end gap-2">
-                            <Link to={`/home/fighters/${fighter.id}/edit`} className="p-1 hover:text-primary transition-colors"><FileEdit className="w-4 h-4" /></Link>
-                            <button className="p-1 hover:text-foreground transition-colors"><MoreHorizontal className="w-4 h-4" /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        {/* Leaderboards & Gym Performance (Right Column) */}
-        <div className="space-y-6">
-          
-          {/* Gym Performance Benchmarks */}
-          <div className="card-premium">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold text-foreground">Club Performance</h3>
-              <Award className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <div className="space-y-4">
-              {sortedGymStats.map((gym, idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-foreground truncate">{gym.name}</span>
-                    <span className="text-muted-foreground">{gym.wins}W - {gym.losses}L ({gym.winRate}%)</span>
-                  </div>
-                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-primary h-full rounded-full transition-all duration-300"
-                      style={{ width: `${gym.winRate}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Division Leaders Leaderboard */}
-          <div className="card-premium">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold text-foreground">Division Leaders</h3>
-              <Crown className="w-4.5 h-4.5 text-accent" />
-            </div>
-            <div className="space-y-4">
-              {/* Leader 1 */}
-              {topLightweight && (
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
-                    <Trophy className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Lightweight Champion</p>
-                    <p className="text-sm font-semibold text-foreground truncate">{topLightweight.name}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="font-mono text-xs font-bold bg-muted px-2 py-0.5 rounded-md">{topLightweight.record}</span>
-                  </div>
-                </div>
+              ) : (
+                <ul className="divide-y divide-slate-100">
+                  {data.upcoming.map((e) => (
+                    <li key={e.id}>
+                      <Link to={`/home/events/${e.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50">
+                        <span className="w-12 text-center shrink-0">
+                          <span className="block text-xs font-semibold uppercase text-primary">{new Date(e.date).toLocaleDateString(undefined, { month: "short", timeZone: "UTC" })}</span>
+                          <span className="block text-xl font-bold text-slate-900 leading-none">{new Date(e.date).getUTCDate()}</span>
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold text-slate-900 truncate">{e.name}</span>
+                          <span className="block text-xs text-slate-500 truncate">{e.location} · {e.bouts} {e.bouts === 1 ? "bout" : "bouts"}{e.status === "Draft" ? " · Draft" : ""}</span>
+                        </span>
+                        <ChevronRight className="w-4 h-4 text-slate-400" aria-hidden />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               )}
+            </section>
 
-              {/* Leader 2 */}
-              {topFeatherweight && (
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center shrink-0 border border-secondary/20">
-                    <Trophy className="w-5 h-5 text-secondary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Featherweight Champion</p>
-                    <p className="text-sm font-semibold text-foreground truncate">{topFeatherweight.name}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="font-mono text-xs font-bold bg-muted px-2 py-0.5 rounded-md">{topFeatherweight.record}</span>
-                  </div>
-                </div>
+            {/* Recent results */}
+            <section className="rounded-2xl border border-slate-200 bg-white">
+              <header className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <h2 className="font-bold text-slate-900">Recent results</h2>
+                <Link to="/home/program?tab=matches" className="text-sm font-medium text-primary hover:underline">All matches</Link>
+              </header>
+              {data.recent.length === 0 ? (
+                <p className="p-6 text-center text-sm text-slate-600">No results recorded yet.</p>
+              ) : (
+                <ul className="divide-y divide-slate-100">
+                  {data.recent.map((r) => (
+                    <li key={r.id}>
+                      <Link to={`/home/match/${r.id}`} className="block px-5 py-3 hover:bg-slate-50">
+                        <p className="text-sm text-slate-900 truncate">
+                          <span className={r.winner === r.red ? "font-bold" : ""}>{r.red}</span>
+                          <span className="text-slate-400"> vs </span>
+                          <span className={r.winner === r.blue ? "font-bold" : ""}>{r.blue}</span>
+                        </p>
+                        <p className="text-xs text-slate-500 truncate">
+                          {[r.winner ? `${r.winner} won` : "Draw / no contest", r.method, r.round ? `R${r.round}` : null, fmt(r.date), r.event].filter(Boolean).join(" · ")}
+                        </p>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               )}
-
-              {/* Leader 3 */}
-              {topFlyweight && (
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-accent/15 flex items-center justify-center shrink-0 border border-accent/30">
-                    <Trophy className="w-5 h-5 text-amber-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Flyweight Champion</p>
-                    <p className="text-sm font-semibold text-foreground truncate">{topFlyweight.name}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="font-mono text-xs font-bold bg-muted px-2 py-0.5 rounded-md">{topFlyweight.record}</span>
-                  </div>
-                </div>
-              )}
-            </div>
+            </section>
           </div>
-
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

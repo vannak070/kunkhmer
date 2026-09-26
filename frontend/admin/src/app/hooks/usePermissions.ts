@@ -76,6 +76,8 @@ export function usePermissions() {
 
   return {
     currentUser,
+    /** Edit an event and add fight cards / bouts to it (Super Admin, KKF Officer, Organizer). */
+    canEditEvent: hasPermission('events.edit'),
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,
