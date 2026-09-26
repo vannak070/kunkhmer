@@ -33,6 +33,13 @@ export function NextFightCard({ data, fighterId }: { data: FanData; fighterId: s
       <div className="flex flex-wrap items-center gap-3">
         <CountdownChip date={bout.date} surface="dark" />
         <Link
+          to={`/compare?red=${getFighterSlug(bout.fighterA)}&blue=${getFighterSlug(bout.fighterB)}`}
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/15 border border-white/40 text-white rounded-xl font-bold text-sm hover:bg-white/25 transition-colors"
+        >
+          <Swords className="w-4 h-4" aria-hidden />
+          {t("matchup.preview")}
+        </Link>
+        <Link
           to={eventHref(bout.eventId)}
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-[#C8102E] rounded-xl font-bold text-sm hover:bg-gray-100 transition-colors"
         >

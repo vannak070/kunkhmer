@@ -1,5 +1,7 @@
-import { Calendar, MapPin, Trophy, Building2, Tv, Users, Eye, ChevronRight, Clock } from "lucide-react";
+import { Calendar, MapPin, Trophy, Building2, Tv, Users, Eye, ChevronRight, Clock, Swords } from "lucide-react";
+import { Link } from "react-router";
 import { PublicStatusBadge } from "./PublicStatusBadge";
+import { getFighterSlug } from "../data/masterData";
 import { useI18n } from "../i18n/LanguageContext";
 import eventPosterImage from 'figma:asset/76de12a848bf50a1769fa454bf2dab5cb85ea354.png';
 
@@ -224,6 +226,17 @@ export function MatchBatchCard({
                   </div>
                 </div>
               </div>
+
+              <div className="relative z-10 mt-5 flex justify-center">
+                <Link
+                  to={`/compare?red=${getFighterSlug(mainMatch.fighterA)}&blue=${getFighterSlug(mainMatch.fighterB)}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-[#051C42] bg-[#F2C94C] hover:bg-[#FFD84D] transition-colors"
+                >
+                  <Swords className="w-3.5 h-3.5" aria-hidden />
+                  {t("matchup.preview")}
+                </Link>
+              </div>
             </div>
           )}
 
@@ -330,6 +343,17 @@ export function MatchBatchCard({
                             className="w-11 h-11 rounded-full object-cover border border-slate-200 shadow-sm shrink-0"
                           />
                         </div>
+                      </div>
+
+                      <div className="mt-3 flex justify-center">
+                        <Link
+                            to={`/compare?red=${getFighterSlug(match.fighterA)}&blue=${getFighterSlug(match.fighterB)}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#0A3D91] bg-blue-50 hover:bg-blue-100 transition-colors"
+                          >
+                            <Swords className="w-3.5 h-3.5" aria-hidden />
+                            {t("matchup.preview")}
+                          </Link>
                       </div>
 
                       {/* Championship Bout Gilded Bar */}

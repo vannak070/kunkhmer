@@ -5,6 +5,7 @@ import { SuperAppFighterDetail } from "./pages/SuperAppFighterDetail";
 import { ArticleDetail } from "./pages/ArticleDetail";
 import { AboutKunKhmer } from "./pages/AboutKunKhmer";
 import { Rankings } from "./pages/Rankings";
+import { Compare } from "./pages/Compare";
 
 function LegacySuperAppRedirect() {
   const { section } = useParams();
@@ -38,6 +39,10 @@ export const router = createBrowserRouter(
   {
     path: "/rankings",
     element: <Rankings />,
+  },
+  {
+    path: "/compare",
+    element: <Compare />,
   },
   {
     path: "/about",

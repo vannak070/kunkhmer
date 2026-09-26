@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { Crown, Info, Medal } from "lucide-react";
+import { Crown, Info, Medal, Swords } from "lucide-react";
 import { SiteHeader } from "../components/layout/SiteHeader";
 import { SiteFooter } from "../components/layout/SiteFooter";
 import { DemoBanner, FormGuide } from "../components/fan/FanWidgets";
@@ -32,14 +32,25 @@ export function Rankings() {
       <SiteHeader activeSection="rankings" />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-6 py-8 md:py-12 space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-[#F2C94C] to-amber-500 rounded-xl flex items-center justify-center shadow-md">
-            <Medal className="w-6 h-6 text-[#051C42]" aria-hidden />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-[#F2C94C] to-amber-500 rounded-xl flex items-center justify-center shadow-md">
+              <Medal className="w-6 h-6 text-[#051C42]" aria-hidden />
+            </div>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">{t("rankings.title")}</h1>
+              <p className="text-sm text-gray-600 font-medium">{t("rankings.subtitle")}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">{t("rankings.title")}</h1>
-            <p className="text-sm text-gray-600 font-medium">{t("rankings.subtitle")}</p>
-          </div>
+          <Link
+            to={selected && selected.standings.length >= 2
+              ? `/compare?red=${getFighterSlug(selected.standings[0].fighter)}&blue=${getFighterSlug(selected.standings[1].fighter)}`
+              : "/compare"}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#0A3D91] hover:bg-blue-800 text-white rounded-xl font-bold text-sm transition-colors"
+          >
+            <Swords className="w-4 h-4" aria-hidden />
+            {t("matchup.compareFighters")}
+          </Link>
         </div>
 
         <DemoBanner show={Boolean(data?.demo)} />

@@ -1,7 +1,7 @@
 import { useState, useEffect, Fragment } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router";
 import { api } from "../utils/api";
-import { Search, Bell, ShoppingCart, User, Heart, Star, Flame, Zap, Crown, ChevronRight, Package, Plus, Minus, X, CreditCard, Play, Calendar, MapPin, Clock, Award, Users, BookOpen, Video, Menu, Home as HomeIcon, Trophy, TrendingUp, Sparkles, ArrowRight, ArrowLeft, Check, ChevronDown, ChevronUp, Filter, Grid3x3, Eye, ShoppingBag, Building2, Tv, Handshake, Weight, Share2, Mail } from "lucide-react";
+import { Search, Bell, ShoppingCart, User, Heart, Star, Flame, Zap, Crown, ChevronRight, Package, Plus, Minus, X, CreditCard, Play, Calendar, MapPin, Clock, Award, Users, BookOpen, Video, Menu, Home as HomeIcon, Trophy, TrendingUp, Sparkles, ArrowRight, ArrowLeft, Check, ChevronDown, ChevronUp, Filter, Grid3x3, Eye, ShoppingBag, Building2, Tv, Handshake, Weight, Share2, Mail, Swords } from "lucide-react";
 import { useWallet } from "../contexts/WalletContext";
 import { useOrders } from "../contexts/OrderContext";
 import { toast } from "sonner";
@@ -3768,6 +3768,19 @@ export function SuperAppHome() {
                               )}
                             </div>
                           </div>
+
+                          {match.fighterA?.id && match.fighterB?.id && (
+                            <div className="mt-3 flex justify-center">
+                              <Link
+                            to={`/compare?red=${getFighterSlug(match.fighterA)}&blue=${getFighterSlug(match.fighterB)}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#0A3D91] bg-blue-50 hover:bg-blue-100 transition-colors"
+                          >
+                            <Swords className="w-3.5 h-3.5" aria-hidden />
+                            {t("matchup.preview")}
+                          </Link>
+                            </div>
+                          )}
 
                           {/* Championship Title Bout Gilded Bar */}
                           {match.isChampionshipBout && (

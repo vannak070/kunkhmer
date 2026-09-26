@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router";
-import { ArrowLeft, Calendar, Target, Ruler, Trophy, XCircle, Minus, Flame, Award, Clock, Building2, Play, X, ChevronRight } from "lucide-react";
+import { ArrowLeft, Calendar, Target, Ruler, Trophy, XCircle, Minus, Flame, Award, Clock, Building2, Play, X, ChevronRight, Swords } from "lucide-react";
 import { MediaContent } from "../data/mediaContent";
 import { getFighterSlug } from "../data/masterData";
 import { api } from "../utils/api";
@@ -298,6 +298,13 @@ export function SuperAppFighterDetail() {
                   label={t("common.shareProfile")}
                   className="px-6 py-3.5 bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold text-sm active:scale-95"
                 />
+                <Link
+                  to={`/compare?red=${getFighterSlug(fighter)}`}
+                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold text-sm transition-all"
+                >
+                  <Swords className="w-4 h-4" aria-hidden />
+                  {t("matchup.compare")}
+                </Link>
               </div>
             </div>
 
