@@ -81,3 +81,36 @@ consolidation (step 3), shop.
   (fixed a 525px overflow from auto-sized grids), Presented by on event header.
 - Not verified: the hero's upcoming-event card (countdown, poster,
   Presented by), because there is no upcoming event in local data.
+
+### 2026-09-26 — hero follow-up
+- User disliked the dark hero and the three-line ring-rope divider under it.
+  Hero is now light (blue-to-white gradient, soft brand glows, KKF-logo pill,
+  navy headline, white secondary button); the ring ropes are gone from the
+  home page; the partner bar became a white strip inside the hero (logos with
+  dividers instead of boxed tiles; names wrap on phones). The page no longer
+  has any dark band except the footer.
+- Verified at 1440×900 and 375×812 (Khmer): no horizontal scroll, `vite build` passes.
+
+### 2026-09-26 — footer follow-up
+- User found the dark footer unprofessional. `SiteFooter.tsx` is now light
+  (brand tint `#eef3fb`): logo + intro + "Follow us" buttons, Explore links,
+  contact, a "Partner with Kun Khmer" card, copyright + back to top.
+- Removed the newsletter form (it told visitors they had subscribed but saved
+  nothing) and the "Official Shop — coming soon" link, at the user's request.
+- Removed the duplicate "Stay connected" card from the home page (the footer
+  carries the social links on every page). Strings: dropped 8 newsletter/shop
+  footer keys and 3 `home.*` social keys; added `footer.followUs`,
+  `footer.partnerText`, `footer.backToTop` (EN + KM).
+- Verified: `vite build` passes; footer checked on home and rankings at
+  1440×900 and in Khmer at 375×812 (no horizontal scroll).
+
+### 2026-09-26 — partner + about follow-up
+- Both sections had all content in the left half. "What is Kun Khmer" now
+  sits beside three fact cards (reusing `about.quick1–3`, already translated);
+  "Become a partner" is a rounded gradient card with the pitch beside a
+  "Join our official partners" panel listing current partners (+ stats ≥ 10).
+  Order swapped: About comes before the partner card, which is the last
+  section before the footer. New string `home.joinPartners` (EN + KM).
+- Briefly hid the footer's partner card on the home page; reverted at the
+  user's request — the footer is the same on every page.
+- Verified: `vite build`; 1440×900 and Khmer at 375×812, no horizontal scroll.

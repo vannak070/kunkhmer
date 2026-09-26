@@ -5,6 +5,7 @@ import { resolveUser } from "./lib/auth.ts";
 import { BadInput } from "./lib/dates.ts";
 import { HttpError } from "./lib/http.ts";
 import { normalizeBody } from "./lib/input.ts";
+import aiRoutes from "./modules/ai/routes.ts";
 import authRoutes from "./modules/auth/routes.ts";
 import championRoutes from "./modules/champions/routes.ts";
 import clubRoutes from "./modules/clubs/routes.ts";
@@ -75,6 +76,7 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
 
   await app.register(
     async (api) => {
+      await api.register(aiRoutes);
       await api.register(authRoutes);
       await api.register(clubRoutes);
       await api.register(fighterRoutes);

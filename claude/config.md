@@ -32,6 +32,9 @@ cd backend && npm run db:migrate                       # create a migration afte
 Postgres is on host port **5436** (5432 is taken by another project), set in
 the untracked `docker-compose.override.yml`. Default login: `admin` / `admin123`.
 
+Optional AI chat: `ANTHROPIC_API_KEY` in `backend/.env` turns on "Ask Kun
+Khmer" (see `features/ai-assistant.md`); the test API forces `AI_ENABLED=false`.
+
 ## How to work
 
 1. **Read before changing.** Read this file, then the relevant
@@ -126,13 +129,13 @@ and phone width in both languages.
 
 - Admin pages still on mock data (`frontend/admin/src/app/data/*.ts`), not the
   API: UserManagement, KKFWorkflow(+Detail), MatchProposals, Matches (old),
-  KKFOfficers, AwardsSetup/CreateAward, Store*/CategoriesSetting, Profile,
+  KKFOfficers, StoreManagement/StoreSettings/CategoriesSetting, Profile,
   SubEventDetail, AssignFightersToEvent.
 - Fighter create/edit is allowed for any logged-in role (status and club are
   protected); no login rate limiting.
 - Correcting a title match result to a different winner doesn't reverse the
   title change (the championship updates on the first result only).
-- `utils/api.ts`, `data/` and `components/ui/` are duplicated between the two
+- `utils/api.ts` and parts of `data/` are duplicated between the two
   frontends; no frontend tests.
 - The default admin password `admin123` must be changed on any real server.
 - Deployment: README demo URLs still point at the old host; the user will set

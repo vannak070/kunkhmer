@@ -1,16 +1,17 @@
 /**
- * Public home page: one Fight Night hero (welcome + next fight night), then light sections —
- * official partners bar, news, fight nights and results, fighters, videos, a "become a partner"
- * call to action and a newcomer guide. Only real data is shown; a section without data is hidden.
+ * Public home page: a light hero (welcome + next fight night, official partners strip), then
+ * light sections — news, fight nights and results, fighters, videos, a "become a partner"
+ * call to action and a newcomer guide (social links live in the footer). Only real data is shown; a section without data is hidden.
  */
 import { Link } from "react-router";
-import { ArrowRight, Calendar, ChevronRight, Clock, Handshake, MapPin, Play, Tv } from "lucide-react";
+import { ArrowRight, Calendar, ChevronRight, Clock, Handshake, MapPin, Music, Play, Swords, Timer, Tv } from "lucide-react";
 import { useI18n } from "../../i18n/LanguageContext";
 import { getFighterSlug } from "../../data/masterData";
 import { fightHistory, latestResults, useFanData, type Broadcaster } from "../../data/fanData";
 import { CountdownChip, DemoBanner, FormGuide, ResultRow } from "../fan/FanWidgets";
-import { CONTACT_EMAIL, SOCIAL_LINKS } from "../layout/SiteFooter";
+import { CONTACT_EMAIL } from "../layout/SiteFooter";
 import { textLang } from "../../utils/publicDisplay";
+import kkfLogo from "../../../assets/kkf-logo-192.png";
 
 export interface HomeArticle {
   id: string;
@@ -134,7 +135,7 @@ function SectionHead({ title, kicker, action }: { title: string; kicker?: string
 }
 
 function PartnerLogo({ p, size = "md" }: { p: Partner; size?: "sm" | "md" }) {
-  const box = size === "sm" ? "h-8 w-8" : "h-11 w-11 sm:h-14 sm:w-14 md:h-16 md:w-16";
+  const box = size === "sm" ? "h-8 w-8" : "h-10 w-10 md:h-12 md:w-12";
   return p.logo ? (
     <img src={p.logo} alt="" className={`${box} rounded-lg object-contain bg-white shrink-0`} />
   ) : (
@@ -149,7 +150,7 @@ function PartnerLogo({ p, size = "md" }: { p: Partner; size?: "sm" | "md" }) {
 function HeroEventCard({ event, poster, sponsor, onOpen }: { event: HomeEvent; poster: string | null; sponsor: Partner | null; onOpen: () => void }) {
   const { t, formatDate } = useI18n();
   return (
-    <div className="rounded-2xl bg-white text-gray-900 shadow-2xl overflow-hidden">
+    <div className="rounded-3xl bg-white text-gray-900 border border-gray-100 shadow-[0_24px_60px_-24px_rgba(36,51,111,0.35)] overflow-hidden">
       {poster && (
         <button type="button" onClick={onOpen} className="kk-focus block w-full bg-[var(--kk-navy)]">
           <img src={poster} alt={event.name} className="w-full max-h-[300px] object-contain mx-auto" />
@@ -201,7 +202,7 @@ export function PresentedBy({ sponsor, tone = "light" }: { sponsor: Partner; ton
 function HeroStoryCard({ a }: { a: HomeArticle }) {
   const { t, formatDate } = useI18n();
   return (
-    <Link to={`/article/${a.id}`} className="kk-focus group block rounded-2xl bg-white text-gray-900 shadow-2xl overflow-hidden">
+    <Link to={`/article/${a.id}`} className="kk-focus group block rounded-3xl bg-white text-gray-900 border border-gray-100 shadow-[0_24px_60px_-24px_rgba(36,51,111,0.35)] overflow-hidden">
       <div className="aspect-[2/1] overflow-hidden bg-gray-200">
         <Picture src={a.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 kk-motion" />
       </div>
@@ -214,78 +215,85 @@ function HeroStoryCard({ a }: { a: HomeArticle }) {
   );
 }
 
-function Hero({ feature, onNavigate }: { feature: React.ReactNode; onNavigate: HomePageProps["onNavigate"] }) {
+function Hero({ feature, partners, onNavigate }: { feature: React.ReactNode; partners: Partner[]; onNavigate: HomePageProps["onNavigate"] }) {
   const { t } = useI18n();
   return (
-    <section className="kk-night relative overflow-hidden">
-      <div aria-hidden className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(47,95,196,0.35),transparent_55%),radial-gradient(ellipse_at_bottom_right,rgba(185,32,52,0.25),transparent_50%)]" />
-      <div className={`relative max-w-7xl mx-auto px-4 md:px-6 py-10 md:py-14 grid grid-cols-1 gap-10 lg:gap-16 items-center ${feature ? "lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)]" : ""}`}>
-        <div>
-          <p className="kk-label text-[var(--kk-gold)] mb-4">{t("home.heroKicker")}</p>
-          <h1 className="kk-display text-5xl sm:text-6xl md:text-7xl text-white">{t("home.heroTitle")}</h1>
-          <p className="mt-5 text-lg text-[var(--kk-night-muted)] max-w-xl leading-relaxed">{t("home.tagline")}</p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => onNavigate("matches")}
-              className="kk-focus inline-flex items-center gap-2 min-h-12 px-6 rounded-xl bg-[var(--kk-red)] hover:bg-[#9e1a2c] text-white font-semibold transition-colors"
-            >
-              {t("home.ctaEvents")}
+    <section className="relative overflow-hidden bg-gradient-to-b from-[#eef3fb] to-white">
+      {/* Soft brand-colour glows; decoration only. */}
+      <div aria-hidden className="pointer-events-none absolute -top-32 -right-24 w-[520px] h-[520px] rounded-full bg-[var(--kk-blue)] opacity-[0.08] blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute top-40 -left-32 w-[420px] h-[420px] rounded-full bg-[var(--kk-red)] opacity-[0.06] blur-3xl" />
+
+      <div className="relative max-w-7xl mx-auto px-4 md:px-6 pt-10 md:pt-16 pb-10 md:pb-14">
+        <div className={`grid grid-cols-1 gap-10 lg:gap-16 items-center ${feature ? "lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)]" : ""}`}>
+          <div>
+            <p className="inline-flex items-center gap-2 rounded-full bg-white border border-[#d5e0f3] shadow-sm pl-1 pr-4 py-1 mb-6">
+              <img src={kkfLogo} alt="" className="w-7 h-7 rounded-full" />
+              <span className="text-xs sm:text-sm font-semibold text-[var(--kk-blue)]">{t("home.heroKicker")}</span>
+            </p>
+            <h1 className="kk-display text-5xl sm:text-6xl md:text-7xl text-[var(--kk-navy)]">{t("home.heroTitle")}</h1>
+            <p className="mt-5 text-lg text-gray-600 max-w-xl leading-relaxed">{t("home.tagline")}</p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => onNavigate("matches")}
+                className="kk-focus inline-flex items-center gap-2 min-h-12 px-6 rounded-xl bg-[var(--kk-red)] hover:bg-[#9e1a2c] text-white font-semibold shadow-md shadow-[var(--kk-red)]/20 transition-colors"
+              >
+                {t("home.ctaEvents")}
+                <ArrowRight className="w-4 h-4" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => onNavigate("fighters")}
+                className="kk-focus inline-flex items-center min-h-12 px-6 rounded-xl bg-white border border-gray-300 hover:border-[var(--kk-blue)] text-[var(--kk-navy)] font-semibold transition-colors"
+              >
+                {t("home.ctaFighters")}
+              </button>
+            </div>
+            <Link to="/about" className="kk-focus mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[var(--kk-blue)] hover:underline underline-offset-4">
+              {t("home.newToKunKhmer")} {t("home.aboutCta")}
               <ArrowRight className="w-4 h-4" aria-hidden />
-            </button>
-            <button
-              type="button"
-              onClick={() => onNavigate("fighters")}
-              className="kk-focus inline-flex items-center min-h-12 px-6 rounded-xl bg-white/10 hover:bg-white/15 border border-white/25 text-white font-semibold transition-colors"
-            >
-              {t("home.ctaFighters")}
-            </button>
+            </Link>
           </div>
-          <Link to="/about" className="kk-focus mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[var(--kk-night-accent)] hover:underline underline-offset-4">
-            {t("home.newToKunKhmer")} {t("home.aboutCta")}
-            <ArrowRight className="w-4 h-4" aria-hidden />
-          </Link>
+          {feature}
         </div>
-        {feature}
+
+        {partners.length > 0 && <PartnerStrip partners={partners} />}
       </div>
-      <div className="kk-ropes relative" aria-hidden><span /><span /><span /></div>
     </section>
   );
 }
 
-// ─── 2. Official partners bar ───────────────────────────────────────────────
+// ─── 2. Official partners strip (inside the hero) ───────────────────────────
 
-function PartnerBar({ partners }: { partners: Partner[] }) {
+function PartnerStrip({ partners }: { partners: Partner[] }) {
   const { t } = useI18n();
   return (
-    <section aria-label={t("home.officialPartners")} className="bg-white border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-7 md:py-8 flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-10">
-        <p className="kk-label text-gray-500 shrink-0 text-center lg:text-left">{t("home.officialPartners")}</p>
-        <ul className="flex flex-wrap items-center justify-center lg:justify-start gap-3 md:gap-4">
-          {partners.map((p) => {
-            const body = (
-              <>
-                <PartnerLogo p={p} />
-                <span className="min-w-0 text-left">
-                  <span lang={textLang(p.name)} className="block font-bold text-gray-900 leading-tight">{p.name}</span>
-                  {p.broadcaster && <span className="block text-xs text-gray-500">{t("home.officialBroadcaster")}</span>}
-                </span>
-              </>
-            );
-            const cls = "flex items-center gap-2.5 sm:gap-3 pl-2 pr-3 sm:pl-2.5 sm:pr-5 py-2 sm:py-2.5 rounded-2xl border border-gray-200 bg-white sm:min-w-[180px]";
-            return (
-              <li key={p.id}>
-                {p.url ? (
-                  <a href={p.url} target="_blank" rel="noopener noreferrer" className={`kk-focus ${cls} hover:border-[var(--kk-blue)] hover:shadow-md transition-all`}>{body}</a>
-                ) : (
-                  <div className={cls}>{body}</div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    </section>
+    <div role="region" aria-label={t("home.officialPartners")} className="mt-10 md:mt-14 rounded-2xl bg-white border border-gray-200 shadow-sm px-5 py-4 md:px-6 flex flex-col md:flex-row md:items-center gap-3 md:gap-8">
+      <p className="kk-label text-gray-500 shrink-0">{t("home.officialPartners")}</p>
+      <ul className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-x-2 gap-y-1 md:divide-x md:divide-gray-200">
+        {partners.map((p) => {
+          const body = (
+            <>
+              <PartnerLogo p={p} />
+              <span className="min-w-0 text-left">
+                <span lang={textLang(p.name)} className="block font-semibold text-gray-900 leading-tight line-clamp-2 break-words">{p.name}</span>
+                {p.broadcaster && <span className="block text-xs text-gray-500 truncate">{t("home.officialBroadcaster")}</span>}
+              </span>
+            </>
+          );
+          const cls = "flex items-center gap-2.5 md:gap-3 px-1.5 md:px-5 py-2 rounded-xl min-w-0";
+          return (
+            <li key={p.id} className="min-w-0 md:first:pl-0">
+              {p.url ? (
+                <a href={p.url} target="_blank" rel="noopener noreferrer" className={`kk-focus ${cls} hover:bg-gray-50 transition-colors`}>{body}</a>
+              ) : (
+                <div className={cls}>{body}</div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
@@ -432,35 +440,100 @@ function VideoCard({ v, onPlay }: { v: HomeVideo; onPlay: () => void }) {
 
 // ─── 7. Become a partner ────────────────────────────────────────────────────
 
-function BecomePartner({ stats, onViewPartners }: { stats: { label: string; value: number }[]; onViewPartners: () => void }) {
+function BecomePartner({ partners, stats, onViewPartners }: { partners: Partner[]; stats: { label: string; value: number }[]; onViewPartners: () => void }) {
   const { t } = useI18n();
   const mailto = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(t("home.partnerEmailSubject"))}`;
+  const aside = partners.length > 0 || stats.length > 0;
   return (
-    <div className={`grid grid-cols-1 gap-10 items-center ${stats.length ? "lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]" : ""}`}>
-      <div>
-        <p className="kk-label text-[var(--kk-red)] mb-2 flex items-center gap-2"><Handshake className="w-4 h-4" aria-hidden />{t("home.partnerKicker")}</p>
-        <h2 className="kk-display text-4xl md:text-6xl text-gray-900">{t("home.partnerTitle")}</h2>
-        <p className="mt-4 text-lg text-gray-700 leading-relaxed max-w-2xl">{t("home.partnerText")}</p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <a href={mailto} className="kk-focus inline-flex items-center gap-2 min-h-12 px-6 rounded-xl bg-[var(--kk-blue)] hover:bg-[var(--kk-navy)] text-white font-semibold transition-colors">
-            {t("home.partnerCta")}
-            <ArrowRight className="w-4 h-4" aria-hidden />
-          </a>
-          <button type="button" onClick={onViewPartners} className="kk-focus inline-flex items-center min-h-12 px-6 rounded-xl border border-[var(--kk-blue)] text-[var(--kk-blue)] hover:bg-white font-semibold transition-colors">
-            {t("home.viewPartners")}
-          </button>
+    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#eef3fb] via-white to-[#fdf1f3] border border-[#d5e0f3] p-6 sm:p-8 md:p-12">
+      <div aria-hidden className="pointer-events-none absolute -top-24 -right-24 w-80 h-80 rounded-full bg-[var(--kk-blue)] opacity-[0.07] blur-3xl" />
+      <div className={`relative grid grid-cols-1 gap-10 lg:gap-14 items-center ${aside ? "lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)]" : ""}`}>
+        <div>
+          <p className="inline-flex items-center gap-2 rounded-full bg-white border border-[#d5e0f3] px-3 py-1 text-xs font-semibold text-[var(--kk-red)] mb-5">
+            <Handshake className="w-4 h-4" aria-hidden />
+            {t("home.partnerKicker")}
+          </p>
+          <h2 className="kk-display text-4xl md:text-6xl text-[var(--kk-navy)]">{t("home.partnerTitle")}</h2>
+          <p className="mt-4 text-lg text-gray-600 leading-relaxed max-w-xl">{t("home.partnerText")}</p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <a href={mailto} className="kk-focus inline-flex items-center gap-2 min-h-12 px-6 rounded-xl bg-[var(--kk-red)] hover:bg-[#9e1a2c] text-white font-semibold shadow-md shadow-[var(--kk-red)]/20 transition-colors">
+              {t("home.partnerCta")}
+              <ArrowRight className="w-4 h-4" aria-hidden />
+            </a>
+            <button type="button" onClick={onViewPartners} className="kk-focus inline-flex items-center min-h-12 px-6 rounded-xl bg-white border border-gray-300 hover:border-[var(--kk-blue)] text-[var(--kk-navy)] font-semibold transition-colors">
+              {t("home.viewPartners")}
+            </button>
+          </div>
         </div>
+
+        {aside && (
+          <div className="rounded-2xl bg-white border border-gray-200 shadow-[0_20px_50px_-24px_rgba(36,51,111,0.35)] p-5 md:p-6">
+            {partners.length > 0 && (
+              <>
+                <p className="kk-label text-gray-500 mb-4">{t("home.joinPartners")}</p>
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {partners.map((p) => (
+                    <li key={p.id} className="flex items-center gap-3 rounded-xl bg-gray-50 border border-gray-100 p-3 min-w-0">
+                      <PartnerLogo p={p} />
+                      <span className="min-w-0">
+                        <span lang={textLang(p.name)} className="block font-semibold text-gray-900 leading-tight line-clamp-2 break-words">{p.name}</span>
+                        {p.broadcaster && <span className="block text-xs text-gray-500">{t("home.officialBroadcaster")}</span>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {stats.length > 0 && (
+              <dl className={`grid gap-3 ${partners.length ? "mt-5 pt-5 border-t border-gray-100" : ""} ${stats.length === 3 ? "grid-cols-3" : stats.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
+                {stats.map((s) => (
+                  <div key={s.label} className="text-center">
+                    <dd className="kk-stat text-3xl md:text-4xl text-[var(--kk-blue)]">{s.value}</dd>
+                    <dt className="mt-1 text-xs font-semibold text-gray-600">{s.label}</dt>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </div>
+        )}
       </div>
-      {stats.length > 0 && (
-        <dl className={`grid gap-3 ${stats.length === 3 ? "grid-cols-3" : stats.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
-          {stats.map((s) => (
-            <div key={s.label} className="bg-white rounded-2xl border border-[#d5e0f3] p-4 md:p-5 text-center">
-              <dd className="kk-stat text-4xl md:text-5xl text-[var(--kk-blue)]">{s.value}</dd>
-              <dt className="mt-1 text-xs md:text-sm font-semibold text-gray-600">{s.label}</dt>
-            </div>
-          ))}
-        </dl>
-      )}
+    </div>
+  );
+}
+
+// ─── 8. What is Kun Khmer ───────────────────────────────────────────────────
+
+function AboutKunKhmer() {
+  const { t } = useI18n();
+  const facts = [
+    { icon: Timer, title: t("about.quick1Title"), text: t("about.quick1Text") },
+    { icon: Swords, title: t("about.quick2Title"), text: t("about.quick2Text") },
+    { icon: Music, title: t("about.quick3Title"), text: t("about.quick3Text") },
+  ];
+  return (
+    <div className="grid grid-cols-1 gap-10 lg:gap-16 items-center lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)]">
+      <div>
+        <p className="kk-label text-[var(--kk-red)] mb-3">{t("home.aboutTitle")}</p>
+        <h2 className="kk-display text-4xl md:text-6xl text-[var(--kk-navy)]">{t("home.manifestoTitle")}</h2>
+        <p className="mt-5 text-lg leading-relaxed text-gray-600">{t("home.manifestoBody")}</p>
+        <Link to="/about" className="kk-focus mt-8 inline-flex items-center gap-2 min-h-12 px-6 rounded-xl bg-white border border-gray-300 hover:border-[var(--kk-blue)] text-[var(--kk-navy)] font-semibold transition-colors">
+          {t("home.aboutCta")}
+          <ArrowRight className="w-4 h-4" aria-hidden />
+        </Link>
+      </div>
+      <ul className="grid grid-cols-1 gap-4">
+        {facts.map(({ icon: Icon, title, text }) => (
+          <li key={title} className="flex items-start gap-4 rounded-2xl bg-white border border-gray-200 p-5 hover:shadow-md transition-shadow">
+            <span className="w-12 h-12 rounded-xl bg-[#eef3fb] text-[var(--kk-blue)] flex items-center justify-center shrink-0">
+              <Icon className="w-6 h-6" aria-hidden />
+            </span>
+            <span>
+              <span className="block kk-heading text-2xl text-[var(--kk-navy)]">{title}</span>
+              <span className="block mt-1 text-sm text-gray-600 leading-relaxed">{text}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -496,7 +569,6 @@ export default function HomePage(props: HomePageProps) {
   const featured = [...fighters]
     .sort((a, b) => Number(isRealImage(b.image)) - Number(isRealImage(a.image)) || (b.wins + b.losses + b.draws) - (a.wins + a.losses + a.draws))
     .slice(0, 4);
-  const socials = SOCIAL_LINKS.filter((s) => s.url);
   const stats = [
     { label: t("home.statFighters"), value: fighters.length },
     { label: t("home.statEvents"), value: upcomingEvents.length + pastEvents.length },
@@ -505,9 +577,7 @@ export default function HomePage(props: HomePageProps) {
 
   return (
     <div>
-      <Hero feature={feature} onNavigate={onNavigate} />
-
-      {partners.length > 0 && <PartnerBar partners={partners} />}
+      <Hero feature={feature} partners={partners} onNavigate={onNavigate} />
 
       {(news.length > 0 || eventList.length > 0 || results.length > 0) && (
         <Section tone="gray" label={t("home.resultsAndNews")}>
@@ -565,44 +635,12 @@ export default function HomePage(props: HomePageProps) {
         </Section>
       )}
 
-      <Section tone="tint" label={t("home.partnerKicker")}>
-        <BecomePartner stats={stats} onViewPartners={() => onNavigate("strategic-partners")} />
+      <Section label={t("home.aboutTitle")}>
+        <AboutKunKhmer />
       </Section>
 
-      <Section label={t("home.aboutTitle")}>
-        <div className={`grid grid-cols-1 gap-10 lg:gap-16 items-start ${socials.length ? "lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]" : ""}`}>
-          <div>
-            <p className="kk-label text-[var(--kk-red)] mb-3">{t("home.aboutTitle")}</p>
-            <h2 className="kk-display text-4xl md:text-6xl text-gray-900">{t("home.manifestoTitle")}</h2>
-            <p className="mt-5 text-lg leading-relaxed text-gray-700 max-w-2xl">{t("home.manifestoBody")}</p>
-            <Link to="/about" className="kk-focus mt-6 inline-flex items-center gap-2 font-semibold text-[var(--kk-blue)] hover:underline underline-offset-4">
-              {t("home.aboutCta")}
-              <ArrowRight className="w-4 h-4" aria-hidden />
-            </Link>
-          </div>
-          {socials.length > 0 && (
-            <div className="rounded-2xl bg-gray-50 border border-gray-200 p-6 md:p-8">
-              <h2 className="kk-heading text-3xl text-gray-900">{t("home.stayConnected")}</h2>
-              <p className="mt-2 text-gray-600">{t("home.stayConnectedText")}</p>
-              <ul className="mt-6 space-y-3">
-                {socials.map((s) => (
-                  <li key={s.label}>
-                    <a
-                      href={s.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="kk-focus flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-200 hover:border-[var(--kk-blue)] transition-colors"
-                    >
-                      <svg className="w-6 h-6 text-[var(--kk-blue)]" fill="currentColor" viewBox="0 0 24 24" aria-hidden><path d={s.path} /></svg>
-                      <span className="font-semibold text-gray-900">{t("home.followOn", { network: s.label })}</span>
-                      <ArrowRight className="w-4 h-4 ml-auto text-gray-400" aria-hidden />
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+      <Section tone="gray" label={t("home.partnerKicker")}>
+        <BecomePartner partners={partners} stats={stats} onViewPartners={() => onNavigate("strategic-partners")} />
       </Section>
     </div>
   );

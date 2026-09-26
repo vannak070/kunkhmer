@@ -1,10 +1,9 @@
-import { useState } from "react";
-import { Mail, MapPin } from "lucide-react";
-import { toast } from "sonner";
+import { ArrowUp, Handshake, Mail, MapPin } from "lucide-react";
 import kkfLogo from "../../../assets/kkf-logo-192.png";
 import { NAV_ITEMS, NavSection, sectionPath, useNavigateSection } from "./SiteHeader";
 import { appPath } from "../../utils/basePath";
 import { useI18n } from "../../i18n/LanguageContext";
+import { AskKunKhmer } from "../ai/AskKunKhmer";
 
 /** Official channels. Leave `url` empty to hide a network until the federation has an account. */
 export const SOCIAL_LINKS: { label: string; url: string; path: string }[] = [
@@ -33,141 +32,115 @@ interface SiteFooterProps {
   flush?: boolean;
 }
 
+/**
+ * Light site footer: brand + intro + social, site links, contact and partnership, then the
+ * copyright line. No newsletter form until the backend can actually store subscriptions.
+ */
 export function SiteFooter({ onSectionChange, flush = false }: SiteFooterProps) {
   const { t } = useI18n();
   const go = useNavigateSection(onSectionChange);
-  const [email, setEmail] = useState("");
   const socials = SOCIAL_LINKS.filter((s) => s.url);
-
-  const subscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      toast.error(t("footer.invalidEmail"));
-      return;
-    }
-    // TODO: POST to the newsletter endpoint once the backend provides one.
-    toast.success(t("footer.subscribed"));
-    setEmail("");
-  };
+  const partnerMail = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(t("home.partnerEmailSubject"))}`;
 
   return (
-    <footer className={`relative bg-[#051C42] text-white overflow-hidden ${flush ? "" : "mt-20"}`}>
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-        <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-[0.12]" style={{ background: "radial-gradient(circle, #0A3D91 0%, transparent 65%)" }} />
-        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-[0.08]" style={{ background: "radial-gradient(circle, #C8102E 0%, transparent 70%)" }} />
-      </div>
-
-      <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-8">
-        <div className="pt-16 pb-12 grid grid-cols-1 md:grid-cols-12 gap-10 lg:gap-14">
-          <div className="md:col-span-5">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="flex items-center justify-center w-12 h-12 bg-white rounded-xl shadow-lg shadow-black/40 shrink-0">
-                <img src={kkfLogo} alt="" className="w-9 h-9 object-contain" />
-              </div>
-              <div>
-                <p className="text-xl font-black tracking-tight leading-none">KUNKHMER</p>
-                <p className="text-[10px] text-[#F2C94C] font-bold tracking-[0.15em] uppercase mt-0.5">{t("brand.digitalPlatform")}</p>
-              </div>
-            </div>
-            <p className="text-white/60 text-sm leading-relaxed mb-6 max-w-sm">
-              {t("footer.about")}
-            </p>
-            {socials.length > 0 && (
-              <div className="flex gap-2.5">
-                {socials.map((social) => (
-                  <a
-                    key={social.label}
-                    href={social.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={t("footer.social", { network: social.label })}
-                    className="group w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-[#0A3D91]/60 hover:border-[#0A3D91] flex items-center justify-center transition-colors"
-                  >
-                    <svg className="w-4 h-4 text-white/60 group-hover:text-white transition-colors" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
-                      <path d={social.path} />
-                    </svg>
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="md:col-span-7 grid grid-cols-2 sm:grid-cols-2 gap-8">
+    <>
+    {/* Floating "Ask Kun Khmer" chat; lives here because the footer is on every page. */}
+    <AskKunKhmer />
+    <footer className={`bg-[#eef3fb] border-t border-[#d5e0f3] text-gray-700 ${flush ? "" : "mt-20"}`}>
+      <div className="max-w-7xl mx-auto px-4 md:px-6 pt-12 md:pt-16 pb-10 grid grid-cols-1 md:grid-cols-12 gap-10 lg:gap-14">
+        {/* Brand */}
+        <div className="md:col-span-5">
+          <div className="flex items-center gap-3">
+            <img src={kkfLogo} alt="" className="w-12 h-12 rounded-full bg-white shadow-sm" />
             <div>
-              <h2 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">{t("footer.explore")}</h2>
-              <ul className="space-y-2.5">
-                {NAV_ITEMS.map(({ id, labelKey }) => (
-                  <li key={id}>
+              <p className="kk-heading text-2xl text-[var(--kk-navy)] leading-none">KUNKHMER</p>
+              <p className="text-xs font-semibold text-[var(--kk-blue)] mt-1">{t("brand.digitalPlatform")}</p>
+            </div>
+          </div>
+          <p className="mt-5 text-sm leading-relaxed text-gray-600 max-w-sm">{t("footer.about")}</p>
+          {socials.length > 0 && (
+            <div className="mt-6">
+              <p className="kk-label text-gray-500 mb-3">{t("footer.followUs")}</p>
+              <ul className="flex flex-wrap gap-2">
+                {socials.map((social) => (
+                  <li key={social.label}>
                     <a
-                      href={appPath(sectionPath(id))}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        go(id);
-                        window.scrollTo(0, 0);
-                      }}
-                      className="text-white/60 hover:text-white text-sm transition-colors"
+                      href={social.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={t("footer.social", { network: social.label })}
+                      className="kk-focus inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white border border-[#d5e0f3] hover:border-[var(--kk-blue)] text-sm font-semibold text-[var(--kk-navy)] transition-colors"
                     >
-                      {t(labelKey)}
+                      <svg className="w-4 h-4 text-[var(--kk-blue)]" fill="currentColor" viewBox="0 0 24 24" aria-hidden><path d={social.path} /></svg>
+                      {social.label}
                     </a>
                   </li>
                 ))}
-                <li className="text-white/40 text-sm">
-                  {t("footer.shop")} <span className="ml-1 text-[10px] font-bold uppercase tracking-wider text-[#F2C94C]/80">{t("footer.comingSoon")}</span>
-                </li>
               </ul>
             </div>
-
-            <div>
-              <h2 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">{t("footer.contact")}</h2>
-              <ul className="space-y-3">
-                <li className="flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-white/40 shrink-0 mt-0.5" aria-hidden />
-                  <span className="text-white/60 text-sm">{t("footer.location")}</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Mail className="w-4 h-4 text-white/40 shrink-0 mt-0.5" aria-hidden />
-                  <a href={`mailto:${CONTACT_EMAIL}`} className="text-white/60 hover:text-white text-sm transition-colors break-all">
-                    {CONTACT_EMAIL}
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
+          )}
         </div>
 
-        <form
-          onSubmit={subscribe}
-          className="py-7 px-6 md:px-8 mb-10 rounded-2xl bg-[#0A3D91]/30 border border-white/[0.07] flex flex-col sm:flex-row items-center justify-between gap-5"
-        >
-          <div>
-            <p className="font-bold text-sm text-white">{t("footer.newsletterTitle")}</p>
-            <p className="text-white/55 text-xs mt-0.5">{t("footer.newsletterText")}</p>
-          </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <label htmlFor="newsletter-email" className="sr-only">{t("footer.emailLabel")}</label>
-            <input
-              id="newsletter-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={t("footer.emailPlaceholder")}
-              autoComplete="email"
-              className="flex-1 min-w-0 sm:w-64 px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-white/40 transition-colors"
-            />
-            <button type="submit" className="px-5 py-2.5 rounded-xl bg-[#F2C94C] hover:bg-[#E8BC34] text-[#051C42] text-sm font-bold transition-colors whitespace-nowrap">
-              {t("footer.subscribe")}
-            </button>
-          </div>
-        </form>
+        {/* Links */}
+        <nav aria-label={t("footer.explore")} className="md:col-span-3">
+          <h2 className="kk-label text-gray-500 mb-4">{t("footer.explore")}</h2>
+          <ul className="grid grid-cols-2 md:grid-cols-1 gap-x-6 gap-y-2.5">
+            {NAV_ITEMS.map(({ id, labelKey }) => (
+              <li key={id}>
+                <a
+                  href={appPath(sectionPath(id))}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    go(id);
+                    window.scrollTo(0, 0);
+                  }}
+                  className="kk-focus text-sm text-gray-700 hover:text-[var(--kk-blue)] transition-colors"
+                >
+                  {t(labelKey)}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-        <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        {/* Contact & partnership */}
+        <div className="md:col-span-4">
+          <h2 className="kk-label text-gray-500 mb-4">{t("footer.contact")}</h2>
+          <ul className="space-y-3 text-sm">
+            <li className="flex items-start gap-2.5">
+              <MapPin className="w-4 h-4 text-[var(--kk-blue)] shrink-0 mt-0.5" aria-hidden />
+              <span>{t("footer.location")}</span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <Mail className="w-4 h-4 text-[var(--kk-blue)] shrink-0 mt-0.5" aria-hidden />
+              <a href={`mailto:${CONTACT_EMAIL}`} className="kk-focus hover:text-[var(--kk-blue)] break-all transition-colors">{CONTACT_EMAIL}</a>
+            </li>
+          </ul>
+          <div className="mt-6 rounded-2xl bg-white border border-[#d5e0f3] p-4">
+            <p className="font-semibold text-[var(--kk-navy)]">{t("home.partnerKicker")}</p>
+            <p className="mt-1 text-sm text-gray-600">{t("footer.partnerText")}</p>
+            <a href={partnerMail} className="kk-focus mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[var(--kk-blue)] hover:underline underline-offset-4">
+              <Handshake className="w-4 h-4" aria-hidden />
+              {t("home.partnerCta")}
+            </a>
+          </div>
+        </div>
+      </div>
 
-        <div className="py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
-          <p className="text-white/45 text-xs">{t("footer.rights", { year: new Date().getFullYear() })}</p>
-          <p className="text-white/35 text-xs">{t("footer.heritage")}</p>
+      <div className="border-t border-[#d5e0f3]">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+          <p className="text-xs text-gray-500">{t("footer.rights", { year: new Date().getFullYear() })} {t("footer.heritage")}</p>
+          <button
+            type="button"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="kk-focus inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--kk-blue)] hover:underline underline-offset-4"
+          >
+            <ArrowUp className="w-3.5 h-3.5" aria-hidden />
+            {t("footer.backToTop")}
+          </button>
         </div>
       </div>
     </footer>
+    </>
   );
 }

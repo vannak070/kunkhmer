@@ -46,6 +46,18 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}): Pr
 }
 
 export const api = {
+  // --- "ASK KUN KHMER" AI CHAT ---
+  ai: {
+    async status(): Promise<{ enabled: boolean }> {
+      const res = await request("/ai/status");
+      return res.data;
+    },
+    async chat(messages: { role: "user" | "assistant"; content: string }[], lang: string): Promise<string> {
+      const res = await request("/ai/chat", { method: "POST", body: JSON.stringify({ messages, lang }) });
+      return res.data.reply;
+    },
+  },
+
   // --- AUTH & USERS ---
   auth: {
     async login(username: string, password_hash: string) {

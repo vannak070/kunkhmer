@@ -1,0 +1,13 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AI assistant > reports status publicly 1`] = `
+{
+  "body": {
+    "data": {
+      "enabled": "boolean",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;

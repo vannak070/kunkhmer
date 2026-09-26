@@ -1,5 +1,10 @@
 # KUN KHMER Workflow Validation Rules
 
+> Reference only. Moved from `frontend/admin/src/app/utils/workflowRules.md` on
+> 2026-09-26. It describes the rules the admin's **mock** KKF workflow pages
+> (`KKFWorkflow*`, `utils/workflowValidation.ts`) follow; there is no workflow
+> API yet. Use it as the starting point when that API is built.
+
 This document outlines all validation rules implemented in the workflow system.
 
 ## Event Validation Rules

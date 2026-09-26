@@ -39,8 +39,8 @@ federation's records.
 ## Frontend (`frontend/public/src/app/`)
 | Area | Files | Notes |
 |---|---|---|
-| Layout | `components/layout/SiteHeader.tsx`, `SiteFooter.tsx`, `GlobalSearch.tsx`, `HeaderAccount.tsx` | Shared by every page. Search indexes fighters, events and news on first focus. |
-| Home | `components/home/HomePage.tsx` | One dark hero (welcome + buttons, next to the upcoming fight night with poster, countdown and "Presented by" main sponsor; no upcoming event → latest story), then light sections: official partners bar (sponsors by tier + broadcaster, linked) → news with fight nights and latest results → featured fighters (real photos first) → videos → Become a partner (mailto `CONTACT_EMAIL`, reach stats shown only from 10 up) → newcomer guide + social. Stock-photo fallbacks from `SuperAppHome` are replaced by a brand block (`isRealImage`). |
+| Layout | `components/layout/SiteHeader.tsx`, `SiteFooter.tsx`, `GlobalSearch.tsx`, `HeaderAccount.tsx` | Shared by every page. Search indexes fighters, events and news on first focus. Footer is light (brand tint): logo + intro + social buttons, site links, contact, a "Partner with Kun Khmer" card (mailto), copyright + back to top. Social links live only in the footer. |
+| Home | `components/home/HomePage.tsx` | Light hero (soft blue gradient, KKF-logo pill, navy headline, buttons; next to the upcoming fight night with poster, countdown and "Presented by" main sponsor; no upcoming event → latest story) with the official partners strip inside it (sponsors by tier + broadcaster, linked; no ring-rope divider), then light sections: news with fight nights and latest results → featured fighters (real photos first) → videos → What is Kun Khmer (text + the three About quick facts) → Become a partner card (pitch + mailto `CONTACT_EMAIL`, beside a "Join our official partners" panel; reach stats only from 10 up). Stock-photo fallbacks from `SuperAppHome` are replaced by a brand block (`isRealImage`). |
 | Event | `pages/EventDetail.tsx`, `components/event/EventParts.tsx` | Fight Night poster header (event image, or the main-event face-off when there is none), day countdown, stats, add to calendar, share. Tabs Fight card · Results · Where to watch; a tab without data is hidden, past events open on Results. Main event = first title bout, else first bout (`mainEventBout`). Phones stack each bout (fighters side by side, result underneath). |
 | Sections | `pages/SuperAppHome.tsx` | Still one large file for matches, news, fighters, partners, shop. Section comes from `/:section`; `?event=` only redirects to `/events/:id`. |
 | Fighter | `pages/SuperAppFighterDetail.tsx`, `components/fan/FighterHistory.tsx`, `FollowButton.tsx` | Fight history, next fight, teammates from the API. |
@@ -71,6 +71,8 @@ and Khmer (`claude/tests/test-admin-ui.md` pattern), and run `vite build` in the
 `kunkhmer_frontend_public` container.
 
 ## Open questions / next steps
+- **Next (agreed 2026-09-26)**: public statistics (`features/statistics.md`),
+  then the AI assistant (`features/ai-assistant.md`).
 - **Step 3**: dark header for Fight Night pages, menu consolidation
   (Events · Fighters · News · About), then tickets per event (step 4).
 - Event countdown is in days because events store a date only; switch to
@@ -81,9 +83,8 @@ and Khmer (`claude/tests/test-admin-ui.md` pattern), and run `vite build` in the
 - Needed from the federation: YouTube / Instagram / TikTok URLs
   (`SOCIAL_LINKS` in `SiteFooter.tsx`), high-resolution posters and fighter
   portraits, a ticket link per event, event start times (only dates are stored).
-- Newsletter signup and the Shop "Notify me" form only show a thank-you; no API yet.
+- Newsletter signup was removed from the footer (it only showed a thank-you); add it back with a real subscriber API. The Shop "Notify me" form still only shows a thank-you.
 - Shop / payments not started (payment provider TBD, e.g. ABA PayWay).
 - Link previews per page need server-side meta tags (chat apps don't run JS).
 - Before launch: remove `noindex` from `index.html`, set `SITE_URL`.
-- Unused after the home redesigns: `components/home/HeroSection.tsx`, `TrendingFightersSection.tsx` (`SponsorsSection.tsx` is still used on the Partners page).
 - Fighter "Verified" badge currently means status Active, not federation-verified.
