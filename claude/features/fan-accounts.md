@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress — API built (uncommitted), no public-site UI yet |
+| **Status** | In progress — API done (`0fec0f75`); public-site UI not built yet |
 | **Jira** | TBD |
 | **Figma** | TBD |
 
@@ -69,7 +69,7 @@ Notification: `{id, type, data, read, createdAt}`.
 `modules/fans/notify.ts`, hooks in `modules/matches/routes.ts`.
 
 ## Tests
-`api-tests/tests/fans.test.ts` (uncommitted): sign-up/in/out, token
+`api-tests/tests/fans.test.ts`: sign-up/in/out, token
 separation, profile, follows, notifications. 14/14 pass.
 
 ## Open questions / review notes

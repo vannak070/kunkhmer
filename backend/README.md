@@ -62,6 +62,24 @@ Restart it to reset: `docker compose --profile test restart backend-test`.
 user). It needs `DATABASE_URL`, listens on `PORT` (default 3001) and prepares
 the database on start.
 
+## Fan accounts (public site)
+
+`/api/fans/*` serves public-site accounts: sign-up/in, profile, followed
+fighters and in-app notifications (see the route list at the top of
+`src/modules/fans/routes.ts`). Fans are stored in their own tables
+(`fans`, `fan_sessions`, `fan_follows`, `fan_notifications`) and use their own
+`kkf_…` bearer tokens, which the staff auth ignores — a fan can never reach an
+admin route, and staff tokens don't work on fan routes.
+
+Followers are notified when a bout with their fighter is created and when its
+result is recorded (`src/modules/fans/notify.ts`). Notifications store facts;
+the site renders the text in the fan's language. Email delivery isn't wired up
+yet — `notify_email` records the preference for when it is.
+
+Sign-in and sign-up are rate-limited per IP (`FAN_RATE_LIMIT` attempts per 15
+minutes, default 10; the test service raises it). The limiter is in memory, so
+it needs a shared store if the API runs as several instances.
+
 ## Layout
 
 ```
