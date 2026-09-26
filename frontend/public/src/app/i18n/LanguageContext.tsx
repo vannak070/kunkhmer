@@ -93,7 +93,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         const key = `${base}_${n === 1 ? "one" : "other"}` as MessageKey;
         return t(key, { n: numberFmt.format(n), ...vars });
       },
-      formatDate: (date, style = "short") => {
+      formatDate: (date, style: "short" | "long" | "weekday" = "short") => {
         if (!date) return "";
         const d = typeof date === "string" ? new Date(date) : date;
         if (isNaN(d.getTime())) return "";

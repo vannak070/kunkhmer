@@ -19,6 +19,8 @@ import { PublicStatusBadge } from "../components/PublicStatusBadge";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useI18n } from "../i18n/LanguageContext";
 import { downloadCalendarEvent } from "../utils/calendar";
+import { broadcasterForEvent, latestResults, useFanData } from "../data/fanData";
+import { CountdownChip, DemoBanner, ResultRow, WhereToWatch } from "../components/fan/FanWidgets";
 import { publicName, publicStatus, pluralize, readTimeMinutes, formatVideoDuration, formatViews, isCompletedStatus, FEDERATION_NAME } from "../utils/publicDisplay";
 
 /**
@@ -206,6 +208,7 @@ interface Match {
 
 export function SuperAppHome() {
   const { t, tn, formatDate, formatWeight, localName } = useI18n();
+  const fanData = useFanData();
   const { balance, deductBalance } = useWallet();
   const { orders, createOrder } = useOrders();
   const params = useParams();
@@ -317,7 +320,8 @@ export function SuperAppHome() {
         winnerId: m.winner_id,
         winnerMethod: m.winner_method,
         winnerRound: m.winner_round,
-        winnerTime: m.winner_time,
+        // The API calls it winner_duration; the admin saves "0:00" when no time was recorded.
+        winnerTime: m.winner_duration && !/^0{1,2}:00$/.test(m.winner_duration) ? m.winner_duration : null,
         fighterA: {
           id: m.fighter_a_id,
           name: m.fighter_a_name || fA?.name || "TBD",
@@ -1095,6 +1099,7 @@ export function SuperAppHome() {
               </div>
 
               <div className="p-5 bg-gradient-to-br from-white to-gray-50">
+                <CountdownChip date={event.date} className="mb-3" />
                 <h3 className="text-xl font-black text-gray-900 mb-4 line-clamp-2 group-hover:text-[#0A3D91] transition-colors">
                   {event.name}
                 </h3>
@@ -1151,6 +1156,31 @@ export function SuperAppHome() {
           </button>
         </div>
       </div>
+
+      {/* Latest Results */}
+      {fanData && latestResults(fanData).length > 0 && (
+        <section className="bg-white rounded-2xl p-6 md:p-8 border-2 border-gray-200 shadow-lg">
+          <div className="flex items-end justify-between gap-4 mb-4">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">{t("results.latest")}</h2>
+              <p className="text-gray-600 font-medium">{t("results.latestText")}</p>
+            </div>
+            <button
+              onClick={() => {
+                setMatchesEventsTab("previous");
+                navigate("/matches?tab=results");
+              }}
+              className="hidden md:flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300"
+            >
+              {t("results.viewAll")} <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+          <DemoBanner show={fanData.demo} />
+          <div className="divide-y divide-gray-100">
+            {latestResults(fanData, 4).map((bout) => <ResultRow key={bout.id} bout={bout} />)}
+          </div>
+        </section>
+      )}
 
       {/* Latest Videos Section */}
       <div className="relative bg-gradient-to-br from-white via-gray-50/50 to-white rounded-2xl p-6 md:p-8 border-2 border-gray-200 shadow-lg overflow-hidden">
@@ -3097,7 +3127,16 @@ export function SuperAppHome() {
 
           return (
             <>
-              {paginatedBatches.length === 0 ? (
+              {paginatedBatches.length === 0 && fanData && latestResults(fanData, 50).length > 0 &&
+                selectedWeightClass === "all" && selectedLocation === "all" && selectedMatchType === "all" ? (
+                // Fight cards are only marked Completed after the fact; show individual results meanwhile.
+                <div>
+                  <DemoBanner show={fanData.demo} />
+                  <div className="divide-y divide-gray-100">
+                    {latestResults(fanData, 50).map((bout) => <ResultRow key={bout.id} bout={bout} />)}
+                  </div>
+                </div>
+              ) : paginatedBatches.length === 0 ? (
                 <div className="text-center py-12">
                   <Trophy className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   {selectedWeightClass === "all" && selectedLocation === "all" && selectedMatchType === "all" ? (
@@ -3464,6 +3503,7 @@ export function SuperAppHome() {
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-4 empty:hidden">
                   <PublicStatusBadge status={event.status} surface="dark" />
+                  <CountdownChip date={event.date} surface="dark" />
                   {eventBatches.some(batch => batch.status === 'Completed') && (
                     <span className="px-3 py-1.5 rounded-lg text-xs font-black uppercase bg-white/20 text-white border border-white/30">
                       Results Available
@@ -3559,6 +3599,14 @@ export function SuperAppHome() {
             </div>
           )}
         </div>
+
+        {/* Where to watch (upcoming events only) */}
+        {isUpcomingEvent(event) && (
+          <WhereToWatch
+            broadcaster={fanData ? broadcasterForEvent(fanData, (dbEvents || []).find((e: any) => e.id === event.id)) : null}
+            stationName={event.station}
+          />
+        )}
 
         {/* Fight Card */}
         {eventBatches.length > 0 ? (
@@ -3734,12 +3782,12 @@ export function SuperAppHome() {
                             <div className="mt-4 pt-3 border-t border-gray-150 flex flex-col items-center gap-1 text-center">
                               <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-[10px] font-semibold text-emerald-700 border border-emerald-200 rounded-lg shadow-sm">
                                 <Trophy className="w-3.5 h-3.5 text-emerald-600 fill-emerald-100" />
-                                <span>Official Result: {winnerName} won by {match.winnerMethod || 'Decision'}</span>
+                                <span>{t("result.by", { winner: winnerName, method: match.winnerMethod || t("result.decision") })}</span>
                               </div>
                               {(match.winnerRound || match.winnerTime) && (
                                 <div className="text-[10px] text-gray-500 font-semibold">
-                                  {match.winnerRound && `Round ${match.winnerRound}`}
-                                  {match.winnerTime && ` (${match.winnerTime})`}
+                                  {match.winnerRound ? t("matches.round", { n: match.winnerRound }) : ""}
+                                  {match.winnerTime && ` · ${match.winnerTime}`}
                                 </div>
                               )}
                             </div>

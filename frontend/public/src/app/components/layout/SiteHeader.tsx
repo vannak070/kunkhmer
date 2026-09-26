@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { BookOpen, Handshake, Home as HomeIcon, Info, Languages, Menu, Trophy, Users, X } from "lucide-react";
+import { BookOpen, Handshake, Home as HomeIcon, Info, Languages, Medal, Menu, Trophy, Users, X } from "lucide-react";
 import kkfLogo from "../../../assets/kkf-logo-192.png";
 import { GlobalSearch } from "./GlobalSearch";
 import { appPath } from "../../utils/basePath";
@@ -8,19 +8,20 @@ import { useI18n } from "../../i18n/LanguageContext";
 import type { MessageKey } from "../../i18n/messages";
 
 /** SuperAppHome sections plus standalone pages that appear in the main navigation. */
-export type NavSection = "home" | "matches" | "news-events" | "fighters" | "strategic-partners" | "about";
+export type NavSection = "home" | "matches" | "news-events" | "fighters" | "rankings" | "strategic-partners" | "about";
 
 export const NAV_ITEMS: { id: NavSection; labelKey: MessageKey; icon: typeof HomeIcon }[] = [
   { id: "home", labelKey: "nav.home", icon: HomeIcon },
   { id: "matches", labelKey: "nav.matches", icon: Trophy },
   { id: "news-events", labelKey: "nav.news", icon: BookOpen },
   { id: "fighters", labelKey: "nav.fighters", icon: Users },
+  { id: "rankings", labelKey: "nav.rankings", icon: Medal },
   { id: "strategic-partners", labelKey: "nav.partners", icon: Handshake },
   { id: "about", labelKey: "nav.about", icon: Info },
 ];
 
 /** Sections that live outside SuperAppHome and are always reached by routing. */
-const STANDALONE: NavSection[] = ["about"];
+const STANDALONE: NavSection[] = ["rankings", "about"];
 
 export function sectionPath(section: NavSection): string {
   return section === "home" ? "/" : `/${section}`;

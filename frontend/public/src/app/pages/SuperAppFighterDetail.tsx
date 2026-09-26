@@ -11,6 +11,9 @@ import { ShareButtons } from "../components/ShareButtons";
 import { usePageMeta } from "../hooks/usePageTitle";
 import { formatVideoDuration } from "../utils/publicDisplay";
 import { useI18n } from "../i18n/LanguageContext";
+import { useFanData } from "../data/fanData";
+import { FightHistory, NextFightCard } from "../components/fan/FighterHistory";
+import { DemoBanner } from "../components/fan/FanWidgets";
 
 export function SuperAppFighterDetail() {
   const { id } = useParams();
@@ -22,6 +25,7 @@ export function SuperAppFighterDetail() {
   const [loading, setLoading] = useState(true);
   const { t, lang, formatDate, formatWeight, formatNumber, localName } = useI18n();
   const [clubmates, setClubmates] = useState<any[]>([]);
+  const fanData = useFanData();
 
   usePageMeta({
     title: fighter ? localName(fighter.name, fighter.nameKhmer) : loading ? t("nav.fighters") : t("fighters.notFound"),
@@ -186,6 +190,7 @@ export function SuperAppFighterDetail() {
 
       {/* ── Main Detail Content ── */}
       <main className="max-w-7xl mx-auto px-4 md:px-6 pb-20 space-y-10">
+        <DemoBanner show={Boolean(fanData?.demo)} />
 
         {/* ════════════════════════════════════════════
             1. HERO SECTION — improved
@@ -328,6 +333,8 @@ export function SuperAppFighterDetail() {
 
           </div>
         </section>
+
+        {fanData && <NextFightCard data={fanData} fighterId={fighter.id} />}
 
         {/* ════════════════════════════════════════════
             2. FIGHT RECORD & CAREER STATISTICS
@@ -481,6 +488,8 @@ export function SuperAppFighterDetail() {
             </div>
           </div>
         </section>
+
+        {fanData && <FightHistory data={fanData} fighterId={fighter.id} />}
 
         {/* ════════════════════════════════════════════
             3. FIGHTER VIDEOS SECTION
