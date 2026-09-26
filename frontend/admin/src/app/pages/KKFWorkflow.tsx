@@ -6,22 +6,13 @@ import {
   Crown, Plus, Filter, Search, ArrowRight, Upload, CheckSquare, X, ChevronDown, ChevronUp,
   MapPin, Award
 } from "lucide-react";
-import { MOCK_EVENTS, MOCK_MATCHES, MOCK_FIGHTERS, MOCK_CLUBS } from "../data/mock";
+import { MOCK_EVENTS, MOCK_MATCHES } from "../data/mock";
 import { usePermissions } from "../hooks/usePermissions";
 import { MOCK_USERS } from "../data/users";
-import { createWorkflowEntry } from "../utils/workflowValidation";
 import { toast } from "sonner";
 import { MOCK_CHAMPIONS } from "../data/champion";
-import { KKFDetailModal } from "../components/KKFDetailModal";
 import { KKFEnhancedDetailModal } from "../components/KKFEnhancedDetailModal";
-import { 
-  type WorkflowType, 
-  type WorkflowStatus, 
-  type ValidationCheck, 
-  type WorkflowRequest, 
-  MOCK_WORKFLOW_REQUESTS,
-  updateWorkflowStatus
-} from "../data/workflow";
+import { type WorkflowType, type WorkflowRequest, MOCK_WORKFLOW_REQUESTS, updateWorkflowStatus } from "../data/workflow";
 
 export function KKFWorkflow() {
   const navigate = useNavigate();

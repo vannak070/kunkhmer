@@ -25,7 +25,7 @@ export const SOCIAL_LINKS: { label: string; url: string; path: string }[] = [
   },
 ];
 
-const CONTACT_EMAIL = "info@kunkhmer.com";
+export const CONTACT_EMAIL = "info@kunkhmer.com";
 
 interface SiteFooterProps {
   onSectionChange?: (section: NavSection) => void;

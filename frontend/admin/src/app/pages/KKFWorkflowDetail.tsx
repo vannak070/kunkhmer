@@ -5,17 +5,10 @@ import {
   MessageSquare, FileText, Trophy, Crown, Building2, CheckSquare, User,
   Phone, Mail, MapPin, HeartPulse, Activity, Dumbbell, Award, IdCard, Home
 } from "lucide-react";
-import { MOCK_EVENTS, MOCK_MATCHES, MOCK_FIGHTERS, MOCK_CLUBS } from "../data/mock";
 import { usePermissions } from "../hooks/usePermissions";
 import { MOCK_USERS } from "../data/users";
 import { toast } from "sonner";
-import { 
-  type WorkflowType, 
-  type WorkflowStatus, 
-  type WorkflowRequest, 
-  MOCK_WORKFLOW_REQUESTS,
-  updateWorkflowStatus
-} from "../data/workflow";
+import { type WorkflowType, MOCK_WORKFLOW_REQUESTS, updateWorkflowStatus } from "../data/workflow";
 
 const getTypeIcon = (type: WorkflowType) => {
   switch (type) {

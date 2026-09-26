@@ -15,7 +15,6 @@ import {
   formatDisplayDate
 } from "../data/batches";
 import type { BatchStatus, MatchBatch } from "../data/batches";
-import type { MatchStatus } from "../data/event-types";
 import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
 import { clsx } from "clsx";

@@ -5,13 +5,10 @@ import { Search, Bell, ShoppingCart, User, Heart, Star, Flame, Zap, Crown, Chevr
 import { useWallet } from "../contexts/WalletContext";
 import { useOrders } from "../contexts/OrderContext";
 import { toast } from "sonner";
-import eventPosterImage from 'figma:asset/76de12a848bf50a1769fa454bf2dab5cb85ea354.png';
-import SponsorsSection from "../components/home/SponsorsSection";
-import TrendingFightersSection from "../components/home/TrendingFightersSection";
 import ClubDetailPage from "../components/home/ClubDetailPage";
 import SponsorDetailPage from "../components/home/SponsorDetailPage";
 import BroadcastDetailPage from "../components/home/BroadcastDetailPage";
-import FightNightHome from "../components/home/FightNightHome";
+import HomePage from "../components/home/HomePage";
 import { SiteHeader } from "../components/layout/SiteHeader";
 import { SiteFooter } from "../components/layout/SiteFooter";
 import { PublicStatusBadge } from "../components/PublicStatusBadge";
@@ -19,7 +16,7 @@ import { usePageTitle } from "../hooks/usePageTitle";
 import { useI18n } from "../i18n/LanguageContext";
 import { latestResults, useFanData } from "../data/fanData";
 import { DemoBanner, ResultRow } from "../components/fan/FanWidgets";
-import { publicName, publicStatus, pluralize, readTimeMinutes, formatVideoDuration, formatViews, isCompletedStatus, FEDERATION_NAME } from "../utils/publicDisplay";
+import { publicName, readTimeMinutes, formatVideoDuration, formatViews } from "../utils/publicDisplay";
 
 /**
  * DATA SYNCHRONIZATION WITH KUN KHMER DIGITAL PLATFORM
@@ -3509,13 +3506,13 @@ export function SuperAppHome() {
 
       {/* Main Content */}
       {currentSection === "home" && (
-        <FightNightHome
+        <HomePage
           articles={newsArticles}
           upcomingEvents={upcomingEvents}
           pastEvents={pastEvents}
           fighters={fighters}
           videos={mediaContent}
-          sponsors={sponsors}
+          sponsors={sponsorsList}
           onOpenEvent={openEvent}
           onPlayVideo={(id) => setSelectedVideo(mediaContent.find((v) => v.id === id) ?? null)}
           onNavigate={(section) => handleSectionChange(section)}

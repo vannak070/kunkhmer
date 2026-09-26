@@ -14,13 +14,12 @@ import {
   formatDisplayDate
 } from "../data/batches";
 import type { BatchStatus, MatchBatch } from "../data/batches";
-import type { MatchStatus } from "../data/event-types";
 import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
 import { clsx } from "clsx";
 import { CalendarView } from "../components/CalendarView";
 import { api } from "../utils/api";
-import { getJudges, getReferees } from "../utils/officialsStore";
+import { getJudges } from "../utils/officialsStore";
 
 
 // Helper function to get status border color

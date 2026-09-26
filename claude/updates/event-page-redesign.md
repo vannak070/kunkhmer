@@ -76,8 +76,9 @@ server-side link previews.
   `mainEventBout()` (home uses it too); demo mode puts 3 sample results on
   the latest event.
 - 17 new `event.*` strings in English and Khmer (Khmer needs federation review).
-- Verified: `vite build` in `kunkhmer_frontend_public` passes; `tsc` over the
-  router's import graph has no errors. In the browser at 1280×800 and 375×812,
+- Verified: `vite build` in `kunkhmer_frontend_public` passes. (Correction: the
+  first `tsc` run was on the host, which lacks dependencies, so it checked
+  nothing; re-run in the container later with no errors in the changed files.) In the browser at 1280×800 and 375×812,
   English and Khmer: old URL redirects, poster header, fight card, Results tab
   (demo data) defaults for past events, tab Back/Forward, not-found page,
   home "Results" button opens the new page, no horizontal scroll on phones.

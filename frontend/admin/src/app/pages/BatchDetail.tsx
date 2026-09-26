@@ -18,7 +18,6 @@ import { useEffect } from "react";
 import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
 import { clsx } from "clsx";
-import kkfLogo from "../../assets/modern_logo.png";
 import { getJudges, getReferees } from "../utils/officialsStore";
 
 export function BatchDetail() {

@@ -10,6 +10,7 @@ import { SiteHeader } from "../components/layout/SiteHeader";
 import { SiteFooter } from "../components/layout/SiteFooter";
 import { CountdownChip, DemoBanner, WhereToWatch, daysUntil } from "../components/fan/FanWidgets";
 import { BoutRow, MainEventFaceoff, SponsorStrip, type EventSponsor } from "../components/event/EventParts";
+import { PresentedBy } from "../components/home/HomePage";
 import { PublicStatusBadge } from "../components/PublicStatusBadge";
 import { ShareButtons } from "../components/ShareButtons";
 import { broadcasterForEvent, eventBouts, mainEventBout, useFanData, type Bout } from "../data/fanData";
@@ -81,6 +82,9 @@ export function EventDetail() {
     sponsors.push({ id: event.main_sponsor_id || "main", name: event.main_sponsor_name, logo: event.main_sponsor_logo_url || null });
   }
   const organizer = event ? publicName(event.organizer_name, null) : null;
+  const mainSponsor = event?.main_sponsor_name
+    ? sponsors.find((s) => s.id === event.main_sponsor_id) ?? { id: "main", name: event.main_sponsor_name, logo: event.main_sponsor_logo_url || null, url: null }
+    : null;
 
   const tabLabel: Record<View, string> = {
     card: t("event.tabCard"),
@@ -174,6 +178,12 @@ export function EventDetail() {
                           </div>
                         )}
                       </dl>
+                    )}
+
+                    {mainSponsor && (
+                      <div className="mb-6">
+                        <PresentedBy sponsor={{ ...mainSponsor, logo: mainSponsor.logo ?? null, url: mainSponsor.url ?? null }} tone="dark" />
+                      </div>
                     )}
 
                     <div className="flex flex-wrap items-center gap-3">

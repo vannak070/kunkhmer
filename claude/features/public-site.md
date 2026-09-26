@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress — phases 1–4 done; brand step 1 (Fight Night home) and step 2 (event page) built, not yet committed; step 3 (menu consolidation) next |
+| **Status** | In progress — phases 1–4 done; step 2 (event page) and the light home redesign with partner promotion built, not yet committed; step 3 (menu consolidation) next |
 | **Jira** | TBD |
 | **Figma** | TBD — brand guideline: design system artifact "Kun Khmer Brand" (https://claude.ai/artifact/5dHcDztT7toqRYCFrcKFLT, owner-private) |
 
@@ -40,7 +40,7 @@ federation's records.
 | Area | Files | Notes |
 |---|---|---|
 | Layout | `components/layout/SiteHeader.tsx`, `SiteFooter.tsx`, `GlobalSearch.tsx`, `HeaderAccount.tsx` | Shared by every page. Search indexes fighters, events and news on first focus. |
-| Home | `components/home/FightNightHome.tsx` | Full-width bands: top stories (night) → next fight night (day) → featured fighters (night) → results + news (day, only unseen stories) → videos (night) → partners (day) → manifesto + social (night). Old `renderHome` removed. |
+| Home | `components/home/HomePage.tsx` | One dark hero (welcome + buttons, next to the upcoming fight night with poster, countdown and "Presented by" main sponsor; no upcoming event → latest story), then light sections: official partners bar (sponsors by tier + broadcaster, linked) → news with fight nights and latest results → featured fighters (real photos first) → videos → Become a partner (mailto `CONTACT_EMAIL`, reach stats shown only from 10 up) → newcomer guide + social. Stock-photo fallbacks from `SuperAppHome` are replaced by a brand block (`isRealImage`). |
 | Event | `pages/EventDetail.tsx`, `components/event/EventParts.tsx` | Fight Night poster header (event image, or the main-event face-off when there is none), day countdown, stats, add to calendar, share. Tabs Fight card · Results · Where to watch; a tab without data is hidden, past events open on Results. Main event = first title bout, else first bout (`mainEventBout`). Phones stack each bout (fighters side by side, result underneath). |
 | Sections | `pages/SuperAppHome.tsx` | Still one large file for matches, news, fighters, partners, shop. Section comes from `/:section`; `?event=` only redirects to `/events/:id`. |
 | Fighter | `pages/SuperAppFighterDetail.tsx`, `components/fan/FighterHistory.tsx`, `FollowButton.tsx` | Fight history, next fight, teammates from the API. |
@@ -85,5 +85,5 @@ and Khmer (`claude/tests/test-admin-ui.md` pattern), and run `vite build` in the
 - Shop / payments not started (payment provider TBD, e.g. ABA PayWay).
 - Link previews per page need server-side meta tags (chat apps don't run JS).
 - Before launch: remove `noindex` from `index.html`, set `SITE_URL`.
-- Unused after the home redesign: `components/home/HeroSection.tsx`, `TrendingFightersSection.tsx`.
+- Unused after the home redesigns: `components/home/HeroSection.tsx`, `TrendingFightersSection.tsx` (`SponsorsSection.tsx` is still used on the Partners page).
 - Fighter "Verified" badge currently means status Active, not federation-verified.

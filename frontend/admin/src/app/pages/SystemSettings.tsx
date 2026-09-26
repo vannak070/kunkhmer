@@ -6,10 +6,7 @@ import {
 import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
 import { api } from "../utils/api";
-import { 
-  BROADCAST_STATIONS, GLOVE_TYPES, WEIGHT_RANGES, ORGANIZERS, VENUES, 
-  FIGHTING_RULES, SYSTEM_CONFIGS, type Venue 
-} from "../data/masterData";
+import { GLOVE_TYPES, WEIGHT_RANGES, ORGANIZERS, VENUES, FIGHTING_RULES, SYSTEM_CONFIGS, type Venue } from "../data/masterData";
 import { 
   getJudges, getReferees, addJudge, addReferee, deleteJudge, deleteReferee, type Official 
 } from "../utils/officialsStore";
