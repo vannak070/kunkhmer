@@ -98,7 +98,7 @@ exports[`batches (sub-events) > lists and shows batches publicly > list item 1`]
   "created_at": "datetime(.000000Z)",
   "created_by": {
     "club_id": "null",
-    "created_at": "null",
+    "created_at": "datetime(.000000Z)",
     "email": "string",
     "full_name": "string",
     "id": "uuid",
@@ -172,7 +172,7 @@ exports[`batches (sub-events) > updates a batch 1`] = `
       "created_at": "datetime(.000000Z)",
       "created_by": {
         "club_id": "null",
-        "created_at": "null",
+        "created_at": "datetime(.000000Z)",
         "email": "string",
         "full_name": "string",
         "id": "uuid",

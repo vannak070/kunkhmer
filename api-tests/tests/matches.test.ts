@@ -32,8 +32,10 @@ const fullBatch = () => ({
   batchNumber: `B-${uniq()}`,
 });
 
+// Created by the test organizer rather than the seeded admin, so snapshots
+// don't depend on how the seed data was inserted.
 async function newBatch() {
-  return (await post("/matches/batches", fullBatch(), a.admin.token)).body.data.id as string;
+  return (await post("/matches/batches", fullBatch(), a.organizer.token)).body.data.id as string;
 }
 
 async function newMatch(overrides: Record<string, unknown> = {}) {

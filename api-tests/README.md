@@ -17,6 +17,14 @@ cd api-tests && npm install && npm test
 Restart the test API to reset its database:
 `docker compose --profile test restart backend-test`.
 
+Against the Node.js backend (`http://localhost:3004`, database rebuilt from
+its Prisma migrations on every start):
+
+```bash
+docker compose --profile test up -d backend-node-test
+cd backend-node && npm run test:api
+```
+
 | Env var | Default | Purpose |
 |---|---|---|
 | `API_URL` | `http://localhost:3002/api` | Backend under test |

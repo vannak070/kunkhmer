@@ -82,6 +82,45 @@ services:
       postgres:
         condition: service_healthy
 
+  # Node.js API (replacing the Laravel backend). Same database as `backend`.
+  backend-node:
+    build:
+      context: ./backend-node
+      target: dev
+    container_name: kunkhmer_backend_node
+    restart: unless-stopped
+    ports:
+      - "3003:3001"
+    volumes:
+      - ./backend-node:/app
+      - backend_node_modules:/app/node_modules
+    environment:
+      DATABASE_URL: postgresql://kunkhmer:kunkhmer123@postgres:5432/kunkhmer_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Node.js API for api-tests/ — database rebuilt from Prisma migrations on every start.
+  # Start with: docker compose --profile test up -d backend-node-test
+  backend-node-test:
+    build:
+      context: ./backend-node
+      target: dev
+    container_name: kunkhmer_backend_node_test
+    profiles: ["test"]
+    ports:
+      - "3004:3001"
+    volumes:
+      - ./backend-node:/app
+      - backend_node_modules:/app/node_modules
+    environment:
+      DATABASE_URL: postgresql://kunkhmer:kunkhmer123@postgres:5432/kunkhmer_node_test
+      RESET_DATABASE: "true"
+      LOG_LEVEL: warn
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   frontend-admin:
     build:
       context: ./frontend/admin
@@ -123,3 +162,4 @@ volumes:
   backend_vendor:
   frontend_admin_node_modules:
   frontend_public_node_modules:
+  backend_node_modules:

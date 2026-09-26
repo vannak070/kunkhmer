@@ -4,22 +4,54 @@ Fastify + Prisma + TypeScript rewrite of the Laravel API in `../backend`.
 It uses the same PostgreSQL database and must return the same responses, which
 `../api-tests` verifies.
 
-## Setup
+## Running
+
+With Docker (from the repo root), next to the Laravel backend:
+
+```bash
+docker compose up -d backend-node      # http://localhost:3003/api, dev database
+```
+
+Without Docker:
 
 ```bash
 cp .env.example .env      # point DATABASE_URL at your database
 npm install
-npm run db:generate       # generate the Prisma client
+npm run db:prepare        # migrations (+ baseline for a Laravel database) and seed
 npm run dev               # http://localhost:3003 (PORT in .env)
 ```
 
-## Checking against the contract tests
+## Database and migrations
+
+Prisma owns the schema: `prisma/schema.prisma` plus `prisma/migrations/`.
+Every start runs `src/scripts/prepare-db.ts`, which:
+
+1. waits for PostgreSQL and creates the database if it doesn't exist
+2. on a database created by the Laravel backend, marks `0_init` as applied
+   (its schema is already there), so existing data is kept as is
+3. applies pending migrations (`prisma migrate deploy`)
+4. creates the default Super Admin `admin` if there are no users
+   (password `admin123`, or `SEED_ADMIN_PASSWORD`)
+
+To change the schema: edit `schema.prisma`, then `npm run db:migrate` to
+create a migration, and commit it.
+
+## Contract tests
 
 ```bash
-docker compose --profile test up -d backend-test   # resets kunkhmer_test
-npm run dev                                         # .env points at kunkhmer_test
-npm run test:api                                    # in another terminal
+docker compose --profile test up -d backend-node-test   # http://localhost:3004
+npm run test:api
 ```
+
+The test service rebuilds its database from the Prisma migrations on every
+start, so a passing run also proves the migrations create a correct schema.
+Restart it to reset: `docker compose --profile test restart backend-node-test`.
+
+## Production image
+
+`docker build .` builds a production image (compiled JavaScript, non-root
+user). It needs `DATABASE_URL`, listens on `PORT` (default 3001) and prepares
+the database on start.
 
 ## Layout
 
@@ -34,7 +66,10 @@ src/
     dates.ts        the date formats the Laravel API returned
     http.ts         response helpers and HttpError
   modules/<name>/routes.ts
-prisma/schema.prisma  introspected from the existing database
+  scripts/          prepare-db (migrations, baseline, seed), seed
+prisma/
+  schema.prisma     introspected from the Laravel database, then tidied
+  migrations/       0_init = the schema as Laravel left it
 ```
 
 ## Compatibility notes
@@ -66,5 +101,4 @@ prisma/schema.prisma  introspected from the existing database
 All modules are ported: the full `api-tests` suite passes (135 tests),
 including the three tests for Laravel bugs that are skipped on Laravel.
 
-Still to do before switching over: Docker service, moving schema
-migrations from Laravel to Prisma, and pointing the frontends at it.
+Still to do: switch the frontends over to this backend and remove `../backend`.
