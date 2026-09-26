@@ -1,0 +1,220 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`fighters CRUD > creates a fighter with all fields 1`] = `
+{
+  "body": {
+    "data": {
+      "alias": "string",
+      "clubId": "uuid",
+      "clubName": "string",
+      "createdAt": "datetime(+00:00)",
+      "currentWeight": "number",
+      "dateOfBirth": "date",
+      "gender": "string",
+      "grade": "string",
+      "height": "number",
+      "id": "uuid",
+      "image": "string",
+      "name": "string",
+      "nameKhmer": "string",
+      "nationality": "string",
+      "professionalStatus": "null",
+      "province": "string",
+      "record": "string",
+      "status": "string",
+      "style": "string",
+      "updatedAt": "datetime(+00:00)",
+      "verifiedBy": "null",
+      "verifiedDate": "null",
+    },
+    "success": "boolean",
+  },
+  "status": 201,
+}
+`;
+
+exports[`fighters CRUD > deletes a fighter 1`] = `
+{
+  "body": {
+    "message": "string",
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`fighters CRUD > lists fighters publicly and filters by status and clubId > list item 1`] = `
+{
+  "alias": "string",
+  "clubId": "uuid",
+  "clubName": "string",
+  "createdAt": "datetime(+00:00)",
+  "currentWeight": "number",
+  "dateOfBirth": "date",
+  "gender": "string",
+  "grade": "string",
+  "height": "number",
+  "id": "uuid",
+  "image": "string",
+  "name": "string",
+  "nameKhmer": "string",
+  "nationality": "string",
+  "professionalStatus": "string",
+  "province": "string",
+  "record": "string",
+  "status": "string",
+  "style": "string",
+  "updatedAt": "datetime(+00:00)",
+  "verifiedBy": "null",
+  "verifiedDate": "null",
+}
+`;
+
+exports[`fighters CRUD > returns 404 for unknown fighters 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 404,
+}
+`;
+
+exports[`fighters CRUD > shows a fighter by id, by name, by slug and by Khmer name 1`] = `
+{
+  "body": {
+    "data": {
+      "alias": "string",
+      "clubId": "uuid",
+      "clubName": "string",
+      "createdAt": "datetime(+00:00)",
+      "currentWeight": "number",
+      "dateOfBirth": "date",
+      "gender": "string",
+      "grade": "string",
+      "height": "number",
+      "id": "uuid",
+      "image": "string",
+      "name": "string",
+      "nameKhmer": "string",
+      "nationality": "string",
+      "professionalStatus": "string",
+      "province": "string",
+      "record": "string",
+      "status": "string",
+      "style": "string",
+      "updatedAt": "datetime(+00:00)",
+      "verifiedBy": "null",
+      "verifiedDate": "null",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`fighters CRUD > updates only the given fields 1`] = `
+{
+  "body": {
+    "data": {
+      "alias": "string",
+      "clubId": "uuid",
+      "clubName": "string",
+      "createdAt": "datetime(+00:00)",
+      "currentWeight": "number",
+      "dateOfBirth": "date",
+      "gender": "string",
+      "grade": "string",
+      "height": "number",
+      "id": "uuid",
+      "image": "string",
+      "name": "string",
+      "nameKhmer": "string",
+      "nationality": "string",
+      "professionalStatus": "string",
+      "province": "string",
+      "record": "string",
+      "status": "string",
+      "style": "string",
+      "updatedAt": "datetime(+00:00)",
+      "verifiedBy": "null",
+      "verifiedDate": "null",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`fighters CRUD > verifies a fighter 1`] = `
+{
+  "body": {
+    "data": {
+      "alias": "string",
+      "clubId": "uuid",
+      "clubName": "string",
+      "createdAt": "datetime(+00:00)",
+      "currentWeight": "number",
+      "dateOfBirth": "date",
+      "gender": "string",
+      "grade": "string",
+      "height": "number",
+      "id": "uuid",
+      "image": "string",
+      "name": "string",
+      "nameKhmer": "string",
+      "nationality": "string",
+      "professionalStatus": "string",
+      "province": "string",
+      "record": "string",
+      "status": "string",
+      "style": "string",
+      "updatedAt": "datetime(+00:00)",
+      "verifiedBy": "uuid",
+      "verifiedDate": "datetime(.000000Z)",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`fighters permissions > a Club/Gym user cannot edit another club's fighters 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`fighters permissions > club cannot verify or delete fighters 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`fighters permissions > organizer cannot verify or delete fighters 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`fighters permissions > referee cannot verify or delete fighters 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;

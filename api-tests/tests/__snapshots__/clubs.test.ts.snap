@@ -1,0 +1,163 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`clubs CRUD > creates a club with all fields 1`] = `
+{
+  "body": {
+    "data": {
+      "created_at": "datetime(.000000Z)",
+      "description": "string",
+      "email": "string",
+      "established": "string",
+      "head_coach": "string",
+      "id": "uuid",
+      "image": "string",
+      "location": "string",
+      "name": "string",
+      "name_khmer": "string",
+      "phone": "string",
+      "rating": "number",
+      "status": "string",
+      "updated_at": "datetime(.000000Z)",
+    },
+    "success": "boolean",
+  },
+  "status": 201,
+}
+`;
+
+exports[`clubs CRUD > deletes a club 1`] = `
+{
+  "body": {
+    "data": {
+      "created_at": "datetime(.000000Z)",
+      "description": "string",
+      "email": "string",
+      "established": "string",
+      "head_coach": "string",
+      "id": "uuid",
+      "image": "string",
+      "location": "string",
+      "name": "string",
+      "name_khmer": "string",
+      "phone": "string",
+      "rating": "number",
+      "status": "string",
+      "updated_at": "datetime(.000000Z)",
+    },
+    "message": "string",
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`clubs CRUD > lists and shows clubs publicly, with a fighter count > list item 1`] = `
+{
+  "created_at": "datetime(.000000Z)",
+  "description": "string",
+  "email": "string",
+  "established": "string",
+  "fighters_count": "number",
+  "head_coach": "string",
+  "id": "uuid",
+  "image": "string",
+  "location": "string",
+  "name": "string",
+  "name_khmer": "string",
+  "phone": "string",
+  "rating": "number",
+  "status": "string",
+  "updated_at": "datetime(.000000Z)",
+}
+`;
+
+exports[`clubs CRUD > lists and shows clubs publicly, with a fighter count > show 1`] = `
+{
+  "body": {
+    "data": {
+      "created_at": "datetime(.000000Z)",
+      "description": "string",
+      "email": "string",
+      "established": "string",
+      "fighters_count": "number",
+      "head_coach": "string",
+      "id": "uuid",
+      "image": "string",
+      "location": "string",
+      "name": "string",
+      "name_khmer": "string",
+      "phone": "string",
+      "rating": "number",
+      "status": "string",
+      "updated_at": "datetime(.000000Z)",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`clubs CRUD > returns 404 for unknown clubs 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 404,
+}
+`;
+
+exports[`clubs CRUD > updates only the given fields 1`] = `
+{
+  "body": {
+    "data": {
+      "created_at": "datetime(.000000Z)",
+      "description": "string",
+      "email": "string",
+      "established": "string",
+      "head_coach": "string",
+      "id": "uuid",
+      "image": "string",
+      "location": "string",
+      "name": "string",
+      "name_khmer": "string",
+      "phone": "string",
+      "rating": "number",
+      "status": "string",
+      "updated_at": "datetime(.000000Z)",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`clubs permissions > club cannot create, update or delete clubs 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`clubs permissions > organizer cannot create, update or delete clubs 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`clubs permissions > referee cannot create, update or delete clubs 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;

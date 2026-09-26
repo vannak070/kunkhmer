@@ -1,0 +1,230 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`broadcast-stations > club cannot write 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`broadcast-stations > creates with all fields 1`] = `
+{
+  "body": {
+    "data": {
+      "active": "boolean",
+      "contact_email": "string",
+      "contact_person": "string",
+      "contact_phone": "string",
+      "created_at": "datetime(.000000Z)",
+      "id": "uuid",
+      "image": "string",
+      "logo_url": "string",
+      "name": "string",
+      "reach": "string",
+      "stream_url": "string",
+      "type": "string",
+      "updated_at": "datetime(.000000Z)",
+      "website_url": "string",
+    },
+    "success": "boolean",
+  },
+  "status": 201,
+}
+`;
+
+exports[`broadcast-stations > deletes (Super Admin only) 1`] = `
+{
+  "body": {
+    "data": {
+      "active": "boolean",
+      "contact_email": "string",
+      "contact_person": "string",
+      "contact_phone": "string",
+      "created_at": "datetime(.000000Z)",
+      "id": "uuid",
+      "image": "string",
+      "logo_url": "string",
+      "name": "string",
+      "reach": "string",
+      "stream_url": "string",
+      "type": "string",
+      "updated_at": "datetime(.000000Z)",
+      "website_url": "string",
+    },
+    "message": "string",
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`broadcast-stations > organizer cannot write 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`broadcast-stations > referee cannot write 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`broadcast-stations > returns 404 for unknown ids 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 404,
+}
+`;
+
+exports[`broadcast-stations > updates only the given fields 1`] = `
+{
+  "body": {
+    "data": {
+      "active": "boolean",
+      "contact_email": "string",
+      "contact_person": "string",
+      "contact_phone": "string",
+      "created_at": "datetime(.000000Z)",
+      "id": "uuid",
+      "image": "string",
+      "logo_url": "string",
+      "name": "string",
+      "reach": "string",
+      "stream_url": "string",
+      "type": "string",
+      "updated_at": "datetime(.000000Z)",
+      "website_url": "string",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`sponsors > club cannot write 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`sponsors > creates with all fields 1`] = `
+{
+  "body": {
+    "data": {
+      "active": "boolean",
+      "contact_email": "string",
+      "contact_person": "string",
+      "contact_phone": "string",
+      "created_at": "datetime(.000000Z)",
+      "id": "uuid",
+      "image": "string",
+      "industry": "string",
+      "logo_url": "string",
+      "name": "string",
+      "tier": "string",
+      "updated_at": "datetime(.000000Z)",
+      "website_url": "string",
+    },
+    "success": "boolean",
+  },
+  "status": 201,
+}
+`;
+
+exports[`sponsors > deletes (Super Admin only) 1`] = `
+{
+  "body": {
+    "data": {
+      "active": "boolean",
+      "contact_email": "string",
+      "contact_person": "string",
+      "contact_phone": "string",
+      "created_at": "datetime(.000000Z)",
+      "id": "uuid",
+      "image": "string",
+      "industry": "string",
+      "logo_url": "string",
+      "name": "string",
+      "tier": "string",
+      "updated_at": "datetime(.000000Z)",
+      "website_url": "string",
+    },
+    "message": "string",
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`sponsors > organizer cannot write 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`sponsors > referee cannot write 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`sponsors > returns 404 for unknown ids 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 404,
+}
+`;
+
+exports[`sponsors > updates only the given fields 1`] = `
+{
+  "body": {
+    "data": {
+      "active": "boolean",
+      "contact_email": "string",
+      "contact_person": "string",
+      "contact_phone": "string",
+      "created_at": "datetime(.000000Z)",
+      "id": "uuid",
+      "image": "string",
+      "industry": "string",
+      "logo_url": "string",
+      "name": "string",
+      "tier": "string",
+      "updated_at": "datetime(.000000Z)",
+      "website_url": "string",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;

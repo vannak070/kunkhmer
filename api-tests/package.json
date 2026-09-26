@@ -1,0 +1,16 @@
+{
+  "name": "kunkhmer-api-tests",
+  "private": true,
+  "type": "module",
+  "description": "Black-box HTTP contract tests for the Kun Khmer API (backend-agnostic)",
+  "scripts": {
+    "test": "vitest run",
+    "test:update": "vitest run -u",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2"
+  }
+}

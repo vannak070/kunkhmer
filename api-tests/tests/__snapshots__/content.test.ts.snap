@@ -1,0 +1,363 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`news > creates an article 1`] = `
+{
+  "body": {
+    "data": {
+      "author": "string",
+      "category": "string",
+      "content": "string",
+      "created_at": "datetime(.000000Z)",
+      "featured": "boolean",
+      "featured_image": "string",
+      "id": "uuid",
+      "publish_date": "date",
+      "status": "string",
+      "subtitle": "string",
+      "tags": [
+        "string",
+      ],
+      "title": "string",
+      "updated_at": "datetime(.000000Z)",
+      "views": "number",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`news > deletes an article 1`] = `
+{
+  "body": {
+    "data": {
+      "author": "string",
+      "category": "string",
+      "content": "string",
+      "created_at": "datetime(.000000Z)",
+      "featured": "boolean",
+      "featured_image": "string",
+      "id": "uuid",
+      "publish_date": "date",
+      "status": "string",
+      "subtitle": "string",
+      "tags": [
+        "string",
+      ],
+      "title": "string",
+      "updated_at": "datetime(.000000Z)",
+      "views": "number",
+    },
+    "message": "string",
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`news > lists and shows articles publicly > list item 1`] = `
+{
+  "author": "string",
+  "category": "string",
+  "content": "string",
+  "created_at": "datetime(.000000Z)",
+  "featured": "boolean",
+  "featured_image": "string",
+  "id": "uuid",
+  "publish_date": "date",
+  "status": "string",
+  "subtitle": "string",
+  "tags": [
+    "string",
+  ],
+  "title": "string",
+  "updated_at": "datetime(.000000Z)",
+  "views": "number",
+}
+`;
+
+exports[`news > returns 404 for unknown articles 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 404,
+}
+`;
+
+exports[`news > updates an article 1`] = `
+{
+  "body": {
+    "data": {
+      "author": "string",
+      "category": "string",
+      "content": "string",
+      "created_at": "datetime(.000000Z)",
+      "featured": "boolean",
+      "featured_image": "string",
+      "id": "uuid",
+      "publish_date": "date",
+      "status": "string",
+      "subtitle": "string",
+      "tags": [
+        "string",
+      ],
+      "title": "string",
+      "updated_at": "datetime(.000000Z)",
+      "views": "number",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`videos > creates a video with related fighter and club 1`] = `
+{
+  "body": {
+    "data": {
+      "category": "string",
+      "club": {
+        "created_at": "datetime(.000000Z)",
+        "description": "null",
+        "email": "null",
+        "established": "null",
+        "head_coach": "null",
+        "id": "uuid",
+        "image": "null",
+        "location": "null",
+        "name": "string",
+        "name_khmer": "null",
+        "phone": "null",
+        "rating": "number",
+        "status": "string",
+        "updated_at": "datetime(.000000Z)",
+      },
+      "club_id": "uuid",
+      "created_at": "datetime(.000000Z)",
+      "description": "string",
+      "duration": "string",
+      "fighter": {
+        "alias": "null",
+        "club_id": "uuid",
+        "created_at": "datetime(.000000Z)",
+        "current_weight": "number",
+        "date_of_birth": "date",
+        "deleted_at": "null",
+        "gender": "string",
+        "grade": "string",
+        "height": "number",
+        "id": "uuid",
+        "image": "null",
+        "medical_status": "string",
+        "name": "string",
+        "name_khmer": "string",
+        "nationality": "string",
+        "professional_status": "string",
+        "province": "null",
+        "record": "null",
+        "status": "string",
+        "style": "null",
+        "suspension_end_date": "null",
+        "updated_at": "datetime(.000000Z)",
+        "verified_by": "null",
+        "verified_date": "null",
+      },
+      "fighter_id": "uuid",
+      "id": "uuid",
+      "match": "null",
+      "match_id": "null",
+      "status": "string",
+      "tags": [
+        "string",
+      ],
+      "thumbnail": "string",
+      "title": "string",
+      "updated_at": "datetime(.000000Z)",
+      "views": "number",
+      "youtube_url": "string",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`videos > deletes a video 1`] = `
+{
+  "body": {
+    "data": {
+      "category": "string",
+      "club_id": "uuid",
+      "created_at": "datetime(.000000Z)",
+      "deleted_at": "datetime(.000000Z)",
+      "description": "string",
+      "duration": "string",
+      "fighter_id": "uuid",
+      "id": "uuid",
+      "match_id": "null",
+      "status": "string",
+      "tags": [
+        "string",
+      ],
+      "thumbnail": "string",
+      "title": "string",
+      "updated_at": "datetime(.000000Z)",
+      "views": "number",
+      "youtube_url": "string",
+    },
+    "message": "string",
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`videos > lists and shows videos publicly > list item 1`] = `
+{
+  "category": "string",
+  "club": {
+    "created_at": "datetime(.000000Z)",
+    "description": "null",
+    "email": "null",
+    "established": "null",
+    "head_coach": "null",
+    "id": "uuid",
+    "image": "null",
+    "location": "null",
+    "name": "string",
+    "name_khmer": "null",
+    "phone": "null",
+    "rating": "number",
+    "status": "string",
+    "updated_at": "datetime(.000000Z)",
+  },
+  "club_id": "uuid",
+  "created_at": "datetime(.000000Z)",
+  "deleted_at": "null",
+  "description": "string",
+  "duration": "string",
+  "fighter": {
+    "alias": "null",
+    "club_id": "uuid",
+    "created_at": "datetime(.000000Z)",
+    "current_weight": "number",
+    "date_of_birth": "date",
+    "deleted_at": "null",
+    "gender": "string",
+    "grade": "string",
+    "height": "number",
+    "id": "uuid",
+    "image": "null",
+    "medical_status": "string",
+    "name": "string",
+    "name_khmer": "string",
+    "nationality": "string",
+    "professional_status": "string",
+    "province": "null",
+    "record": "null",
+    "status": "string",
+    "style": "null",
+    "suspension_end_date": "null",
+    "updated_at": "datetime(.000000Z)",
+    "verified_by": "null",
+    "verified_date": "null",
+  },
+  "fighter_id": "uuid",
+  "id": "uuid",
+  "match": "null",
+  "match_id": "null",
+  "status": "string",
+  "tags": [
+    "string",
+  ],
+  "thumbnail": "string",
+  "title": "string",
+  "updated_at": "datetime(.000000Z)",
+  "views": "number",
+  "youtube_url": "string",
+}
+`;
+
+exports[`videos > returns 404 for unknown videos 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 404,
+}
+`;
+
+exports[`videos > updates a video 1`] = `
+{
+  "body": {
+    "data": {
+      "category": "string",
+      "club": {
+        "created_at": "datetime(.000000Z)",
+        "description": "null",
+        "email": "null",
+        "established": "null",
+        "head_coach": "null",
+        "id": "uuid",
+        "image": "null",
+        "location": "null",
+        "name": "string",
+        "name_khmer": "null",
+        "phone": "null",
+        "rating": "number",
+        "status": "string",
+        "updated_at": "datetime(.000000Z)",
+      },
+      "club_id": "uuid",
+      "created_at": "datetime(.000000Z)",
+      "deleted_at": "null",
+      "description": "string",
+      "duration": "string",
+      "fighter": {
+        "alias": "null",
+        "club_id": "uuid",
+        "created_at": "datetime(.000000Z)",
+        "current_weight": "number",
+        "date_of_birth": "date",
+        "deleted_at": "null",
+        "gender": "string",
+        "grade": "string",
+        "height": "number",
+        "id": "uuid",
+        "image": "null",
+        "medical_status": "string",
+        "name": "string",
+        "name_khmer": "string",
+        "nationality": "string",
+        "professional_status": "string",
+        "province": "null",
+        "record": "null",
+        "status": "string",
+        "style": "null",
+        "suspension_end_date": "null",
+        "updated_at": "datetime(.000000Z)",
+        "verified_by": "null",
+        "verified_date": "null",
+      },
+      "fighter_id": "uuid",
+      "id": "uuid",
+      "match": "null",
+      "match_id": "null",
+      "status": "string",
+      "tags": [
+        "string",
+      ],
+      "thumbnail": "string",
+      "title": "string",
+      "updated_at": "datetime(.000000Z)",
+      "views": "number",
+      "youtube_url": "string",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;

@@ -49,6 +49,39 @@ services:
       postgres:
         condition: service_healthy
 
+  # API instance for api-tests/ — own database, reset on every start.
+  # Start with: docker compose --profile test up -d backend-test
+  backend-test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kunkhmer_backend_test
+    profiles: ["test"]
+    working_dir: /app
+    entrypoint: ["/app/docker/test-entrypoint.sh"]
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./backend:/app
+      - backend_vendor:/app/vendor
+    environment:
+      APP_NAME: "Kun Khmer"
+      APP_ENV: testing
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:3002
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: kunkhmer_test
+      DB_USERNAME: kunkhmer
+      DB_PASSWORD: kunkhmer123
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      CACHE_STORE: array
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   frontend-admin:
     build:
       context: ./frontend/admin

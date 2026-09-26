@@ -12,6 +12,7 @@
     "build:prod:admin": "npm run build:prod --prefix frontend/admin",
     "build:prod": "npm run build:prod:public && npm run build:prod:admin",
     "docker:up": "docker compose up --build",
-    "docker:down": "docker compose down"
+    "docker:down": "docker compose down",
+    "test:api": "npm test --prefix api-tests"
   }
 }

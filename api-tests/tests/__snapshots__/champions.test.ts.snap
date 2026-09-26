@@ -1,0 +1,240 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`champions CRUD > applies defaults for a vacant title 1`] = `
+{
+  "body": {
+    "data": {
+      "approval_status": "string",
+      "batch_id": "null",
+      "belt_image_url": "null",
+      "certificate_url": "null",
+      "champion_type": "string",
+      "created_at": "datetime(.000000Z)",
+      "current_holder": "null",
+      "current_holder_id": "null",
+      "current_holder_name": "null",
+      "current_holder_name_db": "null",
+      "current_holder_nationality_db": "null",
+      "current_holder_photo_db": "null",
+      "date_awarded": "null",
+      "date_created": "datetime(.000000Z)",
+      "defense_count": "number",
+      "defenses": [],
+      "event_name": "null",
+      "id": "uuid",
+      "last_defense_date": "null",
+      "nationality": "null",
+      "next_defense_deadline": "null",
+      "notes": "null",
+      "organization": "string",
+      "status": "string",
+      "title_name": "string",
+      "trophy_image_url": "null",
+      "updated_at": "datetime(.000000Z)",
+      "weight_class": "number",
+      "winning_match_id": "null",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`champions CRUD > club cannot write titles 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`champions CRUD > creates a title with a current holder 1`] = `
+{
+  "body": {
+    "data": {
+      "approval_status": "string",
+      "batch_id": "string",
+      "belt_image_url": "string",
+      "certificate_url": "string",
+      "champion_type": "string",
+      "created_at": "datetime(.000000Z)",
+      "current_holder": {
+        "alias": "null",
+        "club_id": "uuid",
+        "created_at": "datetime(.000000Z)",
+        "current_weight": "number",
+        "date_of_birth": "date",
+        "deleted_at": "null",
+        "gender": "string",
+        "grade": "string",
+        "height": "number",
+        "id": "uuid",
+        "image": "string",
+        "medical_status": "string",
+        "name": "string",
+        "name_khmer": "string",
+        "nationality": "string",
+        "professional_status": "string",
+        "province": "null",
+        "record": "null",
+        "status": "string",
+        "style": "null",
+        "suspension_end_date": "null",
+        "updated_at": "datetime(.000000Z)",
+        "verified_by": "null",
+        "verified_date": "null",
+      },
+      "current_holder_id": "uuid",
+      "current_holder_name": "string",
+      "current_holder_name_db": "string",
+      "current_holder_nationality_db": "string",
+      "current_holder_photo_db": "string",
+      "date_awarded": "null",
+      "date_created": "datetime(.000000Z)",
+      "defense_count": "number",
+      "defenses": [],
+      "event_name": "string",
+      "id": "uuid",
+      "last_defense_date": "datetime(.000000Z)",
+      "nationality": "string",
+      "next_defense_deadline": "datetime(.000000Z)",
+      "notes": "string",
+      "organization": "string",
+      "status": "string",
+      "title_name": "string",
+      "trophy_image_url": "string",
+      "updated_at": "datetime(.000000Z)",
+      "weight_class": "number",
+      "winning_match_id": "null",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`champions CRUD > deletes a title (Super Admin only) 1`] = `
+{
+  "body": {
+    "data": {
+      "approval_status": "string",
+      "batch_id": "string",
+      "belt_image_url": "string",
+      "certificate_url": "string",
+      "champion_type": "string",
+      "created_at": "datetime(.000000Z)",
+      "current_holder_id": "uuid",
+      "current_holder_name": "string",
+      "date_awarded": "null",
+      "date_created": "datetime(.000000Z)",
+      "defense_count": "number",
+      "event_name": "string",
+      "id": "uuid",
+      "last_defense_date": "datetime(.000000Z)",
+      "nationality": "string",
+      "next_defense_deadline": "datetime(.000000Z)",
+      "notes": "string",
+      "organization": "string",
+      "status": "string",
+      "title_name": "string",
+      "trophy_image_url": "string",
+      "updated_at": "datetime(.000000Z)",
+      "weight_class": "number",
+      "winning_match_id": "null",
+    },
+    "message": "string",
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`champions CRUD > lists titles publicly > list item 1`] = `
+{
+  "approval_status": "string",
+  "batch_id": "string",
+  "belt_image_url": "string",
+  "certificate_url": "string",
+  "champion_type": "string",
+  "created_at": "datetime(.000000Z)",
+  "current_holder": {
+    "alias": "null",
+    "club_id": "uuid",
+    "created_at": "datetime(.000000Z)",
+    "current_weight": "number",
+    "date_of_birth": "date",
+    "deleted_at": "null",
+    "gender": "string",
+    "grade": "string",
+    "height": "number",
+    "id": "uuid",
+    "image": "string",
+    "medical_status": "string",
+    "name": "string",
+    "name_khmer": "string",
+    "nationality": "string",
+    "professional_status": "string",
+    "province": "null",
+    "record": "null",
+    "status": "string",
+    "style": "null",
+    "suspension_end_date": "null",
+    "updated_at": "datetime(.000000Z)",
+    "verified_by": "null",
+    "verified_date": "null",
+  },
+  "current_holder_id": "uuid",
+  "current_holder_name": "string",
+  "current_holder_name_db": "string",
+  "current_holder_nationality_db": "string",
+  "current_holder_photo_db": "string",
+  "date_awarded": "null",
+  "date_created": "datetime(.000000Z)",
+  "defense_count": "number",
+  "event_name": "string",
+  "id": "uuid",
+  "last_defense_date": "datetime(.000000Z)",
+  "nationality": "string",
+  "next_defense_deadline": "datetime(.000000Z)",
+  "notes": "string",
+  "organization": "string",
+  "status": "string",
+  "title_name": "string",
+  "trophy_image_url": "string",
+  "updated_at": "datetime(.000000Z)",
+  "weight_class": "number",
+  "winning_match_id": "null",
+}
+`;
+
+exports[`champions CRUD > organizer cannot write titles 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`champions CRUD > referee cannot write titles 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`champions CRUD > returns 404 for unknown titles 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 404,
+}
+`;

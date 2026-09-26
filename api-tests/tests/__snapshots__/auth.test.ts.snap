@@ -1,0 +1,153 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`GET /users/me and POST /users/logout > logout revokes the current token 1`] = `
+{
+  "body": {
+    "message": "string",
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`GET /users/me and POST /users/logout > returns 401 without a token 1`] = `
+{
+  "body": {
+    "message": "string",
+  },
+  "status": 401,
+}
+`;
+
+exports[`GET /users/me and POST /users/logout > returns the current user 1`] = `
+{
+  "body": {
+    "data": {
+      "clubId": "null",
+      "createdAt": "datetime(+00:00)",
+      "email": "string",
+      "fullName": "string",
+      "id": "uuid",
+      "lastLogin": "datetime(+00:00)",
+      "role": "string",
+      "status": "string",
+      "username": "string",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`POST /users/login > rejects missing fields with 422 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 422,
+}
+`;
+
+exports[`POST /users/login > returns a token and the user on valid credentials 1`] = `
+{
+  "body": {
+    "data": {
+      "token": "token",
+      "user": {
+        "clubId": "null",
+        "createdAt": "datetime(+00:00)",
+        "email": "string",
+        "fullName": "string",
+        "id": "uuid",
+        "lastLogin": "datetime(+00:00)",
+        "role": "string",
+        "status": "string",
+        "username": "string",
+      },
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`user management as Super Admin > creates, reads, updates and deletes a user > create 1`] = `
+{
+  "body": {
+    "data": {
+      "clubId": "uuid",
+      "createdAt": "datetime(+00:00)",
+      "email": "string",
+      "fullName": "string",
+      "id": "uuid",
+      "lastLogin": "null",
+      "role": "string",
+      "status": "string",
+      "username": "string",
+    },
+    "success": "boolean",
+  },
+  "status": 201,
+}
+`;
+
+exports[`user management as Super Admin > creates, reads, updates and deletes a user > delete 1`] = `
+{
+  "body": {
+    "message": "string",
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`user management as Super Admin > returns 404 for unknown users 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 404,
+}
+`;
+
+exports[`user management permissions > club cannot list, create, update or delete users 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`user management permissions > officer cannot list, create, update or delete users 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`user management permissions > organizer cannot list, create, update or delete users 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`user management permissions > referee cannot list, create, update or delete users 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
