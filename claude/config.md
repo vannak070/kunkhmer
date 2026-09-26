@@ -100,6 +100,8 @@ the untracked `docker-compose.override.yml`. Default login: `admin` / `admin123`
 
 - Passwords: bcrypt (`bcryptjs`, 12 rounds). Tokens: Sanctum-compatible bearer
   tokens in `personal_access_tokens`; logging in revokes earlier tokens.
+- Public-site fans are a separate account type with their own `kkf_` tokens
+  (`lib/fanAuth.ts`); never mix them with staff auth — see `features/fan-accounts.md`.
 - Never commit `.env` files. Never log tokens or password hashes.
 - Only use test credentials from the seed data when testing locally.
 
