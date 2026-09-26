@@ -2,7 +2,7 @@
 
 ```
 kunkhmer/
-├── backend/              Laravel API (PostgreSQL via Docker, SQLite for local)
+├── backend/              Node.js API (Fastify + Prisma + PostgreSQL)
 ├── frontend/
 │   ├── admin/            KKF management system (staff)
 │   └── public/           Fan/user website (scaffold)
@@ -22,21 +22,21 @@ docker compose up --build
 | Public frontend | http://localhost:5176 |
 | Backend API | http://localhost:3001/api |
 
-**Login (admin):** `admin` / `admin123` (after `DefaultSeeder` runs)
+**Login (admin):** `admin` / `admin123` (created on first start when the database is empty — change it)
 
 ## Local development (without Docker)
 
-**Backend** (requires PHP 8.4+):
+**Backend** (requires Node.js 22+ and PostgreSQL; `docker compose up -d postgres` works):
 
 ```bash
 cd backend
-composer install
-cp .env.example .env   # if needed
-php artisan key:generate
-php artisan migrate
-php artisan db:seed
-php -S 0.0.0.0:3001 -t public public/index.php
+npm install
+cp .env.example .env   # set DATABASE_URL
+npm run db:prepare     # migrations + default admin
+npm run dev            # http://localhost:3001
 ```
+
+See [backend/README.md](backend/README.md) for details.
 
 **Admin frontend:**
 
@@ -63,8 +63,18 @@ npm run dev:public
 
 ## Seeders
 
-- `DefaultSeeder` — minimal admin user (runs automatically in Docker when DB is empty)
-- `TestSeeder` — full demo data: `php artisan db:seed --class=TestSeeder`
+- Default admin — created automatically on start when the database has no users
+- Demo data (clubs, fighters, users for every role, events, matches, titles):
+  `docker exec kunkhmer_backend npm run db:seed:demo -- --reset` (wipes all data first)
+
+## API tests
+
+```bash
+docker compose --profile test up -d backend-test
+npm run test:api
+```
+
+See [api-tests/README.md](api-tests/README.md).
 
 ## Docker commands
 
@@ -114,12 +124,13 @@ Output: `frontend/public/dist/` and `frontend/admin/dist/`.
 VITE_BASE_PATH=/my-path/ VITE_API_BASE_URL=/my-path/api npm run build --prefix frontend/public
 ```
 
-### Backend env (demo example)
+### Backend
 
-```env
-APP_URL=https://demo.hovasolutions.tech/kunkhmer
-FRONTEND_PUBLIC_URL=https://demo.hovasolutions.tech/kunkhmer
-FRONTEND_ADMIN_URL=https://demo.hovasolutions.tech/kunkhmer/admin
-```
+Build the production image with `docker build ./backend`. It needs
+`DATABASE_URL` (and optionally `PORT`, default 3001; `SEED_ADMIN_PASSWORD`
+for the first start) and applies database migrations on start. Serve it
+behind the same host as the frontends so `/api` (or `/kunkhmer/api` for the
+demo build) reaches it.
 
-For production, set these to your production domain(s). No frontend code changes needed — rebuild with `build:prod` instead of `build:demo`.
+No frontend code changes are needed between environments — rebuild with
+`build:prod` instead of `build:demo`.

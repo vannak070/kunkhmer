@@ -1,6 +1,6 @@
 /** Batches (sub-events), matches, and recording match results. */
 import { beforeAll, describe, expect, it } from "vitest";
-import { type Actors, del, findById, get, isLaravel, post, put, setupActors, shape, shapeOf, uniq } from "./helpers";
+import { type Actors, del, findById, get, post, put, setupActors, shape, shapeOf, uniq } from "./helpers";
 
 let a: Actors;
 let eventId: string;
@@ -296,9 +296,9 @@ describe("title matches update the championship registry", () => {
     expect(c.defenses).toEqual([]);
   });
 
-  // Known Laravel bug: re-submitting a title match result re-runs the
-  // championship logic, logging a second defense and double counting.
-  it.skipIf(isLaravel)("does not double count when a title result is re-submitted", async () => {
+  // The Laravel backend re-ran the championship logic on every submission,
+  // logging a second defense and double counting; fixed in the Node.js backend.
+  it("does not double count when a title result is re-submitted", async () => {
     const holder = await newFighter();
     const championshipId = await newTitle(holder);
     const m = await newMatch({ fighterAId: holder, isTitleMatch: true, championshipId });

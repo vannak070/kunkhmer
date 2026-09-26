@@ -1,8 +1,9 @@
 /**
  * Shared helpers for the API contract tests.
  *
- * The tests only talk HTTP, so they run unchanged against any backend
- * (Laravel today, Node.js after the migration). Response formats are pinned
+ * The tests only talk HTTP, so they don't depend on the backend's
+ * implementation (they were first recorded against the old Laravel backend
+ * and verified the Node.js rewrite). Response formats are pinned
  * with shape snapshots: every key, its JSON type and — for strings — its
  * format (uuid, date, datetime flavour). Values themselves are not pinned.
  */
@@ -11,10 +12,6 @@ import { randomBytes } from "node:crypto";
 export const API_URL = process.env.API_URL ?? "http://localhost:3002/api";
 export const ADMIN_USERNAME = process.env.API_ADMIN_USERNAME ?? "admin";
 export const ADMIN_PASSWORD = process.env.API_ADMIN_PASSWORD ?? "admin123";
-
-/** Which backend is under test; used only to skip known Laravel bugs. */
-export const BACKEND = process.env.API_BACKEND ?? "laravel";
-export const isLaravel = BACKEND === "laravel";
 
 export type Json = any;
 

@@ -16,28 +16,15 @@
 /.antigravity
 Thumbs.db
 
-# Root leftovers (legacy — use backend/ or frontend/* instead)
+# Root leftovers
 /node_modules
-/vendor
 /dist
-/storage
 
-# Backend (Laravel)
+# Backend (Node.js) — see also backend/.gitignore
+backend/node_modules
+backend/dist
 backend/.env
-backend/.env.backup
-backend/.env.production
-backend/.phpunit.cache
-backend/.phpunit.result.cache
-backend/vendor
-backend/storage/*.key
-backend/storage/pail
-backend/public/build
-backend/public/hot
-backend/public/storage
-backend/auth.json
-backend/_ide_helper.php
-backend/Homestead.json
-backend/Homestead.yaml
+backend/src/generated
 
 # Frontends
 frontend/admin/node_modules

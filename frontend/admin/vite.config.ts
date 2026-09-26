@@ -36,7 +36,7 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5175,
     proxy: {
-      // Proxy /api calls to Laravel backend (Docker: backend:3001, local: localhost:3001)
+      // Proxy /api calls to the backend (Docker: backend:3001, local: localhost:3001)
       '/api': {
         target: process.env.VITE_PROXY_TARGET || 'http://localhost:3001',
         changeOrigin: true,

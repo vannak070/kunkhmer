@@ -1,0 +1,35 @@
+{
+  "name": "kunkhmer-backend",
+  "description": "Kun Khmer Federation REST API (Fastify + Prisma)",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "build": "prisma generate && tsc",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "test:api": "CI=true npm test --prefix ../api-tests",
+    "db:prepare": "tsx src/scripts/prepare-db.ts",
+    "db:seed": "tsx src/scripts/seed.ts",
+    "db:migrate": "prisma migrate dev",
+    "db:seed:demo": "tsx src/scripts/seed-demo.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "bcryptjs": "^3.0.3",
+    "fastify": "^5.12.5",
+    "pg": "^8.23.0",
+    "prisma": "^7.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3"
+  }
+}

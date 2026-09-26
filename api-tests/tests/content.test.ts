@@ -1,6 +1,6 @@
 /** News articles and videos. */
 import { beforeAll, describe, expect, it } from "vitest";
-import { type Actors, del, isLaravel, findById, get, post, put, setupActors, shape, shapeOf, uniq } from "./helpers";
+import { type Actors, del, findById, get, post, put, setupActors, shape, shapeOf, uniq } from "./helpers";
 
 let a: Actors;
 let fighterId: string;
@@ -129,9 +129,9 @@ describe("videos", () => {
     expect(shapeOf(res)).toMatchSnapshot();
   });
 
-  // Known Laravel bug: empty strings become null before the controller runs,
-  // and isset(null) is false, so a relation can never be cleared.
-  it.skipIf(isLaravel)("clears a relation when given an empty value", async () => {
+  // The Laravel backend couldn't do this (empty strings became null before
+  // its isset() check); fixed in the Node.js backend.
+  it("clears a relation when given an empty value", async () => {
     const { body } = await post("/videos", fullVideo(), a.officer.token);
     const res = await put(`/videos/${body.data.id}`, { fighterId: "" }, a.officer.token);
     expect(res.body.data).toMatchObject({ fighter_id: null, fighter: null, club_id: a.clubId });
