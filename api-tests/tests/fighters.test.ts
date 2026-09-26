@@ -61,12 +61,13 @@ describe("fighters CRUD", () => {
 
     const all = await get("/fighters");
     expect(all.status).toBe(200);
-    expect(shape(findById(all, draft.id))).toMatchSnapshot("list item");
+    expect(shape(findById(all, active.id))).toMatchSnapshot("list item");
+    // The public never sees fighters KKF hasn't verified; signed-in staff see everyone.
+    expect(all.body.data.map((f: any) => f.id)).not.toContain(draft.id);
+    const staffByClub = (await get(`/fighters?clubId=${otherClubId}`, a.officer.token)).body.data.map((f: any) => f.id);
+    expect(staffByClub).toEqual(expect.arrayContaining([draft.id, active.id]));
 
-    const byClub = (await get(`/fighters?clubId=${otherClubId}`)).body.data.map((f: any) => f.id);
-    expect(byClub).toEqual(expect.arrayContaining([draft.id, active.id]));
-
-    const activeInClub = (await get(`/fighters?clubId=${otherClubId}&status=Active`)).body.data.map((f: any) => f.id);
+    const activeInClub = (await get(`/fighters?clubId=${otherClubId}&status=Active`, a.officer.token)).body.data.map((f: any) => f.id);
     expect(activeInClub).toContain(active.id);
     expect(activeInClub).not.toContain(draft.id);
   });
@@ -74,7 +75,7 @@ describe("fighters CRUD", () => {
   it("shows a fighter by id, by name, by slug and by Khmer name", async () => {
     const name = `Sok Chan ${uniq()}`;
     const nameKhmer = `សុខ ${uniq()}`;
-    const { body } = await post("/fighters", { ...fullFighter(a.clubId), name, nameKhmer }, a.officer.token);
+    const { body } = await post("/fighters", { ...fullFighter(a.clubId), name, nameKhmer, status: "Active" }, a.officer.token);
 
     const byId = await get(`/fighters/${body.data.id}`);
     expect(byId.status).toBe(200);
@@ -122,6 +123,43 @@ describe("fighters CRUD", () => {
   });
 });
 
+describe("fighter verification", () => {
+  it("hides unverified fighters from the public until KKF verifies them", async () => {
+    const { body } = await post("/fighters", fullFighter(), a.club.token);
+    expect(body.data.status).toBe("Draft");
+    expect((await get(`/fighters/${body.data.id}`)).status).toBe(404);
+    expect((await get("/fighters?status=Draft")).body.data).toEqual([]);
+    expect((await get(`/fighters/${body.data.id}`, a.officer.token)).status).toBe(200);
+
+    await post(`/fighters/${body.data.id}/verify`, {}, a.officer.token);
+    expect((await get(`/fighters/${body.data.id}`)).status).toBe(200);
+  });
+
+  it("sends a fighter back with a reason; the club's edit re-submits it; verify clears the reason", async () => {
+    const { body } = await post("/fighters", fullFighter(), a.club.token);
+    const rejected = await post(`/fighters/${body.data.id}/reject`, { reason: "Photo missing" }, a.officer.token);
+    expect(rejected.status).toBe(200);
+    expect(rejected.body.data).toMatchObject({ status: "Rejected", reviewNote: "Photo missing" });
+    expect(shapeOf(rejected)).toMatchSnapshot();
+    expect((await get(`/fighters/${body.data.id}`)).status).toBe(404);
+
+    const resubmitted = await put(`/fighters/${body.data.id}`, { image: "https://example.com/new.png" }, a.club.token);
+    expect(resubmitted.body.data.status).toBe("Draft");
+
+    const verified = await post(`/fighters/${body.data.id}/verify`, {}, a.admin.token);
+    expect(verified.body.data).toMatchObject({ status: "Active", reviewNote: null, verifiedBy: a.admin.id });
+  });
+
+  it("requires a reason, staff only", async () => {
+    const { body } = await post("/fighters", fullFighter(), a.club.token);
+    expect((await post(`/fighters/${body.data.id}/reject`, {}, a.officer.token)).status).toBe(422);
+    for (const who of ["organizer", "club", "referee"] as const) {
+      expect((await post(`/fighters/${body.data.id}/reject`, { reason: "x" }, a[who].token)).status).toBe(403);
+    }
+    expect((await post(`/fighters/${body.data.id}/reject`, { reason: "x" })).status).toBe(401);
+  });
+});
+
 describe("fighters permissions", () => {
   it("a Club/Gym user always creates Draft fighters in their own club", async () => {
     const res = await post("/fighters", { ...fullFighter(otherClubId), status: "Active" }, a.club.token);
@@ -143,11 +181,12 @@ describe("fighters permissions", () => {
     expect(res.status).toBe(403);
   });
 
-  it("non-staff cannot set a fighter's status", async () => {
+  it("non-staff cannot set a fighter's status, and only staff or the fighter's club may edit", async () => {
     const created = await post("/fighters", { ...fullFighter(a.clubId), status: "Active" }, a.organizer.token);
     expect(created.body.data.status).toBe("Draft");
     const updated = await put(`/fighters/${created.body.data.id}`, { status: "Active" }, a.organizer.token);
-    expect(updated.body.data.status).toBe("Draft");
+    expect(updated.status).toBe(403);
+    expect((await put(`/fighters/${created.body.data.id}`, { alias: "x" }, a.referee.token)).status).toBe(403);
   });
 
   it.each(["organizer", "club", "referee"] as const)("%s cannot verify or delete fighters", async (who) => {
@@ -155,7 +194,7 @@ describe("fighters permissions", () => {
     const res = await post(`/fighters/${body.data.id}/verify`, {}, a[who].token);
     expect(shapeOf(res)).toMatchSnapshot();
     expect((await del(`/fighters/${body.data.id}`, a[who].token)).status).toBe(403);
-    expect((await get(`/fighters/${body.data.id}`)).body.data.status).toBe("Draft");
+    expect((await get(`/fighters/${body.data.id}`, a.admin.token)).body.data.status).toBe("Draft");
   });
 
   it("requires authentication for writes", async () => {

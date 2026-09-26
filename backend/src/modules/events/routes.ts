@@ -2,9 +2,15 @@
  * Events  →  /api/events/*
  *
  *   GET    /events, /events/:id   public; newest date first
- *   POST   /events                Super Admin, KKF Officer, Organizer (becomes organizer)
- *   PUT    /events/:id            Super Admin, KKF Officer, Organizer
+ *   POST   /events                Super Admin, KKF Officer, Organizer (becomes organizer; Organizer events start as Draft)
+ *   PUT    /events/:id            Super Admin, KKF Officer; Organizer only their own events and
+ *                                 status only → Published (once Approved) or Cancelled
+ *   POST   /events/:id/submit     Organizer (own) or STAFF: Draft → Pending KKF Approval
+ *   POST   /events/:id/approve    STAFF: Pending KKF Approval → Approved (records who/when)
+ *   POST   /events/:id/reject     STAFF: Pending KKF Approval → Draft with a comment
  *   DELETE /events/:id            Super Admin
+ *
+ * Public reads (no staff token) never show events that aren't published yet (UNAPPROVED).
  *
  * Responses carry both the snake_case row (with organizer, broadcast
  * station, main sponsor and sponsors nested) and the camelCase extras the
@@ -14,14 +20,19 @@ import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../../db.ts";
 import type { Prisma } from "../../generated/prisma/client.ts";
-import { Role, STAFF, requireAuth, requireRole } from "../../lib/auth.ts";
+import { Role, STAFF, hasRole, requireAuth, requireRole } from "../../lib/auth.ts";
 import { micro, now, toDate } from "../../lib/dates.ts";
-import { deleted, idParam, notFound, ok } from "../../lib/http.ts";
+import { HttpError, deleted, forbidden, idParam, notFound, ok } from "../../lib/http.ts";
 import { type Input, inputOf, parseBool } from "../../lib/input.ts";
 import { userArray } from "../auth/routes.ts";
 import { sponsorArray, stationArray } from "../settings/routes.ts";
 
 const EDITORS = [...STAFF, Role.Organizer];
+
+/** Event statuses the public never sees (not yet published). */
+export const UNAPPROVED = ["Draft", "Pending KKF Approval", "Approved"];
+export const PUBLIC_EVENT = { status: { notIn: UNAPPROVED } } satisfies Prisma.EventWhereInput;
+const PENDING = "Pending KKF Approval";
 
 export const eventRelations = {
   organizer: true,
@@ -49,6 +60,7 @@ export function eventArray(e: EventRow) {
     image: e.image,
     kkf_approval_date: micro(e.kkf_approval_date),
     kkf_approved_by: e.kkf_approved_by,
+    kkf_comment: e.kkf_comment,
     created_at: micro(e.created_at),
     updated_at: micro(e.updated_at),
     event_type: e.event_type,
@@ -90,7 +102,7 @@ function formatEvent(e: EventWithRelations) {
  * set on create); the frontends rely on this shape.
  */
 function formatCreatedEvent(e: EventWithRelations) {
-  const { kkf_approval_date: _date, kkf_approved_by: _by, ...rest } = formatEvent(e);
+  const { kkf_approval_date: _date, kkf_approved_by: _by, kkf_comment: _comment, ...rest } = formatEvent(e);
   return rest;
 }
 
@@ -112,15 +124,20 @@ async function loadEvent(id: string) {
 }
 
 export default async function eventRoutes(app: FastifyInstance) {
-  app.get("/events", async (_request, reply) => {
+  app.get("/events", async (request, reply) => {
     const events = await prisma.event.findMany({
+      where: request.user ? {} : PUBLIC_EVENT,
       include: eventRelations,
       orderBy: [{ date: "desc" }, { created_at: { sort: "desc", nulls: "last" } }],
     });
     return ok(reply, events.map(formatEvent));
   });
 
-  app.get("/events/:id", async (request, reply) => ok(reply, formatEvent(await loadEvent(idParam(request.params, "Event")))));
+  app.get("/events/:id", async (request, reply) => {
+    const event = await loadEvent(idParam(request.params, "Event"));
+    if (!request.user && UNAPPROVED.includes(event.status)) throw notFound("Event");
+    return ok(reply, formatEvent(event));
+  });
 
   app.register(async (protectedRoutes) => {
     protectedRoutes.addHook("preHandler", requireAuth);
@@ -139,7 +156,8 @@ export default async function eventRoutes(app: FastifyInstance) {
             date: toDate(input.required("date"))!,
             end_date: toDate(input.get("endDate")),
             location: input.required("location"),
-            status: input.get("status", "Draft"),
+            // Organizers' events wait for KKF approval; staff may set any status.
+            status: hasRole(user, STAFF) ? input.get("status", "Draft") : "Draft",
             organizer_id: user.id,
             broadcast_station_id: input.get("broadcastStationId"),
             description: input.get("description"),
@@ -161,11 +179,25 @@ export default async function eventRoutes(app: FastifyInstance) {
     });
 
     protectedRoutes.put("/events/:id", async (request, reply) => {
-      requireRole(request, EDITORS);
+      const user = requireRole(request, EDITORS);
       const id = idParam(request.params, "Event");
-      await loadEvent(id);
+      const existing = await loadEvent(id);
+      const staff = hasRole(user, STAFF);
+      if (!staff && existing.organizer_id !== user.id) throw forbidden();
 
       const input = inputOf(request.body);
+      if (!staff) {
+        const status = input.get<string>("status");
+        if (status && status !== existing.status) {
+          if (status === "Published" && existing.status !== "Approved") {
+            throw new HttpError(422, "This event needs KKF approval before it can be published");
+          }
+          if (status !== "Published" && status !== "Cancelled") {
+            throw new HttpError(422, "Submit the event for KKF approval instead of changing its status");
+          }
+        }
+        if (input.has("organizerId")) throw forbidden();
+      }
       const data: Prisma.EventUncheckedUpdateInput = input.pick({
         name: "name",
         location: "location",
@@ -190,6 +222,39 @@ export default async function eventRoutes(app: FastifyInstance) {
         ...(input.has("sponsorIds") ? syncSponsors(id, input.get("sponsorIds")) : []),
       ]);
 
+      return ok(reply, formatEvent(await loadEvent(id)));
+    });
+
+    protectedRoutes.post("/events/:id/submit", async (request, reply) => {
+      const user = requireRole(request, EDITORS);
+      const id = idParam(request.params, "Event");
+      const event = await loadEvent(id);
+      if (!hasRole(user, STAFF) && event.organizer_id !== user.id) throw forbidden();
+      if (event.status !== "Draft") throw new HttpError(422, "Only a Draft event can be submitted for approval");
+      await prisma.event.update({ where: { id }, data: { status: PENDING, kkf_comment: null, updated_at: now() } });
+      return ok(reply, formatEvent(await loadEvent(id)));
+    });
+
+    protectedRoutes.post("/events/:id/approve", async (request, reply) => {
+      const user = requireRole(request, STAFF);
+      const id = idParam(request.params, "Event");
+      const event = await loadEvent(id);
+      if (event.status !== PENDING) throw new HttpError(422, "Only an event waiting for approval can be approved");
+      const at = now();
+      await prisma.event.update({
+        where: { id },
+        data: { status: "Approved", kkf_approval_date: at, kkf_approved_by: user.id, kkf_comment: null, updated_at: at },
+      });
+      return ok(reply, formatEvent(await loadEvent(id)));
+    });
+
+    protectedRoutes.post("/events/:id/reject", async (request, reply) => {
+      requireRole(request, STAFF);
+      const id = idParam(request.params, "Event");
+      const event = await loadEvent(id);
+      if (event.status !== PENDING) throw new HttpError(422, "Only an event waiting for approval can be sent back");
+      const comment = String(inputOf(request.body).required("comment"));
+      await prisma.event.update({ where: { id }, data: { status: "Draft", kkf_comment: comment, updated_at: now() } });
       return ok(reply, formatEvent(await loadEvent(id)));
     });
 

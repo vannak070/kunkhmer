@@ -1,5 +1,39 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`fighter verification > sends a fighter back with a reason; the club's edit re-submits it; verify clears the reason 1`] = `
+{
+  "body": {
+    "data": {
+      "alias": "string",
+      "clubId": "uuid",
+      "clubName": "string",
+      "createdAt": "datetime(+00:00)",
+      "currentWeight": "number",
+      "dateOfBirth": "date",
+      "gender": "string",
+      "grade": "string",
+      "height": "number",
+      "id": "uuid",
+      "image": "string",
+      "name": "string",
+      "nameKhmer": "string",
+      "nationality": "string",
+      "professionalStatus": "string",
+      "province": "string",
+      "record": "string",
+      "reviewNote": "string",
+      "status": "string",
+      "style": "string",
+      "updatedAt": "datetime(+00:00)",
+      "verifiedBy": "null",
+      "verifiedDate": "null",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
 exports[`fighters CRUD > creates a fighter with all fields 1`] = `
 {
   "body": {
@@ -20,6 +54,7 @@ exports[`fighters CRUD > creates a fighter with all fields 1`] = `
       "nationality": "string",
       "province": "string",
       "record": "string",
+      "reviewNote": "null",
       "status": "string",
       "style": "string",
       "updatedAt": "datetime(+00:00)",
@@ -61,6 +96,7 @@ exports[`fighters CRUD > lists fighters publicly and filters by status and clubI
   "professionalStatus": "string",
   "province": "string",
   "record": "string",
+  "reviewNote": "null",
   "status": "string",
   "style": "string",
   "updatedAt": "datetime(+00:00)",
@@ -100,6 +136,7 @@ exports[`fighters CRUD > shows a fighter by id, by name, by slug and by Khmer na
       "professionalStatus": "string",
       "province": "string",
       "record": "string",
+      "reviewNote": "null",
       "status": "string",
       "style": "string",
       "updatedAt": "datetime(+00:00)",
@@ -133,6 +170,7 @@ exports[`fighters CRUD > updates only the given fields 1`] = `
       "professionalStatus": "string",
       "province": "string",
       "record": "string",
+      "reviewNote": "null",
       "status": "string",
       "style": "string",
       "updatedAt": "datetime(+00:00)",
@@ -166,6 +204,7 @@ exports[`fighters CRUD > verifies a fighter 1`] = `
       "professionalStatus": "string",
       "province": "string",
       "record": "string",
+      "reviewNote": "null",
       "status": "string",
       "style": "string",
       "updatedAt": "datetime(+00:00)",

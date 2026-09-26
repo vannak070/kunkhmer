@@ -8,15 +8,26 @@ let otherClubId: string;
 
 beforeAll(async () => {
   a = await setupActors();
-  eventId = (await post("/events", { name: `Match Event ${uniq()}`, date: "2026-10-01", location: "Phnom Penh" }, a.admin.token)).body.data.id;
+  // Published so its fight cards and bouts are publicly readable.
+  eventId = (await post("/events", { name: `Match Event ${uniq()}`, date: "2026-10-01", location: "Phnom Penh", status: "Published" }, a.admin.token)).body.data.id;
   otherClubId = (await post("/clubs", { name: `Other Club ${uniq()}` }, a.admin.token)).body.data.id;
 });
 
 async function newFighter(clubId: string | null = a.clubId) {
   const res = await post(
     "/fighters",
-    { name: `Fighter ${uniq()}`, nameKhmer: "x", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, clubId, grade: "B", image: "https://example.com/f.png" },
+    // Only KKF-verified (Active) fighters can be matched.
+    { name: `Fighter ${uniq()}`, nameKhmer: "x", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, clubId, grade: "B", image: "https://example.com/f.png", status: "Active" },
     a.admin.token,
+  );
+  return res.body.data.id as string;
+}
+
+async function draftFighter() {
+  const res = await post(
+    "/fighters",
+    { name: `Unverified ${uniq()}`, nameKhmer: "x", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, clubId: a.clubId },
+    a.club.token,
   );
   return res.body.data.id as string;
 }
@@ -307,5 +318,26 @@ describe("title matches update the championship registry", () => {
     const c = (await get(`/champions/${championshipId}`)).body.data;
     expect(c.defense_count).toBe(1);
     expect(c.defenses).toHaveLength(1);
+  });
+});
+
+describe("matching rules", () => {
+  it("won't match a fighter KKF hasn't verified", async () => {
+    const batch = await post("/matches/batches", { eventId, name: `Week ${uniq()}`, weekNumber: 9, date: "2026-10-20", location: "Arena" }, a.admin.token);
+    const res = await post(
+      "/matches",
+      { subEventId: batch.body.data.id, fighterAId: await newFighter(), fighterBId: await draftFighter(), rounds: 5, roundTime: 3, knockdownLimit: 3, agreedWeight: 60, gloveSize: "8oz", gloveBrand: "Twins" },
+      a.admin.token,
+    );
+    expect(res.status).toBe(422);
+    expect(res.body.error).toMatch(/must be verified by KKF/);
+  });
+
+  it("hides fight cards and bouts of unpublished events from the public", async () => {
+    const draftEvent = (await post("/events", { name: `Draft ${uniq()}`, date: "2026-12-12", location: "Arena" }, a.admin.token)).body.data.id;
+    const batch = (await post("/matches/batches", { eventId: draftEvent, name: `Week ${uniq()}`, weekNumber: 1, date: "2026-12-12", location: "Arena" }, a.admin.token)).body.data;
+    expect((await get(`/matches/batches/${batch.id}`)).status).toBe(404);
+    expect((await get("/matches/batches")).body.data.map((b: any) => b.id)).not.toContain(batch.id);
+    expect((await get(`/matches/batches/${batch.id}`, a.officer.token)).status).toBe(200);
   });
 });

@@ -7,7 +7,7 @@ let eventId: string;
 
 beforeAll(async () => {
   a = await setupActors();
-  eventId = (await post("/events", { name: `Fan Event ${uniq()}`, date: "2026-11-01", location: "Phnom Penh" }, a.admin.token)).body.data.id;
+  eventId = (await post("/events", { name: `Fan Event ${uniq()}`, date: "2026-11-01", location: "Phnom Penh", status: "Published" }, a.admin.token)).body.data.id;
 });
 
 const newEmail = () => `fan_${uniq()}@test.local`;
@@ -22,7 +22,7 @@ async function register(overrides: Record<string, unknown> = {}) {
 async function newFighter() {
   const res = await post(
     "/fighters",
-    { name: `Fighter ${uniq()}`, nameKhmer: "អ្នកប្រដាល់", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, grade: "B" },
+    { name: `Fighter ${uniq()}`, nameKhmer: "អ្នកប្រដាល់", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, grade: "B", status: "Active" },
     a.admin.token,
   );
   return res.body.data.id as string;

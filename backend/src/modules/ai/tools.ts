@@ -6,7 +6,8 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "../../db.ts";
 import type { Prisma } from "../../generated/prisma/client.ts";
-import { NOT_DELETED } from "../fighters/routes.ts";
+import { NOT_DELETED, PUBLIC_FIGHTER } from "../fighters/routes.ts";
+import { PUBLIC_EVENT as PUBLISHED_EVENT } from "../events/routes.ts";
 
 type ToolInput = Record<string, unknown>;
 
@@ -20,7 +21,8 @@ export function fighterSlug(f: { id: string; name?: string | null }): string {
 const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
 const num = (d: Prisma.Decimal | number | null | undefined) => (d == null ? null : Number(d));
 const todayUtc = () => new Date(new Date().toISOString().slice(0, 10));
-const PUBLIC_EVENT = { status: { not: "Draft" } } satisfies Prisma.EventWhereInput;
+const PUBLIC_EVENT = PUBLISHED_EVENT;
+const VISIBLE_FIGHTER = { ...NOT_DELETED, ...PUBLIC_FIGHTER } satisfies Prisma.FighterWhereInput;
 
 const fighterSelect = {
   id: true, name: true, name_khmer: true, alias: true, record: true, grade: true,
@@ -71,12 +73,12 @@ function bout(m: BoutRow) {
 
 async function findFighter(key: string) {
   const byId = /^[0-9a-f-]{36}$/i.test(key)
-    ? await prisma.fighter.findFirst({ where: { id: key, ...NOT_DELETED }, select: { id: true } })
+    ? await prisma.fighter.findFirst({ where: { id: key, ...VISIBLE_FIGHTER }, select: { id: true } })
     : null;
   if (byId) return byId.id;
   const match = await prisma.fighter.findFirst({
     where: {
-      ...NOT_DELETED,
+      ...VISIBLE_FIGHTER,
       OR: [
         { name: { contains: key, mode: "insensitive" } },
         { name_khmer: { contains: key } },
@@ -153,7 +155,7 @@ async function searchFighters({ query }: ToolInput) {
   if (!q) return { error: "query is required" };
   const rows = await prisma.fighter.findMany({
     where: {
-      ...NOT_DELETED,
+      ...VISIBLE_FIGHTER,
       OR: [
         { name: { contains: q, mode: "insensitive" } },
         { name_khmer: { contains: q } },
@@ -172,7 +174,7 @@ async function getFighter({ fighter }: ToolInput) {
   const id = await findFighter(String(fighter ?? "").trim());
   if (!id) return { error: "No registered fighter matches that name." };
   const f = await prisma.fighter.findFirst({
-    where: { id, ...NOT_DELETED },
+    where: { id, ...VISIBLE_FIGHTER },
     select: { ...fighterSelect, province: true, nationality: true, height: true, style: true, professional_status: true },
   });
   if (!f) return { error: "No registered fighter matches that name." };

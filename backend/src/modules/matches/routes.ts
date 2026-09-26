@@ -20,7 +20,8 @@ import { Role, STAFF, requireAuth, requireRole } from "../../lib/auth.ts";
 import { now, toDate } from "../../lib/dates.ts";
 import { HttpError, deleted, idParam, isUuid, notFound, ok } from "../../lib/http.ts";
 import { type Input, inputOf, parseBool } from "../../lib/input.ts";
-import { visibleFighter } from "../fighters/routes.ts";
+import { UNVERIFIED, visibleFighter } from "../fighters/routes.ts";
+import { UNAPPROVED } from "../events/routes.ts";
 import { formatMatch, formatSubEvent, matchArray, matchRelations, subEventArray, subEventRelations } from "./format.ts";
 import { recordMatchResult } from "./results.ts";
 import { notifyFollowers } from "../fans/notify.ts";
@@ -72,29 +73,45 @@ function matchUpdate(input: Input): Prisma.MatchUncheckedUpdateInput {
 
 export default async function matchRoutes(app: FastifyInstance) {
   // ─── Batches ─────────────────────────────────────────────
-  app.get("/matches/batches", async (_request, reply) => {
+  app.get("/matches/batches", async (request, reply) => {
     const subEvents = await prisma.subEvent.findMany({
+      where: request.user ? {} : { event: { status: { notIn: UNAPPROVED } } },
       include: subEventRelations,
       orderBy: [{ date: "desc" }, { created_at: { sort: "desc", nulls: "last" } }],
     });
     return ok(reply, subEvents.map(formatSubEvent));
   });
 
-  app.get("/matches/batches/:id", async (request, reply) => ok(reply, await loadSubEvent(idParam(request.params, "Sub-event (batch)"))));
+  app.get("/matches/batches/:id", async (request, reply) => {
+    const id = idParam(request.params, "Sub-event (batch)");
+    if (!request.user && (await prisma.subEvent.count({ where: { id, event: { status: { in: UNAPPROVED } } } }))) {
+      throw notFound("Sub-event (batch)");
+    }
+    return ok(reply, await loadSubEvent(id));
+  });
 
   // ─── Matches ─────────────────────────────────────────────
   app.get("/matches", async (request, reply) => {
     const { subEventId } = request.query as { subEventId?: string };
     if (subEventId && !isUuid(subEventId)) return ok(reply, []);
     const matches = await prisma.match.findMany({
-      where: subEventId ? { sub_event_id: subEventId } : {},
+      where: {
+        ...(subEventId ? { sub_event_id: subEventId } : {}),
+        ...(request.user ? {} : { event: { status: { notIn: UNAPPROVED } } }),
+      },
       include: matchRelations,
       orderBy: [{ sort_order: "asc" }, { created_at: { sort: "asc", nulls: "first" } }],
     });
     return ok(reply, matches.map(formatMatch));
   });
 
-  app.get("/matches/:id", async (request, reply) => ok(reply, await loadMatch(idParam(request.params, "Match"))));
+  app.get("/matches/:id", async (request, reply) => {
+    const id = idParam(request.params, "Match");
+    if (!request.user && (await prisma.match.count({ where: { id, event: { status: { in: UNAPPROVED } } } }))) {
+      throw notFound("Match");
+    }
+    return ok(reply, await loadMatch(id));
+  });
 
   app.register(async (protectedRoutes) => {
     protectedRoutes.addHook("preHandler", requireAuth);
@@ -164,6 +181,16 @@ export default async function matchRoutes(app: FastifyInstance) {
         eventId = (await prisma.subEvent.findUnique({ where: { id: subEventId } }))?.event_id ?? null;
       }
       if (!eventId) throw new HttpError(422, "The eventId field is required");
+
+      // Only KKF-verified fighters can be matched.
+      const fighterIds = [input.required<string>("fighterAId"), input.required<string>("fighterBId")].filter(isUuid);
+      const unverified = await prisma.fighter.findMany({
+        where: { id: { in: fighterIds }, status: { in: UNVERIFIED } },
+        select: { name: true },
+      });
+      if (unverified.length) {
+        throw new HttpError(422, `${unverified.map((f) => f.name).join(" and ")} must be verified by KKF before being matched`);
+      }
 
       const at = now();
       const match = await prisma.match.create({

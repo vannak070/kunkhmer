@@ -103,6 +103,8 @@ model Fighter {
   deleted_at          DateTime? @db.Timestamp(0)
   medical_status      String    @default("Cleared") @db.VarChar(255)
   suspension_end_date DateTime? @db.Date
+  /// Why KKF sent a fighter back (status Rejected); cleared on verify.
+  review_note         String?
 
   club       Club? @relation(fields: [club_id], references: [id], onUpdate: NoAction, map: "fighters_club_id_foreign")
   verifiedBy User? @relation("FighterVerifier", fields: [verified_by], references: [id], onUpdate: NoAction, map: "fighters_verified_by_foreign")
@@ -183,6 +185,8 @@ model Event {
   tournament_format       String?   @db.VarChar(255)
   tournament_weight_class String?   @db.VarChar(255)
   expected_participants   Int       @default(8)
+  /// KKF's comment when an event is sent back for changes; cleared on submit/approve.
+  kkf_comment             String?
 
   organizer        User              @relation("EventOrganizer", fields: [organizer_id], references: [id], onUpdate: NoAction, map: "events_organizer_id_foreign")
   kkfApprovedBy    User?             @relation("EventApprover", fields: [kkf_approved_by], references: [id], onUpdate: NoAction, map: "events_kkf_approved_by_foreign")

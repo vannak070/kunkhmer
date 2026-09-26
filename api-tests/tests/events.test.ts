@@ -59,7 +59,8 @@ describe("events CRUD", () => {
   });
 
   it("lists and shows events publicly", async () => {
-    const { body } = await post("/events", fullEvent(), a.organizer.token);
+    // Only published events are public (see "event approval" below).
+    const { body } = await post("/events", { ...fullEvent(), status: "Published" }, a.admin.token);
     const list = await get("/events");
     expect(list.status).toBe(200);
     expect(shape(findById(list, body.data.id))).toMatchSnapshot("list item");
@@ -92,6 +93,58 @@ describe("events CRUD", () => {
     expect(shapeOf(res)).toMatchSnapshot();
     expect((await put(`/events/${missing}`, { name: "x" }, a.admin.token)).status).toBe(404);
     expect((await del(`/events/${missing}`, a.admin.token)).status).toBe(404);
+  });
+});
+
+describe("event approval", () => {
+  it("organizer submits, KKF approves, organizer publishes; hidden from the public until then", async () => {
+    const created = await post("/events", { ...fullEvent(), status: "Published" }, a.organizer.token);
+    expect(created.body.data.status).toBe("Draft"); // organizers can't skip approval
+    const id = created.body.data.id;
+    expect((await get(`/events/${id}`)).status).toBe(404);
+    expect((await get("/events")).body.data.map((e: any) => e.id)).not.toContain(id);
+
+    const early = await put(`/events/${id}`, { status: "Published" }, a.organizer.token);
+    expect(early.status).toBe(422);
+
+    const submitted = await post(`/events/${id}/submit`, {}, a.organizer.token);
+    expect(submitted.status).toBe(200);
+    expect(submitted.body.data.status).toBe("Pending KKF Approval");
+    expect(shapeOf(submitted)).toMatchSnapshot();
+
+    const approved = await post(`/events/${id}/approve`, {}, a.officer.token);
+    expect(approved.body.data).toMatchObject({ status: "Approved", kkf_approved_by: a.officer.id, kkf_comment: null });
+    expect(approved.body.data.kkf_approval_date).toBeTruthy();
+    expect((await get(`/events/${id}`)).status).toBe(404); // approved but not yet published
+
+    const published = await put(`/events/${id}`, { status: "Published" }, a.organizer.token);
+    expect(published.body.data.status).toBe("Published");
+    expect((await get(`/events/${id}`)).status).toBe(200);
+  });
+
+  it("KKF sends an event back with a comment; re-submitting clears it", async () => {
+    const id = (await post("/events", fullEvent(), a.organizer.token)).body.data.id;
+    await post(`/events/${id}/submit`, {}, a.organizer.token);
+    expect((await post(`/events/${id}/reject`, {}, a.officer.token)).status).toBe(422);
+    const back = await post(`/events/${id}/reject`, { comment: "Add the venue address" }, a.officer.token);
+    expect(back.body.data).toMatchObject({ status: "Draft", kkf_comment: "Add the venue address" });
+    const again = await post(`/events/${id}/submit`, {}, a.organizer.token);
+    expect(again.body.data).toMatchObject({ status: "Pending KKF Approval", kkf_comment: null });
+  });
+
+  it("enforces who can submit, approve and edit", async () => {
+    const id = (await post("/events", fullEvent(), a.organizer.token)).body.data.id;
+    const other = (await post("/users", { username: `org_${uniq()}`, fullName: "Other Organizer", email: `org_${uniq()}@test.local`, role: "Organizer", password: "password123" }, a.admin.token)).body.data;
+    const otherToken = (await post("/users/login", { username: other.username, password: "password123" })).body.data.token;
+    expect((await put(`/events/${id}`, { name: "Not mine" }, otherToken)).status).toBe(403);
+    expect((await post(`/events/${id}/submit`, {}, otherToken)).status).toBe(403);
+    expect((await post(`/events/${id}/approve`, {}, a.officer.token)).status).toBe(422); // not submitted yet
+    await post(`/events/${id}/submit`, {}, a.organizer.token);
+    expect((await post(`/events/${id}/submit`, {}, a.organizer.token)).status).toBe(422);
+    for (const who of ["organizer", "club", "referee"] as const) {
+      expect((await post(`/events/${id}/approve`, {}, a[who].token)).status).toBe(403);
+    }
+    expect((await put(`/events/${id}`, { status: "Approved" }, a.organizer.token)).status).toBe(422);
   });
 });
 
