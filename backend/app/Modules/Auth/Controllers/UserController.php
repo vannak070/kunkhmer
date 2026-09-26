@@ -25,6 +25,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
@@ -45,11 +46,10 @@ class UserController extends Controller
         }
 
         $user = User::where('username', $username)
-            ->where('password_hash', $password)
             ->where('status', 'Active')
             ->first();
 
-        if (!$user) {
+        if (!$user || !Hash::check($password, $user->password_hash)) {
             return response()->json([
                 'success' => false,
                 'error'   => 'Invalid username or password',
@@ -104,8 +104,12 @@ class UserController extends Controller
     //  GET /api/users
     //  Protected — list all users
     // ─────────────────────────────────────────────────────────
-    public function index()
+    public function index(Request $request)
     {
+        if ($denied = $this->denyUnlessSuperAdmin($request)) {
+            return $denied;
+        }
+
         $users = User::orderBy('created_at', 'desc')->get();
 
         return response()->json([
@@ -118,8 +122,12 @@ class UserController extends Controller
     //  GET /api/users/{id}
     //  Protected — get a single user
     // ─────────────────────────────────────────────────────────
-    public function show($id)
+    public function show(Request $request, $id)
     {
+        if ($request->user()->id !== $id && ($denied = $this->denyUnlessSuperAdmin($request))) {
+            return $denied;
+        }
+
         $user = User::find($id);
 
         if (!$user) {
@@ -141,13 +149,26 @@ class UserController extends Controller
     // ─────────────────────────────────────────────────────────
     public function store(Request $request)
     {
+        if ($denied = $this->denyUnlessSuperAdmin($request)) {
+            return $denied;
+        }
+
         $input = $request->all();
+
+        foreach (['username', 'fullName', 'email', 'password', 'role'] as $field) {
+            if (empty($input[$field])) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => "The {$field} field is required",
+                ], 422);
+            }
+        }
 
         $user = User::create([
             'username'      => $input['username'],
             'full_name'     => $input['fullName'],
             'email'         => $input['email'],
-            'password_hash' => $input['password'] ?? 'password123',
+            'password_hash' => $input['password'],
             'role'          => $input['role'],
             'club_id'       => $input['clubId'] ?? null,
             'status'        => $input['status'] ?? 'Active',
@@ -165,6 +186,10 @@ class UserController extends Controller
     // ─────────────────────────────────────────────────────────
     public function update(Request $request, $id)
     {
+        if ($denied = $this->denyUnlessSuperAdmin($request)) {
+            return $denied;
+        }
+
         $user = User::find($id);
 
         if (!$user) {
@@ -197,8 +222,19 @@ class UserController extends Controller
     //  DELETE /api/users/{id}
     //  Protected — delete a user
     // ─────────────────────────────────────────────────────────
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        if ($denied = $this->denyUnlessSuperAdmin($request)) {
+            return $denied;
+        }
+
+        if ($request->user()->id === $id) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'You cannot delete your own account',
+            ], 422);
+        }
+
         $user = User::find($id);
 
         if (!$user) {
@@ -215,6 +251,21 @@ class UserController extends Controller
             'success' => true,
             'message' => 'User deleted successfully',
         ]);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  Private helper — 403 response unless caller is Super Admin
+    // ─────────────────────────────────────────────────────────
+    private function denyUnlessSuperAdmin(Request $request)
+    {
+        if ($request->user()?->role === 'Super Admin') {
+            return null;
+        }
+
+        return response()->json([
+            'success' => false,
+            'error'   => 'Forbidden: Insufficient permissions',
+        ], 403);
     }
 
     // ─────────────────────────────────────────────────────────

@@ -29,6 +29,10 @@ class User extends Authenticatable
         'password_hash',
     ];
 
+    protected $casts = [
+        'password_hash' => 'hashed',
+    ];
+
     public function getAuthPassword()
     {
         return $this->password_hash;

@@ -31,6 +31,11 @@ class ClubController extends Controller
 
     public function store(Request $request)
     {
+        $user = $request->user();
+        if (!$user || !in_array($user->role, ['Super Admin', 'KKF Officer'])) {
+            return response()->json(['success' => false, 'error' => 'Forbidden: Insufficient permissions'], 403);
+        }
+
         $input = $request->all();
 
         $club = Club::create([
@@ -55,6 +60,11 @@ class ClubController extends Controller
 
     public function update(Request $request, $id)
     {
+        $user = $request->user();
+        if (!$user || !in_array($user->role, ['Super Admin', 'KKF Officer'])) {
+            return response()->json(['success' => false, 'error' => 'Forbidden: Insufficient permissions'], 403);
+        }
+
         $club = Club::find($id);
         if (!$club) {
             return response()->json(['success' => false, 'error' => 'Club not found'], 404);
@@ -84,8 +94,13 @@ class ClubController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        $user = $request->user();
+        if (!$user || !in_array($user->role, ['Super Admin', 'KKF Officer'])) {
+            return response()->json(['success' => false, 'error' => 'Forbidden: Insufficient permissions'], 403);
+        }
+
         $club = Club::find($id);
         if (!$club) {
             return response()->json(['success' => false, 'error' => 'Club not found'], 404);

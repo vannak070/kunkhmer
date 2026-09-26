@@ -108,6 +108,9 @@ class FighterController extends Controller
             $clubId = $user->club_id;
         }
 
+        // Only KKF staff may set a status other than Draft (verification is theirs)
+        $status = $this->isKkfStaff($user) ? ($input['status'] ?? 'Draft') : 'Draft';
+
         $fighter = Fighter::create([
             'name'            => $input['name'],
             'name_khmer'      => $input['nameKhmer'] ?? null,
@@ -123,7 +126,7 @@ class FighterController extends Controller
             'grade'           => $input['grade'] ?? 'D',
             'image'           => $input['image'] ?? null,
             'record'          => $input['record'] ?? null,
-            'status'          => $input['status'] ?? 'Draft',
+            'status'          => $status,
         ]);
 
         $fighter->load('club');
@@ -174,11 +177,13 @@ class FighterController extends Controller
         if (isset($input['gender']))           $updateData['gender']            = $input['gender'];
         if (isset($input['currentWeight']))    $updateData['current_weight']    = $input['currentWeight'];
         if (isset($input['height']))           $updateData['height']            = $input['height'];
-        if (isset($input['clubId']))           $updateData['club_id']           = $input['clubId'];
+        if (isset($input['clubId']) && !($user && $user->role === 'Club/Gym'))
+                                               $updateData['club_id']           = $input['clubId'];
         if (isset($input['style']))            $updateData['style']             = $input['style'];
         if (isset($input['grade']))            $updateData['grade']             = $input['grade'];
         if (isset($input['image']))            $updateData['image']             = $input['image'];
-        if (isset($input['status']))           $updateData['status']            = $input['status'];
+        if (isset($input['status']) && $this->isKkfStaff($user))
+                                               $updateData['status']            = $input['status'];
         if (isset($input['professionalStatus'])) $updateData['professional_status'] = $input['professionalStatus'];
         if (isset($input['record']))           $updateData['record']            = $input['record'];
 
@@ -197,6 +202,13 @@ class FighterController extends Controller
     // ─────────────────────────────────────────────────────────
     public function verify(Request $request, $id)
     {
+        if (!$this->isKkfStaff($request->user())) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'Forbidden: Insufficient permissions',
+            ], 403);
+        }
+
         $fighter = Fighter::find($id);
 
         if (!$fighter) {
@@ -206,11 +218,9 @@ class FighterController extends Controller
             ], 404);
         }
 
-        $user = $request->user();
-
         $fighter->update([
             'status'        => 'Active',
-            'verified_by'   => $user ? $user->id : null,
+            'verified_by'   => $request->user()->id,
             'verified_date' => Carbon::now(),
         ]);
 
@@ -226,8 +236,15 @@ class FighterController extends Controller
     //  DELETE /api/fighters/{id}
     //  Protected — delete a fighter
     // ─────────────────────────────────────────────────────────
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        if (!$this->isKkfStaff($request->user())) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'Forbidden: Insufficient permissions',
+            ], 403);
+        }
+
         $fighter = Fighter::find($id);
 
         if (!$fighter) {
@@ -243,6 +260,14 @@ class FighterController extends Controller
             'success' => true,
             'message' => 'Fighter deleted successfully',
         ]);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  Private helper — Super Admin or KKF Officer
+    // ─────────────────────────────────────────────────────────
+    private function isKkfStaff($user): bool
+    {
+        return $user && in_array($user->role, ['Super Admin', 'KKF Officer']);
     }
 
     // ─────────────────────────────────────────────────────────
