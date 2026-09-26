@@ -44,3 +44,6 @@ frontend/admin/node_modules
 frontend/admin/dist
 frontend/public/node_modules
 frontend/public/dist
+
+# Local Docker overrides
+docker-compose.override.yml
