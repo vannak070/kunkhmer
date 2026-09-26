@@ -43,6 +43,9 @@ prisma/schema.prisma  introspected from the existing database
   Laravel stay logged in after the switch.
 - **Passwords** are bcrypt; Laravel's `$2y$` hashes verify unchanged.
 - **Input** is trimmed and empty strings become `null`, as Laravel did.
+- **Match results** are saved in one transaction. A title match updates the
+  championship only the first time its result is recorded; correcting a title
+  result to a different winner does not reverse the title change.
 - **Response formats** (snake_case vs camelCase, three date styles) copy
   Laravel exactly for now so the frontends keep working unchanged.
 
@@ -55,4 +58,6 @@ prisma/schema.prisma  introspected from the existing database
 | Fighters | ported (also fixes `professionalStatus` never being saved) |
 | Settings (sponsors, broadcast stations) | ported |
 | Events | ported |
-| Matches, Champions, News, Videos | to do |
+| Matches (batches, matches, results) | ported (fixes title results being counted twice) |
+| Champions | ported |
+| News, Videos | to do |

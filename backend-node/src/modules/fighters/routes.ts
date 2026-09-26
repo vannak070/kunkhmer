@@ -23,6 +23,9 @@ import { inputOf } from "../../lib/input.ts";
 /** Soft-deleted fighters are invisible everywhere, as with Laravel's SoftDeletes. */
 export const NOT_DELETED = { deleted_at: null } satisfies Prisma.FighterWhereInput;
 
+/** A related fighter, or null if soft-deleted (Laravel's relations skipped those). */
+export const visibleFighter = <F extends Fighter>(f: F | null | undefined): F | null => (f && !f.deleted_at ? f : null);
+
 type FighterWithClub = Fighter & { club: Club | null };
 
 /** camelCase fighter shape sent to the frontends. */

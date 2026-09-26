@@ -6,9 +6,11 @@ import { BadInput } from "./lib/dates.ts";
 import { HttpError } from "./lib/http.ts";
 import { normalizeBody } from "./lib/input.ts";
 import authRoutes from "./modules/auth/routes.ts";
+import championRoutes from "./modules/champions/routes.ts";
 import clubRoutes from "./modules/clubs/routes.ts";
 import eventRoutes from "./modules/events/routes.ts";
 import fighterRoutes from "./modules/fighters/routes.ts";
+import matchRoutes from "./modules/matches/routes.ts";
 import settingsRoutes from "./modules/settings/routes.ts";
 
 export async function buildApp(opts: { logger?: boolean } = {}): Promise<FastifyInstance> {
@@ -75,6 +77,8 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
       await api.register(fighterRoutes);
       await api.register(settingsRoutes);
       await api.register(eventRoutes);
+      await api.register(matchRoutes);
+      await api.register(championRoutes);
     },
     { prefix: "/api" },
   );
