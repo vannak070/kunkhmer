@@ -408,7 +408,7 @@ export default function ClubDetailPage({ club, fighters, matches, onBack, onFigh
                           </div>
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             <User className="w-4 h-4 text-gray-400" />
-                            <span className="font-semibold">{fighter.age} years old</span>
+                            <span className="font-semibold">{fighter.age != null ? `${fighter.age} years old` : `${fighter.weight} kg`}</span>
                           </div>
                         </div>
 

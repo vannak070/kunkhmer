@@ -8,6 +8,8 @@ interface ShareButtonsProps {
   url?: string;
   /** "full" shows every network; "compact" shows one share button (native sheet or copy link). */
   variant?: "full" | "compact";
+  /** Visible text for the compact button (icon only when omitted). */
+  label?: string;
   className?: string;
 }
 
@@ -20,11 +22,25 @@ async function copyToClipboard(text: string): Promise<boolean> {
     await navigator.clipboard.writeText(text);
     return true;
   } catch {
-    return false;
+    // Clipboard API is unavailable on plain http or when permission is denied.
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      return document.execCommand("copy");
+    } catch {
+      return false;
+    } finally {
+      document.body.removeChild(textarea);
+    }
   }
 }
 
-export function ShareButtons({ title, url, variant = "full", className = "" }: ShareButtonsProps) {
+export function ShareButtons({ title, url, variant = "full", label, className = "" }: ShareButtonsProps) {
   const [copied, setCopied] = useState(false);
   const shareUrl = url || window.location.href;
   const encodedUrl = encodeURIComponent(shareUrl);
@@ -59,9 +75,10 @@ export function ShareButtons({ title, url, variant = "full", className = "" }: S
         onClick={nativeShare}
         aria-label={`Share ${title}`}
         title="Share"
-        className={`inline-flex items-center justify-center rounded-xl transition-all ${className}`}
+        className={`inline-flex items-center justify-center gap-2 rounded-xl transition-all ${className}`}
       >
         <Share2 className="w-4 h-4" />
+        {label && <span>{label}</span>}
       </button>
     );
   }

@@ -5,7 +5,6 @@ import { Search, Bell, ShoppingCart, User, Heart, Star, Flame, Zap, Crown, Chevr
 import { useWallet } from "../contexts/WalletContext";
 import { useOrders } from "../contexts/OrderContext";
 import { toast } from "sonner";
-import kkfLogo from "figma:asset/a66d0715b1669c88badc1b57f275bd3b2182d59e.png";
 import eventPosterImage from 'figma:asset/76de12a848bf50a1769fa454bf2dab5cb85ea354.png';
 import SponsorsSection from "../components/home/SponsorsSection";
 import TrendingFightersSection from "../components/home/TrendingFightersSection";
@@ -73,6 +72,7 @@ interface CartItem extends Product {
 interface Fighter {
   id: string;
   name: string;
+  nameKhmer?: string;
   image: string;
   record: string;
   weight: string;
@@ -84,7 +84,7 @@ interface Fighter {
   verified: boolean;
   followers: number;
   championships: number;
-  age: number;
+  age: number | null;
   type: "Professional" | "Amateur";
   clubId?: string;
 }
@@ -479,9 +479,12 @@ export function SuperAppHome() {
   // Sync URL parameter with current section
   useEffect(() => {
     if (params.section) {
-      const validSections: Section[] = ["home", "news-events", "fighters", "matches", "match-detail", "shop", "strategic-partners", "club-detail", "sponsor-detail", "broadcast-detail", "cart", "checkout", "orders", "profile", "subscription"];
+      // Cart, checkout, orders, profile and subscription stay unreachable until accounts and the shop launch.
+      const validSections: Section[] = ["home", "news-events", "fighters", "matches", "match-detail", "shop", "strategic-partners", "club-detail", "sponsor-detail", "broadcast-detail"];
       if (validSections.includes(params.section as Section)) {
         setCurrentSection(params.section as Section);
+      } else {
+        navigate("/", { replace: true });
       }
     } else {
       setCurrentSection("home");
@@ -662,38 +665,32 @@ export function SuperAppHome() {
     const losses = parseInt(recordParts[1] || '0');
     const draws = parseInt(recordParts[2] || '0');
 
-    const idStr = fighter.id || "";
-    const charSum = idStr.split("").reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
-
-    let calculatedAge = 22;
+    // Age comes only from the recorded date of birth; never estimate it.
+    let calculatedAge: number | null = null;
     const dob = fighter.dateOfBirth || fighter.date_of_birth;
-    if (dob) {
-      const birthYear = new Date(dob).getFullYear();
-      const currentYear = new Date().getFullYear();
-      if (birthYear) {
-        calculatedAge = currentYear - birthYear;
-      }
-    } else {
-      calculatedAge = 20 + (charSum % 15);
+    if (dob && !isNaN(new Date(dob).getTime())) {
+      const birth = new Date(dob);
+      const now = new Date();
+      calculatedAge = now.getFullYear() - birth.getFullYear() -
+        (now < new Date(now.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0);
     }
-
-    const followersCount = 5000 + (charSum % 20000);
-    const championshipsCount = fighter.grade === 'A' ? (charSum % 3) + 1 : fighter.grade === 'B' ? 1 : 0;
 
     return {
       id: fighter.id,
       name: fighter.name,
+      nameKhmer: fighter.nameKhmer || fighter.name_khmer || "",
       image: fighter.image || fighterImages[index % fighterImages.length],
       record: fighter.record || "0-0-0",
       weight: parseFloat(fighter.currentWeight || fighter.current_weight || "0").toString(),
       weightClass: getWeightRangeCategory(parseFloat(fighter.currentWeight || fighter.current_weight || "0")),
-      gym: fighter.clubName || fighter.club_name || "Club Name",
+      gym: fighter.clubName || fighter.club_name || "Independent",
       wins,
       losses,
       draws,
       verified: fighter.status === 'Active',
-      followers: followersCount,
-      championships: championshipsCount,
+      followers: 0,
+      // TODO: use the championships API once titles are linked to fighters.
+      championships: parseInt(fighter.championships ?? fighter.titles_count ?? "0") || 0,
       age: calculatedAge,
       type: (fighter.professionalStatus || fighter.professional_status || "Professional") as "Professional" | "Amateur",
       clubId: fighter.clubId || fighter.club_id
@@ -968,6 +965,22 @@ export function SuperAppHome() {
   const filteredProducts = products.filter(p =>
     selectedCategory === "all" || p.category === selectedCategory
   );
+
+  const SECTION_TITLES: Partial<Record<Section, string>> = {
+    matches: "Matches & Events",
+    "match-detail": "Match",
+    "news-events": "News & Media",
+    fighters: "Fighters",
+    "strategic-partners": "Partners",
+    "club-detail": "Partners",
+    "sponsor-detail": "Partners",
+    "broadcast-detail": "Partners",
+    shop: "Official Shop",
+  };
+  const openEventName = currentSection === "matches" && selectedEventId
+    ? events.find(e => e.id === selectedEventId)?.name
+    : undefined;
+  usePageTitle(openEventName || SECTION_TITLES[currentSection]);
 
   // Render Functions
   const renderHome = () => (
@@ -2183,7 +2196,7 @@ export function SuperAppHome() {
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <User className="w-4 h-4 text-gray-400" />
-                      <span className="font-semibold">{fighter.age} years old</span>
+                      <span className="font-semibold">{fighter.age != null ? `${fighter.age} years old` : fighter.weightClass}</span>
                     </div>
                   </div>
 
@@ -3384,13 +3397,21 @@ export function SuperAppHome() {
     return (
       <div className="space-y-8">
         {/* Back Button */}
-        <button
-          onClick={() => navigate("/matches?tab=events")}
-          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-white bg-white hover:bg-[#0A3D91] rounded-xl font-bold transition-all border border-gray-200 hover:border-[#0A3D91]"
-        >
-          <ChevronRight className="w-4 h-4 rotate-180" />
-          Back to Events
-        </button>
+        <div className="flex items-center justify-between gap-3">
+          <button
+            onClick={() => navigate("/matches?tab=events")}
+            className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-white bg-white hover:bg-[#0A3D91] rounded-xl font-bold transition-all border border-gray-200 hover:border-[#0A3D91]"
+          >
+            <ChevronRight className="w-4 h-4 rotate-180" />
+            Back to Events
+          </button>
+          <ShareButtons
+            variant="compact"
+            title={`${event.name} — Kun Khmer`}
+            label="Share event"
+            className="px-4 py-2 bg-white text-gray-700 hover:text-[#0A3D91] border border-gray-200 hover:border-[#0A3D91] font-bold text-sm"
+          />
+        </div>
 
         {/* Event Hero Section - Clean Design */}
         <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-lg">

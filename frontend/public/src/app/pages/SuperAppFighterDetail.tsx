@@ -1,43 +1,27 @@
 import { useParams, Link, useNavigate } from "react-router";
-import { ArrowLeft, Calendar, MapPin, Target, Weight, Ruler, Trophy, XCircle, Minus, Flame, TrendingUp, Users, Award, Clock, Heart, Share2, ShoppingBag, Bell, ShoppingCart, User, Home as HomeIcon, BookOpen, Handshake, Building2, Play, X, Zap, ChevronRight, CheckCircle2 } from "lucide-react";
-import { MOCK_FIGHTERS, MOCK_MATCHES } from "../data/mock";
-import { MEDIA_CONTENT, MediaContent } from "../data/mediaContent";
+import { ArrowLeft, Calendar, Target, Ruler, Trophy, XCircle, Minus, Flame, Award, Clock, Building2, Play, X, ChevronRight } from "lucide-react";
+import { MediaContent } from "../data/mediaContent";
+import { getFighterSlug } from "../data/masterData";
 import { api } from "../utils/api";
 import { useState, useEffect } from "react";
 import exampleFighterBg from 'figma:asset/fe303cee6544597f8a53fd9b8b29e64c2c9ca382.png';
-import kkfLogo from "figma:asset/a66d0715b1669c88badc1b57f275bd3b2182d59e.png";
+import { SiteHeader } from "../components/layout/SiteHeader";
+import { SiteFooter } from "../components/layout/SiteFooter";
+import { ShareButtons } from "../components/ShareButtons";
+import { usePageTitle } from "../hooks/usePageTitle";
+import { formatVideoDuration } from "../utils/publicDisplay";
 
 export function SuperAppFighterDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [selectedVideo, setSelectedVideo] = useState<MediaContent | null>(null);
   const [fighterVideos, setFighterVideos] = useState<any[]>([]);
-  const [isFollowed, setIsFollowed] = useState(false);
-
-  // Scroll detection for header
-  const [showHeader, setShowHeader] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      setIsScrolled(currentScrollY > 20);
-      if (currentScrollY < 10) {
-        setShowHeader(true);
-      } else if (currentScrollY > lastScrollY && currentScrollY > 100) {
-        setShowHeader(false);
-      } else if (currentScrollY < lastScrollY) {
-        setShowHeader(true);
-      }
-      setLastScrollY(currentScrollY);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [lastScrollY]);
 
   const [fighter, setFighter] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [clubmates, setClubmates] = useState<any[]>([]);
+
+  usePageTitle(fighter?.name ?? (loading ? "Fighters" : "Fighter not found"));
 
   useEffect(() => {
     const fetchFighter = async () => {
@@ -54,6 +38,14 @@ export function SuperAppFighterDetail() {
           setFighter(mapped);
         }
 
+        // Other fighters from the same club (real data, not mock).
+        if (f) {
+          const clubId = f.clubId || f.club_id;
+          api.fighters.list().then((all: any[]) => {
+            setClubmates((all || []).filter((o: any) => o.id !== f.id && clubId && (o.clubId || o.club_id) === clubId).slice(0, 4));
+          }).catch(() => setClubmates([]));
+        }
+
         // Fetch and map videos
         const vids = await api.videos.list();
         if (vids && vids.length > 0) {
@@ -68,22 +60,11 @@ export function SuperAppFighterDetail() {
               }
             }
 
-            const viewsVal = vid.views || 0;
-            let formattedViews = "0";
-            if (viewsVal >= 1000000) {
-              formattedViews = (viewsVal / 1000000).toFixed(1) + "M";
-            } else if (viewsVal >= 1000) {
-              formattedViews = (viewsVal / 1000).toFixed(1) + "K";
-            } else {
-              formattedViews = viewsVal.toString();
-            }
-
             return {
               id: vid.id,
               title: vid.title,
               thumbnail: vid.thumbnail || "https://images.unsplash.com/photo-1504309092620-4d0ec726efa4?w=600",
-              duration: vid.duration || "00:00",
-              views: formattedViews,
+              duration: formatVideoDuration(vid.duration),
               date: vid.created_at ? new Date(vid.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : "Recently",
               youtubeId,
               category: vid.category || "Highlights",
@@ -92,7 +73,8 @@ export function SuperAppFighterDetail() {
           });
 
           // Filter videos related to this fighter ONLY
-          const related = mappedVids.filter((v: any) => v.fighterId === id);
+          // Videos are linked by fighter UUID, while the URL holds the fighter slug.
+          const related = f ? mappedVids.filter((v: any) => v.fighterId === f.id) : [];
           setFighterVideos(related);
         } else {
           setFighterVideos([]);
@@ -111,18 +93,22 @@ export function SuperAppFighterDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-4">
+      <div className="min-h-screen flex flex-col bg-slate-50">
+        <SiteHeader activeSection="fighters" />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 py-24">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A3D91]" />
-          <p className="text-[#0A3D91] text-xs font-bold uppercase tracking-widest animate-pulse">Loading Fighter Profile</p>
+          <p className="text-slate-500 text-sm font-semibold">Loading fighter profile…</p>
         </div>
+        <SiteFooter />
       </div>
     );
   }
 
   if (!fighter) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex flex-col bg-slate-50">
+        <SiteHeader activeSection="fighters" />
+        <div className="flex-1 flex items-center justify-center px-4 py-24">
         <div className="text-center p-8 bg-white rounded-3xl border border-slate-200/80 shadow-xl max-w-md">
           <Trophy className="w-16 h-16 text-slate-300 mx-auto mb-4" />
           <h2 className="text-2xl font-black text-slate-800 mb-2 uppercase tracking-tight">Fighter Not Found</h2>
@@ -131,6 +117,8 @@ export function SuperAppFighterDetail() {
             Back to Fighters List
           </Link>
         </div>
+        </div>
+        <SiteFooter />
       </div>
     );
   }
@@ -142,131 +130,39 @@ export function SuperAppFighterDetail() {
   const draws = recordParts[2] || 0;
   const totalFights = wins + losses + draws;
   const winRate = totalFights > 0 ? Math.round((wins / totalFights) * 100) : 0;
-  const koWins = Math.floor(wins * 0.15);
-  const koRate = wins > 0 ? Math.round((koWins / wins) * 100) : 0;
+  // Only show stats the federation actually records — never estimate them.
+  const rawKo = fighter.koWins ?? fighter.ko_wins;
+  const koWins: number | null = rawKo != null && rawKo !== "" ? parseInt(rawKo) : null;
+  const koRate = koWins != null && wins > 0 ? Math.round((koWins / wins) * 100) : null;
 
-  // Deterministic age calculation based on DOB or character sum
-  let detailAge = 22;
+  let detailAge: number | null = null;
   const detailDob = fighter.dateOfBirth || fighter.date_of_birth;
   if (detailDob) {
-    const birthYear = new Date(detailDob).getFullYear();
-    const currentYear = new Date().getFullYear();
-    if (birthYear) detailAge = currentYear - birthYear;
-  } else {
-    const charSum = (fighter.id || "").split("").reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
-    detailAge = 20 + (charSum % 15);
+    const dob = new Date(detailDob);
+    if (!isNaN(dob.getTime())) {
+      const now = new Date();
+      detailAge = now.getFullYear() - dob.getFullYear() -
+        (now < new Date(now.getFullYear(), dob.getMonth(), dob.getDate()) ? 1 : 0);
+    }
   }
 
+  const knownNationality = fighter.nationality && fighter.nationality !== "Other" ? fighter.nationality : null;
   const fighterStats = {
     age: detailAge,
-    height: fighter.height || 170,
-    weight: fighter.weight,
-    reach: fighter.reach || 175,
-    stance: fighter.stance || "Orthodox",
-    nationality: fighter.nationality || "Cambodian",
-    flagEmoji: fighter.nationality !== 'Cambodian' ? "🌐" : "🇰🇭",
+    height: fighter.height ? parseFloat(fighter.height) : null,
+    weight: parseFloat(fighter.weight) > 0 ? fighter.weight : null,
+    reach: fighter.reach ? parseFloat(fighter.reach) : null,
+    stance: fighter.stance || null,
+    nationality: knownNationality,
+    flagEmoji: knownNationality === "Cambodian" ? "🇰🇭" : "🌐",
   };
-
-  // ── Related fighters: same club OR former opponent with same weight class ──
-  const opponentIds = new Set(
-    MOCK_MATCHES
-      .filter(m => m.fighterA.id === fighter.id || m.fighterB.id === fighter.id)
-      .map(m => m.fighterA.id === fighter.id ? m.fighterB.id : m.fighterA.id)
-  );
-
-  const relatedFighters = MOCK_FIGHTERS.filter(f => {
-    if (f.id === fighter.id) return false;
-    const sameClub = f.gym === fighter.gym && fighter.gym && fighter.gym !== "Independent";
-    const isFormerOpponentSameWeight =
-      opponentIds.has(f.id) &&
-      Math.abs(parseInt(f.weight) - parseInt(fighter.weight)) <= 5;
-    return sameClub || isFormerOpponentSameWeight;
-  }).slice(0, 4);
-
-  // Tag each related fighter with the relation reason
-  const taggedRelated = relatedFighters.map(f => ({
-    ...f,
-    relationTag: f.gym === fighter.gym && fighter.gym && fighter.gym !== "Independent"
-      ? "Same Club"
-      : "Former Opponent",
-  }));
+  const primaryStyle = fighter.style ? fighter.style.split(',')[0].trim() : null;
 
   // Get fighter-related videos from database (state)
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      {/* ── Sticky Header ── */}
-      <header className={`sticky top-0 z-50 backdrop-blur-xl border-b shadow-sm transition-all duration-300 ${
-        showHeader ? 'translate-y-0' : '-translate-y-full'
-      } ${isScrolled ? 'bg-white border-[#E2E8F0]' : 'bg-white/80 border-[#E2E8F0]/50'}`}>
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="flex items-center justify-between py-4 gap-4">
-            <Link to="/" className="group flex items-center gap-3 flex-shrink-0">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-[#0A3D91]/20 to-blue-500/20 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <img src={kkfLogo} alt="KKF Logo" className="relative w-14 h-14 md:w-16 md:h-16 object-contain group-hover:scale-105 transition-transform duration-300" />
-              </div>
-              <div className="hidden sm:block">
-                <h1 className="text-xl md:text-2xl font-black text-gray-900 leading-tight tracking-tight uppercase">KUNKHMER</h1>
-                <p className="text-xs md:text-sm text-gray-500 font-medium leading-tight">Official Platform</p>
-              </div>
-            </Link>
-
-            <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
-              <button className="relative p-2.5 md:p-3 hover:bg-gray-100 rounded-xl transition-all group">
-                <Bell className="w-5 h-5 text-gray-600 group-hover:text-[#0A3D91] transition-colors" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-[#C8102E] rounded-full ring-2 ring-white animate-pulse" />
-              </button>
-              <button className="relative p-2.5 md:p-3 hover:bg-gray-100 rounded-xl transition-all group">
-                <ShoppingCart className="w-5 h-5 text-gray-600 group-hover:text-[#0A3D91] transition-colors" />
-              </button>
-              <button onClick={() => navigate("/profile")} className="p-2.5 md:p-3 hover:bg-gray-100 rounded-xl transition-all group">
-                <User className="w-5 h-5 text-gray-600 group-hover:text-[#0A3D91] transition-colors" />
-              </button>
-            </div>
-          </div>
-
-          <nav className="hidden md:flex items-center gap-2 pb-4 border-t border-gray-100/80 pt-4 overflow-x-auto">
-            <Link to="/" className="group flex items-center gap-2.5 px-5 py-3 rounded-2xl whitespace-nowrap font-semibold text-sm transition-all duration-300 text-gray-600 hover:bg-gray-100 hover:text-gray-900">
-              <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gray-100 group-hover:bg-gray-200 transition-all">
-                <HomeIcon className="w-4 h-4 text-gray-600 group-hover:text-gray-900" />
-              </div>
-              <span className="text-sm font-bold tracking-wide">Home</span>
-            </Link>
-            <Link to="/matches" className="group flex items-center gap-2.5 px-5 py-3 rounded-2xl whitespace-nowrap font-semibold text-sm transition-all duration-300 text-gray-600 hover:bg-gray-100 hover:text-gray-900">
-              <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gray-100 group-hover:bg-gray-200 transition-all">
-                <Trophy className="w-4 h-4 text-gray-600 group-hover:text-gray-900" />
-              </div>
-              <span className="text-sm font-bold tracking-wide">Matches &amp; Events</span>
-            </Link>
-            <Link to="/news-events" className="group flex items-center gap-2.5 px-5 py-3 rounded-2xl whitespace-nowrap font-semibold text-sm transition-all duration-300 text-gray-600 hover:bg-gray-100 hover:text-gray-900">
-              <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gray-100 group-hover:bg-gray-200 transition-all">
-                <BookOpen className="w-4 h-4 text-gray-600 group-hover:text-gray-900" />
-              </div>
-              <span className="text-sm font-bold tracking-wide">News &amp; Media</span>
-            </Link>
-            <Link to="/fighters" className="group relative flex items-center gap-2.5 px-5 py-3 rounded-2xl whitespace-nowrap font-semibold text-sm transition-all duration-300 bg-gradient-to-r from-[#0A3D91] to-blue-600 text-white shadow-lg scale-105">
-              <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-white/20 transition-all">
-                <Users className="w-4 h-4 text-white" />
-              </div>
-              <span className="text-sm font-bold tracking-wide">Fighters</span>
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-12 h-1 bg-white/40 rounded-full" />
-            </Link>
-            <Link to="/strategic-partners" className="group flex items-center gap-2.5 px-5 py-3 rounded-2xl whitespace-nowrap font-semibold text-sm transition-all duration-300 text-gray-600 hover:bg-gray-100 hover:text-gray-900">
-              <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gray-100 group-hover:bg-gray-200 transition-all">
-                <Handshake className="w-4 h-4 text-gray-600 group-hover:text-gray-900" />
-              </div>
-              <span className="text-sm font-bold tracking-wide">Strategic Partners</span>
-            </Link>
-            <Link to="/shop" className="group flex items-center gap-2.5 px-5 py-3 rounded-2xl whitespace-nowrap font-semibold text-sm transition-all duration-300 text-gray-600 hover:bg-gray-100 hover:text-gray-900">
-              <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gray-100 group-hover:bg-gray-200 transition-all">
-                <ShoppingCart className="w-4 h-4 text-gray-600 group-hover:text-gray-900" />
-              </div>
-              <span className="text-sm font-bold tracking-wide">Shop</span>
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader activeSection="fighters" />
 
       {/* ── Back Navigation ── */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6">
@@ -326,12 +222,14 @@ export function SuperAppFighterDetail() {
                   </span>
                 </div>
 
-                <div className="absolute bottom-4 left-4">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/95 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-lg">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                    Active Ranker
-                  </span>
-                </div>
+                {fighter.status === "Active" && (
+                  <div className="absolute bottom-4 left-4">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/95 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-lg">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                      Active
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -342,13 +240,18 @@ export function SuperAppFighterDetail() {
                   <span className="px-3.5 py-1.5 bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-black uppercase tracking-wider rounded-xl">
                     Kun Khmer Division
                   </span>
-                  <span className="px-3 py-1 bg-white/10 text-white text-xs font-bold rounded-xl flex items-center gap-1">
-                    {fighterStats.flagEmoji} {fighterStats.nationality}
-                  </span>
+                  {fighterStats.nationality && (
+                    <span className="px-3 py-1 bg-white/10 text-white text-xs font-bold rounded-xl flex items-center gap-1">
+                      {fighterStats.flagEmoji} {fighterStats.nationality}
+                    </span>
+                  )}
                 </div>
                 <h1 className="text-4xl md:text-6xl font-black text-white leading-tight tracking-tight uppercase">
                   {fighter.name}
                 </h1>
+                {fighter.nameKhmer && fighter.nameKhmer !== fighter.name && (
+                  <p lang="km" className="text-lg md:text-xl font-semibold text-slate-300">{fighter.nameKhmer}</p>
+                )}
                 {fighter.alias && (
                   <p className="text-xl md:text-2xl font-bold text-amber-400 italic">
                     &ldquo;{fighter.alias}&rdquo;
@@ -358,44 +261,27 @@ export function SuperAppFighterDetail() {
 
               {/* General details grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl mx-auto lg:mx-0">
-                <div className="bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Gym / Affiliation</p>
-                  <p className="text-sm font-black text-white truncate mt-1">{fighter.gym}</p>
-                </div>
-                <div className="bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Current Weight</p>
-                  <p className="text-sm font-black text-white mt-1">{fighterStats.weight} KG</p>
-                </div>
-                <div className="bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Age Profile</p>
-                  <p className="text-sm font-black text-white mt-1">{fighterStats.age} Yrs</p>
-                </div>
-                <div className="bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Stance Style</p>
-                  <p className="text-sm font-black text-white mt-1">{fighterStats.stance}</p>
-                </div>
+                {[
+                  { label: "Club", value: fighter.gym, title: fighter.gym, wide: true },
+                  { label: "Weight", value: fighterStats.weight && `${fighterStats.weight} kg` },
+                  { label: "Age", value: fighterStats.age != null && `${fighterStats.age}` },
+                  { label: "Stance", value: fighterStats.stance },
+                ].filter((d) => d.value).map((d) => (
+                  <div key={d.label} className={`bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl text-left ${d.wide ? "col-span-2" : ""}`}>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{d.label}</p>
+                    <p className="text-sm font-black text-white mt-1 line-clamp-2 break-words" title={d.title}>{d.value}</p>
+                  </div>
+                ))}
               </div>
 
               {/* Actions */}
               <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3">
-                <button
-                  onClick={() => setIsFollowed(!isFollowed)}
-                  className={`flex items-center gap-2 px-6 py-3.5 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-95 ${
-                    isFollowed
-                      ? "bg-slate-800 text-white border border-slate-700 shadow-inner"
-                      : "bg-[#0A3D91] hover:bg-blue-800 text-white shadow-lg shadow-blue-900/20"
-                  }`}
-                >
-                  {isFollowed ? <CheckCircle2 className="w-4.5 h-4.5 text-emerald-400" /> : <Users className="w-4.5 h-4.5" />}
-                  <span>{isFollowed ? "Following" : "Follow Fighter"}</span>
-                </button>
-                <button className="flex items-center gap-2 px-6 py-3.5 bg-white/10 hover:bg-white/15 border border-white/10 text-white rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-95">
-                  <ShoppingBag className="w-4.5 h-4.5" />
-                  <span>Shop Merchandise</span>
-                </button>
-                <button className="p-3.5 bg-white/5 hover:bg-white/10 border border-white/5 text-white rounded-2xl transition-all active:scale-95">
-                  <Share2 className="w-4.5 h-4.5" />
-                </button>
+                <ShareButtons
+                  variant="compact"
+                  title={`${fighter.name} — Kun Khmer fighter profile`}
+                  label="Share profile"
+                  className="px-6 py-3.5 bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold text-sm active:scale-95"
+                />
               </div>
             </div>
 
@@ -440,7 +326,7 @@ export function SuperAppFighterDetail() {
             <div className="w-1.5 h-8 bg-gradient-to-b from-[#0A3D91] to-blue-500 rounded-full" />
             <div>
               <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight uppercase">Fight Record &amp; Career Statistics</h2>
-              <p className="text-sm text-slate-500 font-medium">Verified competitive achievements and biological data</p>
+              <p className="text-sm text-slate-500 font-medium">Official record and physical profile</p>
             </div>
           </div>
 
@@ -463,7 +349,7 @@ export function SuperAppFighterDetail() {
                   </div>
                   <span className="text-xs font-black text-emerald-700">{totalFights > 0 ? Math.round((wins / totalFights) * 100) : 0}%</span>
                 </div>
-                <p className="text-xs text-slate-500 mt-2 font-medium">Wins out of {totalFights} professional bouts</p>
+                <p className="text-xs text-slate-500 mt-2 font-medium">Wins out of {totalFights} recorded bouts</p>
               </div>
             </div>
 
@@ -483,7 +369,7 @@ export function SuperAppFighterDetail() {
                   </div>
                   <span className="text-xs font-black text-rose-700">{totalFights > 0 ? Math.round((losses / totalFights) * 100) : 0}%</span>
                 </div>
-                <p className="text-xs text-slate-500 mt-2 font-medium">Losses out of {totalFights} professional bouts</p>
+                <p className="text-xs text-slate-500 mt-2 font-medium">Losses out of {totalFights} recorded bouts</p>
               </div>
             </div>
 
@@ -503,7 +389,7 @@ export function SuperAppFighterDetail() {
                   </div>
                   <span className="text-xs font-black text-amber-700">{totalFights > 0 ? Math.round((draws / totalFights) * 100) : 0}%</span>
                 </div>
-                <p className="text-xs text-slate-500 mt-2 font-medium">Draws out of {totalFights} professional bouts</p>
+                <p className="text-xs text-slate-500 mt-2 font-medium">Draws out of {totalFights} recorded bouts</p>
               </div>
             </div>
 
@@ -512,11 +398,11 @@ export function SuperAppFighterDetail() {
           {/* Physical attributes cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: "Physical Age", value: fighterStats.age, unit: "Years Old", icon: Calendar, color: "blue" },
-              { label: "Stature Height", value: fighterStats.height, unit: "Centimeters", icon: Ruler, color: "purple" },
-              { label: "Arm Reach", value: fighterStats.reach, unit: "Centimeters", icon: Target, color: "orange" },
-              { label: "KO Victory Count", value: koWins, unit: "Finishes", icon: Flame, color: "red" },
-            ].map(({ label, value, unit, icon: Icon, color }) => (
+              { label: "Age", value: fighterStats.age, unit: "years", icon: Calendar, color: "blue" },
+              { label: "Height", value: fighterStats.height, unit: fighterStats.height ? `cm (${Math.floor(fighterStats.height / 2.54 / 12)}′${Math.round(fighterStats.height / 2.54 % 12)}″)` : "", icon: Ruler, color: "purple" },
+              { label: "Reach", value: fighterStats.reach, unit: "cm", icon: Target, color: "orange" },
+              { label: "Wins by KO", value: koWins, unit: "finishes", icon: Flame, color: "red" },
+            ].filter(({ value }) => value != null).map(({ label, value, unit, icon: Icon, color }) => (
               <div key={label} className="bg-slate-50 border border-slate-100 rounded-2xl p-5 hover:shadow transition-all">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${
                   color === 'blue' ? 'bg-blue-100 text-blue-700' :
@@ -553,6 +439,7 @@ export function SuperAppFighterDetail() {
               </div>
 
               {/* KO Rate */}
+              {koRate != null && (
               <div>
                 <div className="flex justify-between text-xs font-bold text-slate-600 mb-2">
                   <span>Knockout Ratio (per win)</span>
@@ -562,6 +449,7 @@ export function SuperAppFighterDetail() {
                   <div className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full transition-all duration-700" style={{ width: `${koRate}%` }} />
                 </div>
               </div>
+              )}
             </div>
 
             <div className="grid grid-cols-3 gap-4 border-t border-slate-200/80 mt-6 pt-6 text-center">
@@ -571,13 +459,13 @@ export function SuperAppFighterDetail() {
               </div>
               <div className="border-x border-slate-200">
                 <p className="text-xs font-black text-slate-400 uppercase tracking-wider">Style</p>
-                <p className="text-xl font-black text-[#0A3D91] mt-0.5 truncate uppercase">
-                  {fighter.style ? fighter.style.split(',')[0].trim() : 'Striker'}
+                <p className="text-xl font-black text-[#0A3D91] mt-0.5 truncate capitalize">
+                  {primaryStyle || "—"}
                 </p>
               </div>
               <div>
                 <p className="text-xs font-black text-slate-400 uppercase tracking-wider">Stance</p>
-                <p className="text-xl font-black text-slate-800 mt-0.5">{fighterStats.stance}</p>
+                <p className="text-xl font-black text-slate-800 mt-0.5">{fighterStats.stance || "—"}</p>
               </div>
             </div>
           </div>
@@ -656,21 +544,21 @@ export function SuperAppFighterDetail() {
         {/* ════════════════════════════════════════════
             4. RELATED FIGHTERS SECTION
         ════════════════════════════════════════════ */}
-        {taggedRelated.length > 0 && (
+        {clubmates.length > 0 && (
           <section className="bg-white rounded-[2.5rem] border border-slate-200/80 shadow-xl overflow-hidden p-8 md:p-12 space-y-8">
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-8 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full" />
               <div>
-                <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight uppercase">Related Competitors</h2>
-                <p className="text-sm text-slate-500 font-medium">Fighters from the same club or former opponents in the same weight division</p>
+                <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight uppercase">Club Teammates</h2>
+                <p className="text-sm text-slate-500 font-medium">Other fighters from {fighter.gym}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {taggedRelated.map((rel) => (
+              {clubmates.map((rel) => (
                 <Link
                   key={rel.id}
-                  to={`/fighters/${rel.id}`}
+                  to={`/fighters/${getFighterSlug(rel)}`}
                   className="group flex flex-col bg-slate-50 hover:bg-white rounded-2xl overflow-hidden border border-slate-200/60 hover:border-[#0A3D91]/30 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
                 >
                   {/* Image Frame */}
@@ -682,27 +570,6 @@ export function SuperAppFighterDetail() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
 
-                    {/* Relation Badge */}
-                    <div className="absolute top-3 left-3">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg shadow-md ${
-                        rel.relationTag === "Same Club"
-                          ? "bg-[#0A3D91] text-white"
-                          : "bg-[#C8102E] text-white"
-                      }`}>
-                        {rel.relationTag === "Same Club" ? (
-                          <Building2 className="w-3 h-3" />
-                        ) : (
-                          <Zap className="w-3 h-3" />
-                        )}
-                        {rel.relationTag}
-                      </span>
-                    </div>
-
-                    {rel.verified && (
-                      <div className="absolute top-3 right-3 w-7 h-7 bg-amber-500 rounded-lg flex items-center justify-center shadow-lg">
-                        <Trophy className="w-4 h-4 text-slate-950" />
-                      </div>
-                    )}
                   </div>
 
                   {/* Info Block */}
@@ -711,9 +578,9 @@ export function SuperAppFighterDetail() {
                       <h3 className="text-sm font-black text-slate-800 line-clamp-1 group-hover:text-[#0A3D91] transition-colors leading-tight">
                         {rel.name}
                       </h3>
-                      <p className="text-xs text-slate-500 font-semibold mt-1 truncate">
-                        {rel.gym}
-                      </p>
+                      {rel.nameKhmer && (
+                        <p lang="km" className="text-xs text-slate-500 font-semibold mt-1 truncate">{rel.nameKhmer}</p>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-100">
@@ -721,7 +588,7 @@ export function SuperAppFighterDetail() {
                         {rel.record}
                       </span>
                       <span className="px-2.5 py-1 bg-blue-50 text-[#0A3D91] text-[11px] font-extrabold rounded-md border border-blue-100">
-                        {rel.weight}kg
+                        {parseFloat(rel.currentWeight || rel.weight || 0) || "—"} kg
                       </span>
                     </div>
                   </div>
@@ -764,192 +631,7 @@ export function SuperAppFighterDetail() {
         </div>
       )}
 
-      {/* ── Footer ── */}
-      <footer className="relative bg-[#051C42] text-white overflow-hidden">
-        {/* Layered Background Glows */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(circle, #0A3D91 0%, transparent 65%)' }} />
-          <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-[0.08]" style={{ background: 'radial-gradient(circle, #C8102E 0%, transparent 70%)' }} />
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[900px] h-64 opacity-[0.06]" style={{ background: 'radial-gradient(ellipse, #1565C0 0%, transparent 70%)' }} />
-        </div>
-
-        <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-8">
-
-          {/* Top section — Brand + Nav Grid */}
-          <div className="pt-16 pb-12 grid grid-cols-1 md:grid-cols-12 gap-10 lg:gap-14">
-
-            {/* Brand Column — spans 4 cols */}
-            <div className="md:col-span-4">
-              {/* Logo + Name */}
-              <div className="flex items-center gap-3 mb-5">
-                <div className="flex items-center justify-center w-12 h-12 bg-white rounded-xl shadow-lg shadow-black/40 shrink-0">
-                  <img src={kkfLogo} alt="KKF Logo" className="w-9 h-9 object-contain" />
-                </div>
-                <div>
-                  <div className="text-xl font-black tracking-tight leading-none">KUNKHMER</div>
-                  <div className="text-[10px] text-[#F2C94C] font-bold tracking-[0.15em] uppercase mt-0.5">Official Digital Platform</div>
-                </div>
-              </div>
-
-              {/* Tagline */}
-              <p className="text-white/50 text-sm leading-relaxed mb-6 max-w-xs">
-                The official home of Cambodian martial arts — connecting fighters, fans, and the global Kun Khmer community.
-              </p>
-
-              {/* Social Icons */}
-              <div className="flex gap-2.5">
-                {[
-                  { label: 'Facebook', path: 'M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z' },
-                  { label: 'Instagram', path: 'M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z' },
-                  { label: 'Twitter/X', path: 'M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z' },
-                  { label: 'YouTube', path: 'M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z' },
-                ].map((social) => (
-                  <a
-                    key={social.label}
-                    href="#"
-                    aria-label={social.label}
-                    className="group w-9 h-9 rounded-xl bg-white/5 border border-white/8 hover:bg-[#0A3D91]/60 hover:border-[#0A3D91] flex items-center justify-center transition-all duration-200 hover:scale-110"
-                  >
-                    <svg className="w-3.5 h-3.5 text-white/50 group-hover:text-white transition-colors" fill="currentColor" viewBox="0 0 24 24">
-                      <path d={social.path} />
-                    </svg>
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            {/* Nav Columns — span 8 cols, split into 4 equal sub-cols */}
-            <div className="md:col-span-8 grid grid-cols-2 sm:grid-cols-4 gap-8">
-
-              {/* Platform */}
-              <div>
-                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Platform</h4>
-                <ul className="space-y-2.5">
-                  {[
-                    { label: 'Home', to: '/' },
-                    { label: 'Matches & Events', to: '/matches' },
-                    { label: 'News & Media', to: '/news-events' },
-                    { label: 'Fighters', to: '/fighters' },
-                    { label: 'Partners', to: '/strategic-partners' },
-                  ].map(({ label, to }) => (
-                    <li key={label}>
-                      <Link to={to} className="text-white/45 hover:text-white text-xs font-medium transition-colors duration-150 leading-snug">
-                        {label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Shop */}
-              <div>
-                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Shop</h4>
-                <ul className="space-y-2.5">
-                  {[
-                    { label: 'All Products', to: '/shop' },
-                    { label: 'My Cart', to: '/cart' },
-                    { label: 'My Orders', to: '/orders' },
-                  ].map(({ label, to }) => (
-                    <li key={label}>
-                      <Link to={to} className="text-white/45 hover:text-white text-xs font-medium transition-colors duration-150 leading-snug">
-                        {label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Account */}
-              <div>
-                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Account</h4>
-                <ul className="space-y-2.5">
-                  {[
-                    { label: 'My Profile', to: '/profile' },
-                    { label: 'Subscription', to: '/subscription' },
-                    { label: 'Admin Platform', to: '/home' },
-                  ].map(({ label, to }) => (
-                    <li key={label}>
-                      <Link to={to} className="text-white/45 hover:text-white text-xs font-medium transition-colors duration-150 leading-snug">
-                        {label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Contact */}
-              <div>
-                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Contact</h4>
-                <ul className="space-y-2.5">
-                  <li className="flex items-start gap-2">
-                    <MapPin className="w-3.5 h-3.5 text-white/30 shrink-0 mt-0.5" />
-                    <span className="text-white/45 text-xs leading-snug">Phnom Penh, Cambodia</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <svg className="w-3.5 h-3.5 text-white/30 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                    </svg>
-                    <span className="text-white/45 text-xs leading-snug">info@kunkhmer.com</span>
-                  </li>
-                  <li className="mt-3">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      Platform Online
-                    </span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Newsletter Strip */}
-          <div className="py-7 px-8 mb-10 rounded-2xl bg-gradient-to-r from-[#0A3D91]/40 via-[#0B4AAD]/30 to-[#0A3D91]/40 border border-white/[0.07] flex flex-col sm:flex-row items-center justify-between gap-5">
-            <div>
-              <p className="font-bold text-sm text-white">Stay updated with Kun Khmer</p>
-              <p className="text-white/40 text-xs mt-0.5">Get match results, fighter news & event announcements.</p>
-            </div>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <input
-                type="email"
-                placeholder="Your email address"
-                className="flex-1 sm:w-64 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[#0A3D91] transition-colors"
-              />
-              <button className="px-5 py-2.5 rounded-xl bg-[#0A3D91] hover:bg-blue-700 text-white text-sm font-bold transition-colors whitespace-nowrap">
-                Subscribe
-              </button>
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
-
-          {/* Bottom Bar */}
-          <div className="py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            {/* Copyright + Flag */}
-            <div className="flex items-center gap-3">
-              <span className="text-2xl" role="img" aria-label="Cambodia flag">🇰🇭</span>
-              <div>
-                <p className="text-white/35 text-xs font-medium">© 2026 KUNKHMER Federation. All rights reserved.</p>
-                <p className="text-white/20 text-[10px] mt-0.5">Preserving & promoting Cambodian martial arts heritage.</p>
-              </div>
-            </div>
-
-            {/* Legal Links */}
-            <div className="flex items-center gap-1 flex-wrap justify-center">
-              {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map((item, i, arr) => (
-                <span key={item} className="flex items-center gap-1">
-                  <button className="text-white/30 hover:text-white/70 text-[11px] font-medium transition-colors px-1">
-                    {item}
-                  </button>
-                  {i < arr.length - 1 && <span className="text-white/15 text-xs">·</span>}
-                </span>
-              ))}
-            </div>
-          </div>
-
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

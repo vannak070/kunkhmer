@@ -1,8 +1,12 @@
 import { useParams, Link, useNavigate } from "react-router";
-import { ArrowLeft, Calendar, User, Share2, BookOpen, Clock, Bell, ShoppingCart, Menu, Home, Trophy, Users, Handshake, Search } from "lucide-react";
+import { ArrowLeft, Calendar, User, BookOpen, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
-import kkfLogo from "figma:asset/a66d0715b1669c88badc1b57f275bd3b2182d59e.png";
 import { api } from "../utils/api";
+import { SiteHeader } from "../components/layout/SiteHeader";
+import { SiteFooter } from "../components/layout/SiteFooter";
+import { ShareButtons } from "../components/ShareButtons";
+import { usePageTitle } from "../hooks/usePageTitle";
+import { formatPublicDate, publicName, readTimeLabel } from "../utils/publicDisplay";
 
 interface NewsArticle {
   id: string;
@@ -19,13 +23,14 @@ interface NewsArticle {
 export function ArticleDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [readTime] = useState("5 min read");
-
   const [article, setArticle] = useState<NewsArticle | null>(null);
   const [relatedArticles, setRelatedArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
 
+  usePageTitle(article?.title ?? (loading ? null : "Article not found"));
+
   useEffect(() => {
+    window.scrollTo(0, 0);
     const fetchArticleAndRelated = async () => {
       if (!id) return;
       setLoading(true);
@@ -35,14 +40,14 @@ export function ArticleDetail() {
           api.news.list()
         ]);
         
-        if (specificArticle) {
+        if (specificArticle && (!specificArticle.status || specificArticle.status === "Published")) {
           const mappedSpecific: NewsArticle = {
             id: specificArticle.id,
             title: specificArticle.title,
             excerpt: specificArticle.subtitle || "",
             image: specificArticle.featured_image || specificArticle.featuredImage || "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?ixlib=rb-4.0.3&w=800&q=80",
             category: specificArticle.category || "General",
-            author: specificArticle.author || "Admin",
+            author: publicName(specificArticle.author) || "",
             date: specificArticle.publish_date || specificArticle.publishDate || "",
             featured: Boolean(specificArticle.featured),
             content: specificArticle.content || ""
@@ -52,14 +57,14 @@ export function ArticleDetail() {
 
         if (allArticles) {
           const mappedAll = allArticles
-            .filter((art: any) => art.id !== id)
+            .filter((art: any) => art.id !== id && (!art.status || art.status === "Published"))
             .map((art: any) => ({
               id: art.id,
               title: art.title,
               excerpt: art.subtitle || "",
               image: art.featured_image || art.featuredImage || "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?ixlib=rb-4.0.3&w=800&q=80",
               category: art.category || "General",
-              author: art.author || "Admin",
+              author: publicName(art.author) || "",
               date: art.publish_date || art.publishDate || "",
               featured: Boolean(art.featured),
               content: art.content || ""
@@ -76,128 +81,34 @@ export function ArticleDetail() {
     fetchArticleAndRelated();
   }, [id]);
 
-  if (loading) {
+  if (loading || !article) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A3D91] mb-4" />
-        <p className="text-sm text-slate-500 font-bold uppercase tracking-wider">Loading article details…</p>
-      </div>
-    );
-  }
-
-  if (!article) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h2 className="text-2xl font-black text-gray-900 mb-4">Article Not Found</h2>
-          <Link to="/news-events" className="text-[#0A3D91] font-bold hover:underline">
-            Back to News & Events
-          </Link>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <SiteHeader activeSection="news-events" />
+        <main className="flex-1 flex flex-col items-center justify-center px-4 py-24 text-center">
+          {loading ? (
+            <>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A3D91] mb-4" />
+              <p className="text-sm text-slate-500 font-semibold">Loading article…</p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-black text-gray-900 mb-2">Article not found</h1>
+              <p className="text-gray-500 mb-6">It may have been moved or unpublished.</p>
+              <Link to="/news-events" className="px-5 py-2.5 bg-[#0A3D91] text-white rounded-xl font-bold hover:bg-blue-800 transition-colors">
+                Browse all news
+              </Link>
+            </>
+          )}
+        </main>
+        <SiteFooter />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          {/* Top Bar */}
-          <div className="flex items-center justify-between py-4 gap-4">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-3 flex-shrink-0">
-              <img
-                src={kkfLogo}
-                alt="KKF Logo"
-                className="w-14 h-14 md:w-16 md:h-16 object-contain"
-              />
-              <div className="hidden sm:block">
-                <h1 className="text-xl md:text-2xl font-black text-gray-900 leading-tight">KUNKHMER</h1>
-                <p className="text-sm md:text-base text-gray-600 font-semibold leading-tight">Official Platform</p>
-              </div>
-            </Link>
-
-            {/* Search Bar (Desktop) */}
-            <div className="hidden md:block flex-1 max-w-3xl">
-              <div className="relative flex items-center gap-3 bg-white border border-gray-300 rounded-full px-5 py-3">
-                <Search className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                <input
-                  type="text"
-                  placeholder="Search fighters, products, events..."
-                  className="flex-1 bg-transparent outline-none font-medium text-sm placeholder:text-gray-400"
-                />
-              </div>
-            </div>
-
-            {/* Right Actions */}
-            <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-              <button className="p-2.5 hover:bg-gray-50 rounded-full transition-all relative">
-                <Bell className="w-5 h-5 text-gray-600" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-[#C8102E] rounded-full" />
-              </button>
-
-              <button className="p-2.5 hover:bg-gray-50 rounded-full transition-all relative">
-                <ShoppingCart className="w-5 h-5 text-gray-600" />
-              </button>
-
-              <Link to="/profile" className="p-2.5 hover:bg-gray-50 rounded-full transition-all">
-                <User className="w-5 h-5 text-gray-600" />
-              </Link>
-
-              <button className="md:hidden p-2.5 hover:bg-gray-50 rounded-full transition-all">
-                <Menu className="w-5 h-5 text-gray-600" />
-              </button>
-            </div>
-          </div>
-
-          {/* Bottom Navigation */}
-          <nav className="hidden md:flex items-center gap-1 pb-4 border-t border-gray-100 pt-4">
-            <Link
-              to="/"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap font-semibold text-sm transition-all text-gray-600 hover:bg-gray-50"
-            >
-              <Home className="w-4 h-4" />
-              Home
-            </Link>
-            <Link
-              to="/matches"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap font-semibold text-sm transition-all text-gray-600 hover:bg-gray-50"
-            >
-              <Trophy className="w-4 h-4" />
-              Matches & Events
-            </Link>
-            <Link
-              to="/news-events"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap font-semibold text-sm transition-all bg-[#0A3D91] text-white shadow-md"
-            >
-              <BookOpen className="w-4 h-4" />
-              News & Media
-            </Link>
-            <Link
-              to="/fighters"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap font-semibold text-sm transition-all text-gray-600 hover:bg-gray-50"
-            >
-              <Users className="w-4 h-4" />
-              Fighters
-            </Link>
-            <Link
-              to="/strategic-partners"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap font-semibold text-sm transition-all text-gray-600 hover:bg-gray-50"
-            >
-              <Handshake className="w-4 h-4" />
-              Strategic Partners
-            </Link>
-            <Link
-              to="/shop"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap font-semibold text-sm transition-all text-gray-600 hover:bg-gray-50"
-            >
-              <ShoppingCart className="w-4 h-4" />
-              Shop
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader activeSection="news-events" />
 
       {/* Back Button */}
       <div className="bg-white border-b border-gray-200">
@@ -207,7 +118,7 @@ export function ArticleDetail() {
             className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 rounded-xl text-gray-700 font-bold transition-all border border-gray-200 hover:border-[#0A3D91] shadow-sm"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span>Back to News & Events</span>
+            <span>All news</span>
           </button>
         </div>
       </div>
@@ -216,7 +127,7 @@ export function ArticleDetail() {
       <main className="flex-1 max-w-5xl mx-auto px-4 md:px-6 py-8 md:py-12 w-full">
         <article className="bg-white rounded-2xl overflow-hidden shadow-lg border border-gray-200 mb-12">
           {/* Article Header Image */}
-          <div className="relative h-96 bg-gray-900 overflow-hidden">
+          <div className="relative h-64 md:h-96 bg-gray-900 overflow-hidden">
             <img
               src={article.image}
               alt={article.title}
@@ -239,9 +150,9 @@ export function ArticleDetail() {
           </div>
 
           {/* Article Content */}
-          <div className="p-8 md:p-12">
+          <div className="p-6 md:p-12">
             {/* Title */}
-            <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-6 leading-tight">
+            <h1 className="text-3xl md:text-5xl font-black text-gray-900 mb-6 leading-tight">
               {article.title}
             </h1>
 
@@ -254,17 +165,21 @@ export function ArticleDetail() {
 
             {/* Author / Date Details */}
             <div className="flex flex-wrap items-center gap-6 text-sm text-gray-500 font-semibold pb-8 border-b border-gray-150 mb-8">
-              <div className="flex items-center gap-2">
-                <User className="w-4 h-4 text-gray-400" />
-                <span>By {article.author}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-400" />
-                <span>{article.date}</span>
-              </div>
+              {article.author && (
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-gray-400" />
+                  <span>By {article.author}</span>
+                </div>
+              )}
+              {formatPublicDate(article.date) && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-gray-400" />
+                  <time dateTime={article.date}>{formatPublicDate(article.date, "long")}</time>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-gray-400" />
-                <span>{readTime}</span>
+                <span>{readTimeLabel(article.content)}</span>
               </div>
             </div>
 
@@ -274,6 +189,15 @@ export function ArticleDetail() {
                 para.trim() && <p key={i}>{para.trim()}</p>
               ))}
             </div>
+
+            {/* Share */}
+            <div className="mt-10 pt-8 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p className="text-base font-black text-gray-900">Share this article</p>
+                <p className="text-sm text-gray-500">Spread the word about Kun Khmer</p>
+              </div>
+              <ShareButtons title={article.title} />
+            </div>
           </div>
         </article>
 
@@ -282,7 +206,7 @@ export function ArticleDetail() {
           <div className="space-y-6">
             <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2 uppercase">
               <BookOpen className="w-6 h-6 text-primary" />
-              <span>Related Articles</span>
+              <span>More news</span>
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -315,7 +239,7 @@ export function ArticleDetail() {
                     </div>
                     <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 mt-4 pt-3 border-t border-gray-100">
                       <Calendar className="w-3.5 h-3.5" />
-                      <span>{rel.date}</span>
+                      <span>{formatPublicDate(rel.date)}</span>
                     </div>
                   </div>
                 </Link>
@@ -325,88 +249,7 @@ export function ArticleDetail() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="relative bg-[#051C42] text-white overflow-hidden">
-        {/* Layered Background Glows */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(circle, #0A3D91 0%, transparent 65%)' }} />
-          <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-[0.08]" style={{ background: 'radial-gradient(circle, #C8102E 0%, transparent 70%)' }} />
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[900px] h-64 opacity-[0.06]" style={{ background: 'radial-gradient(ellipse, #1565C0 0%, transparent 70%)' }} />
-        </div>
-
-        <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-8">
-          {/* Main Grid */}
-          <div className="pt-14 pb-10 grid grid-cols-1 md:grid-cols-12 gap-10">
-            {/* Brand */}
-            <div className="md:col-span-5">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex items-center justify-center w-11 h-11 bg-white rounded-xl shadow-lg shadow-black/40 shrink-0">
-                  <img src={kkfLogo} alt="KKF Logo" className="w-8 h-8 object-contain" />
-                </div>
-                <div>
-                  <div className="text-lg font-black tracking-tight leading-none">KUNKHMER</div>
-                  <div className="text-[10px] text-[#F2C94C] font-bold tracking-[0.15em] uppercase mt-0.5">Official Digital Platform</div>
-                </div>
-              </div>
-              <p className="text-white/45 text-sm leading-relaxed max-w-xs">
-                The official home of Cambodian martial arts — connecting fighters, fans, and the global Kun Khmer community.
-              </p>
-            </div>
-
-            {/* Nav Links */}
-            <div className="md:col-span-7 flex flex-wrap gap-10 md:justify-end items-start pt-2">
-              <div>
-                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-3">Platform</h4>
-                <ul className="space-y-2">
-                  {[
-                    { label: 'News & Events', to: '/news-events' },
-                    { label: 'Fighters', to: '/fighters' },
-                    { label: 'Matches & Cards', to: '/matches' },
-                    { label: 'Official Shop', to: '/shop' },
-                  ].map(({ label, to }) => (
-                    <li key={label}>
-                      <Link to={to} className="text-white/45 hover:text-white text-xs font-medium transition-colors">{label}</Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-3">Contact</h4>
-                <ul className="space-y-2">
-                  <li><span className="text-white/45 text-xs">Phnom Penh, Cambodia</span></li>
-                  <li><span className="text-white/45 text-xs">info@kunkhmer.com</span></li>
-                  <li className="mt-2">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      Platform Online
-                    </span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
-
-          {/* Bottom Bar */}
-          <div className="py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <span className="text-xl" role="img" aria-label="Cambodia flag">🇰🇭</span>
-              <p className="text-white/30 text-xs font-medium">© 2026 KUNKHMER Federation. All rights reserved.</p>
-            </div>
-            <div className="flex items-center gap-1">
-              {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map((item, i, arr) => (
-                <span key={item} className="flex items-center gap-1">
-                  <button className="text-white/25 hover:text-white/60 text-[11px] font-medium transition-colors px-1">{item}</button>
-                  {i < arr.length - 1 && <span className="text-white/15 text-xs">·</span>}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

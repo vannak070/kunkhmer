@@ -85,12 +85,12 @@ export default function TrendingFightersSection({ fighters, onViewAllClick, onFi
               <div className="flex items-center gap-3 text-sm text-gray-600 mb-4">
                 <div className="flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5" />
-                  <span className="font-semibold">{fighter.age} yrs</span>
+                  <span className="font-semibold">{fighter.age != null ? `${fighter.age} yrs` : "—"}</span>
                 </div>
                 <span className="text-gray-300">|</span>
                 <div className="flex items-center gap-1.5">
                   <Weight className="w-3.5 h-3.5" />
-                  <span className="font-semibold">{fighter.weight}</span>
+                  <span className="font-semibold">{fighter.weight} kg</span>
                 </div>
               </div>
 
