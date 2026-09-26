@@ -60,4 +60,11 @@ prisma/schema.prisma  introspected from the existing database
 | Events | ported |
 | Matches (batches, matches, results) | ported (fixes title results being counted twice) |
 | Champions | ported |
-| News, Videos | to do |
+| News | ported |
+| Videos | ported (fixes links that couldn't be cleared) |
+
+All modules are ported: the full `api-tests` suite passes (135 tests),
+including the three tests for Laravel bugs that are skipped on Laravel.
+
+Still to do before switching over: Docker service, moving schema
+migrations from Laravel to Prisma, and pointing the frontends at it.
