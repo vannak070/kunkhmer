@@ -1,0 +1,392 @@
+// Kun Khmer database schema.
+//
+// Introspected from the existing Laravel/PostgreSQL database, then tidied:
+// PascalCase model names mapped onto the original tables, readable relation
+// names, and Laravel-internal tables (cache, jobs, sessions, migrations) left
+// out. Column names stay snake_case because the API still returns them.
+//
+// Timestamps are `timestamp(0) without time zone` holding UTC.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @db.Uuid
+  username      String    @unique(map: "users_username_unique") @db.VarChar(255)
+  full_name     String    @db.VarChar(255)
+  email         String    @unique(map: "users_email_unique") @db.VarChar(255)
+  password_hash String    @db.VarChar(255)
+  role          String    @default("Viewer/Fan") @db.VarChar(255)
+  status        String    @default("Active") @db.VarChar(255)
+  club_id       String?   @db.Uuid
+  last_login    DateTime? @db.Timestamp(0)
+  created_at    DateTime? @db.Timestamp(0)
+  updated_at    DateTime? @db.Timestamp(0)
+
+  club             Club?      @relation(fields: [club_id], references: [id], onUpdate: NoAction, map: "users_club_id_foreign")
+  organizedEvents  Event[]    @relation("EventOrganizer")
+  approvedEvents   Event[]    @relation("EventApprover")
+  verifiedFighters Fighter[]  @relation("FighterVerifier")
+  refereedMatches  Match[]    @relation("MatchReferee")
+  createdSubEvents SubEvent[] @relation("SubEventCreator")
+
+  @@map("users")
+}
+
+/// Bearer tokens, in the same format as Laravel Sanctum so existing logins keep working.
+model PersonalAccessToken {
+  id             BigInt    @id @default(autoincrement())
+  tokenable_type String    @db.VarChar(255)
+  tokenable_id   String    @db.Uuid
+  name           String
+  token          String    @unique(map: "personal_access_tokens_token_unique") @db.VarChar(64)
+  abilities      String?
+  last_used_at   DateTime? @db.Timestamp(0)
+  expires_at     DateTime? @db.Timestamp(0)
+  created_at     DateTime? @db.Timestamp(0)
+  updated_at     DateTime? @db.Timestamp(0)
+
+  @@index([expires_at], map: "personal_access_tokens_expires_at_index")
+  @@index([tokenable_type, tokenable_id], map: "personal_access_tokens_tokenable_type_tokenable_id_index")
+  @@map("personal_access_tokens")
+}
+
+model Club {
+  id          String    @id @db.Uuid
+  name        String    @db.VarChar(255)
+  name_khmer  String?   @db.VarChar(255)
+  location    String?   @db.VarChar(255)
+  head_coach  String?   @db.VarChar(255)
+  status      String    @default("active") @db.VarChar(255)
+  rating      Decimal   @default(4) @db.Decimal(3, 2)
+  image       String?
+  phone       String?   @db.VarChar(255)
+  email       String?   @db.VarChar(255)
+  established String?   @db.VarChar(255)
+  description String?
+  created_at  DateTime? @db.Timestamp(0)
+  updated_at  DateTime? @db.Timestamp(0)
+
+  fighters Fighter[]
+  users    User[]
+  videos   Video[]
+
+  @@map("clubs")
+}
+
+model Fighter {
+  id                  String    @id @db.Uuid
+  name                String    @db.VarChar(255)
+  name_khmer          String    @db.VarChar(255)
+  alias               String?   @db.VarChar(255)
+  date_of_birth       DateTime  @db.Date
+  nationality         String    @default("Cambodian") @db.VarChar(255)
+  province            String?   @db.VarChar(255)
+  gender              String    @db.VarChar(10)
+  current_weight      Decimal   @db.Decimal(5, 2)
+  height              Decimal   @db.Decimal(5, 2)
+  club_id             String?   @db.Uuid
+  image               String?
+  style               String?   @db.VarChar(255)
+  record              String?   @db.VarChar(50)
+  grade               String    @default("D") @db.VarChar(5)
+  status              String    @default("Draft") @db.VarChar(50)
+  professional_status String    @default("Professional") @db.VarChar(50)
+  verified_by         String?   @db.Uuid
+  verified_date       DateTime? @db.Timestamp(0)
+  created_at          DateTime? @db.Timestamp(0)
+  updated_at          DateTime? @db.Timestamp(0)
+  deleted_at          DateTime? @db.Timestamp(0)
+  medical_status      String    @default("Cleared") @db.VarChar(255)
+  suspension_end_date DateTime? @db.Date
+
+  club       Club? @relation(fields: [club_id], references: [id], onUpdate: NoAction, map: "fighters_club_id_foreign")
+  verifiedBy User? @relation("FighterVerifier", fields: [verified_by], references: [id], onUpdate: NoAction, map: "fighters_verified_by_foreign")
+
+  matchesAsA           Match[]           @relation("MatchFighterA")
+  matchesAsB           Match[]           @relation("MatchFighterB")
+  matchesWon           Match[]           @relation("MatchWinner")
+  boutResultsWon       BoutResult[]
+  titlesHeld           Champion[]
+  titleDefensesAgainst ChampionDefense[]
+  videos               Video[]
+
+  @@map("fighters")
+}
+
+model BroadcastStation {
+  id             String    @id @db.Uuid
+  name           String    @db.VarChar(255)
+  stream_url     String?
+  type           String    @default("Cable TV") @db.VarChar(255)
+  reach          String    @default("National") @db.VarChar(255)
+  active         Boolean   @default(true)
+  contact_person String?   @db.VarChar(255)
+  contact_email  String?   @db.VarChar(255)
+  contact_phone  String?   @db.VarChar(255)
+  website_url    String?
+  logo_url       String?
+  image          String?
+  created_at     DateTime? @db.Timestamp(0)
+  updated_at     DateTime? @db.Timestamp(0)
+
+  events Event[]
+
+  @@map("broadcast_stations")
+}
+
+model Sponsor {
+  id             String    @id @db.Uuid
+  name           String    @db.VarChar(255)
+  logo_url       String?
+  image          String?
+  industry       String?   @db.VarChar(255)
+  tier           String    @default("Gold") @db.VarChar(255)
+  active         Boolean   @default(true)
+  contact_person String?   @db.VarChar(255)
+  contact_email  String?   @db.VarChar(255)
+  contact_phone  String?   @db.VarChar(255)
+  website_url    String?
+  created_at     DateTime? @db.Timestamp(0)
+  updated_at     DateTime? @db.Timestamp(0)
+
+  eventLinks        EventSponsor[]
+  mainSponsorEvents Event[]
+
+  @@map("sponsors")
+}
+
+model Event {
+  id                      String    @id @db.Uuid
+  name                    String    @db.VarChar(255)
+  date                    DateTime  @db.Date
+  end_date                DateTime? @db.Date
+  location                String    @db.VarChar(255)
+  status                  String    @default("Draft") @db.VarChar(255)
+  organizer_id            String    @db.Uuid
+  broadcast_station_id    String?   @db.Uuid
+  main_sponsor_id         String?   @db.Uuid
+  description             String?
+  image                   String?
+  kkf_approval_date       DateTime? @db.Timestamp(0)
+  kkf_approved_by         String?   @db.Uuid
+  created_at              DateTime? @db.Timestamp(0)
+  updated_at              DateTime? @db.Timestamp(0)
+  event_type              String    @default("single-day") @db.VarChar(255)
+  is_tournament           Boolean   @default(false)
+  tournament_format       String?   @db.VarChar(255)
+  tournament_weight_class String?   @db.VarChar(255)
+  expected_participants   Int       @default(8)
+
+  organizer        User              @relation("EventOrganizer", fields: [organizer_id], references: [id], onUpdate: NoAction, map: "events_organizer_id_foreign")
+  kkfApprovedBy    User?             @relation("EventApprover", fields: [kkf_approved_by], references: [id], onUpdate: NoAction, map: "events_kkf_approved_by_foreign")
+  broadcastStation BroadcastStation? @relation(fields: [broadcast_station_id], references: [id], onUpdate: NoAction, map: "events_broadcast_station_id_foreign")
+  mainSponsor      Sponsor?          @relation(fields: [main_sponsor_id], references: [id], onUpdate: NoAction, map: "events_main_sponsor_id_foreign")
+
+  sponsorLinks     EventSponsor[]
+  subEvents        SubEvent[]
+  matches          Match[]
+  championDefenses ChampionDefense[]
+
+  @@map("events")
+}
+
+model EventSponsor {
+  event_id   String @db.Uuid
+  sponsor_id String @db.Uuid
+
+  event   Event   @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "event_sponsors_event_id_foreign")
+  sponsor Sponsor @relation(fields: [sponsor_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "event_sponsors_sponsor_id_foreign")
+
+  @@id([event_id, sponsor_id])
+  @@map("event_sponsors")
+}
+
+/// A weekly fight card ("batch") within an event.
+model SubEvent {
+  id           String    @id @db.Uuid
+  event_id     String    @db.Uuid
+  name         String    @db.VarChar(255)
+  week_number  Int
+  date         DateTime  @db.Date
+  location     String    @db.VarChar(255)
+  phase        String    @default("Qualifier") @db.VarChar(255)
+  status       String    @default("Scheduled") @db.VarChar(255)
+  batch_number String?   @db.VarChar(255)
+  created_by   String?   @db.Uuid
+  created_at   DateTime? @db.Timestamp(0)
+  updated_at   DateTime? @db.Timestamp(0)
+
+  event     Event   @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "sub_events_event_id_foreign")
+  createdBy User?   @relation("SubEventCreator", fields: [created_by], references: [id], onUpdate: NoAction, map: "sub_events_created_by_foreign")
+  matches   Match[]
+
+  @@map("sub_events")
+}
+
+model Match {
+  id                   String    @id @db.Uuid
+  event_id             String    @db.Uuid
+  sub_event_id         String    @db.Uuid
+  fighter_a_id         String    @db.Uuid
+  fighter_b_id         String    @db.Uuid
+  rounds               Int
+  round_time           Int
+  knockdown_limit      Int
+  agreed_weight        Decimal   @db.Decimal(5, 2)
+  glove_size           String    @db.VarChar(10)
+  glove_brand          String    @db.VarChar(255)
+  fighter_a_confirmed  Boolean   @default(false)
+  fighter_b_confirmed  Boolean   @default(false)
+  referee_confirmed    Boolean   @default(false)
+  glove_confirmed_date DateTime? @db.Timestamp(0)
+  status               String    @default("Draft") @db.VarChar(255)
+  proposal_status      String    @default("draft") @db.VarChar(255)
+  club_a_response      String    @default("pending") @db.VarChar(255)
+  club_b_response      String    @default("pending") @db.VarChar(255)
+  referee_id           String?   @db.Uuid
+  judge_ids            Json?     @db.Json
+  winner_id            String?   @db.Uuid
+  created_at           DateTime? @db.Timestamp(0)
+  updated_at           DateTime? @db.Timestamp(0)
+  is_title_match       Boolean   @default(false)
+  championship_id      String?   @db.Uuid
+  sort_order           Int       @default(0)
+
+  event        Event     @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "matches_event_id_foreign")
+  subEvent     SubEvent  @relation(fields: [sub_event_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "matches_sub_event_id_foreign")
+  fighterA     Fighter   @relation("MatchFighterA", fields: [fighter_a_id], references: [id], onUpdate: NoAction, map: "matches_fighter_a_id_foreign")
+  fighterB     Fighter   @relation("MatchFighterB", fields: [fighter_b_id], references: [id], onUpdate: NoAction, map: "matches_fighter_b_id_foreign")
+  referee      User?     @relation("MatchReferee", fields: [referee_id], references: [id], onUpdate: NoAction, map: "matches_referee_id_foreign")
+  winner       Fighter?  @relation("MatchWinner", fields: [winner_id], references: [id], onUpdate: NoAction, map: "matches_winner_id_foreign")
+  championship Champion? @relation("MatchChampionship", fields: [championship_id], references: [id], onUpdate: NoAction, map: "matches_championship_id_foreign")
+
+  result           BoutResult?
+  titlesWon        Champion[]        @relation("ChampionWinningMatch")
+  championDefenses ChampionDefense[]
+  videos           Video[]
+
+  @@map("matches")
+}
+
+model BoutResult {
+  match_id    String   @id @db.Uuid
+  winner_id   String?  @db.Uuid
+  method      String   @db.VarChar(255)
+  round       Int
+  duration    String?  @db.VarChar(255)
+  recorded_at DateTime @default(now()) @db.Timestamp(0)
+
+  match  Match    @relation(fields: [match_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "bout_results_match_id_foreign")
+  winner Fighter? @relation(fields: [winner_id], references: [id], onUpdate: NoAction, map: "bout_results_winner_id_foreign")
+
+  @@map("bout_results")
+}
+
+/// A championship title and its current holder.
+model Champion {
+  id                    String    @id @db.Uuid
+  title_name            String    @db.VarChar(255)
+  champion_type         String    @db.VarChar(255)
+  weight_class          Decimal   @db.Decimal(5, 2)
+  organization          String    @default("KKF") @db.VarChar(255)
+  batch_id              String?   @db.VarChar(255)
+  event_name            String?   @db.VarChar(255)
+  current_holder_id     String?   @db.Uuid
+  current_holder_name   String?   @db.VarChar(255)
+  nationality           String?   @db.VarChar(255)
+  date_created          DateTime  @default(now()) @db.Timestamp(0)
+  date_awarded          DateTime? @db.Timestamp(0)
+  winning_match_id      String?   @db.Uuid
+  status                String    @default("Vacant") @db.VarChar(255)
+  defense_count         Int       @default(0)
+  last_defense_date     DateTime? @db.Date
+  next_defense_deadline DateTime? @db.Date
+  belt_image_url        String?
+  trophy_image_url      String?
+  certificate_url       String?
+  notes                 String?
+  approval_status       String    @default("approved") @db.VarChar(255)
+  created_at            DateTime? @db.Timestamp(0)
+  updated_at            DateTime? @db.Timestamp(0)
+
+  currentHolder Fighter? @relation(fields: [current_holder_id], references: [id], onUpdate: NoAction, map: "champions_current_holder_id_foreign")
+  winningMatch  Match?   @relation("ChampionWinningMatch", fields: [winning_match_id], references: [id], onUpdate: NoAction, map: "champions_winning_match_id_foreign")
+
+  defenses     ChampionDefense[]
+  titleMatches Match[]           @relation("MatchChampionship")
+
+  @@map("champions")
+}
+
+/// Title history: crowning, defenses and losses.
+model ChampionDefense {
+  id          String   @id @db.Uuid
+  champion_id String   @db.Uuid
+  event_id    String?  @db.Uuid
+  event_name  String   @db.VarChar(255)
+  match_id    String?  @db.Uuid
+  date        DateTime @db.Date
+  opponent    String   @db.VarChar(255)
+  opponent_id String?  @db.Uuid
+  result      String   @db.VarChar(255)
+  method      String?  @db.VarChar(255)
+  round       Int?
+
+  champion        Champion @relation(fields: [champion_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "champion_defenses_champion_id_foreign")
+  event           Event?   @relation(fields: [event_id], references: [id], onUpdate: NoAction, map: "champion_defenses_event_id_foreign")
+  match           Match?   @relation(fields: [match_id], references: [id], onUpdate: NoAction, map: "champion_defenses_match_id_foreign")
+  opponentFighter Fighter? @relation(fields: [opponent_id], references: [id], onUpdate: NoAction, map: "champion_defenses_opponent_id_foreign")
+
+  @@map("champion_defenses")
+}
+
+model NewsArticle {
+  id             String    @id @db.Uuid
+  title          String    @db.VarChar(255)
+  subtitle       String?   @db.VarChar(255)
+  content        String?
+  author         String?   @db.VarChar(255)
+  publish_date   DateTime? @db.Date
+  status         String    @default("Draft") @db.VarChar(255)
+  category       String    @default("General") @db.VarChar(255)
+  featured_image String?
+  views          Int       @default(0)
+  tags           Json?     @db.Json
+  featured       Boolean   @default(false)
+  created_at     DateTime? @db.Timestamp(0)
+  updated_at     DateTime? @db.Timestamp(0)
+
+  @@map("news_articles")
+}
+
+model Video {
+  id          String    @id @db.Uuid
+  title       String    @db.VarChar(255)
+  description String?
+  youtube_url String?   @db.VarChar(255)
+  duration    String?   @db.VarChar(255)
+  category    String    @default("General") @db.VarChar(255)
+  status      String    @default("Draft") @db.VarChar(255)
+  tags        Json?     @db.Json
+  fighter_id  String?   @db.Uuid
+  club_id     String?   @db.Uuid
+  match_id    String?   @db.Uuid
+  thumbnail   String?
+  views       Int       @default(0)
+  created_at  DateTime? @db.Timestamp(0)
+  updated_at  DateTime? @db.Timestamp(0)
+  deleted_at  DateTime? @db.Timestamp(0)
+
+  fighter Fighter? @relation(fields: [fighter_id], references: [id], onUpdate: NoAction, map: "videos_fighter_id_foreign")
+  club    Club?    @relation(fields: [club_id], references: [id], onUpdate: NoAction, map: "videos_club_id_foreign")
+  match   Match?   @relation(fields: [match_id], references: [id], onUpdate: NoAction, map: "videos_match_id_foreign")
+
+  @@map("videos")
+}
