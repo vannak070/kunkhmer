@@ -142,11 +142,7 @@ export function ProgramDashboard() {
                   <Plus className="w-4 h-4" /> Create Event
                 </Link>
               )}
-              {activeTab === "matches" && (
-                <Link to="/home/matches/new" className="btn-primary py-2.5 px-5 flex items-center gap-2 text-xs uppercase tracking-wider font-bold rounded-xl shadow-md shadow-primary/10 hover:-translate-y-0.5 transition-transform duration-200">
-                  <ListPlus className="w-4 h-4" /> Create Batch
-                </Link>
-              )}
+              {/* Matches tab: the list below has its own "Create fight card" button. */}
               {activeTab === "champions" && (
                 <Link to="/home/champion/new" className="btn-primary py-2.5 px-5 flex items-center gap-2 text-xs uppercase tracking-wider font-bold rounded-xl shadow-md shadow-primary/10 hover:-translate-y-0.5 transition-transform duration-200">
                   <Crown className="w-4 h-4" /> Create Title

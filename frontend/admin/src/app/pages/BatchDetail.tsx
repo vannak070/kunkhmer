@@ -824,7 +824,7 @@ export function BatchDetail() {
               {/* Batch Status Workflow - Styled Stepper */}
               <div className="mb-6 bg-slate-50 border border-slate-200/80 rounded-2xl p-6">
                 <h4 className="text-[10px] font-bold text-slate-400 mb-6 uppercase tracking-widest">
-                  Batch Lifecycle
+                  Fight Card Lifecycle
                 </h4>
                 <div className="relative">
                   {/* Horizontal line for desktop stepper */}

@@ -128,9 +128,10 @@ and phone width in both languages.
 ## Known gaps and tech debt
 
 - Admin pages still on mock data (`frontend/admin/src/app/data/*.ts`), not the
-  API: KKFWorkflow(+Detail), MatchProposals, Matches (old), KKFOfficers,
-  StoreManagement/StoreSettings/CategoriesSetting, SubEventDetail,
-  AssignFightersToEvent. (Users and Profile moved to the API 2026-09-26.)
+  API: MatchProposals, KKFOfficers (both hidden from the menu until real);
+  officials list for AssignOfficials is localStorage. Users/Profile moved to the
+  API and the other mock-only pages were removed (2026-09-26, see
+  `updates/admin-phase2.md`). UI says "Fight card"; code/API still say batch / sub_event.
 - Fighter create/edit is allowed for any logged-in role (status and club are
   protected); no login rate limiting.
 - Correcting a title match result to a different winner doesn't reverse the

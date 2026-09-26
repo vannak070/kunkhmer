@@ -356,7 +356,7 @@ export function CreateBatch() {
             </div>
             <div>
               <h2 className="text-lg font-bold text-foreground uppercase tracking-tight">
-                Batch Information
+                Fight Card Information
               </h2>
               <p className="text-xs text-muted-foreground">Configure the fight card details and format</p>
             </div>

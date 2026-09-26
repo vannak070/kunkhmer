@@ -337,7 +337,7 @@ export function CreateChampion() {
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2 tracking-wide">
-                Select Event/Batch *
+                Select Event / Fight Card *
               </label>
               <select
                 value={formData.batchId}

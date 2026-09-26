@@ -463,7 +463,7 @@ export function EventsAndMatches({ embedded = false }: { embedded?: boolean }) {
                           onClick={() => handleCreateQuickBatch(event.id, event.date, event.name, event.location)}
                           className="btn-primary inline-flex py-1 px-3 text-[10px] uppercase font-bold"
                         >
-                          Create First Batch
+                          Create First Fight Card
                         </button>
                       </div>
                     ) : (

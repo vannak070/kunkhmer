@@ -318,7 +318,7 @@ export function ShareFightCard() {
             className="btn-primary w-full py-3 font-semibold uppercase tracking-wider text-xs rounded-xl shadow-md"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Batch Details
+            Back to Fight Card
           </button>
         </div>
       </div>

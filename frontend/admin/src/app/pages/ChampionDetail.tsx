@@ -554,7 +554,7 @@ export function ChampionDetail() {
 
               <div>
                 <div className="text-[10px] font-semibold text-white/70 uppercase tracking-wider mb-0.5">
-                  Event/Batch
+                  Event / Fight Card
                 </div>
                 <div className="text-xs font-bold text-white truncate">
                   {champion.eventName}

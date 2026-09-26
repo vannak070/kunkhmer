@@ -312,7 +312,7 @@ export function MatchesEnhanced({ embedded = false }: { embedded?: boolean }) {
                 className="btn-secondary px-5 py-2.5 font-semibold uppercase tracking-wider text-xs rounded-xl shadow hover:-translate-y-[1px]"
               >
                 <ListPlus className="w-5 h-5" />
-                Create Batch
+                Create Fight Card
               </button>
             )}
           </div>

@@ -1052,7 +1052,7 @@ export function EventDetailNew() {
             <div className="flex items-center justify-between p-3.5 bg-white/10 rounded-xl backdrop-blur-sm border border-white/5 hover:bg-white/15 transition-all">
               <div className="flex items-center gap-3">
                 <CalendarDays className="w-5 h-5 text-accent" />
-                <span className="font-bold text-sm">Batches</span>
+                <span className="font-bold text-sm">Fight cards</span>
               </div>
               <span className="text-xl font-black">{eventStats.totalBatches}</span>
             </div>
@@ -1108,7 +1108,7 @@ export function EventDetailNew() {
               className="btn-primary py-1.5 px-3.5 text-xs font-medium uppercase tracking-wider"
             >
               <Plus className="w-4 h-4" />
-              Add Batch
+              Add Fight Card
             </button>
           )}
         </div>
@@ -1127,7 +1127,7 @@ export function EventDetailNew() {
                 className="btn-primary inline-flex py-2 px-5 text-xs uppercase tracking-wider"
               >
                 <Plus className="w-4 h-4" />
-                Create First Batch
+                Create First Fight Card
               </button>
             )}
           </div>
@@ -1328,7 +1328,7 @@ export function EventDetailNew() {
                             className="btn-primary inline-flex py-1.5 px-3 text-xs font-medium uppercase tracking-wider"
                           >
                             <Plus className="w-3.5 h-3.5" />
-                            Add Match to This Batch
+                            Add Match to This Fight Card
                           </button>
 
                           <div className="flex gap-1.5">
@@ -1450,7 +1450,7 @@ export function EventDetailNew() {
                 onClick={handleCreateBatch}
                 className="btn-primary py-2 px-5 text-xs font-semibold uppercase tracking-wider"
               >
-                Create Batch
+                Create Fight Card
               </button>
             </div>
           </div>

@@ -563,7 +563,7 @@ export function SystemProcessFlow() {
             <div className="bg-white rounded-xl p-4 border-2 border-blue-200">
               <h3 className="font-black text-[#0A3D91] mb-3 flex items-center gap-2">
                 <FileText className="w-5 h-5" />
-                Batch Status Flow
+                Fight Card Status Flow
               </h3>
               <ul className="space-y-2 text-sm text-[#1A1A24]">
                 <li className="flex items-start gap-2">
