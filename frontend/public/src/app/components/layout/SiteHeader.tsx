@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router";
 import { BookOpen, Handshake, Home as HomeIcon, Info, Languages, Medal, Menu, Trophy, Users, X } from "lucide-react";
 import kkfLogo from "../../../assets/kkf-logo-192.png";
 import { GlobalSearch } from "./GlobalSearch";
+import { HeaderAccount } from "./HeaderAccount";
 import { appPath } from "../../utils/basePath";
 import { useI18n } from "../../i18n/LanguageContext";
 import type { MessageKey } from "../../i18n/messages";
@@ -102,7 +103,8 @@ export function SiteHeader({ activeSection, onSectionChange }: SiteHeaderProps) 
 
           <GlobalSearch className="hidden md:block flex-1 max-w-xl" />
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <HeaderAccount />
             <LanguageToggle />
             <button
               type="button"

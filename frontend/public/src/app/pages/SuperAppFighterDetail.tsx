@@ -14,6 +14,7 @@ import { useI18n } from "../i18n/LanguageContext";
 import { useFanData } from "../data/fanData";
 import { FightHistory, NextFightCard } from "../components/fan/FighterHistory";
 import { DemoBanner } from "../components/fan/FanWidgets";
+import { FollowButton } from "../components/fan/FollowButton";
 
 export function SuperAppFighterDetail() {
   const { id } = useParams();
@@ -291,7 +292,8 @@ export function SuperAppFighterDetail() {
               </div>
 
               {/* Actions */}
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3">
+              <div className="flex flex-wrap items-start justify-center lg:justify-start gap-3">
+                <FollowButton fighterId={fighter.id} fighterName={localName(fighter.name, fighter.nameKhmer)} />
                 <ShareButtons
                   variant="compact"
                   title={`${fighter.name} — Kun Khmer fighter profile`}
