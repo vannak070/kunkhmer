@@ -19,10 +19,10 @@ async function register(overrides: Record<string, unknown> = {}) {
   return { ...res.body.data, email: body.email, password: body.password } as { token: string; fan: any; email: string; password: string };
 }
 
-async function newFighter() {
+async function newFighter(clubId: string | null = null) {
   const res = await post(
     "/fighters",
-    { name: `Fighter ${uniq()}`, nameKhmer: "អ្នកប្រដាល់", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, grade: "B", status: "Active" },
+    { name: `Fighter ${uniq()}`, nameKhmer: "អ្នកប្រដាល់", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, grade: "B", status: "Active", clubId },
     a.admin.token,
   );
   return res.body.data.id as string;
@@ -171,6 +171,20 @@ describe("notifications", () => {
 
     // Only followers are notified.
     expect((await get("/fans/me/notifications", bystander.token)).body.data).toEqual({ items: [], unreadCount: 0 });
+  });
+
+  it("announces a bout only once the fighter's club accepts it", async () => {
+    const fan = await register();
+    const followed = await newFighter(a.clubId);
+    await put(`/fans/me/follows/${followed}`, {}, fan.token);
+
+    const matchId = await newMatch(followed, await newFighter());
+    expect((await get("/fans/me/notifications", fan.token)).body.data.unreadCount).toBe(0);
+
+    await post(`/matches/${matchId}/respond`, { response: "accepted" }, a.club.token);
+    const items = (await get("/fans/me/notifications", fan.token)).body.data.items;
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ type: "bout_scheduled", data: { fighterId: followed } });
   });
 
   it("marks selected or all notifications as read", async () => {

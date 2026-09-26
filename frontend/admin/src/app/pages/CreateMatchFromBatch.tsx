@@ -160,16 +160,15 @@ export function CreateMatchFromBatch() {
         gloveSize: matchData.gloveSize,
         gloveBrand: matchData.gloveType,
         status: "Draft",
-        proposalStatus: "draft",
-        clubAResponse: "pending",
-        clubBResponse: "pending",
         refereeId: null,
         judgeIds: null,
         isTitleMatch: matchData.isChampionshipMatch,
         championshipId: matchData.isChampionshipMatch && matchData.championTitleId ? matchData.championTitleId : null,
       });
 
-      toast.success(`✅ Match created: ${fighterA.name} vs ${fighterB.name}`);
+      toast.success(`✅ Match created: ${fighterA.name} vs ${fighterB.name}`, {
+        description: "Sent to both clubs to accept. Fans see it once both clubs accept.",
+      });
       navigate(`/home/batches/${batchId}`);
     } catch (err: any) {
       console.error(err);

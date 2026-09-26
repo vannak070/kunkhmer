@@ -10,6 +10,7 @@ import {
   ArrowUp, ArrowDown, Sparkles
 , Save } from "lucide-react";
 import { api } from "../utils/api";
+import { ProposalBadge } from "../components/BoutAnswer";
 import { usePermissions } from "../hooks/usePermissions";
 import { EventStatusBadge } from "../components/EventStatusBadge";
 import { EventNextSteps } from "../components/EventNextSteps";
@@ -175,6 +176,9 @@ export function EventDetailNew() {
                 agreedWeight: `${m.agreed_weight} kg`,
                 winner: winnerValue,
                 winnerMethod: m.winner_method,
+                proposalStatus: m.proposal_status,
+                // Raw API row, for the clubs' answers (ProposalBadge).
+                apiMatch: m,
                 isChampionshipBout: !!(m.isTitleMatch || m.is_title_match),
                 championshipTitleName: m.championshipTitleName || (m.championship ? m.championship.title_name : null),
                 fighterA: {
@@ -1265,6 +1269,13 @@ export function EventDetailNew() {
                                       />
                                     </div>
                                   </div>
+
+                                  {/* Clubs' answers (Match Proposals) until there's a result */}
+                                  {!winnerName && match.apiMatch && (
+                                    <div className="mt-2 flex justify-center">
+                                      <ProposalBadge match={match.apiMatch} />
+                                    </div>
+                                  )}
 
                                   {/* Championship Bout Gilded Bar */}
                                   {match.isChampionshipBout && (

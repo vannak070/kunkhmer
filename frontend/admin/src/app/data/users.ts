@@ -58,6 +58,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     
     // Matches
     'matches.view',
+    'matches.view_proposals', // Match Proposals: answer for clubs, change declined fighters
     'matches.create',
     'matches.edit',
     'matches.delete',
@@ -160,6 +161,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     
     // Matches (Full CRUD, no approval)
     'matches.view',
+    'matches.view_proposals', // Match Proposals: answer for clubs, change declined fighters
     'matches.create',
     'matches.edit',
     'matches.delete',
@@ -236,6 +238,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'events.edit',
     'events.submit',
     'matches.view',
+    'matches.view_proposals', // Match Proposals: see club answers, change declined fighters
     'matches.create',
     'matches.edit',
     'matches.submit',
@@ -264,6 +267,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   club: [
     'events.view',
     'matches.view',
+    'matches.view_proposals', // Match Proposals: accept or decline bouts for their fighters
     'matches.accept',
     'matches.reject',
     'fighters.view',

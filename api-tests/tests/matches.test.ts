@@ -49,7 +49,11 @@ async function newBatch() {
   return (await post("/matches/batches", fullBatch(), a.organizer.token)).body.data.id as string;
 }
 
-async function newMatch(overrides: Record<string, unknown> = {}) {
+/**
+ * Creates a bout between our club's fighter and another club's. By default KKF
+ * then accepts it for both clubs, so it is public like any agreed bout.
+ */
+async function newMatch(overrides: Record<string, unknown> = {}, { accept = true } = {}) {
   const res = await post(
     "/matches",
     {
@@ -67,7 +71,10 @@ async function newMatch(overrides: Record<string, unknown> = {}) {
     a.admin.token,
   );
   if (res.status !== 200) throw new Error(`match setup failed: ${JSON.stringify(res.body)}`);
-  return res.body.data;
+  if (!accept) return res.body.data;
+  const accepted = await post(`/matches/${res.body.data.id}/respond`, { response: "accepted" }, a.officer.token);
+  if (accepted.status !== 200) throw new Error(`match accept failed: ${JSON.stringify(accepted.body)}`);
+  return accepted.body.data;
 }
 
 const recordOf = async (id: string) => (await get(`/fighters/${id}`)).body.data.record;
@@ -140,14 +147,17 @@ describe("batches (sub-events)", () => {
 
 describe("matches", () => {
   it("creates a match, deriving the event from the batch", async () => {
-    const m = await newMatch({ refereeId: a.referee.id, judgeIds: ["j1", "j2"], sortOrder: 2 });
+    const m = await newMatch({ refereeId: a.referee.id, judgeIds: ["j1", "j2"], sortOrder: 2 }, { accept: false });
     expect(m).toMatchObject({
       event_id: eventId,
       rounds: 5,
       agreed_weight: 60.5,
       status: "Draft",
-      proposal_status: "draft",
+      // Sent to both clubs; proposal fields sent by the client are ignored.
+      proposal_status: "pending",
       club_a_response: "pending",
+      club_b_response: "pending",
+      club_a_responder_name: null,
       judge_ids: ["j1", "j2"],
       referee_name: "Test Referee",
       date: "2026-10-08",
@@ -166,6 +176,7 @@ describe("matches", () => {
     const second = (
       await post("/matches", { subEventId, fighterAId: await newFighter(), fighterBId: await newFighter(), rounds: 3, roundTime: 120, knockdownLimit: 2, agreedWeight: 55, gloveSize: "8oz", gloveBrand: "Fairtex", sortOrder: 1 }, a.admin.token)
     ).body.data;
+    await post(`/matches/${second.id}/respond`, { response: "accepted" }, a.officer.token);
 
     const res = await get(`/matches?subEventId=${subEventId}`);
     expect(res.status).toBe(200);
@@ -188,14 +199,14 @@ describe("matches", () => {
     expect(shapeOf(res)).toMatchSnapshot();
   });
 
-  it("lets a Club/Gym user update only matches involving their club", async () => {
-    const ours = await newMatch();
-    expect((await put(`/matches/${ours.id}`, { clubAResponse: "accepted" }, a.club.token)).body.data.club_a_response).toBe("accepted");
-
-    const theirs = await newMatch({ fighterAId: await newFighter(otherClubId) });
-    const res = await put(`/matches/${theirs.id}`, { clubBResponse: "accepted" }, a.club.token);
+  it("doesn't let a Club/Gym user edit a match (they answer through /respond)", async () => {
+    const ours = await newMatch({}, { accept: false });
+    const res = await put(`/matches/${ours.id}`, { clubAResponse: "accepted", winnerId: ours.fighter_a_id }, a.club.token);
     expect(shapeOf(res)).toMatchSnapshot();
     expect(res.status).toBe(403);
+    // Organizers can't set club answers through a plain update either.
+    const updated = await put(`/matches/${ours.id}`, { clubAResponse: "accepted", proposalStatus: "accepted" }, a.organizer.token);
+    expect(updated.body.data).toMatchObject({ club_a_response: "pending", proposal_status: "pending" });
   });
 
   it("deletes a match (Super Admin only)", async () => {
@@ -339,5 +350,105 @@ describe("matching rules", () => {
     expect((await get(`/matches/batches/${batch.id}`)).status).toBe(404);
     expect((await get("/matches/batches")).body.data.map((b: any) => b.id)).not.toContain(batch.id);
     expect((await get(`/matches/batches/${batch.id}`, a.officer.token)).status).toBe(200);
+  });
+});
+
+describe("match proposals (club confirmation)", () => {
+  const respond = (id: string, body: Record<string, unknown>, token: string) => post(`/matches/${id}/respond`, body, token);
+
+  it("sends a new bout to both clubs and keeps it off the public site until both accept", async () => {
+    const m = await newMatch({}, { accept: false });
+    expect((await get(`/matches/${m.id}`)).status).toBe(404);
+    expect((await get(`/matches?subEventId=${m.sub_event_id}`)).body.data).toEqual([]);
+    expect((await get(`/matches/${m.id}`, a.organizer.token)).status).toBe(200);
+
+    // Our club accepts its side (A); the bout still waits for the other club.
+    let res = await respond(m.id, { response: "accepted" }, a.club.token);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({
+      club_a_response: "accepted",
+      club_a_responded_by: a.club.id,
+      club_a_responder_role: "Club/Gym",
+      club_b_response: "pending",
+      proposal_status: "pending",
+    });
+    expect(res.body.data.club_a_responded_at).toMatch(/Z$/);
+    expect((await get(`/matches/${m.id}`)).status).toBe(404);
+
+    // KKF answers for the other club (e.g. after a phone call); who answered is kept.
+    res = await respond(m.id, { response: "accepted", side: "b" }, a.officer.token);
+    expect(res.body.data).toMatchObject({ club_b_response: "accepted", club_b_responder_name: "Test KKF Officer", proposal_status: "accepted" });
+    expect(shapeOf(res)).toMatchSnapshot();
+    expect((await get(`/matches/${m.id}`)).status).toBe(200);
+  });
+
+  it("needs a reason to decline, and a fighter swap sends that side back to the club", async () => {
+    const m = await newMatch({}, { accept: false });
+    expect((await respond(m.id, { response: "declined" }, a.club.token)).status).toBe(422);
+    const res = await respond(m.id, { response: "declined", note: "Fighter injured" }, a.club.token);
+    expect(res.body.data).toMatchObject({ proposal_status: "declined", club_a_response: "declined", club_a_note: "Fighter injured" });
+
+    const swapped = await put(`/matches/${m.id}`, { fighterAId: await newFighter() }, a.organizer.token);
+    expect(swapped.status).toBe(200);
+    expect(swapped.body.data).toMatchObject({ proposal_status: "pending", club_a_response: "pending", club_a_note: null, club_a_responded_by: null });
+
+    // Only verified fighters can be swapped in.
+    expect((await put(`/matches/${m.id}`, { fighterAId: await draftFighter() }, a.organizer.token)).status).toBe(422);
+  });
+
+  it("lets a club answer only its own side", async () => {
+    const theirs = await newMatch({ fighterAId: await newFighter(otherClubId) }, { accept: false });
+    const res = await respond(theirs.id, { response: "accepted" }, a.club.token);
+    expect(shapeOf(res)).toMatchSnapshot();
+    expect(res.status).toBe(403);
+
+    const ours = await newMatch({}, { accept: false });
+    expect((await respond(ours.id, { response: "accepted", side: "b" }, a.club.token)).status).toBe(403);
+    expect((await respond(ours.id, { response: "maybe" }, a.club.token)).status).toBe(422);
+    expect((await respond(ours.id, { response: "accepted", side: "c" }, a.officer.token)).status).toBe(422);
+    for (const who of ["organizer", "referee"] as const) {
+      expect((await respond(ours.id, { response: "accepted" }, a[who].token)).status).toBe(403);
+    }
+    expect((await respond(ours.id, { response: "accepted" }, "")).status).toBe(401);
+    expect((await respond("00000000-0000-4000-8000-000000000000", { response: "accepted" }, a.officer.token)).status).toBe(404);
+  });
+
+  it("covers both sides with one answer when both fighters are from the same club", async () => {
+    const m = await newMatch({ fighterBId: await newFighter() }, { accept: false });
+    const res = await respond(m.id, { response: "accepted" }, a.club.token);
+    expect(res.body.data).toMatchObject({ club_a_response: "accepted", club_b_response: "accepted", proposal_status: "accepted" });
+  });
+
+  it("accepts a side automatically when its fighter has no club", async () => {
+    const m = await newMatch({ fighterAId: await newFighter(null), fighterBId: await newFighter(null) }, { accept: false });
+    expect(m).toMatchObject({ proposal_status: "accepted", club_a_response: "accepted", club_b_response: "accepted", club_a_responded_by: null });
+    expect((await get(`/matches/${m.id}`)).status).toBe(200);
+  });
+
+  it("can't be answered once the bout has a result", async () => {
+    const m = await newMatch({}, { accept: false });
+    await post(`/matches/${m.id}/result`, { winnerId: m.fighter_a_id, method: "KO", round: 1 }, a.officer.token);
+    expect((await respond(m.id, { response: "declined", note: "late" }, a.club.token)).status).toBe(422);
+    // A decided bout is public even though the clubs never answered.
+    expect((await get(`/matches/${m.id}`)).status).toBe(200);
+  });
+
+  it("lists proposals: a club sees bouts with its fighters, staff see all", async () => {
+    const ours = await newMatch({}, { accept: false });
+    const theirs = await newMatch({ fighterAId: await newFighter(otherClubId) }, { accept: false });
+
+    const club = await get("/matches/proposals?state=pending", a.club.token);
+    expect(club.status).toBe(200);
+    const ids = club.body.data.map((m: any) => m.id);
+    expect(ids).toContain(ours.id);
+    expect(ids).not.toContain(theirs.id);
+    expect(findById(club, ours.id)).toMatchObject({ event_name: expect.stringMatching(/^Match Event/), event_status: "Published" });
+    expect(shape(findById(club, ours.id))).toMatchSnapshot();
+
+    const staff = (await get("/matches/proposals?state=pending", a.organizer.token)).body.data.map((m: any) => m.id);
+    expect(staff).toEqual(expect.arrayContaining([ours.id, theirs.id]));
+    expect((await get("/matches/proposals?state=declined", a.club.token)).body.data.map((m: any) => m.id)).not.toContain(ours.id);
+    expect((await get("/matches/proposals", a.referee.token)).status).toBe(403);
+    expect((await get("/matches/proposals")).status).toBe(401);
   });
 });

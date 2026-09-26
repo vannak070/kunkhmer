@@ -297,6 +297,19 @@ export const api = {
     async delete(id: string) {
       return request(`/matches/${id}`, { method: "DELETE" });
     },
+    /** Bouts waiting for (or answered by) clubs; a club only gets bouts with its fighters. */
+    async proposals(state?: "pending" | "accepted" | "declined") {
+      const res = await request(`/matches/proposals${state ? `?state=${state}` : ""}`);
+      return res.data;
+    },
+    /** A club accepts or declines its side of a bout; KKF staff may answer for a club (`side`). */
+    async respond(matchId: string, input: { response: "accepted" | "declined"; note?: string; side?: "a" | "b" }) {
+      const res = await request(`/matches/${matchId}/respond`, {
+        method: "POST",
+        body: JSON.stringify(input)
+      });
+      return res.data;
+    },
     async saveResult(matchId: string, result: any) {
       const res = await request(`/matches/${matchId}/result`, {
         method: "POST",

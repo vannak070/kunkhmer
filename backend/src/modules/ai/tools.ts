@@ -8,6 +8,7 @@ import { prisma } from "../../db.ts";
 import type { Prisma } from "../../generated/prisma/client.ts";
 import { NOT_DELETED, PUBLIC_FIGHTER } from "../fighters/routes.ts";
 import { PUBLIC_EVENT as PUBLISHED_EVENT } from "../events/routes.ts";
+import { PUBLIC_BOUT } from "../matches/proposals.ts";
 
 type ToolInput = Record<string, unknown>;
 
@@ -179,7 +180,7 @@ async function getFighter({ fighter }: ToolInput) {
   });
   if (!f) return { error: "No registered fighter matches that name." };
   const bouts = await prisma.match.findMany({
-    where: { OR: [{ fighter_a_id: id }, { fighter_b_id: id }], event: PUBLIC_EVENT },
+    where: { AND: [{ OR: [{ fighter_a_id: id }, { fighter_b_id: id }] }, PUBLIC_BOUT], event: PUBLIC_EVENT },
     include: boutInclude,
     orderBy: { subEvent: { date: "desc" } },
     take: 30,
@@ -211,7 +212,7 @@ async function listEvents({ when, limit }: ToolInput) {
     select: {
       id: true, name: true, date: true, end_date: true, location: true,
       broadcastStation: { select: { name: true } }, mainSponsor: { select: { name: true } },
-      _count: { select: { matches: true } },
+      _count: { select: { matches: { where: PUBLIC_BOUT } } },
     },
   });
   return {
@@ -240,7 +241,7 @@ async function getEvent({ event }: ToolInput) {
     include: {
       broadcastStation: { select: { name: true, website_url: true, stream_url: true } },
       mainSponsor: { select: { name: true } },
-      matches: { include: boutInclude, orderBy: [{ subEvent: { date: "asc" } }, { sort_order: "asc" }] },
+      matches: { where: PUBLIC_BOUT, include: boutInclude, orderBy: [{ subEvent: { date: "asc" } }, { sort_order: "asc" }] },
     },
   });
   if (!e) return { error: "No public event matches that name." };

@@ -62,6 +62,12 @@ export function matchArray(m: Match) {
     proposal_status: m.proposal_status,
     club_a_response: m.club_a_response,
     club_b_response: m.club_b_response,
+    club_a_note: m.club_a_note,
+    club_b_note: m.club_b_note,
+    club_a_responded_at: micro(m.club_a_responded_at),
+    club_b_responded_at: micro(m.club_b_responded_at),
+    club_a_responded_by: m.club_a_responded_by,
+    club_b_responded_by: m.club_b_responded_by,
     referee_id: m.referee_id,
     judge_ids: m.judge_ids,
     winner_id: m.winner_id,
@@ -91,6 +97,8 @@ export const matchRelations = {
   referee: true,
   result: true,
   championship: true,
+  clubAResponder: { select: { full_name: true, role: true } },
+  clubBResponder: { select: { full_name: true, role: true } },
 } as const satisfies Prisma.MatchInclude;
 type MatchWithRelations = Prisma.MatchGetPayload<{ include: typeof matchRelations }>;
 
@@ -122,6 +130,11 @@ export function formatMatch(m: MatchWithRelations) {
     club_a_name: fighterA?.club?.name ?? null,
     club_b_name: fighterB?.club?.name ?? null,
     referee_name: m.referee?.full_name ?? null,
+    // Who answered for each club (a club user, or KKF staff on its behalf).
+    club_a_responder_name: m.clubAResponder?.full_name ?? null,
+    club_a_responder_role: m.clubAResponder?.role ?? null,
+    club_b_responder_name: m.clubBResponder?.full_name ?? null,
+    club_b_responder_role: m.clubBResponder?.role ?? null,
     // The winner shown is always the recorded result's.
     winner_id: m.result?.winner_id ?? null,
     winner_method: m.result?.method ?? null,

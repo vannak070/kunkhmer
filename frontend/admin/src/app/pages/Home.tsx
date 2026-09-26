@@ -5,8 +5,8 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import {
-  CalendarCheck, CalendarDays, CalendarPlus, Megaphone, MessageSquareWarning, ChevronRight, ClipboardList, FilePenLine, Gavel, Layers, Newspaper,
-  PartyPopper, RefreshCw, ShieldCheck, Trophy, UserCheck, UserPlus, Users,
+  CalendarCheck, CalendarDays, CalendarPlus, Clock, Megaphone, MessageSquareWarning, ChevronRight, ClipboardList, FilePenLine, Gavel, Layers, Newspaper,
+  PartyPopper, RefreshCw, ShieldCheck, Swords, Trophy, UserCheck, UserPlus, Users,
 } from "lucide-react";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
@@ -17,11 +17,14 @@ const GROUPS: { kind: TodoKind; title: string; hint: string; icon: typeof Gavel;
   { kind: "eventApproval", title: "Events to approve", hint: "Organizers submitted these events. Approve them, or send them back with a comment.", icon: CalendarCheck, tone: "text-violet-700 bg-violet-50", action: "Review" },
   { kind: "eventSentBack", title: "Events sent back", hint: "KKF asked for changes. Fix them and submit again.", icon: MessageSquareWarning, tone: "text-amber-700 bg-amber-50", action: "Open event" },
   { kind: "readyToPublish", title: "Ready to publish", hint: "Approved by KKF but not visible to fans yet.", icon: Megaphone, tone: "text-emerald-700 bg-emerald-50", action: "Publish" },
+  { kind: "boutToAnswer", title: "Bouts to answer", hint: "Bouts proposed for your fighters. Accept them, or decline with a reason.", icon: Swords, tone: "text-sky-700 bg-sky-50", action: "Answer" },
+  { kind: "boutDeclined", title: "Bouts declined by a club", hint: "A club said no. Change the fighter, or remove the bout.", icon: MessageSquareWarning, tone: "text-red-700 bg-red-50", action: "Fix bout" },
   { kind: "fighterSentBack", title: "Fighters sent back", hint: "KKF asked for changes to these profiles. Edit and save to send them again.", icon: MessageSquareWarning, tone: "text-red-700 bg-red-50", action: "Fix profile" },
   { kind: "result", title: "Results to record", hint: "Bouts that already happened but have no result. Fans and rankings wait for these.", icon: Gavel, tone: "text-red-600 bg-red-50", action: "Record result" },
   { kind: "fighter", title: "Fighters to verify", hint: "Registered fighters waiting for KKF approval before they can be matched.", icon: UserCheck, tone: "text-amber-700 bg-amber-50", action: "Review" },
   { kind: "draftEvent", title: "Draft events", hint: "Events fans can't see yet. Finish the details and publish them.", icon: FilePenLine, tone: "text-violet-700 bg-violet-50", action: "Open event" },
   { kind: "emptyEvent", title: "Events without a fight card", hint: "Upcoming events with no bouts scheduled.", icon: Layers, tone: "text-blue-700 bg-blue-50", action: "Add fight card" },
+  { kind: "boutWaiting", title: "Bouts waiting for clubs", hint: "Fight night is within 14 days and a club hasn't answered. Fans can't see these bouts yet.", icon: Clock, tone: "text-amber-700 bg-amber-50", action: "Open" },
   { kind: "unconfirmed", title: "Bouts to confirm", hint: "Bouts in the next 14 days where a fighter hasn't confirmed.", icon: ClipboardList, tone: "text-sky-700 bg-sky-50", action: "Open fight card" },
   { kind: "vacantTitle", title: "Vacant titles", hint: "Championship titles with no holder.", icon: Trophy, tone: "text-amber-700 bg-amber-50", action: "Schedule title bout" },
 ];

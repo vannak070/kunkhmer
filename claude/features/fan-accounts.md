@@ -53,7 +53,9 @@ Notification: `{id, type, data, read, createdAt}`.
   attempts per 15 minutes per IP (register) and per IP + email (login) → 429.
   In memory, per process.
 - **Notifications** (`modules/fans/notify.ts`), for followers of either fighter:
-  - `POST /matches` → `bout_scheduled`; `POST /matches/:id/result` → `bout_result`
+  - `bout_scheduled` when a bout becomes accepted by both clubs (on create if neither
+    fighter has a club, else on `POST /matches/:id/respond` or a fighter swap in
+    `PUT /matches/:id`, see `match-proposals.md`); `POST /matches/:id/result` → `bout_result`
     with `outcome` (`win`/`loss`/`draw`, `nc` for method "No Contest"), `method`, `round`.
   - `data` stores facts (both fighters' names in English and Khmer, event,
     date, status, title match), not sentences — the site renders them in the

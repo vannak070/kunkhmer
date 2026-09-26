@@ -15,6 +15,7 @@ import {
 } from "../data/batches";
 import type { BatchStatus } from "../data/batches";
 import { api } from "../utils/api";
+import { ProposalBadge } from "../components/BoutAnswer";
 import { useEffect } from "react";
 import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
@@ -221,6 +222,8 @@ export function BatchDetail() {
             gloveSize: m.glove_size || m.gloveSize || "",
             gloveBrand: m.glove_brand || m.gloveBrand || "",
             championshipTitleName: m.championshipTitleName || m.championship_title_name || null,
+            // Raw API row, for the clubs' answers (ProposalBadge).
+            apiMatch: m,
             fighterA: {
               id: m.fighter_a_id,
               name: m.fighter_a_name || "TBD (Fighter A)",
@@ -1245,6 +1248,13 @@ export function BatchDetail() {
                                   <div className="text-xs text-slate-500 font-medium uppercase tracking-wider text-[10px]">{match.fighterB.record}</div>
                                 </div>
                               </div>
+
+                              {/* Clubs' answers (Match Proposals) until there's a result */}
+                              {!(match.status === "Complete" || match.winnerId || match.winnerMethod) && match.apiMatch && (
+                                <div className="text-center mt-1">
+                                  <ProposalBadge match={match.apiMatch} />
+                                </div>
+                              )}
 
                               {/* Victory outcome subtext */}
                               {(match.status === "Complete" || match.winnerId || match.winnerMethod) && (

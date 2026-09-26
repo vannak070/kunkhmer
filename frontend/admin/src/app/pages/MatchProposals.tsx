@@ -1,467 +1,307 @@
-import { useState } from "react";
-import { CheckCircle, XCircle, Clock, AlertCircle, Calendar, Users, Shield, Flame } from "lucide-react";
-import { MOCK_MATCHES, MOCK_EVENTS, GRADE_STYLES } from "../data/mock";
-import { usePermissions } from "../hooks/usePermissions";
-import { Link } from "react-router";
+/**
+ * Match proposals (Phase 3b): every new bout goes to both fighters' clubs to accept or decline.
+ * Clubs answer for their own fighters; KKF staff can answer for a club (e.g. after a phone call);
+ * organizers and staff see declines with the reason and can change the fighter, which sends
+ * that side back to the (new) club. Fans only see a bout once both clubs accepted it.
+ */
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router";
+import { toast } from "sonner";
+import { ArrowLeftRight, Calendar, ChevronRight, ClipboardCheck, Loader2, Trophy } from "lucide-react";
+import { api } from "../utils/api";
+import { type Answer, type SideInfo, BoutAnswerActions, ProposalBadge, answerableSides, proposalOf, waitingOnMe } from "../components/BoutAnswer";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
+import { useAdminOverview } from "../hooks/useAdminOverview";
+
+const STAFF_ROLES = ["Super Admin", "KKF Officer"];
+const TABS: { key: Answer; label: string }[] = [
+  { key: "pending", label: "Waiting" },
+  { key: "declined", label: "Declined" },
+  { key: "accepted", label: "Accepted" },
+];
+
+const fmtDate = (d?: string | null) =>
+  d ? new Date(d).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "No date";
 
 export function MatchProposals() {
-  const permissions = usePermissions();
-  const currentUser = permissions.currentUser;
-  const [filter, setFilter] = useState<string>("pending");
+  const me = api.auth.getCurrentUser();
+  const role: string = me?.role ?? "";
+  const isStaff = STAFF_ROLES.includes(role);
+  const isClub = role === "Club/Gym";
+  const canChangeFighter = isStaff || role === "Organizer";
+  const allowed = isStaff || isClub || role === "Organizer";
 
-  const isClub = currentUser?.role === 'club';
-  const isManager = currentUser?.role === 'kkf_manager' || currentUser?.role === 'kkf_super_admin';
+  const [bouts, setBouts] = useState<any[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  // The tab is in the URL (?tab=declined) so dashboard links and shared links open the right list.
+  const [params, setParams] = useSearchParams();
+  const tab: Answer = TABS.some((t) => t.key === params.get("tab")) ? (params.get("tab") as Answer) : "pending";
+  const setTab = (key: Answer) => setParams(key === "pending" ? {} : { tab: key }, { replace: true });
+  const [changing, setChanging] = useState<{ match: any; side: SideInfo } | null>(null);
+  // Keeps the dashboard to-dos and the header bell in step with answers given here.
+  const { refresh: refreshOverview } = useAdminOverview();
 
-  if (!currentUser || (!isClub && !isManager)) {
+  const load = () =>
+    api.matches
+      .proposals()
+      .then((rows: any[]) => setBouts(rows.filter((m) => !m.result && m.event_status !== "Cancelled")))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Could not load match proposals."));
+
+  useEffect(() => {
+    if (allowed) load();
+  }, []);
+
+  const replace = (updated: any) => {
+    setBouts((prev) => (prev ?? []).map((m) => (m.id === updated.id ? { ...m, ...updated } : m)));
+    refreshOverview().catch(() => undefined);
+  };
+
+  const counts = useMemo(() => {
+    const c: Record<Answer, number> = { pending: 0, declined: 0, accepted: 0 };
+    for (const m of bouts ?? []) c[proposalOf(m).status]++;
+    return c;
+  }, [bouts]);
+
+  // Waiting-for-you first, then soonest fight night.
+  const shown = (bouts ?? [])
+    .filter((m) => proposalOf(m).status === tab)
+    .sort((x, y) => Number(waitingOnMe(proposalOf(y))) - Number(waitingOnMe(proposalOf(x))) || String(x.date).localeCompare(String(y.date)));
+  const mineWaiting = (bouts ?? []).filter((m) => waitingOnMe(proposalOf(m))).length;
+
+  if (!allowed) {
     return (
-      <div className="p-8 max-w-7xl mx-auto">
-        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-8 text-center">
-          <AlertCircle className="w-12 h-12 text-[#C8102E] mx-auto mb-4" />
-          <h2 className="text-2xl font-black text-[#C8102E] mb-2">Access Denied</h2>
-          <p className="text-[#707070] font-medium">This page is only accessible to Club/Gym users and KKF Managers.</p>
+      <div className="p-4 md:p-8 max-w-3xl mx-auto">
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+          <h1 className="text-lg font-semibold text-slate-900 mb-1">Match proposals</h1>
+          <p className="text-sm text-slate-600">Only clubs, organizers and KKF staff use this page.</p>
         </div>
       </div>
     );
   }
 
-  const userClubId = currentUser.organization;
-
-  // Filter matches based on role
-  let relevantMatches = [];
-  if (isClub) {
-    relevantMatches = MOCK_MATCHES.filter(match => {
-      // Clubs only see matches that have been proposed to them (not pending KKF approval)
-      if (match.proposalStatus === 'pending_kkf' || match.status === 'Pending KKF Approval') return false;
-      const fighterAClub = match.fighterA.gym;
-      const fighterBClub = match.fighterB.gym;
-      return fighterAClub === userClubId || fighterBClub === userClubId;
-    });
-  } else if (isManager) {
-    // Managers see matches that are pending their approval, or already approved by them
-    relevantMatches = MOCK_MATCHES.filter(match => 
-      match.proposalStatus === 'pending_kkf' || 
-      match.status === 'Pending KKF Approval' ||
-      match.proposalStatus === 'pending' || 
-      match.status === 'Proposed'
-    );
-  }
-
-  let pendingMatches = [];
-  let confirmedMatches = [];
-  let rejectedMatches = [];
-
-  if (isClub) {
-    pendingMatches = relevantMatches.filter(match => match.status === "Proposed" || match.status === "Pending Club Confirmation");
-    confirmedMatches = relevantMatches.filter(match => match.clubAResponse === "confirmed" && match.clubBResponse === "confirmed");
-    rejectedMatches = relevantMatches.filter(match => match.clubAResponse === "rejected" || match.clubBResponse === "rejected");
-  } else if (isManager) {
-    pendingMatches = relevantMatches.filter(match => match.proposalStatus === "pending_kkf" || match.status === "Pending KKF Approval");
-    confirmedMatches = relevantMatches.filter(match => match.proposalStatus !== "pending_kkf" && match.status !== "Pending KKF Approval" && match.proposalStatus !== "rejected_kkf");
-    rejectedMatches = relevantMatches.filter(match => match.proposalStatus === "rejected_kkf");
-  }
-
-  const displayMatches = filter === "pending" ? pendingMatches : 
-                         filter === "confirmed" ? confirmedMatches : 
-                         rejectedMatches;
-
-  const handleAcceptClub = (matchId: string) => {
-    const match = MOCK_MATCHES.find(m => m.id === matchId);
-    if (!match) return;
-
-    const isClubA = match.fighterA.gym === userClubId;
-    const today = new Date().toISOString().split('T')[0];
-    
-    if (isClubA) {
-      match.clubAResponse = "confirmed";
-      match.clubAConfirmedDate = today;
-    } else {
-      match.clubBResponse = "confirmed";
-      match.clubBConfirmedDate = today;
-    }
-
-    if (match.clubAResponse === "confirmed" && match.clubBResponse === "confirmed") {
-      match.status = "Club Confirmed"; 
-      match.proposalStatus = "confirmed";
-    } else if (match.clubAResponse === "confirmed" || match.clubBResponse === "confirmed") {
-      match.status = "Pending Club Confirmation";
-    }
-
-    alert("Match proposal confirmed! Your fighter has been confirmed for this match.");
-    window.location.reload();
-  };
-
-  const handleRejectClub = (matchId: string) => {
-    const match = MOCK_MATCHES.find(m => m.id === matchId);
-    if (!match) return;
-
-    const isClubA = match.fighterA.gym === userClubId;
-    
-    if (isClubA) {
-      match.clubAResponse = "rejected";
-    } else {
-      match.clubBResponse = "rejected";
-    }
-
-    match.status = "Rejected";
-    match.proposalStatus = "rejected";
-
-    alert("Match proposal rejected.");
-    window.location.reload();
-  };
-
-  const handleApproveManager = (matchId: string) => {
-    const match = MOCK_MATCHES.find(m => m.id === matchId);
-    if (!match) return;
-
-    match.proposalStatus = "pending"; 
-    match.status = "Proposed"; 
-    alert("Match approved by KKF Manager. It has now been sent to the clubs for confirmation.");
-    window.location.reload();
-  };
-
-  const handleRejectManager = (matchId: string) => {
-    const match = MOCK_MATCHES.find(m => m.id === matchId);
-    if (!match) return;
-
-    match.proposalStatus = "rejected_kkf";
-    match.status = "Rejected by KKF";
-    alert("Match rejected by KKF Manager.");
-    window.location.reload();
-  };
-
-  const getMyResponse = (match: any) => {
-    if (isManager) return match.proposalStatus === 'pending_kkf' ? 'pending' : (match.proposalStatus === 'rejected_kkf' ? 'rejected' : 'confirmed');
-    const isClubA = match.fighterA.gym === userClubId;
-    return isClubA ? match.clubAResponse : match.clubBResponse;
-  };
-
-  const getOpponentResponse = (match: any) => {
-    if (isManager) return 'N/A'; // Managers don't have "opponent" response
-    const isClubA = match.fighterA.gym === userClubId;
-    return isClubA ? match.clubBResponse : match.clubAResponse;
-  };
-
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
+    <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
       <header>
-        <h1 className="text-4xl font-black tracking-tight uppercase text-[#0A3D91]">
-          {isManager ? "Match Approvals" : "Match Proposals"}
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground flex items-center gap-2">
+          <ClipboardCheck className="w-6 h-6 text-primary" aria-hidden /> Match proposals
         </h1>
-        <p className="text-[#707070] mt-2 font-medium text-lg">
-          {isManager ? "Review and approve matches submitted by organizers." : "Review and respond to match proposals from organizers."}
+        <p className="text-sm text-muted-foreground mt-1 font-medium">
+          {isClub
+            ? "Bouts proposed for your fighters. Accept them, or decline with a reason. Fans only see a bout once both clubs accept."
+            : "Every new bout goes to both fighters' clubs. Fans only see it once both clubs accept."}
         </p>
       </header>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl p-6 border-2 border-amber-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-black text-amber-700 uppercase tracking-wider mb-1">Pending</p>
-              <p className="text-4xl font-black text-amber-700">{pendingMatches.length}</p>
-            </div>
-            <Clock className="w-12 h-12 text-amber-600" />
-          </div>
+      {isClub && mineWaiting > 0 && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm font-medium text-amber-900">
+          {mineWaiting} {mineWaiting === 1 ? "bout is" : "bouts are"} waiting for your answer.
         </div>
+      )}
 
-        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl p-6 border-2 border-emerald-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-black text-emerald-700 uppercase tracking-wider mb-1">
-                {isManager ? "Approved" : "Confirmed"}
-              </p>
-              <p className="text-4xl font-black text-emerald-700">{confirmedMatches.length}</p>
-            </div>
-            <CheckCircle className="w-12 h-12 text-emerald-600" />
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-2xl p-6 border-2 border-red-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-black text-[#C8102E] uppercase tracking-wider mb-1">Rejected</p>
-              <p className="text-4xl font-black text-[#C8102E]">{rejectedMatches.length}</p>
-            </div>
-            <XCircle className="w-12 h-12 text-[#C8102E]" />
-          </div>
-        </div>
+      <div role="tablist" aria-label="Proposal status" className="flex gap-1 rounded-xl bg-slate-100 p-1 w-full sm:w-auto sm:inline-flex">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            role="tab"
+            type="button"
+            aria-selected={tab === t.key}
+            onClick={() => setTab(t.key)}
+            className={`flex-1 sm:flex-none h-9 px-2 sm:px-4 whitespace-nowrap rounded-lg text-sm font-semibold transition-colors ${tab === t.key ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+          >
+            {t.label} <span className="ml-1 text-xs font-bold text-slate-400">{counts[t.key]}</span>
+          </button>
+        ))}
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-3">
-        <button
-          onClick={() => setFilter("pending")}
-          className={`px-6 py-3 rounded-xl font-bold text-sm uppercase tracking-wider transition-all ${
-            filter === "pending"
-              ? "bg-gradient-to-r from-[#C8102E] to-[#A00D24] text-white shadow-lg"
-              : "bg-white text-[#707070] border-2 border-[#E0E0E0] hover:border-[#0A3D91]"
-          }`}
-        >
-          Pending ({pendingMatches.length})
-        </button>
-        <button
-          onClick={() => setFilter("confirmed")}
-          className={`px-6 py-3 rounded-xl font-bold text-sm uppercase tracking-wider transition-all ${
-            filter === "confirmed"
-              ? "bg-gradient-to-r from-[#C8102E] to-[#A00D24] text-white shadow-lg"
-              : "bg-white text-[#707070] border-2 border-[#E0E0E0] hover:border-[#0A3D91]"
-          }`}
-        >
-          {isManager ? "Approved" : "Confirmed"} ({confirmedMatches.length})
-        </button>
-        <button
-          onClick={() => setFilter("rejected")}
-          className={`px-6 py-3 rounded-xl font-bold text-sm uppercase tracking-wider transition-all ${
-            filter === "rejected"
-              ? "bg-gradient-to-r from-[#C8102E] to-[#A00D24] text-white shadow-lg"
-              : "bg-white text-[#707070] border-2 border-[#E0E0E0] hover:border-[#0A3D91]"
-          }`}
-        >
-          Rejected ({rejectedMatches.length})
-        </button>
-      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      {!bouts && !error && (
+        <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="w-4 h-4 animate-spin" aria-hidden /> Loading bouts…</div>
+      )}
+      {bouts && shown.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">
+          {tab === "pending" ? "No bouts are waiting for a club's answer." : tab === "declined" ? "No declined bouts." : "No accepted bouts coming up."}
+        </div>
+      )}
 
-      {/* Match Proposals List */}
-      <div className="space-y-6">
-        {displayMatches.length === 0 && (
-          <div className="bg-white rounded-2xl border-2 border-[#E0E0E0] p-12 text-center">
-            <Clock className="w-16 h-16 text-[#B0B0B0] mx-auto mb-4" />
-            <p className="text-[#707070] font-medium text-lg">
-              No {filter} matches.
-            </p>
-          </div>
-        )}
+      <ul className="space-y-4">
+        {shown.map((m) => (
+          <BoutCard
+            key={m.id}
+            match={m}
+            isStaff={isStaff}
+            canChangeFighter={canChangeFighter}
+            onAnswered={replace}
+            onChangeFighter={(side) => setChanging({ match: m, side })}
+          />
+        ))}
+      </ul>
 
-        {displayMatches.map((match) => {
-          const event = MOCK_EVENTS.find(e => e.id === match.eventId);
-          const myResponse = getMyResponse(match);
-          const opponentResponse = getOpponentResponse(match);
-          
-          let isClubA = false;
-          let gradeStyleA = GRADE_STYLES[match.fighterA.grade || 'D'];
-          let gradeStyleB = GRADE_STYLES[match.fighterB.grade || 'D'];
-          
-          if (isClub) {
-            isClubA = match.fighterA.gym === userClubId;
-          }
-
-          return (
-            <div key={match.id} className="bg-white rounded-2xl border-2 border-[#E0E0E0] overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-              {/* Match Header */}
-              <div className="bg-gradient-to-r from-[#0A3D91] to-[#051C42] px-6 py-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <h3 className="text-white font-black text-xl mb-1">{event?.name}</h3>
-                    <div className="flex flex-wrap items-center gap-3 text-white/80 text-sm font-medium">
-                      <span className="flex items-center gap-1.5">
-                        <Calendar className="w-4 h-4" />
-                        {match.date}
-                      </span>
-                      <span>•</span>
-                      <span>{match.rounds} Rounds</span>
-                      <span>•</span>
-                      <span>{match.weightClass}</span>
-                      {isManager && (
-                        <>
-                          <span>•</span>
-                          <span className="text-[#F2C94C]">Proposed By: {match.proposedBy}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {match.proposalStatus === "confirmed" && (
-                      <span className="bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-lg">
-                        <CheckCircle className="w-4 h-4" />
-                        Confirmed
-                      </span>
-                    )}
-                    {(match.proposalStatus === "rejected" || match.proposalStatus === "rejected_kkf") && (
-                      <span className="bg-red-500 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-lg">
-                        <XCircle className="w-4 h-4" />
-                        Rejected
-                      </span>
-                    )}
-                    {match.proposalStatus?.includes("pending") && (
-                      <span className="bg-amber-500 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-lg">
-                        <Clock className="w-4 h-4" />
-                        {match.proposalStatus === "pending_kkf" ? "Pending KKF Approval" : "Pending Club"}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Match Details */}
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-                  {/* Fighter A */}
-                  <div className="text-center">
-                    <div className="relative inline-block mb-4">
-                      <img 
-                        src={match.fighterA.image} 
-                        alt={match.fighterA.name}
-                        className={`w-28 h-28 rounded-full object-cover border-4 shadow-xl ${
-                          isClub && isClubA ? 'border-[#0A3D91]' : 'border-[#E0E0E0]'
-                        }`}
-                      />
-                      {isClub && isClubA && (
-                        <span className="absolute -top-2 -left-2 bg-[#0A3D91] text-white p-2 rounded-full shadow-lg border-2 border-white">
-                          <Shield className="w-4 h-4" />
-                        </span>
-                      )}
-                    </div>
-                    <h4 className="font-black text-xl text-[#1A1A24] mb-2">{match.fighterA.name}</h4>
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <span className="text-sm font-mono font-bold bg-[#F4F5F8] px-3 py-1 rounded-lg">{match.fighterA.record}</span>
-                      <span className={`text-xs font-black px-2 py-1 rounded ${gradeStyleA.bg} ${gradeStyleA.text}`}>
-                        Grade {match.fighterA.grade}
-                      </span>
-                    </div>
-                    <p className="text-sm text-[#707070] font-medium">{match.fighterA.gym}</p>
-                    <div className="mt-3">
-                      <span className="inline-block px-3 py-1 bg-blue-50 text-[#0A3D91] text-xs font-bold uppercase rounded-lg border border-blue-100">
-                        {match.fighterA.style}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* VS Divider */}
-                  <div className="flex flex-col items-center">
-                    <div className="w-20 h-20 bg-gradient-to-br from-[#1A1A24] to-[#0A3D91] rounded-2xl rotate-45 flex items-center justify-center shadow-xl mb-4">
-                      <span className="font-black italic text-3xl text-white -rotate-45">VS</span>
-                    </div>
-                    
-                    {isClub && (
-                      <div className="text-center space-y-2">
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="text-xs font-black text-[#707070] uppercase">Your Status:</span>
-                          {myResponse === "confirmed" && (
-                            <span className="text-emerald-600 font-bold text-sm flex items-center gap-1">
-                              <CheckCircle className="w-4 h-4" /> Confirmed
-                            </span>
-                          )}
-                          {myResponse === "rejected" && (
-                            <span className="text-red-600 font-bold text-sm flex items-center gap-1">
-                              <XCircle className="w-4 h-4" /> Rejected
-                            </span>
-                          )}
-                          {myResponse === "pending" && (
-                            <span className="text-amber-600 font-bold text-sm flex items-center gap-1">
-                              <Clock className="w-4 h-4" /> Pending
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="text-xs font-black text-[#707070] uppercase">Opponent:</span>
-                          {opponentResponse === "confirmed" && (
-                            <span className="text-emerald-600 font-bold text-sm flex items-center gap-1">
-                              <CheckCircle className="w-4 h-4" /> Confirmed
-                            </span>
-                          )}
-                          {opponentResponse === "rejected" && (
-                            <span className="text-red-600 font-bold text-sm flex items-center gap-1">
-                              <XCircle className="w-4 h-4" /> Rejected
-                            </span>
-                          )}
-                          {opponentResponse === "pending" && (
-                            <span className="text-amber-600 font-bold text-sm flex items-center gap-1">
-                              <Clock className="w-4 h-4" /> Waiting...
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Fighter B */}
-                  <div className="text-center">
-                    <div className="relative inline-block mb-4">
-                      <img 
-                        src={match.fighterB.image} 
-                        alt={match.fighterB.name}
-                        className={`w-28 h-28 rounded-full object-cover border-4 shadow-xl ${
-                          isClub && !isClubA ? 'border-[#C8102E]' : 'border-[#E0E0E0]'
-                        }`}
-                      />
-                      {isClub && !isClubA && (
-                        <span className="absolute -top-2 -right-2 bg-[#C8102E] text-white p-2 rounded-full shadow-lg border-2 border-white">
-                          <Shield className="w-4 h-4" />
-                        </span>
-                      )}
-                    </div>
-                    <h4 className="font-black text-xl text-[#1A1A24] mb-2">{match.fighterB.name}</h4>
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <span className="text-sm font-mono font-bold bg-[#F4F5F8] px-3 py-1 rounded-lg">{match.fighterB.record}</span>
-                      <span className={`text-xs font-black px-2 py-1 rounded ${gradeStyleB.bg} ${gradeStyleB.text}`}>
-                        Grade {match.fighterB.grade}
-                      </span>
-                    </div>
-                    <p className="text-sm text-[#707070] font-medium">{match.fighterB.gym}</p>
-                    <div className="mt-3">
-                      <span className="inline-block px-3 py-1 bg-red-50 text-[#C8102E] text-xs font-bold uppercase rounded-lg border border-red-100">
-                        {match.fighterB.style}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action Buttons for Club */}
-                {isClub && myResponse === "pending" && match.proposalStatus !== "rejected" && (
-                  <div className="mt-6 pt-6 border-t-2 border-[#E0E0E0] flex flex-col sm:flex-row gap-3 justify-center">
-                    <button
-                      onClick={() => handleAcceptClub(match.id)}
-                      className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-8 py-4 rounded-xl font-bold uppercase tracking-wider transition-all shadow-lg hover:shadow-xl hover:scale-[1.02]"
-                    >
-                      <CheckCircle className="w-5 h-5" />
-                      Accept Match
-                    </button>
-                    <button
-                      onClick={() => handleRejectClub(match.id)}
-                      className="inline-flex items-center justify-center gap-2 bg-white hover:bg-red-50 text-[#C8102E] border-2 border-[#C8102E] px-8 py-4 rounded-xl font-bold uppercase tracking-wider transition-all shadow-md hover:shadow-lg"
-                    >
-                      <XCircle className="w-5 h-5" />
-                      Reject Match
-                    </button>
-                  </div>
-                )}
-
-                {/* Action Buttons for KKF Manager */}
-                {isManager && match.proposalStatus === "pending_kkf" && (
-                  <div className="mt-6 pt-6 border-t-2 border-[#E0E0E0] flex flex-col sm:flex-row gap-3 justify-center">
-                    <button
-                      onClick={() => handleApproveManager(match.id)}
-                      className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-[#0A3D91] to-[#051C42] hover:from-[#051C42] hover:to-[#020d20] text-white px-8 py-4 rounded-xl font-bold uppercase tracking-wider transition-all shadow-lg hover:shadow-xl hover:scale-[1.02]"
-                    >
-                      <CheckCircle className="w-5 h-5" />
-                      Approve Match (Send to Clubs)
-                    </button>
-                    <button
-                      onClick={() => handleRejectManager(match.id)}
-                      className="inline-flex items-center justify-center gap-2 bg-white hover:bg-red-50 text-[#C8102E] border-2 border-[#C8102E] px-8 py-4 rounded-xl font-bold uppercase tracking-wider transition-all shadow-md hover:shadow-lg"
-                    >
-                      <XCircle className="w-5 h-5" />
-                      Reject Match
-                    </button>
-                  </div>
-                )}
-
-                {isClub && myResponse === "confirmed" && opponentResponse === "pending" && (
-                  <div className="mt-6 pt-6 border-t-2 border-[#E0E0E0]">
-                    <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 text-center">
-                      <p className="text-[#0A3D91] font-bold flex items-center justify-center gap-2">
-                        <Clock className="w-5 h-5" />
-                        Waiting for opponent club to respond...
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {changing && (
+        <ChangeFighterDialog
+          match={changing.match}
+          side={changing.side}
+          onClose={() => setChanging(null)}
+          onChanged={(updated) => { setChanging(null); replace(updated); }}
+        />
+      )}
     </div>
+  );
+}
+
+function BoutCard({ match: m, isStaff, canChangeFighter, onAnswered, onChangeFighter }: {
+  match: any;
+  isStaff: boolean;
+  canChangeFighter: boolean;
+  onAnswered: (updated: any) => void;
+  onChangeFighter: (side: SideInfo) => void;
+}) {
+  const p = proposalOf(m);
+  const mine = answerableSides(p);
+  const [changeAnswer, setChangeAnswer] = useState(false);
+  const clubCanAnswer = !isStaff && mine.length > 0;
+  const clubHasOpen = p.sides.some((s) => mine.includes(s.side) && s.response === "pending");
+
+  return (
+    <li className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <p className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+          <Calendar className="w-3.5 h-3.5" aria-hidden />
+          {fmtDate(m.date)} · {m.event_name} · {m.sub_event_name}
+        </p>
+        <ProposalBadge match={m} />
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3">
+        {p.sides.map((s) => (
+          <div key={s.side} className={`rounded-xl border p-3 ${s.side === "a" ? "border-red-100 bg-red-50/30" : "border-blue-100 bg-blue-50/30"}`}>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{s.side === "a" ? "Red corner" : "Blue corner"}</p>
+            <p className="font-semibold text-slate-900">{s.fighter}</p>
+            <p className="text-sm text-slate-600">{s.club ?? "No club"}</p>
+            <SideAnswer side={s} />
+            <div className="mt-2 flex flex-wrap gap-2">
+              {isStaff && s.response !== "accepted" && s.clubId && (
+                <BoutAnswerActions match={m} side={s.side} label={s.club ?? undefined} onDone={onAnswered} />
+              )}
+              {canChangeFighter && s.response === "declined" && (
+                <button type="button" onClick={() => onChangeFighter(s)} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-slate-300 hover:border-primary hover:text-primary text-sm font-semibold text-slate-700">
+                  <ArrowLeftRight className="w-4 h-4" aria-hidden /> Change fighter
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-slate-600">
+          {m.rounds} rounds × {m.round_time} min · {m.agreed_weight} kg · {m.glove_size} {m.glove_brand}
+          {m.isTitleMatch && (
+            <span className="ml-2 inline-flex items-center gap-1 text-amber-700 font-semibold"><Trophy className="w-3.5 h-3.5" aria-hidden /> {m.championshipTitleName ?? "Title bout"}</span>
+          )}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          {clubCanAnswer && (clubHasOpen || changeAnswer) && (
+            <BoutAnswerActions match={m} onDone={(u) => { setChangeAnswer(false); onAnswered(u); }} />
+          )}
+          {clubCanAnswer && !clubHasOpen && !changeAnswer && (
+            <button type="button" onClick={() => setChangeAnswer(true)} className="h-9 px-3 rounded-lg text-sm font-semibold text-slate-600 hover:text-primary">
+              Change your answer
+            </button>
+          )}
+          {!clubCanAnswer && (
+            <Link to={`/home/matches/${m.sub_event_id}`} className="inline-flex items-center gap-1 h-9 px-3 rounded-lg text-sm font-semibold text-primary hover:bg-primary/5">
+              Open fight card <ChevronRight className="w-4 h-4" aria-hidden />
+            </Link>
+          )}
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function SideAnswer({ side: s }: { side: SideInfo }) {
+  if (!s.clubId && s.response === "accepted") return <p className="mt-1 text-xs text-slate-500">No club to confirm.</p>;
+  const by = s.by ? ` by ${s.by}${s.byRole && s.byRole !== "Club/Gym" ? ` (${s.byRole}, for the club)` : ""}` : "";
+  if (s.response === "accepted") return <p className="mt-1 text-xs font-semibold text-emerald-700">Accepted{by}</p>;
+  if (s.response === "declined") {
+    return (
+      <p className="mt-1 text-xs text-red-700">
+        <span className="font-semibold">Declined{by}</span>{s.note ? `: ${s.note}` : ""}
+      </p>
+    );
+  }
+  return <p className="mt-1 text-xs font-semibold text-amber-700">Waiting for the club</p>;
+}
+
+/** Swap the declined side's fighter for another verified one; that side goes back to its club. */
+function ChangeFighterDialog({ match: m, side, onClose, onChanged }: {
+  match: any;
+  side: SideInfo;
+  onClose: () => void;
+  onChanged: (updated: any) => void;
+}) {
+  const [fighters, setFighters] = useState<any[] | null>(null);
+  const [picked, setPicked] = useState("");
+  const [busy, setBusy] = useState(false);
+  const other = side.side === "a" ? m.fighter_b_id : m.fighter_a_id;
+  const current = side.side === "a" ? m.fighter_a_id : m.fighter_b_id;
+  const weight = Number(m.agreed_weight);
+
+  useEffect(() => {
+    api.fighters
+      .list()
+      .then((rows: any[]) =>
+        setFighters(
+          rows
+            .filter((f) => f.status === "Active" && f.id !== other && f.id !== current)
+            .sort((x, y) => Math.abs(Number(x.currentWeight) - weight) - Math.abs(Number(y.currentWeight) - weight)),
+        ),
+      )
+      .catch(() => setFighters([]));
+  }, []);
+
+  const save = async () => {
+    if (!picked) return;
+    setBusy(true);
+    try {
+      const updated = await api.matches.update(m.id, side.side === "a" ? { fighterAId: picked } : { fighterBId: picked });
+      toast.success("Fighter changed — the bout was sent to the new fighter's club");
+      onChanged(updated);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not change the fighter.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md rounded-2xl">
+        <DialogHeader>
+          <DialogTitle>Replace {side.fighter}</DialogTitle>
+          <DialogDescription>
+            {side.club ?? "The club"} declined{side.note ? `: “${side.note.replace(/[.\s]+$/, "")}”.` : "."} Pick another verified fighter near {weight} kg; their club will be asked to accept.
+          </DialogDescription>
+        </DialogHeader>
+        <label htmlFor="replacement" className="block text-sm font-medium text-slate-700">New fighter</label>
+        <select
+          id="replacement"
+          value={picked}
+          onChange={(e) => setPicked(e.target.value)}
+          className="w-full h-11 rounded-xl border border-slate-300 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none px-3 text-sm bg-white"
+        >
+          <option value="">{fighters ? "Choose a fighter…" : "Loading fighters…"}</option>
+          {(fighters ?? []).map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name} · {Number(f.currentWeight)} kg{f.clubName ? ` · ${f.clubName}` : ""}
+            </option>
+          ))}
+        </select>
+        <DialogFooter className="gap-2 sm:gap-2">
+          <button type="button" onClick={onClose} className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancel</button>
+          <button type="button" disabled={busy || !picked} onClick={save} className="h-11 px-5 rounded-xl bg-primary hover:bg-[#083073] disabled:opacity-60 text-white text-sm font-semibold">Change fighter</button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

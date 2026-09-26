@@ -18,9 +18,11 @@ fighter records and championship titles.
 | POST | `/matches/batches` | STAFF, Organizer | requires eventId, name, weekNumber, date, location; batch number auto `BATCH-<ms>` |
 | PUT | `/matches/batches/:id` | STAFF, Organizer | |
 | DELETE | `/matches/batches/:id` | Super Admin | cascades to matches |
-| GET | `/matches[/:id]` | public | `?subEventId=`; ordered by `sort_order` |
-| POST | `/matches` | STAFF, Organizer | requires subEventId, fighterAId, fighterBId, rounds, roundTime, knockdownLimit, agreedWeight, gloveSize, gloveBrand; event derived from batch; 200 |
-| PUT | `/matches/:id` | STAFF, Organizer, Club/Gym | Club/Gym only if one fighter is from their club; accepts `sortOrder` or `sort_order` |
+| GET | `/matches[/:id]` | public | `?subEventId=`; ordered by `sort_order`. Without a staff token only bouts of published events that both clubs accepted (or that have a result) |
+| GET | `/matches/proposals` | STAFF, Organizer, Club/Gym | club answers, see `match-proposals.md` |
+| POST | `/matches` | STAFF, Organizer | requires subEventId, fighterAId, fighterBId, rounds, roundTime, knockdownLimit, agreedWeight, gloveSize, gloveBrand; both fighters verified; event derived from batch; sent to both clubs (proposal fields in the body are ignored); 200 |
+| PUT | `/matches/:id` | STAFF, Organizer | accepts `sortOrder` or `sort_order`; proposal fields ignored; swapping a fighter (must be verified) resets that side's club answer |
+| POST | `/matches/:id/respond` | Club/Gym own side, STAFF | accept / decline (reason required), see `match-proposals.md` |
 | DELETE | `/matches/:id` | Super Admin | |
 | POST | `/matches/:id/result` | STAFF | `{winnerId ("" = draw), method, round, duration}` |
 
@@ -44,7 +46,8 @@ Match response: snake_case row + nested `sub_event`, `fighter_a`/`fighter_b`
   `AddMatchToEvent.tsx`, `AssignOfficials.tsx`, `MatchDetail.tsx`,
   `MatchDetailView.tsx` (`/home/match/:id/update-result`), `ShareFightCard.tsx`
   (poster export), `MatchesEnhanced.tsx`.
-- `MatchProposals.tsx`, `Matches.tsx` (`matches-old`), `SubEventDetail.tsx` use mock data.
+- `MatchProposals.tsx` (`/home/match-proposals`) — club answers on the API (Phase 3b).
+- Fight card and event pages show each bout's club answers (`components/BoutAnswer.tsx`).
 
 ## Tests
 `api-tests/tests/matches.test.ts`
@@ -52,4 +55,3 @@ Match response: snake_case row + nested `sub_event`, `fighter_a`/`fighter_b`
 ## Open questions / gaps
 - Correcting a title result to a different winner doesn't reverse the title
   (needs an explicit "correct title result" flow).
-- Proposal flow (`proposal_status`, `club_a/b_response`) has fields but no dedicated endpoints.

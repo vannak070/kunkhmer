@@ -32,6 +32,8 @@ model User {
   approvedEvents   Event[]    @relation("EventApprover")
   verifiedFighters Fighter[]  @relation("FighterVerifier")
   refereedMatches  Match[]    @relation("MatchReferee")
+  clubAResponses   Match[]    @relation("MatchClubAResponder")
+  clubBResponses   Match[]    @relation("MatchClubBResponder")
   createdSubEvents SubEvent[] @relation("SubEventCreator")
 
   @@map("users")
@@ -254,6 +256,14 @@ model Match {
   proposal_status      String    @default("draft") @db.VarChar(255)
   club_a_response      String    @default("pending") @db.VarChar(255)
   club_b_response      String    @default("pending") @db.VarChar(255)
+  /// Club answers to a proposed bout (Phase 3b): decline reason, when, and who
+  /// answered (a club user, or KKF staff answering for the club).
+  club_a_note          String?
+  club_b_note          String?
+  club_a_responded_at  DateTime? @db.Timestamp(0)
+  club_b_responded_at  DateTime? @db.Timestamp(0)
+  club_a_responded_by  String?   @db.Uuid
+  club_b_responded_by  String?   @db.Uuid
   referee_id           String?   @db.Uuid
   judge_ids            Json?     @db.Json
   winner_id            String?   @db.Uuid
@@ -268,6 +278,8 @@ model Match {
   fighterA     Fighter   @relation("MatchFighterA", fields: [fighter_a_id], references: [id], onUpdate: NoAction, map: "matches_fighter_a_id_foreign")
   fighterB     Fighter   @relation("MatchFighterB", fields: [fighter_b_id], references: [id], onUpdate: NoAction, map: "matches_fighter_b_id_foreign")
   referee      User?     @relation("MatchReferee", fields: [referee_id], references: [id], onUpdate: NoAction, map: "matches_referee_id_foreign")
+  clubAResponder User?   @relation("MatchClubAResponder", fields: [club_a_responded_by], references: [id], onUpdate: NoAction, map: "matches_club_a_responded_by_foreign")
+  clubBResponder User?   @relation("MatchClubBResponder", fields: [club_b_responded_by], references: [id], onUpdate: NoAction, map: "matches_club_b_responded_by_foreign")
   winner       Fighter?  @relation("MatchWinner", fields: [winner_id], references: [id], onUpdate: NoAction, map: "matches_winner_id_foreign")
   championship Champion? @relation("MatchChampionship", fields: [championship_id], references: [id], onUpdate: NoAction, map: "matches_championship_id_foreign")
 

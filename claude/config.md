@@ -128,7 +128,7 @@ and phone width in both languages.
 ## Known gaps and tech debt
 
 - Admin pages still on mock data (`frontend/admin/src/app/data/*.ts`), not the
-  API: MatchProposals, KKFOfficers (both hidden from the menu until real);
+  API: KKFOfficers (hidden from the menu until real);
   officials list for AssignOfficials is localStorage. Users/Profile moved to the
   API and the other mock-only pages were removed (2026-09-26, see
   `updates/admin-phase2.md`). UI says "Fight card"; code/API still say batch / sub_event.

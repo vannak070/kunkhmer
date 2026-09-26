@@ -9,7 +9,7 @@ import { CheckCircle2, ChevronRight, Circle, ListChecks, MessageSquareWarning } 
 import { api } from "../utils/api";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 
-interface Bout { id: string; winner?: string; winnerMethod?: string | null }
+interface Bout { id: string; winner?: string; winnerMethod?: string | null; proposalStatus?: string }
 interface FightCard { id: string; name: string; status?: string; matches: Bout[] }
 
 const WEIGHED_IN = new Set(["Weight-In", "Weigh-in", "Scheduled", "Ready", "Live", "Complete", "Completed"]);
@@ -91,6 +91,16 @@ export function EventNextSteps({ event, cards, canEdit, onEditDetails, onAddFigh
   const cardNeedingBouts = [...cards].sort((a, b) => a.matches.length - b.matches.length)[0];
   const cardNotWeighed = cards.find((c) => c.matches.length > 0 && !WEIGHED_IN.has(c.status ?? ""));
   const missingResult = bouts.find((b) => !(b.winner || b.winnerMethod));
+  // Bouts the clubs haven't both accepted stay hidden from fans (Match Proposals).
+  const open = bouts.filter((b) => !(b.winner || b.winnerMethod) && b.proposalStatus && b.proposalStatus !== "accepted");
+  const declinedCount = open.filter((b) => b.proposalStatus === "declined").length;
+  const clubsNote = open.length
+    ? ` ${open.length - declinedCount ? `${open.length - declinedCount} waiting for clubs` : ""}${open.length - declinedCount && declinedCount ? ", " : ""}${declinedCount ? `${declinedCount} declined` : ""} — hidden from fans until both clubs accept.`
+    : "";
+  // Publishing isn't blocked by open bouts, but say what fans won't see.
+  if (open.length && !approval.done) {
+    approval.detail += ` Note: ${open.length} bout${open.length === 1 ? " isn't" : "s aren't"} accepted by both clubs yet and won't show until they are.`;
+  }
 
   const steps: Step[] = [
     {
@@ -111,9 +121,11 @@ export function EventNextSteps({ event, cards, canEdit, onEditDetails, onAddFigh
     {
       key: "bouts",
       title: "Bouts",
-      detail: bouts.length ? `${bouts.length} bout${bouts.length === 1 ? "" : "s"} scheduled.` : "Add the bouts: which fighters meet, weight and rounds.",
-      done: bouts.length > 0,
-      action: canEdit && cardNeedingBouts ? { label: "Add bouts", run: () => navigate(`/home/matches/${cardNeedingBouts.id}/create-match`) } : undefined,
+      detail: bouts.length ? `${bouts.length} bout${bouts.length === 1 ? "" : "s"} scheduled.${clubsNote}` : "Add the bouts: which fighters meet, weight and rounds.",
+      done: bouts.length > 0 && open.length === 0,
+      action: open.length
+        ? { label: "Match proposals", run: () => navigate("/home/match-proposals") }
+        : canEdit && cardNeedingBouts ? { label: "Add bouts", run: () => navigate(`/home/matches/${cardNeedingBouts.id}/create-match`) } : undefined,
     },
     {
       key: "weighin",

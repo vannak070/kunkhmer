@@ -5,10 +5,12 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../utils/api";
+import { proposalOf, waitingOnMe } from "../components/BoutAnswer";
 
 export type TodoKind =
   | "fighter" | "fighterSentBack" | "eventApproval" | "eventSentBack" | "readyToPublish"
-  | "result" | "draftEvent" | "emptyEvent" | "unconfirmed" | "vacantTitle";
+  | "result" | "draftEvent" | "emptyEvent" | "unconfirmed" | "vacantTitle"
+  | "boutToAnswer" | "boutDeclined" | "boutWaiting";
 
 export interface TodoItem {
   kind: TodoKind;
@@ -86,7 +88,24 @@ async function build(): Promise<Overview> {
     const hasResult = Boolean(m.winner_id || m.winner_method || m.result);
     const d = time(m.date);
     const vs = `${m.fighter_a_name ?? "TBD"} vs ${m.fighter_b_name ?? "TBD"}`;
+
+    // Club confirmation of bouts (Match Proposals).
+    const proposal = proposalOf(m);
+    if (!hasResult && isClub && waitingOnMe(proposal)) {
+      todos.push({ kind: "boutToAnswer", id: `ba-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · accept or decline`, href: "/home/match-proposals", rank: 1 });
+      continue;
+    }
     if (!isStaff && !(isOrganizer && ev.organizer_id === me?.id)) continue;
+    if (!hasResult && proposal.status === "declined") {
+      const by = proposal.sides.find((s) => s.response === "declined");
+      todos.push({ kind: "boutDeclined", id: `bd-${m.id}`, title: vs, detail: `${by?.club ?? "A club"} declined${by?.note ? `: ${by.note}` : ""}`, href: "/home/match-proposals?tab=declined", rank: 1 });
+      continue;
+    }
+    if (!hasResult && proposal.status === "pending" && d >= today && d - today <= 14 * DAY) {
+      const waiting = proposal.sides.filter((s) => s.response === "pending").map((s) => s.club ?? s.fighter).join(" and ");
+      todos.push({ kind: "boutWaiting", id: `bw-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · waiting for ${waiting}`, href: "/home/match-proposals", rank: 3 });
+      continue;
+    }
     if (!hasResult && d < today && isStaff) {
       todos.push({ kind: "result", id: `r-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · no result recorded`, href: `/home/match/${m.id}`, rank: 1 });
     } else if (!hasResult && d >= today && d - today <= 14 * DAY && !(m.fighter_a_confirmed && m.fighter_b_confirmed)) {
@@ -129,6 +148,7 @@ async function build(): Promise<Overview> {
   const counts = {
     fighter: 0, fighterSentBack: 0, eventApproval: 0, eventSentBack: 0, readyToPublish: 0,
     result: 0, draftEvent: 0, emptyEvent: 0, unconfirmed: 0, vacantTitle: 0,
+    boutToAnswer: 0, boutDeclined: 0, boutWaiting: 0,
   } as Record<TodoKind, number>;
   for (const t of todos) counts[t.kind]++;
 
