@@ -1,6 +1,6 @@
 import { Calendar, MapPin, Trophy, Building2, Tv, Users, Eye, ChevronRight, Clock } from "lucide-react";
 import { PublicStatusBadge } from "./PublicStatusBadge";
-import { pluralize } from "../utils/publicDisplay";
+import { useI18n } from "../i18n/LanguageContext";
 import eventPosterImage from 'figma:asset/76de12a848bf50a1769fa454bf2dab5cb85ea354.png';
 
 interface MatchBatchCardProps {
@@ -22,6 +22,8 @@ export function MatchBatchCard({
   onViewDetails,
   variant = 'upcoming'
 }: MatchBatchCardProps) {
+  const { t, tn, formatDate, formatWeight, localName } = useI18n();
+  const weightLabel = (m: any) => (m?.agreedWeight ? formatWeight(m.agreedWeight) : t("matches.catchweight"));
   const mainMatch = batch.matches.find((m: any) => m.matchOrder === 1) || batch.matches[0];
   const otherMatches = batch.matches.filter((m: any) => m.id !== mainMatch.id);
   const batchEvent = events.find(e => e.id === batch.eventId);
@@ -35,16 +37,7 @@ export function MatchBatchCard({
     ? 'bg-gradient-to-r from-zinc-800 to-zinc-700 hover:from-zinc-700 hover:to-zinc-600 border border-zinc-700'
     : 'bg-gradient-to-r from-[#0A3D91] to-blue-700 hover:from-blue-700 hover:to-blue-600 shadow-[0_4px_12px_rgba(10,61,145,0.25)] hover:shadow-[0_6px_20px_rgba(10,61,145,0.4)]';
 
-  const formatBatchDate = (dateStr: any) => {
-    try {
-      if (!dateStr) return "TBD Date";
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return "TBD Date";
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    } catch (e) {
-      return "TBD Date";
-    }
-  };
+  const formatBatchDate = (dateStr: any) => formatDate(dateStr) || "—";
 
   return (
     <div className="space-y-4">
@@ -63,7 +56,7 @@ export function MatchBatchCard({
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4 min-w-0">
               <div className="px-3 py-1 bg-amber-500/10 rounded-lg border border-amber-500/20 shrink-0">
-                <span className="text-[10px] font-black text-amber-400 tracking-widest uppercase">MATCH CARD</span>
+                <span className="text-[10px] font-black text-amber-400 tracking-widest uppercase">{t("matches.matchCard")}</span>
               </div>
               <div className="min-w-0">
                 <h3 className="text-lg md:text-xl font-black text-white mb-1.5 truncate tracking-tight">{batch.batchNumber}</h3>
@@ -98,7 +91,7 @@ export function MatchBatchCard({
             <div className={`bg-gradient-to-br ${variant === 'previous' ? 'from-zinc-50/50 to-zinc-100/30 border-zinc-200/50' : 'from-blue-50/50 to-indigo-50/30 border-blue-100/50'} rounded-2xl p-4 border transition-all duration-300 hover:shadow-sm`}>
               <div className="flex items-center gap-2 mb-1.5">
                 <Trophy className={`w-4 h-4 ${variant === 'previous' ? 'text-zinc-500' : 'text-[#0A3D91]'}`} />
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Bouts</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{tn("common.bout", batch.totalMatches)}</span>
               </div>
               <p className="text-xl font-black text-slate-900">{batch.totalMatches}</p>
             </div>
@@ -106,7 +99,7 @@ export function MatchBatchCard({
               <div className="bg-gradient-to-br from-violet-50/50 to-purple-50/30 rounded-2xl p-4 border border-violet-100/50 transition-all duration-300 hover:shadow-sm">
                 <div className="flex items-center gap-2 mb-1.5">
                   <Building2 className="w-4 h-4 text-violet-600" />
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Organizer</span>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t("matches.organizer")}</span>
                 </div>
                 <p className="text-sm font-black text-slate-800 truncate">{batch.organizerClub}</p>
               </div>
@@ -115,7 +108,7 @@ export function MatchBatchCard({
               <div className="bg-gradient-to-br from-rose-50/50 to-red-50/30 rounded-2xl p-4 border border-rose-100/50 transition-all duration-300 hover:shadow-sm">
                 <div className="flex items-center gap-2 mb-1.5">
                   <Tv className="w-4 h-4 text-rose-600" />
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Broadcast</span>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t("matches.broadcast")}</span>
                 </div>
                 <p className="text-sm font-black text-slate-800 truncate">{batch.broadcastStation}</p>
               </div>
@@ -126,7 +119,7 @@ export function MatchBatchCard({
           <div className="flex items-center justify-between pt-4 border-t border-slate-100">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
               <Users className="w-4 h-4 text-slate-400" />
-              <span>{pluralize(batch.totalMatches, "bout")} on this card</span>
+              <span>{tn("common.boutOnCard", batch.totalMatches)}</span>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -137,7 +130,7 @@ export function MatchBatchCard({
                 className={`flex items-center gap-2 px-5 py-2.5 ${buttonClass} text-white rounded-xl transition-all font-bold text-xs uppercase tracking-wider`}
               >
                 <Eye className="w-4 h-4" />
-                <span>{isExpanded ? 'Hide Details' : 'View Details'}</span>
+                <span>{isExpanded ? t("common.hideDetails") : t("common.viewDetails")}</span>
                 <ChevronRight className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`} />
               </button>
             </div>
@@ -162,7 +155,7 @@ export function MatchBatchCard({
 
               <div className="text-center mb-4 relative z-10">
                 <span className="px-4 py-1 bg-gradient-to-r from-amber-500/25 via-amber-500/10 to-amber-500/25 text-[9px] font-black text-amber-400 border border-amber-500/30 rounded-full tracking-widest uppercase shadow-sm">
-                  Main Event
+                  {t("matches.mainEvent")}
                 </span>
               </div>
               
@@ -176,21 +169,21 @@ export function MatchBatchCard({
                       className="w-16 h-16 rounded-full object-cover border-2 border-rose-600 shadow-[0_0_15px_rgba(244,63,94,0.25)]"
                     />
                     <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 bg-rose-600 text-[8px] font-black text-white rounded uppercase border border-rose-500">
-                      RED
+                      {t("matches.red")}
                     </span>
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 mb-1">
-                      <span className="font-black text-white text-base truncate block tracking-tight">{mainMatch.fighterA.name}</span>
+                      <span className="font-black text-white text-base truncate block tracking-tight">{localName(mainMatch.fighterA.name, mainMatch.fighterA.nameKhmer)}</span>
                       {mainMatch.fighterA.grade && (
-                        <span title="Fighter grade" className="text-[9px] font-bold px-1.5 py-0.5 bg-white/10 border border-white/20 rounded text-slate-300 shrink-0">
-                          Grade {mainMatch.fighterA.grade}
+                        <span title={t("common.gradeHint")} className="text-[9px] font-bold px-1.5 py-0.5 bg-white/10 border border-white/20 rounded text-slate-300 shrink-0">
+                          {t("common.grade", { grade: mainMatch.fighterA.grade })}
                         </span>
                       )}
                     </div>
                     <p className="text-xs text-slate-400 font-bold truncate">{mainMatch.fighterA.clubName || "Independent"}</p>
                     {mainMatch.fighterA.record && (
-                      <p className="text-[11px] text-amber-400 font-bold mt-1">{mainMatch.fighterA.record} <span className="text-amber-400/60 font-semibold">W-L-D</span></p>
+                      <p className="text-[11px] text-amber-400 font-bold mt-1">{mainMatch.fighterA.record} <span className="text-amber-400/60 font-semibold">{t("common.wld")}</span></p>
                     )}
                   </div>
                 </div>
@@ -200,7 +193,7 @@ export function MatchBatchCard({
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 text-slate-950 text-xs font-black flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.3)] border border-amber-300">
                     VS
                   </div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2">{mainMatch.weightClass}</span>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2">{weightLabel(mainMatch)}</span>
                 </div>
 
                 {/* Fighter B (Blue Corner) */}
@@ -208,15 +201,15 @@ export function MatchBatchCard({
                   <div className="min-w-0">
                     <div className="flex items-center justify-end gap-1.5 mb-1">
                       {mainMatch.fighterB.grade && (
-                        <span title="Fighter grade" className="text-[9px] font-bold px-1.5 py-0.5 bg-white/10 border border-white/20 rounded text-slate-300 shrink-0">
-                          Grade {mainMatch.fighterB.grade}
+                        <span title={t("common.gradeHint")} className="text-[9px] font-bold px-1.5 py-0.5 bg-white/10 border border-white/20 rounded text-slate-300 shrink-0">
+                          {t("common.grade", { grade: mainMatch.fighterB.grade })}
                         </span>
                       )}
-                      <span className="font-black text-white text-base truncate block tracking-tight">{mainMatch.fighterB.name}</span>
+                      <span className="font-black text-white text-base truncate block tracking-tight">{localName(mainMatch.fighterB.name, mainMatch.fighterB.nameKhmer)}</span>
                     </div>
                     <p className="text-xs text-slate-400 font-bold truncate">{mainMatch.fighterB.clubName || "Independent"}</p>
                     {mainMatch.fighterB.record && (
-                      <p className="text-[11px] text-amber-400 font-bold mt-1">{mainMatch.fighterB.record} <span className="text-amber-400/60 font-semibold">W-L-D</span></p>
+                      <p className="text-[11px] text-amber-400 font-bold mt-1">{mainMatch.fighterB.record} <span className="text-amber-400/60 font-semibold">{t("common.wld")}</span></p>
                     )}
                   </div>
                   <div className="relative shrink-0">
@@ -226,7 +219,7 @@ export function MatchBatchCard({
                       className="w-16 h-16 rounded-full object-cover border-2 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.25)]"
                     />
                     <span className="absolute -bottom-1 -left-1 px-1.5 py-0.5 bg-blue-600 text-[8px] font-black text-white rounded uppercase border border-blue-500">
-                      BLUE
+                      {t("matches.blue")}
                     </span>
                   </div>
                 </div>
@@ -240,8 +233,8 @@ export function MatchBatchCard({
               {otherMatches.map((match: any, idx: number) => {
                 const fighterAImage = typeof match.fighterA.image === 'string' ? match.fighterA.image : "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=100";
                 const fighterBImage = typeof match.fighterB.image === 'string' ? match.fighterB.image : "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=100";
-                const fAName = match.fighterA?.name || "Fighter A";
-                const fBName = match.fighterB?.name || "Fighter B";
+                const fAName = localName(match.fighterA?.name, match.fighterA?.nameKhmer) || "TBD";
+                const fBName = localName(match.fighterB?.name, match.fighterB?.nameKhmer) || "TBD";
                 const fAClub = match.fighterA?.clubName || "Independent";
                 const fBClub = match.fighterB?.clubName || "Independent";
                 const fARecord = match.fighterA?.record || "";
@@ -273,10 +266,10 @@ export function MatchBatchCard({
                     <div className="bg-slate-50/80 px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className={`px-2.5 py-1 text-white text-[10px] font-black tracking-wider uppercase rounded-lg ${variant === 'previous' ? 'bg-zinc-700' : 'bg-[#0A3D91]'}`}>
-                          BOUT #{idx + 2}
+                          {t("matches.boutNumber", { n: idx + 2 })}
                         </div>
-                        <span className="text-xs font-black text-slate-800 tracking-tight">{match.matchType}</span>
-                        <span className="px-2 py-0.5 bg-white border border-slate-200 text-slate-600 text-[10px] font-extrabold rounded">{match.weightClass}</span>
+                        <span className="text-xs font-black text-slate-800 tracking-tight">{match.isChampionshipBout ? t("matches.championshipBout") : t("matches.rankingFight")}</span>
+                        <span className="px-2 py-0.5 bg-white border border-slate-200 text-slate-600 text-[10px] font-extrabold rounded">{weightLabel(match)}</span>
                       </div>
                       <PublicStatusBadge status={variant === 'previous' ? 'Completed' : match.status} />
                     </div>
@@ -296,13 +289,13 @@ export function MatchBatchCard({
                             <div className="flex items-center gap-1.5 mb-0.5">
                               <span className="font-bold text-slate-900 text-sm truncate block tracking-tight">{fAName}</span>
                               {fAGrade && (
-                                <span title="Fighter grade" className="text-[9px] font-bold px-1 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-500 shrink-0">
-                                  Grade {fAGrade}
+                                <span title={t("common.gradeHint")} className="text-[9px] font-bold px-1 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-500 shrink-0">
+                                  {t("common.grade", { grade: fAGrade })}
                                 </span>
                               )}
                             </div>
                             <div className="text-[10px] text-slate-500 font-semibold truncate mb-0.5">{fAClub}</div>
-                            {fARecord && <div className="text-[10px] text-[#0A3D91] font-bold">{fARecord} (W-L-D)</div>}
+                            {fARecord && <div className="text-[10px] text-[#0A3D91] font-bold">{fARecord} ({t("common.wld")})</div>}
                           </div>
                         </div>
 
@@ -312,8 +305,8 @@ export function MatchBatchCard({
                             VS
                           </span>
                           <div className="text-[9px] text-slate-500 font-bold text-center leading-normal">
-                            <div>{match.weightClass || "Catchweight"}</div>
-                            <div>{match.rounds} Rounds</div>
+                            <div>{weightLabel(match)}</div>
+                            {match.rounds && <div>{tn("common.rounds", Number(match.rounds))}</div>}
                           </div>
                         </div>
 
@@ -322,14 +315,14 @@ export function MatchBatchCard({
                           <div className="min-w-0">
                             <div className="flex items-center justify-end gap-1.5 mb-0.5">
                               {fBGrade && (
-                                <span title="Fighter grade" className="text-[9px] font-bold px-1 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-500 shrink-0">
-                                  Grade {fBGrade}
+                                <span title={t("common.gradeHint")} className="text-[9px] font-bold px-1 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-500 shrink-0">
+                                  {t("common.grade", { grade: fBGrade })}
                                 </span>
                               )}
                               <span className="font-bold text-slate-900 text-sm truncate block tracking-tight">{fBName}</span>
                             </div>
                             <div className="text-[10px] text-slate-500 font-semibold truncate mb-0.5">{fBClub}</div>
-                            {fBRecord && <div className="text-[10px] text-[#0A3D91] font-bold">{fBRecord} (W-L-D)</div>}
+                            {fBRecord && <div className="text-[10px] text-[#0A3D91] font-bold">{fBRecord} ({t("common.wld")})</div>}
                           </div>
                           <img
                             src={fighterBImage}
@@ -343,7 +336,7 @@ export function MatchBatchCard({
                       {match.isChampionshipBout && (
                         <div className="mt-3 pt-2.5 border-t border-dashed border-amber-200 flex items-center justify-center gap-1.5 text-[10px] font-extrabold text-amber-700 bg-amber-50/30 rounded-lg py-1.5 px-2">
                           <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                          <span>CHAMPIONSHIP TITLE BOUT</span>
+                          <span className="uppercase">{t("matches.titleBout")}</span>
                         </div>
                       )}
 
@@ -353,13 +346,13 @@ export function MatchBatchCard({
                           <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-[10px] font-black text-emerald-600 border border-emerald-500/20 rounded-lg shadow-sm">
                             <Trophy className="w-3 h-3 text-emerald-500 fill-emerald-100" />
                             <span>
-                              Winner: {winnerName}
+                              {t("matches.winner")}: {winnerName}
                             </span>
                           </div>
                           <div className="text-[10px] text-slate-500 font-bold leading-normal">
-                            {match.winnerMethod && <span>Method: {match.winnerMethod}</span>}
+                            {match.winnerMethod && <span>{t("matches.method")}: {match.winnerMethod}</span>}
                             {match.winnerRound && <span className="mx-1.5 text-slate-300">•</span>}
-                            {match.winnerRound && <span>Round {match.winnerRound}</span>}
+                            {match.winnerRound && <span>{t("matches.round", { n: match.winnerRound })}</span>}
                             {match.winnerTime && <span className="text-slate-400 font-semibold ml-1">({match.winnerTime})</span>}
                           </div>
                         </div>

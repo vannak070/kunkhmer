@@ -1,22 +1,38 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { BookOpen, Handshake, Home as HomeIcon, Menu, Trophy, Users, X } from "lucide-react";
-import kkfLogo from "figma:asset/a66d0715b1669c88badc1b57f275bd3b2182d59e.png";
+import { BookOpen, Handshake, Home as HomeIcon, Info, Languages, Menu, Trophy, Users, X } from "lucide-react";
+import kkfLogo from "../../../assets/kkf-logo-192.png";
 import { GlobalSearch } from "./GlobalSearch";
 import { appPath } from "../../utils/basePath";
+import { useI18n } from "../../i18n/LanguageContext";
+import type { MessageKey } from "../../i18n/messages";
 
-export type NavSection = "home" | "matches" | "news-events" | "fighters" | "strategic-partners";
+/** SuperAppHome sections plus standalone pages that appear in the main navigation. */
+export type NavSection = "home" | "matches" | "news-events" | "fighters" | "strategic-partners" | "about";
 
-export const NAV_ITEMS: { id: NavSection; label: string; icon: typeof HomeIcon }[] = [
-  { id: "home", label: "Home", icon: HomeIcon },
-  { id: "matches", label: "Matches & Events", icon: Trophy },
-  { id: "news-events", label: "News & Media", icon: BookOpen },
-  { id: "fighters", label: "Fighters", icon: Users },
-  { id: "strategic-partners", label: "Partners", icon: Handshake },
+export const NAV_ITEMS: { id: NavSection; labelKey: MessageKey; icon: typeof HomeIcon }[] = [
+  { id: "home", labelKey: "nav.home", icon: HomeIcon },
+  { id: "matches", labelKey: "nav.matches", icon: Trophy },
+  { id: "news-events", labelKey: "nav.news", icon: BookOpen },
+  { id: "fighters", labelKey: "nav.fighters", icon: Users },
+  { id: "strategic-partners", labelKey: "nav.partners", icon: Handshake },
+  { id: "about", labelKey: "nav.about", icon: Info },
 ];
+
+/** Sections that live outside SuperAppHome and are always reached by routing. */
+const STANDALONE: NavSection[] = ["about"];
 
 export function sectionPath(section: NavSection): string {
   return section === "home" ? "/" : `/${section}`;
+}
+
+/** Navigate to a nav section, letting SuperAppHome handle its own sections when it provides a handler. */
+export function useNavigateSection(onSectionChange?: (section: NavSection) => void) {
+  const navigate = useNavigate();
+  return (section: NavSection) => {
+    if (onSectionChange && !STANDALONE.includes(section)) onSectionChange(section);
+    else navigate(sectionPath(section));
+  };
 }
 
 interface SiteHeaderProps {
@@ -26,8 +42,25 @@ interface SiteHeaderProps {
   onSectionChange?: (section: NavSection) => void;
 }
 
+function LanguageToggle({ className = "" }: { className?: string }) {
+  const { t, toggleLang, lang } = useI18n();
+  return (
+    <button
+      type="button"
+      onClick={toggleLang}
+      aria-label={t("lang.switchLabel")}
+      lang={lang === "en" ? "km" : "en"}
+      className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-sm font-bold text-gray-700 hover:border-[#0A3D91] hover:text-[#0A3D91] transition-colors whitespace-nowrap ${className}`}
+    >
+      <Languages className="w-4 h-4" aria-hidden />
+      {t("lang.switchTo")}
+    </button>
+  );
+}
+
 export function SiteHeader({ activeSection, onSectionChange }: SiteHeaderProps) {
-  const navigate = useNavigate();
+  const { t } = useI18n();
+  const goSection = useNavigateSection(onSectionChange);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const lastY = useRef(0);
@@ -47,8 +80,7 @@ export function SiteHeader({ activeSection, onSectionChange }: SiteHeaderProps) 
 
   const go = (section: NavSection) => {
     setMobileMenuOpen(false);
-    if (onSectionChange) onSectionChange(section);
-    else navigate(sectionPath(section));
+    goSection(section);
   };
 
   return (
@@ -59,30 +91,33 @@ export function SiteHeader({ activeSection, onSectionChange }: SiteHeaderProps) 
     >
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between py-3 md:py-4 gap-4">
-          <Link to="/" className="flex items-center gap-3 flex-shrink-0" aria-label="Kun Khmer home">
+          <Link to="/" className="flex items-center gap-3 flex-shrink-0" aria-label="Kun Khmer">
             <img src={kkfLogo} alt="" className="w-12 h-12 md:w-14 md:h-14 object-contain" />
             <div className="hidden sm:block">
               <p className="text-xl md:text-2xl font-black text-gray-900 leading-tight tracking-tight">KUNKHMER</p>
-              <p className="text-xs md:text-sm text-gray-500 font-medium leading-tight">Official Platform</p>
+              <p className="text-xs md:text-sm text-gray-500 font-medium leading-tight">{t("brand.tagline")}</p>
             </div>
           </Link>
 
           <GlobalSearch className="hidden md:block flex-1 max-w-xl" />
 
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen((o) => !o)}
-            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={mobileMenuOpen}
-            aria-controls="mobile-nav"
-            className="md:hidden p-2.5 hover:bg-gray-100 rounded-xl transition-colors"
-          >
-            {mobileMenuOpen ? <X className="w-6 h-6 text-gray-700" /> : <Menu className="w-6 h-6 text-gray-700" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <LanguageToggle />
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((o) => !o)}
+              aria-label={mobileMenuOpen ? t("nav.closeMenu") : t("nav.openMenu")}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-nav"
+              className="md:hidden p-2.5 hover:bg-gray-100 rounded-xl transition-colors"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6 text-gray-700" /> : <Menu className="w-6 h-6 text-gray-700" />}
+            </button>
+          </div>
         </div>
 
-        <nav aria-label="Main" className="hidden md:flex items-center gap-1 pb-3 overflow-x-auto">
-          {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
+        <nav aria-label={t("nav.main")} className="hidden md:flex items-center gap-1 pb-3 overflow-x-auto">
+          {NAV_ITEMS.map(({ id, labelKey, icon: Icon }) => {
             const active = activeSection === id;
             return (
               <a
@@ -98,7 +133,7 @@ export function SiteHeader({ activeSection, onSectionChange }: SiteHeaderProps) 
                 }`}
               >
                 <Icon className="w-4 h-4" aria-hidden />
-                {label}
+                {t(labelKey)}
               </a>
             );
           })}
@@ -109,8 +144,8 @@ export function SiteHeader({ activeSection, onSectionChange }: SiteHeaderProps) 
         </div>
 
         {mobileMenuOpen && (
-          <nav id="mobile-nav" aria-label="Main" className="md:hidden pb-4 space-y-1">
-            {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
+          <nav id="mobile-nav" aria-label={t("nav.main")} className="md:hidden pb-4 space-y-1">
+            {NAV_ITEMS.map(({ id, labelKey, icon: Icon }) => {
               const active = activeSection === id;
               return (
                 <a
@@ -126,7 +161,7 @@ export function SiteHeader({ activeSection, onSectionChange }: SiteHeaderProps) 
                   }`}
                 >
                   <Icon className="w-5 h-5" aria-hidden />
-                  {label}
+                  {t(labelKey)}
                 </a>
               );
             })}

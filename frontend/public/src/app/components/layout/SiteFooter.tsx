@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
 import { Mail, MapPin } from "lucide-react";
 import { toast } from "sonner";
-import kkfLogo from "figma:asset/a66d0715b1669c88badc1b57f275bd3b2182d59e.png";
-import { NAV_ITEMS, NavSection, sectionPath } from "./SiteHeader";
+import kkfLogo from "../../../assets/kkf-logo-192.png";
+import { NAV_ITEMS, NavSection, sectionPath, useNavigateSection } from "./SiteHeader";
 import { appPath } from "../../utils/basePath";
+import { useI18n } from "../../i18n/LanguageContext";
 
 /** Official channels. Leave `url` empty to hide a network until the federation has an account. */
 const SOCIAL_LINKS: { label: string; url: string; path: string }[] = [
@@ -32,23 +32,19 @@ interface SiteFooterProps {
 }
 
 export function SiteFooter({ onSectionChange }: SiteFooterProps) {
-  const navigate = useNavigate();
+  const { t } = useI18n();
+  const go = useNavigateSection(onSectionChange);
   const [email, setEmail] = useState("");
   const socials = SOCIAL_LINKS.filter((s) => s.url);
-
-  const go = (section: NavSection) => {
-    if (onSectionChange) onSectionChange(section);
-    else navigate(sectionPath(section));
-  };
 
   const subscribe = (e: React.FormEvent) => {
     e.preventDefault();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      toast.error("Please enter a valid email address.");
+      toast.error(t("footer.invalidEmail"));
       return;
     }
     // TODO: POST to the newsletter endpoint once the backend provides one.
-    toast.success("Thanks! We'll email you match results and event announcements.");
+    toast.success(t("footer.subscribed"));
     setEmail("");
   };
 
@@ -69,11 +65,11 @@ export function SiteFooter({ onSectionChange }: SiteFooterProps) {
               </div>
               <div>
                 <p className="text-xl font-black tracking-tight leading-none">KUNKHMER</p>
-                <p className="text-[10px] text-[#F2C94C] font-bold tracking-[0.15em] uppercase mt-0.5">Official Digital Platform</p>
+                <p className="text-[10px] text-[#F2C94C] font-bold tracking-[0.15em] uppercase mt-0.5">{t("brand.digitalPlatform")}</p>
               </div>
             </div>
             <p className="text-white/60 text-sm leading-relaxed mb-6 max-w-sm">
-              Kun Khmer is Cambodia's traditional combat sport. Follow its fighters, fight cards, results and news — all in one place.
+              {t("footer.about")}
             </p>
             {socials.length > 0 && (
               <div className="flex gap-2.5">
@@ -83,7 +79,7 @@ export function SiteFooter({ onSectionChange }: SiteFooterProps) {
                     href={social.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label={`Kun Khmer on ${social.label}`}
+                    aria-label={t("footer.social", { network: social.label })}
                     className="group w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-[#0A3D91]/60 hover:border-[#0A3D91] flex items-center justify-center transition-colors"
                   >
                     <svg className="w-4 h-4 text-white/60 group-hover:text-white transition-colors" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
@@ -97,9 +93,9 @@ export function SiteFooter({ onSectionChange }: SiteFooterProps) {
 
           <div className="md:col-span-7 grid grid-cols-2 sm:grid-cols-2 gap-8">
             <div>
-              <h2 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Explore</h2>
+              <h2 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">{t("footer.explore")}</h2>
               <ul className="space-y-2.5">
-                {NAV_ITEMS.map(({ id, label }) => (
+                {NAV_ITEMS.map(({ id, labelKey }) => (
                   <li key={id}>
                     <a
                       href={appPath(sectionPath(id))}
@@ -110,22 +106,22 @@ export function SiteFooter({ onSectionChange }: SiteFooterProps) {
                       }}
                       className="text-white/60 hover:text-white text-sm transition-colors"
                     >
-                      {label}
+                      {t(labelKey)}
                     </a>
                   </li>
                 ))}
                 <li className="text-white/40 text-sm">
-                  Official Shop <span className="ml-1 text-[10px] font-bold uppercase tracking-wider text-[#F2C94C]/80">Coming soon</span>
+                  {t("footer.shop")} <span className="ml-1 text-[10px] font-bold uppercase tracking-wider text-[#F2C94C]/80">{t("footer.comingSoon")}</span>
                 </li>
               </ul>
             </div>
 
             <div>
-              <h2 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Contact</h2>
+              <h2 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">{t("footer.contact")}</h2>
               <ul className="space-y-3">
                 <li className="flex items-start gap-2">
                   <MapPin className="w-4 h-4 text-white/40 shrink-0 mt-0.5" aria-hidden />
-                  <span className="text-white/60 text-sm">Phnom Penh, Cambodia</span>
+                  <span className="text-white/60 text-sm">{t("footer.location")}</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Mail className="w-4 h-4 text-white/40 shrink-0 mt-0.5" aria-hidden />
@@ -143,22 +139,22 @@ export function SiteFooter({ onSectionChange }: SiteFooterProps) {
           className="py-7 px-6 md:px-8 mb-10 rounded-2xl bg-[#0A3D91]/30 border border-white/[0.07] flex flex-col sm:flex-row items-center justify-between gap-5"
         >
           <div>
-            <p className="font-bold text-sm text-white">Stay updated with Kun Khmer</p>
-            <p className="text-white/55 text-xs mt-0.5">Match results, fighter news and event announcements. No spam.</p>
+            <p className="font-bold text-sm text-white">{t("footer.newsletterTitle")}</p>
+            <p className="text-white/55 text-xs mt-0.5">{t("footer.newsletterText")}</p>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
-            <label htmlFor="newsletter-email" className="sr-only">Email address</label>
+            <label htmlFor="newsletter-email" className="sr-only">{t("footer.emailLabel")}</label>
             <input
               id="newsletter-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Your email address"
+              placeholder={t("footer.emailPlaceholder")}
               autoComplete="email"
               className="flex-1 min-w-0 sm:w-64 px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-white/40 transition-colors"
             />
             <button type="submit" className="px-5 py-2.5 rounded-xl bg-[#F2C94C] hover:bg-[#E8BC34] text-[#051C42] text-sm font-bold transition-colors whitespace-nowrap">
-              Subscribe
+              {t("footer.subscribe")}
             </button>
           </div>
         </form>
@@ -166,8 +162,8 @@ export function SiteFooter({ onSectionChange }: SiteFooterProps) {
         <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
         <div className="py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
-          <p className="text-white/45 text-xs">© {new Date().getFullYear()} Kun Khmer Federation. All rights reserved.</p>
-          <p className="text-white/35 text-xs">Preserving and promoting Cambodian martial arts heritage.</p>
+          <p className="text-white/45 text-xs">{t("footer.rights", { year: new Date().getFullYear() })}</p>
+          <p className="text-white/35 text-xs">{t("footer.heritage")}</p>
         </div>
       </div>
     </footer>

@@ -3,7 +3,8 @@ import { useNavigate } from "react-router";
 import { Calendar, FileText, Loader2, Search, User, X } from "lucide-react";
 import { api } from "../../utils/api";
 import { getFighterSlug } from "../../data/masterData";
-import { formatPublicDate } from "../../utils/publicDisplay";
+import { useI18n } from "../../i18n/LanguageContext";
+import type { MessageKey } from "../../i18n/messages";
 
 type ResultKind = "fighter" | "event" | "article";
 type Scope = "all" | ResultKind;
@@ -12,20 +13,24 @@ interface SearchItem {
   kind: ResultKind;
   id: string;
   title: string;
-  subtitle: string;
+  titleKm?: string;
+  /** Fighter record, event venue or article category. */
+  detail?: string;
+  /** Fighter club. */
+  club?: string;
+  date?: string;
   image?: string;
   href: string;
   haystack: string;
 }
 
-const SCOPES: { id: Scope; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "fighter", label: "Fighters" },
-  { id: "event", label: "Events" },
-  { id: "article", label: "News" },
-];
-
-const KIND_LABEL: Record<ResultKind, string> = { fighter: "Fighters", event: "Events", article: "News" };
+const SCOPES: Scope[] = ["all", "fighter", "event", "article"];
+const SCOPE_LABEL: Record<Scope, MessageKey> = {
+  all: "search.scope.all",
+  fighter: "search.scope.fighter",
+  event: "search.scope.event",
+  article: "search.scope.article",
+};
 const KIND_ICON = { fighter: User, event: Calendar, article: FileText };
 const MAX_PER_KIND = 4;
 
@@ -43,7 +48,9 @@ function loadIndex(): Promise<SearchItem[]> {
               kind: "fighter",
               id: f.id,
               title: f.name,
-              subtitle: [f.record && `${f.record} record`, f.clubName].filter(Boolean).join(" · "),
+              titleKm: f.nameKhmer,
+              detail: f.record,
+              club: f.clubName,
               image: f.image,
               href: `/fighters/${getFighterSlug(f)}`,
               haystack: [f.name, f.nameKhmer, f.alias, f.clubName].filter(Boolean).join(" ").toLowerCase(),
@@ -57,7 +64,8 @@ function loadIndex(): Promise<SearchItem[]> {
               kind: "event",
               id: e.id,
               title: e.name,
-              subtitle: [formatPublicDate(e.date), e.location].filter(Boolean).join(" · "),
+              detail: e.location,
+              date: e.date,
               image: e.image,
               href: `/matches?tab=events&event=${e.id}`,
               haystack: [e.name, e.location, e.description].filter(Boolean).join(" ").toLowerCase(),
@@ -71,7 +79,8 @@ function loadIndex(): Promise<SearchItem[]> {
               kind: "article",
               id: a.id,
               title: a.title,
-              subtitle: [a.category, formatPublicDate(a.publish_date || a.publishDate)].filter(Boolean).join(" · "),
+              detail: a.category,
+              date: a.publish_date || a.publishDate,
               image: a.featured_image || a.featuredImage,
               href: `/article/${a.id}`,
               haystack: [a.title, a.subtitle, a.category].filter(Boolean).join(" ").toLowerCase(),
@@ -93,6 +102,14 @@ interface GlobalSearchProps {
 
 export function GlobalSearch({ onNavigate, className = "" }: GlobalSearchProps) {
   const navigate = useNavigate();
+  const { t, formatDate, localName } = useI18n();
+
+  const subtitle = (item: SearchItem) =>
+    item.kind === "fighter"
+      ? [item.detail && `${item.detail} ${t("search.recordSuffix")}`, item.club].filter(Boolean).join(" · ")
+      : item.kind === "event"
+        ? [formatDate(item.date), item.detail].filter(Boolean).join(" · ")
+        : [item.detail, formatDate(item.date)].filter(Boolean).join(" · ");
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<Scope>("all");
   const [open, setOpen] = useState(false);
@@ -170,7 +187,7 @@ export function GlobalSearch({ onNavigate, className = "" }: GlobalSearchProps) 
           aria-expanded={showPanel}
           aria-controls={listboxId}
           aria-autocomplete="list"
-          aria-label="Search fighters, events and news"
+          aria-label={t("search.label")}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -182,13 +199,13 @@ export function GlobalSearch({ onNavigate, className = "" }: GlobalSearchProps) 
             ensureIndex();
           }}
           onKeyDown={onKeyDown}
-          placeholder="Search fighters, events, news…"
+          placeholder={t("search.placeholder")}
           className="flex-1 min-w-0 bg-transparent outline-none text-sm font-medium placeholder:text-gray-400 [&::-webkit-search-cancel-button]:hidden"
         />
         {query && (
           <button
             type="button"
-            aria-label="Clear search"
+            aria-label={t("search.clear")}
             onClick={() => {
               setQuery("");
               inputRef.current?.focus();
@@ -203,20 +220,20 @@ export function GlobalSearch({ onNavigate, className = "" }: GlobalSearchProps) 
       {showPanel && (
         <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-hidden">
           <div className="flex gap-1.5 px-3 pt-3 pb-2 border-b border-gray-100 overflow-x-auto">
-            {SCOPES.map((s) => (
+            {SCOPES.map((id) => (
               <button
-                key={s.id}
+                key={id}
                 type="button"
                 onClick={() => {
-                  setScope(s.id);
+                  setScope(id);
                   inputRef.current?.focus();
                 }}
-                aria-pressed={scope === s.id}
+                aria-pressed={scope === id}
                 className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${
-                  scope === s.id ? "bg-[#0A3D91] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  scope === id ? "bg-[#0A3D91] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
-                {s.label}
+                {t(SCOPE_LABEL[id])}
               </button>
             ))}
           </div>
@@ -224,12 +241,12 @@ export function GlobalSearch({ onNavigate, className = "" }: GlobalSearchProps) 
           <ul id={listboxId} role="listbox" className="max-h-[60vh] overflow-y-auto py-1">
             {!index && (
               <li className="flex items-center gap-2 px-4 py-6 text-sm text-gray-500 justify-center">
-                <Loader2 className="w-4 h-4 animate-spin" /> Searching…
+                <Loader2 className="w-4 h-4 animate-spin" /> {t("search.searching")}
               </li>
             )}
             {index && results.length === 0 && (
               <li className="px-4 py-6 text-sm text-gray-500 text-center">
-                No results for “{query.trim()}”. Try a fighter name, club or event.
+                {t("search.noResults", { q: query.trim() })}
               </li>
             )}
             {results.map((item, i) => {
@@ -239,7 +256,7 @@ export function GlobalSearch({ onNavigate, className = "" }: GlobalSearchProps) 
                 <li key={`${item.kind}-${item.id}`} role="presentation">
                   {showGroup && (
                     <div className="px-4 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                      {KIND_LABEL[item.kind]}
+                      {t(SCOPE_LABEL[item.kind])}
                     </div>
                   )}
                   <button
@@ -260,8 +277,8 @@ export function GlobalSearch({ onNavigate, className = "" }: GlobalSearchProps) 
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-gray-900 truncate">{item.title}</p>
-                      {item.subtitle && <p className="text-xs text-gray-500 truncate">{item.subtitle}</p>}
+                      <p className="text-sm font-bold text-gray-900 truncate">{localName(item.title, item.titleKm)}</p>
+                      {subtitle(item) && <p className="text-xs text-gray-500 truncate">{subtitle(item)}</p>}
                     </div>
                   </button>
                 </li>

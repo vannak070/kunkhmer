@@ -3,6 +3,7 @@ import {
   ArrowLeft, MapPin, Users, Check, User, Mail, Trophy, 
   Calendar, Building2, Eye, Crown, Tv 
 } from "lucide-react";
+import { useI18n } from "../../i18n/LanguageContext";
 
 interface BroadcastStation {
   id: string;
@@ -37,6 +38,7 @@ interface BroadcastDetailPageProps {
 type TabType = 'overview' | 'events';
 
 export default function BroadcastDetailPage({ station, events, onBack, onEventClick }: BroadcastDetailPageProps) {
+  const { formatDate } = useI18n();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
   return (
@@ -261,7 +263,7 @@ export default function BroadcastDetailPage({ station, events, onBack, onEventCl
                       <span className="text-xs font-bold">Event Date</span>
                     </div>
                     <span className="text-xs font-black text-gray-900">
-                      {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {formatDate(event.date)}
                     </span>
                   </div>
 

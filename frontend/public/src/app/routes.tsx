@@ -3,6 +3,7 @@ import { getRouterBasename } from "./utils/basePath";
 import { SuperAppHome } from "./pages/SuperAppHome";
 import { SuperAppFighterDetail } from "./pages/SuperAppFighterDetail";
 import { ArticleDetail } from "./pages/ArticleDetail";
+import { AboutKunKhmer } from "./pages/AboutKunKhmer";
 
 function LegacySuperAppRedirect() {
   const { section } = useParams();
@@ -32,6 +33,10 @@ export const router = createBrowserRouter(
   {
     path: "/article/:id",
     element: <ArticleDetail />,
+  },
+  {
+    path: "/about",
+    element: <AboutKunKhmer />,
   },
   {
     path: "/:section",

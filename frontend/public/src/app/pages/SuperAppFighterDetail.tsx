@@ -8,8 +8,9 @@ import exampleFighterBg from 'figma:asset/fe303cee6544597f8a53fd9b8b29e64c2c9ca3
 import { SiteHeader } from "../components/layout/SiteHeader";
 import { SiteFooter } from "../components/layout/SiteFooter";
 import { ShareButtons } from "../components/ShareButtons";
-import { usePageTitle } from "../hooks/usePageTitle";
+import { usePageMeta } from "../hooks/usePageTitle";
 import { formatVideoDuration } from "../utils/publicDisplay";
+import { useI18n } from "../i18n/LanguageContext";
 
 export function SuperAppFighterDetail() {
   const { id } = useParams();
@@ -19,9 +20,17 @@ export function SuperAppFighterDetail() {
 
   const [fighter, setFighter] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { t, lang, formatDate, formatWeight, formatNumber, localName } = useI18n();
   const [clubmates, setClubmates] = useState<any[]>([]);
 
-  usePageTitle(fighter?.name ?? (loading ? "Fighters" : "Fighter not found"));
+  usePageMeta({
+    title: fighter ? localName(fighter.name, fighter.nameKhmer) : loading ? t("nav.fighters") : t("fighters.notFound"),
+    description: fighter
+      ? `${fighter.name}${fighter.nameKhmer ? ` (${fighter.nameKhmer})` : ""} — ${fighter.record || ""} ${t("common.wld")}. ${fighter.clubName || ""}`
+      : null,
+    image: fighter?.image,
+    type: "profile",
+  });
 
   useEffect(() => {
     const fetchFighter = async () => {
@@ -65,7 +74,7 @@ export function SuperAppFighterDetail() {
               title: vid.title,
               thumbnail: vid.thumbnail || "https://images.unsplash.com/photo-1504309092620-4d0ec726efa4?w=600",
               duration: formatVideoDuration(vid.duration),
-              date: vid.created_at ? new Date(vid.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : "Recently",
+              date: vid.created_at || "",
               youtubeId,
               category: vid.category || "Highlights",
               fighterId: vid.fighter_id || vid.fighterId || ""
@@ -97,7 +106,7 @@ export function SuperAppFighterDetail() {
         <SiteHeader activeSection="fighters" />
         <div className="flex-1 flex flex-col items-center justify-center gap-4 py-24">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A3D91]" />
-          <p className="text-slate-500 text-sm font-semibold">Loading fighter profile…</p>
+          <p className="text-slate-500 text-sm font-semibold">{t("fighters.loading")}</p>
         </div>
         <SiteFooter />
       </div>
@@ -111,10 +120,10 @@ export function SuperAppFighterDetail() {
         <div className="flex-1 flex items-center justify-center px-4 py-24">
         <div className="text-center p-8 bg-white rounded-3xl border border-slate-200/80 shadow-xl max-w-md">
           <Trophy className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-          <h2 className="text-2xl font-black text-slate-800 mb-2 uppercase tracking-tight">Fighter Not Found</h2>
-          <p className="text-slate-500 mb-6 text-sm">The fighter profile you are looking for does not exist or has been removed.</p>
+          <h2 className="text-2xl font-black text-slate-800 mb-2 uppercase tracking-tight">{t("fighters.notFound")}</h2>
+          <p className="text-slate-500 mb-6 text-sm">{t("fighters.notFoundText")}</p>
           <Link to="/fighters" className="inline-flex items-center justify-center px-6 py-3 bg-[#0A3D91] text-white font-bold rounded-xl hover:bg-blue-800 transition-colors shadow-md shadow-blue-900/10">
-            Back to Fighters List
+            {t("fighters.backToList")}
           </Link>
         </div>
         </div>
@@ -171,7 +180,7 @@ export function SuperAppFighterDetail() {
           className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-2xl transition-all border border-slate-200 shadow-sm hover:shadow group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform text-[#0A3D91]" />
-          <span className="text-sm font-extrabold text-slate-800">Back to Fighters</span>
+          <span className="text-sm font-extrabold text-slate-800">{t("fighters.back")}</span>
         </button>
       </div>
 
@@ -226,7 +235,7 @@ export function SuperAppFighterDetail() {
                   <div className="absolute bottom-4 left-4">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/95 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-lg">
                       <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                      Active
+                      {t("fighters.active")}
                     </span>
                   </div>
                 )}
@@ -238,7 +247,7 @@ export function SuperAppFighterDetail() {
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
                   <span className="px-3.5 py-1.5 bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-black uppercase tracking-wider rounded-xl">
-                    Kun Khmer Division
+                    {t("fighters.division")}
                   </span>
                   {fighterStats.nationality && (
                     <span className="px-3 py-1 bg-white/10 text-white text-xs font-bold rounded-xl flex items-center gap-1">
@@ -247,10 +256,12 @@ export function SuperAppFighterDetail() {
                   )}
                 </div>
                 <h1 className="text-4xl md:text-6xl font-black text-white leading-tight tracking-tight uppercase">
-                  {fighter.name}
+                  {localName(fighter.name, fighter.nameKhmer)}
                 </h1>
                 {fighter.nameKhmer && fighter.nameKhmer !== fighter.name && (
-                  <p lang="km" className="text-lg md:text-xl font-semibold text-slate-300">{fighter.nameKhmer}</p>
+                  <p lang={lang === "km" ? "en" : "km"} className="text-lg md:text-xl font-semibold text-slate-300">
+                    {lang === "km" ? fighter.name : fighter.nameKhmer}
+                  </p>
                 )}
                 {fighter.alias && (
                   <p className="text-xl md:text-2xl font-bold text-amber-400 italic">
@@ -262,10 +273,10 @@ export function SuperAppFighterDetail() {
               {/* General details grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl mx-auto lg:mx-0">
                 {[
-                  { label: "Club", value: fighter.gym, title: fighter.gym, wide: true },
-                  { label: "Weight", value: fighterStats.weight && `${fighterStats.weight} kg` },
-                  { label: "Age", value: fighterStats.age != null && `${fighterStats.age}` },
-                  { label: "Stance", value: fighterStats.stance },
+                  { label: t("fighters.club"), value: fighter.gym, title: fighter.gym, wide: true },
+                  { label: t("fighters.weight"), value: fighterStats.weight && formatWeight(fighterStats.weight) },
+                  { label: t("fighters.age"), value: fighterStats.age != null && formatNumber(fighterStats.age) },
+                  { label: t("fighters.stance"), value: fighterStats.stance },
                 ].filter((d) => d.value).map((d) => (
                   <div key={d.label} className={`bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl text-left ${d.wide ? "col-span-2" : ""}`}>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{d.label}</p>
@@ -279,7 +290,7 @@ export function SuperAppFighterDetail() {
                 <ShareButtons
                   variant="compact"
                   title={`${fighter.name} — Kun Khmer fighter profile`}
-                  label="Share profile"
+                  label={t("common.shareProfile")}
                   className="px-6 py-3.5 bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold text-sm active:scale-95"
                 />
               </div>
@@ -287,26 +298,26 @@ export function SuperAppFighterDetail() {
 
             {/* Scorecard Widget */}
             <div className="w-full lg:w-auto bg-slate-950/80 backdrop-blur border border-slate-800 rounded-3xl p-6 md:p-8 min-w-[260px] text-center lg:text-left">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Official Record</p>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">{t("fighters.officialRecord")}</p>
               <div className="flex items-center justify-center lg:justify-start gap-4">
                 <div>
                   <p className="text-4xl font-black text-emerald-400 font-mono leading-none">{wins}</p>
-                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">Wins</p>
+                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">{t("common.wins")}</p>
                 </div>
                 <div className="h-8 w-px bg-slate-800" />
                 <div>
                   <p className="text-4xl font-black text-rose-500 font-mono leading-none">{losses}</p>
-                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">Losses</p>
+                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">{t("common.losses")}</p>
                 </div>
                 <div className="h-8 w-px bg-slate-800" />
                 <div>
                   <p className="text-4xl font-black text-amber-500 font-mono leading-none">{draws}</p>
-                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">Draws</p>
+                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">{t("common.draws")}</p>
                 </div>
               </div>
               <div className="mt-5 pt-4 border-t border-slate-800/80">
                 <div className="flex items-center justify-between text-xs font-bold text-slate-400 mb-1.5">
-                  <span>WIN RATIO</span>
+                  <span className="uppercase">{t("fighters.winRatio")}</span>
                   <span className="text-emerald-400 font-black">{winRate}%</span>
                 </div>
                 <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
@@ -325,8 +336,8 @@ export function SuperAppFighterDetail() {
           <div className="flex items-center gap-3">
             <div className="w-1.5 h-8 bg-gradient-to-b from-[#0A3D91] to-blue-500 rounded-full" />
             <div>
-              <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight uppercase">Fight Record &amp; Career Statistics</h2>
-              <p className="text-sm text-slate-500 font-medium">Official record and physical profile</p>
+              <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight uppercase">{t("fighters.recordTitle")}</h2>
+              <p className="text-sm text-slate-500 font-medium">{t("fighters.recordSubtitle")}</p>
             </div>
           </div>
 
@@ -339,7 +350,7 @@ export function SuperAppFighterDetail() {
                 <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-700">
                   <Trophy className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-black text-emerald-700 bg-emerald-100/60 border border-emerald-200 px-3 py-1 rounded-full uppercase tracking-wider">WINS</span>
+                <span className="text-[10px] font-black text-emerald-700 bg-emerald-100/60 border border-emerald-200 px-3 py-1 rounded-full uppercase tracking-wider">{t("common.wins")}</span>
               </div>
               <div className="mt-6">
                 <p className="text-5xl font-black text-slate-800 leading-none">{wins}</p>
@@ -349,7 +360,7 @@ export function SuperAppFighterDetail() {
                   </div>
                   <span className="text-xs font-black text-emerald-700">{totalFights > 0 ? Math.round((wins / totalFights) * 100) : 0}%</span>
                 </div>
-                <p className="text-xs text-slate-500 mt-2 font-medium">Wins out of {totalFights} recorded bouts</p>
+                <p className="text-xs text-slate-500 mt-2 font-medium">{t("fighters.outOf", { label: t("common.wins"), n: totalFights })}</p>
               </div>
             </div>
 
@@ -359,7 +370,7 @@ export function SuperAppFighterDetail() {
                 <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center text-rose-700">
                   <XCircle className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-black text-rose-700 bg-rose-100/60 border border-rose-200 px-3 py-1 rounded-full uppercase tracking-wider">LOSSES</span>
+                <span className="text-[10px] font-black text-rose-700 bg-rose-100/60 border border-rose-200 px-3 py-1 rounded-full uppercase tracking-wider">{t("common.losses")}</span>
               </div>
               <div className="mt-6">
                 <p className="text-5xl font-black text-slate-800 leading-none">{losses}</p>
@@ -369,7 +380,7 @@ export function SuperAppFighterDetail() {
                   </div>
                   <span className="text-xs font-black text-rose-700">{totalFights > 0 ? Math.round((losses / totalFights) * 100) : 0}%</span>
                 </div>
-                <p className="text-xs text-slate-500 mt-2 font-medium">Losses out of {totalFights} recorded bouts</p>
+                <p className="text-xs text-slate-500 mt-2 font-medium">{t("fighters.outOf", { label: t("common.losses"), n: totalFights })}</p>
               </div>
             </div>
 
@@ -379,7 +390,7 @@ export function SuperAppFighterDetail() {
                 <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-700">
                   <Minus className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-black text-amber-700 bg-amber-100/60 border border-amber-200 px-3 py-1 rounded-full uppercase tracking-wider">DRAWS</span>
+                <span className="text-[10px] font-black text-amber-700 bg-amber-100/60 border border-amber-200 px-3 py-1 rounded-full uppercase tracking-wider">{t("common.draws")}</span>
               </div>
               <div className="mt-6">
                 <p className="text-5xl font-black text-slate-800 leading-none">{draws}</p>
@@ -389,7 +400,7 @@ export function SuperAppFighterDetail() {
                   </div>
                   <span className="text-xs font-black text-amber-700">{totalFights > 0 ? Math.round((draws / totalFights) * 100) : 0}%</span>
                 </div>
-                <p className="text-xs text-slate-500 mt-2 font-medium">Draws out of {totalFights} recorded bouts</p>
+                <p className="text-xs text-slate-500 mt-2 font-medium">{t("fighters.outOf", { label: t("common.draws"), n: totalFights })}</p>
               </div>
             </div>
 
@@ -398,10 +409,10 @@ export function SuperAppFighterDetail() {
           {/* Physical attributes cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: "Age", value: fighterStats.age, unit: "years", icon: Calendar, color: "blue" },
-              { label: "Height", value: fighterStats.height, unit: fighterStats.height ? `cm (${Math.floor(fighterStats.height / 2.54 / 12)}′${Math.round(fighterStats.height / 2.54 % 12)}″)` : "", icon: Ruler, color: "purple" },
-              { label: "Reach", value: fighterStats.reach, unit: "cm", icon: Target, color: "orange" },
-              { label: "Wins by KO", value: koWins, unit: "finishes", icon: Flame, color: "red" },
+              { label: t("fighters.age"), value: fighterStats.age, unit: t("fighters.unitYears"), icon: Calendar, color: "blue" },
+              { label: t("fighters.height"), value: fighterStats.height, unit: fighterStats.height ? `cm${lang === "en" ? ` (${Math.floor(fighterStats.height / 2.54 / 12)}′${Math.round(fighterStats.height / 2.54 % 12)}″)` : ""}` : "", icon: Ruler, color: "purple" },
+              { label: t("fighters.reach"), value: fighterStats.reach, unit: "cm", icon: Target, color: "orange" },
+              { label: t("fighters.koWins"), value: koWins, unit: t("fighters.unitFinishes"), icon: Flame, color: "red" },
             ].filter(({ value }) => value != null).map(({ label, value, unit, icon: Icon, color }) => (
               <div key={label} className="bg-slate-50 border border-slate-100 rounded-2xl p-5 hover:shadow transition-all">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${
@@ -423,14 +434,14 @@ export function SuperAppFighterDetail() {
           <div className="bg-slate-50 rounded-3xl border border-slate-200/60 p-6 md:p-8">
             <div className="flex items-center gap-2 mb-6">
               <Award className="w-5 h-5 text-[#0A3D91]" />
-              <h3 className="text-base font-black text-slate-800 uppercase tracking-tight">Performance Statistics</h3>
+              <h3 className="text-base font-black text-slate-800 uppercase tracking-tight">{t("fighters.performance")}</h3>
             </div>
 
             <div className="space-y-6">
               {/* Win Rate */}
               <div>
                 <div className="flex justify-between text-xs font-bold text-slate-600 mb-2">
-                  <span>Career Win Ratio</span>
+                  <span>{t("fighters.careerWinRatio")}</span>
                   <span className="font-black text-slate-900">{winRate}%</span>
                 </div>
                 <div className="h-3 bg-slate-200 rounded-full overflow-hidden">
@@ -442,7 +453,7 @@ export function SuperAppFighterDetail() {
               {koRate != null && (
               <div>
                 <div className="flex justify-between text-xs font-bold text-slate-600 mb-2">
-                  <span>Knockout Ratio (per win)</span>
+                  <span>{t("fighters.koRatio")}</span>
                   <span className="font-black text-slate-900">{koRate}%</span>
                 </div>
                 <div className="h-3 bg-slate-200 rounded-full overflow-hidden">
@@ -454,17 +465,17 @@ export function SuperAppFighterDetail() {
 
             <div className="grid grid-cols-3 gap-4 border-t border-slate-200/80 mt-6 pt-6 text-center">
               <div>
-                <p className="text-xs font-black text-slate-400 uppercase tracking-wider">Career Bouts</p>
+                <p className="text-xs font-black text-slate-400 uppercase tracking-wider">{t("fighters.careerBouts")}</p>
                 <p className="text-xl font-black text-slate-800 mt-0.5">{totalFights}</p>
               </div>
               <div className="border-x border-slate-200">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-wider">Style</p>
+                <p className="text-xs font-black text-slate-400 uppercase tracking-wider">{t("fighters.style")}</p>
                 <p className="text-xl font-black text-[#0A3D91] mt-0.5 truncate capitalize">
                   {primaryStyle || "—"}
                 </p>
               </div>
               <div>
-                <p className="text-xs font-black text-slate-400 uppercase tracking-wider">Stance</p>
+                <p className="text-xs font-black text-slate-400 uppercase tracking-wider">{t("fighters.stance")}</p>
                 <p className="text-xl font-black text-slate-800 mt-0.5">{fighterStats.stance || "—"}</p>
               </div>
             </div>
@@ -479,12 +490,12 @@ export function SuperAppFighterDetail() {
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-8 bg-gradient-to-b from-red-500 to-rose-500 rounded-full" />
               <div>
-                <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight uppercase">Fighter Videos &amp; Highlights</h2>
-                <p className="text-sm text-slate-500 font-medium">Watch exclusive bouts, training camps, and interview clips</p>
+                <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight uppercase">{t("fighters.videos")}</h2>
+                <p className="text-sm text-slate-500 font-medium">{t("fighters.videosText")}</p>
               </div>
             </div>
             <Link to="/news-events?tab=media" className="flex items-center gap-1 text-sm font-black text-[#0A3D91] hover:underline">
-              <span>View Library</span>
+              <span>{t("fighters.videoLibrary")}</span>
               <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
@@ -512,9 +523,11 @@ export function SuperAppFighterDetail() {
                     </div>
                   </div>
 
-                  <div className="absolute bottom-2 right-2 bg-slate-950/70 text-white text-[9px] font-black tracking-wider px-2 py-0.5 rounded uppercase">
-                    HD Video
-                  </div>
+                  {video.duration && (
+                    <div className="absolute bottom-2 right-2 bg-slate-950/70 text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                      {video.duration}
+                    </div>
+                  )}
                 </div>
 
                 {/* Video Info panel */}
@@ -523,11 +536,10 @@ export function SuperAppFighterDetail() {
                     <h3 className="text-sm font-extrabold text-slate-800 leading-snug line-clamp-2 group-hover:text-[#0A3D91] transition-colors">
                       {video.title}
                     </h3>
-                    <p className="text-xs text-slate-500 font-medium mt-1">Exclusive media coverage</p>
                   </div>
                   <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-bold mt-4">
                     <Clock className="w-3.5 h-3.5" />
-                    <span>Uploaded {video.date}</span>
+                    <span>{formatDate(video.date)}</span>
                   </div>
                 </div>
               </button>
@@ -535,7 +547,7 @@ export function SuperAppFighterDetail() {
             {fighterVideos.length === 0 && (
               <div className="col-span-full text-center py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
                 <Play className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                <p className="text-slate-500 text-sm font-semibold">No video highlights available for this fighter</p>
+                <p className="text-slate-500 text-sm font-semibold">{t("fighters.noVideos")}</p>
               </div>
             )}
           </div>
@@ -549,8 +561,8 @@ export function SuperAppFighterDetail() {
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-8 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full" />
               <div>
-                <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight uppercase">Club Teammates</h2>
-                <p className="text-sm text-slate-500 font-medium">Other fighters from {fighter.gym}</p>
+                <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight uppercase">{t("fighters.teammates")}</h2>
+                <p className="text-sm text-slate-500 font-medium">{t("fighters.teammatesText", { club: fighter.gym })}</p>
               </div>
             </div>
 
@@ -576,10 +588,10 @@ export function SuperAppFighterDetail() {
                   <div className="p-4 flex-1 flex flex-col justify-between">
                     <div>
                       <h3 className="text-sm font-black text-slate-800 line-clamp-1 group-hover:text-[#0A3D91] transition-colors leading-tight">
-                        {rel.name}
+                        {localName(rel.name, rel.nameKhmer)}
                       </h3>
                       {rel.nameKhmer && (
-                        <p lang="km" className="text-xs text-slate-500 font-semibold mt-1 truncate">{rel.nameKhmer}</p>
+                        <p className="text-xs text-slate-500 font-semibold mt-1 truncate">{lang === "km" ? rel.name : rel.nameKhmer}</p>
                       )}
                     </div>
 
@@ -588,7 +600,7 @@ export function SuperAppFighterDetail() {
                         {rel.record}
                       </span>
                       <span className="px-2.5 py-1 bg-blue-50 text-[#0A3D91] text-[11px] font-extrabold rounded-md border border-blue-100">
-                        {parseFloat(rel.currentWeight || rel.weight || 0) || "—"} kg
+                        {formatWeight(rel.currentWeight || rel.weight) || "—"}
                       </span>
                     </div>
                   </div>
@@ -625,7 +637,7 @@ export function SuperAppFighterDetail() {
             </div>
             <div className="mt-4 px-1">
               <h3 className="text-lg font-black text-white">{selectedVideo.title}</h3>
-              <p className="text-sm text-slate-400 mt-1">{selectedVideo.date}</p>
+              <p className="text-sm text-slate-400 mt-1">{formatDate(selectedVideo.date)}</p>
             </div>
           </div>
         </div>

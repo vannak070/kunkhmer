@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router";
 import { api } from "../utils/api";
 import { Search, Bell, ShoppingCart, User, Heart, Star, Flame, Zap, Crown, ChevronRight, Package, Plus, Minus, X, CreditCard, Play, Calendar, MapPin, Clock, Award, Users, BookOpen, Video, Menu, Home as HomeIcon, Trophy, TrendingUp, Sparkles, ArrowRight, ArrowLeft, Check, ChevronDown, ChevronUp, Filter, Grid3x3, Eye, ShoppingBag, Building2, Tv, Handshake, Weight, Share2, Mail } from "lucide-react";
@@ -17,7 +17,9 @@ import { SiteFooter } from "../components/layout/SiteFooter";
 import { ShareButtons } from "../components/ShareButtons";
 import { PublicStatusBadge } from "../components/PublicStatusBadge";
 import { usePageTitle } from "../hooks/usePageTitle";
-import { publicName, publicStatus, pluralize, readTimeLabel, formatVideoDuration, formatViews, isCompletedStatus, FEDERATION_NAME } from "../utils/publicDisplay";
+import { useI18n } from "../i18n/LanguageContext";
+import { downloadCalendarEvent } from "../utils/calendar";
+import { publicName, publicStatus, pluralize, readTimeMinutes, formatVideoDuration, formatViews, isCompletedStatus, FEDERATION_NAME } from "../utils/publicDisplay";
 
 /**
  * DATA SYNCHRONIZATION WITH KUN KHMER DIGITAL PLATFORM
@@ -203,6 +205,7 @@ interface Match {
 }
 
 export function SuperAppHome() {
+  const { t, tn, formatDate, formatWeight, localName } = useI18n();
   const { balance, deductBalance } = useWallet();
   const { orders, createOrder } = useOrders();
   const params = useParams();
@@ -252,20 +255,8 @@ export function SuperAppHome() {
     phone: ""
   });
 
-  const formatEventDate = (dateStr: any, isShort: boolean = false) => {
-    try {
-      if (!dateStr) return "TBD Date";
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return "TBD Date";
-      return d.toLocaleDateString('en-US', isShort ? {
-        weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
-      } : {
-        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
-      });
-    } catch (e) {
-      return "TBD Date";
-    }
-  };
+  const formatEventDate = (dateStr: any, isShort: boolean = false) =>
+    formatDate(dateStr, isShort ? "weekday" : "long") || "—";
 
   const [fightersList, setFightersList] = useState<any[]>([]);
   const [loadingFighters, setLoadingFighters] = useState(true);
@@ -320,6 +311,7 @@ export function SuperAppHome() {
         status: m.status,
         rounds: m.rounds,
         weightClass: m.agreed_weight ? `${m.agreed_weight} kg` : "Catchweight",
+        agreedWeight: m.agreed_weight ? parseFloat(m.agreed_weight) : null,
         matchType: isChampionship ? "Championship Bout" : "Ranking Fight",
         isChampionshipBout: isChampionship,
         winnerId: m.winner_id,
@@ -328,7 +320,8 @@ export function SuperAppHome() {
         winnerTime: m.winner_time,
         fighterA: {
           id: m.fighter_a_id,
-          name: m.fighter_a_name || fA?.name || "TBD Fighter A",
+          name: m.fighter_a_name || fA?.name || "TBD",
+          nameKhmer: fA?.nameKhmer || "",
           image: m.fighter_a_image || fA?.image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100",
           clubName: m.club_a_name || fA?.clubName || "Independent",
           record: m.fighter_a_record || fA?.record || "",
@@ -337,7 +330,8 @@ export function SuperAppHome() {
         },
         fighterB: {
           id: m.fighter_b_id,
-          name: m.fighter_b_name || fB?.name || "TBD Fighter B",
+          name: m.fighter_b_name || fB?.name || "TBD",
+          nameKhmer: fB?.nameKhmer || "",
           image: m.fighter_b_image || fB?.image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100",
           clubName: m.club_b_name || fB?.clubName || "Independent",
           record: m.fighter_b_record || fB?.record || "",
@@ -424,7 +418,7 @@ export function SuperAppHome() {
               thumbnail: vid.thumbnail || "https://images.unsplash.com/photo-1504309092620-4d0ec726efa4?w=600",
               duration: formatVideoDuration(vid.duration),
               views: formatViews(vid.views),
-              date: vid.created_at ? new Date(vid.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : "Recently",
+              date: vid.created_at || "",
               created_at: vid.created_at || "",
               youtubeId,
               category: vid.category || "Highlights",
@@ -730,6 +724,14 @@ export function SuperAppHome() {
     };
   });
 
+  // Events are stored as calendar days; anything from today onwards counts as upcoming.
+  const todayStart = new Date().setHours(0, 0, 0, 0);
+  const isUpcomingEvent = (e: Event) => !e.date || new Date(e.date).getTime() >= todayStart;
+  const upcomingEvents = events.filter(isUpcomingEvent)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const pastEvents = events.filter((e) => !isUpcomingEvent(e))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
   // CLUBS & GYMS: Transform club data from Digital Platform
   const clubs: Club[] = clubsList.map((club, index) => {
     return {
@@ -967,15 +969,15 @@ export function SuperAppHome() {
   );
 
   const SECTION_TITLES: Partial<Record<Section, string>> = {
-    matches: "Matches & Events",
-    "match-detail": "Match",
-    "news-events": "News & Media",
-    fighters: "Fighters",
-    "strategic-partners": "Partners",
-    "club-detail": "Partners",
-    "sponsor-detail": "Partners",
-    "broadcast-detail": "Partners",
-    shop: "Official Shop",
+    matches: t("nav.matches"),
+    "match-detail": t("nav.matches"),
+    "news-events": t("nav.news"),
+    fighters: t("nav.fighters"),
+    "strategic-partners": t("nav.partners"),
+    "club-detail": t("nav.partners"),
+    "sponsor-detail": t("nav.partners"),
+    "broadcast-detail": t("nav.partners"),
+    shop: t("footer.shop"),
   };
   const openEventName = currentSection === "matches" && selectedEventId
     ? events.find(e => e.id === selectedEventId)?.name
@@ -993,6 +995,24 @@ export function SuperAppHome() {
           navigate("/matches?tab=events");
         }}
       />
+
+      {/* Newcomer primer */}
+      <Link
+        to="/about"
+        className="group flex flex-col sm:flex-row sm:items-center gap-4 bg-white rounded-2xl border border-gray-200 hover:border-[#0A3D91]/40 hover:shadow-md p-5 md:p-6 transition-all"
+      >
+        <div className="w-12 h-12 rounded-xl bg-[#F2C94C]/20 text-[#0A3D91] flex items-center justify-center shrink-0">
+          <BookOpen className="w-6 h-6" aria-hidden />
+        </div>
+        <div className="flex-1">
+          <h2 className="text-lg font-black text-gray-900">{t("home.aboutTitle")}</h2>
+          <p className="text-sm text-gray-600 leading-relaxed">{t("home.aboutText")}</p>
+        </div>
+        <span className="inline-flex items-center gap-1.5 text-sm font-bold text-[#0A3D91] whitespace-nowrap">
+          {t("home.aboutCta")}
+          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" aria-hidden />
+        </span>
+      </Link>
 
       <SponsorsSection 
         sponsors={sponsors}
@@ -1020,11 +1040,11 @@ export function SuperAppHome() {
             <div className="flex items-center gap-3 mb-2">
               <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-green-600/10 to-green-700/10 rounded-full border border-green-600/20">
                 <Calendar className="w-4 h-4 text-green-600" />
-                <span className="text-xs font-black text-green-600 uppercase tracking-wider">Coming Soon</span>
+                <span className="text-xs font-black text-green-600 uppercase tracking-wider">{upcomingEvents.length ? t("home.upcomingBadge") : t("home.recentBadge")}</span>
               </div>
             </div>
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">Upcoming Events</h2>
-            <p className="text-gray-600 font-medium">Don't miss these exciting championship matches</p>
+            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">{upcomingEvents.length ? t("home.upcomingTitle") : t("home.recentTitle")}</h2>
+            <p className="text-gray-600 font-medium">{upcomingEvents.length ? t("home.upcomingText") : t("home.recentText")}</p>
           </div>
           <button
             onClick={() => {
@@ -1034,12 +1054,12 @@ export function SuperAppHome() {
             }}
             className="hidden md:flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300 hover:shadow-lg"
           >
-            View All <ChevronRight className="w-4 h-4" />
+            {t("common.viewAll")} <ChevronRight className="w-4 h-4" />
           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {events.slice(0, 2).map((event) => (
+          {(upcomingEvents.length ? upcomingEvents : pastEvents).slice(0, 2).map((event) => (
             <div
               key={event.id}
               onClick={() => {
@@ -1058,7 +1078,7 @@ export function SuperAppHome() {
                 {(() => {
                   const st = publicStatus(event.status);
                   const isFuture = event.date && new Date(event.date).getTime() >= new Date().setHours(0, 0, 0, 0);
-                  const label = st?.label ?? (isFuture ? "Upcoming" : null);
+                  const label = st ? t(st.labelKey) : isFuture ? t("common.upcoming") : null;
                   if (!label) return null;
                   return (
                     <div className="absolute top-4 left-4">
@@ -1084,7 +1104,7 @@ export function SuperAppHome() {
                     <div className="w-8 h-8 bg-[#0A3D91]/10 rounded-lg flex items-center justify-center">
                       <Calendar className="w-4 h-4 text-[#0A3D91]" />
                     </div>
-                    <span className="font-semibold">{new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    <span className="font-semibold">{formatDate(event.date)}</span>
                   </div>
 
                   <div className="flex items-center gap-3 text-sm text-gray-700">
@@ -1104,7 +1124,7 @@ export function SuperAppHome() {
                   className="relative w-full px-4 py-3 bg-gradient-to-r from-[#0A3D91] to-[#1565C0] text-white rounded-xl font-black text-sm uppercase tracking-wider hover:shadow-xl hover:shadow-[#0A3D91]/30 transition-all group/btn overflow-hidden"
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2">
-                    View Details
+                    {t("common.viewDetails")}
                     <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
                   </span>
                   <div className="absolute inset-0 bg-gradient-to-r from-[#1565C0] to-[#0A3D91] opacity-0 group-hover/btn:opacity-100 transition-opacity" />
@@ -1127,7 +1147,7 @@ export function SuperAppHome() {
             }}
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300 hover:shadow-lg"
           >
-            View All Events <ChevronRight className="w-4 h-4" />
+            {t("common.viewAll")} <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -1143,11 +1163,11 @@ export function SuperAppHome() {
             <div className="flex items-center gap-3 mb-2">
               <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-[#0A3D91]/10 to-blue-600/10 rounded-full border border-[#0A3D91]/20">
                 <Video className="w-4 h-4 text-[#0A3D91]" />
-                <span className="text-xs font-black text-[#0A3D91] uppercase tracking-wider">Highlights</span>
+                <span className="text-xs font-black text-[#0A3D91] uppercase tracking-wider">{t("home.videosBadge")}</span>
               </div>
             </div>
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">Latest Videos</h2>
-            <p className="text-gray-600 font-medium">Catch up on match highlights, fighter interviews, and historical moments</p>
+            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">{t("home.videosTitle")}</h2>
+            <p className="text-gray-600 font-medium">{t("home.videosText")}</p>
           </div>
           <button
             onClick={() => {
@@ -1156,7 +1176,7 @@ export function SuperAppHome() {
             }}
             className="hidden md:flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300 hover:shadow-lg"
           >
-            View All Videos <ChevronRight className="w-4 h-4" />
+            {t("home.viewAllVideos")} <ChevronRight className="w-4 h-4" />
           </button>
         </div>
 
@@ -1207,7 +1227,7 @@ export function SuperAppHome() {
                       <span>{video.views}</span>
                     </div>
                   ) : <span />}
-                  <span>{video.date}</span>
+                  <span>{formatDate(video.date)}</span>
                 </div>
               </div>
             </div>
@@ -1215,7 +1235,7 @@ export function SuperAppHome() {
           {mediaContent.length === 0 && (
             <div className="col-span-full text-center py-12 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl">
               <Video className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-              <p className="text-gray-500 text-sm font-semibold">No latest videos available</p>
+              <p className="text-gray-500 text-sm font-semibold">{t("home.noVideos")}</p>
             </div>
           )}
         </div>
@@ -1229,7 +1249,7 @@ export function SuperAppHome() {
             }}
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300 hover:shadow-lg"
           >
-            View All Videos <ChevronRight className="w-4 h-4" />
+            {t("home.viewAllVideos")} <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -1245,11 +1265,11 @@ export function SuperAppHome() {
             <div className="flex items-center gap-3 mb-2">
               <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-[#F2C94C]/10 to-yellow-600/10 rounded-full border border-[#F2C94C]/20">
                 <BookOpen className="w-4 h-4 text-[#F2C94C]" />
-                <span className="text-xs font-black text-yellow-700 uppercase tracking-wider">Latest Updates</span>
+                <span className="text-xs font-black text-yellow-700 uppercase tracking-wider">{t("home.newsBadge")}</span>
               </div>
             </div>
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">Latest News</h2>
-            <p className="text-gray-600 font-medium">Stay updated with the latest stories from Kun Khmer</p>
+            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">{t("home.newsTitle")}</h2>
+            <p className="text-gray-600 font-medium">{t("home.newsText")}</p>
           </div>
           <button
             onClick={() => {
@@ -1258,7 +1278,7 @@ export function SuperAppHome() {
             }}
             className="hidden md:flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300 hover:shadow-lg"
           >
-            View All <ChevronRight className="w-4 h-4" />
+            {t("common.viewAll")} <ChevronRight className="w-4 h-4" />
           </button>
         </div>
 
@@ -1304,7 +1324,7 @@ export function SuperAppHome() {
                 <div className="absolute bottom-3 left-3 flex items-center gap-2 px-3 py-1.5 bg-white/95 backdrop-blur-sm rounded-lg shadow-xl">
                   <Calendar className="w-3.5 h-3.5 text-[#0A3D91]" />
                   <span className="text-xs font-black text-gray-900">
-                    {new Date(article.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    {formatDate(article.date)}
                   </span>
                 </div>
               </div>
@@ -1317,7 +1337,7 @@ export function SuperAppHome() {
                 <p className="text-sm text-gray-600 line-clamp-2 mb-4 leading-relaxed">{article.excerpt}</p>
                 
                 <span className="mt-auto w-full px-4 py-2.5 bg-gradient-to-r from-gray-100 to-gray-200 group-hover:from-[#0A3D91] group-hover:to-blue-700 text-gray-700 group-hover:text-white rounded-lg font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2">
-                  <span>Read Article</span>
+                  <span>{t("common.readArticle")}</span>
                   <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                 </span>
               </div>
@@ -1337,7 +1357,7 @@ export function SuperAppHome() {
             }}
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl font-black text-sm text-gray-700 transition-all border border-gray-300 hover:shadow-lg"
           >
-            View All News <ChevronRight className="w-4 h-4" />
+            {t("home.viewAllNews")} <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -1457,8 +1477,8 @@ export function SuperAppHome() {
               <BookOpen className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">News & Media</h2>
-              <p className="text-base text-gray-600 font-semibold mt-1">Stay updated with latest stories and exclusive content</p>
+              <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">{t("news.title")}</h2>
+              <p className="text-base text-gray-600 font-semibold mt-1">{t("news.subtitle")}</p>
             </div>
           </div>
         </div>
@@ -1477,7 +1497,7 @@ export function SuperAppHome() {
             }`}
           >
             <BookOpen className={`w-4 h-4 ${newsEventsTab === "news" ? "text-[#0A3D91]" : "text-gray-400"}`} />
-            <span>Latest News</span>
+            <span>{t("news.tabNews")}</span>
             {newsArticles.length > 0 && (
               <span className={`px-2 py-0.5 text-[10px] font-black rounded-full ${
                 newsEventsTab === "news" ? "bg-blue-100 text-[#0A3D91]" : "bg-slate-200 text-slate-500"
@@ -1497,7 +1517,7 @@ export function SuperAppHome() {
             }`}
           >
             <Video className={`w-4 h-4 ${newsEventsTab === "media" ? "text-yellow-600" : "text-gray-400"}`} />
-            <span>Media Hub</span>
+            <span>{t("news.tabMedia")}</span>
             {mediaContent.length > 0 && (
               <span className={`px-2 py-0.5 text-[10px] font-black rounded-full ${
                 newsEventsTab === "media" ? "bg-yellow-100 text-yellow-800" : "bg-slate-200 text-slate-500"
@@ -1558,7 +1578,7 @@ export function SuperAppHome() {
           {filteredNews.length === 0 ? (
             <div className="text-center py-12">
               <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-slate-500 font-semibold text-sm">No articles match your search criteria.</p>
+              <p className="text-slate-500 font-semibold text-sm">{t("news.noArticles")}</p>
             </div>
           ) : (
             <>
@@ -1603,7 +1623,7 @@ export function SuperAppHome() {
                           <div className="flex items-center gap-2.5 text-[11px] text-gray-400 font-semibold mb-2.5">
                             <span className="flex items-center gap-1">
                               <Calendar className="w-3.5 h-3.5" />
-                              {new Date(article.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              {formatDate(article.date)}
                             </span>
                             <span>•</span>
                             <span className="flex items-center gap-1">
@@ -1622,10 +1642,10 @@ export function SuperAppHome() {
 
                         <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between text-[11px]">
                           <span className="font-bold text-[#0A3D91] uppercase tracking-wider group-hover:underline flex items-center gap-1">
-                            <span>Read Article</span>
+                            <span>{t("common.readArticle")}</span>
                             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                           </span>
-                          <span className="text-gray-400 font-semibold">{readTimeLabel(article.content)}</span>
+                          <span className="text-gray-400 font-semibold">{t("common.minRead", { n: readTimeMinutes(article.content) })}</span>
                         </div>
                       </div>
                     </Link>
@@ -1752,7 +1772,7 @@ export function SuperAppHome() {
           {filteredMedia.length === 0 ? (
             <div className="text-center py-12">
               <Video className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-slate-500 font-semibold text-sm">No videos match your search criteria.</p>
+              <p className="text-slate-500 font-semibold text-sm">{t("news.noVideos")}</p>
             </div>
           ) : (
             <>
@@ -1799,7 +1819,7 @@ export function SuperAppHome() {
                         <div className="flex items-center justify-between pt-3 border-t border-slate-50 text-[11px] text-gray-400 font-semibold">
                           <span className="flex items-center gap-1">
                             <Calendar className="w-3.5 h-3.5" />
-                            {media.date}
+                            {formatDate(media.date)}
                           </span>
                           {media.views && (
                             <span className="flex items-center gap-1 text-[#0A3D91]">
@@ -1976,7 +1996,7 @@ export function SuperAppHome() {
             onClick={() => handleSectionChange("media")}
             className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl font-bold text-sm text-gray-700 transition-all"
           >
-            View All <ChevronRight className="w-4 h-4" />
+            {t("common.viewAll")} <ChevronRight className="w-4 h-4" />
           </button>
         </div>
         
@@ -2068,8 +2088,8 @@ export function SuperAppHome() {
               <Users className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">All Fighters</h2>
-              <p className="text-sm text-gray-600 font-medium">Official Kun Khmer Athletes</p>
+              <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">{t("fighters.title")}</h2>
+              <p className="text-sm text-gray-600 font-medium">{t("fighters.subtitle")}</p>
             </div>
           </div>
         </div>
@@ -2079,8 +2099,8 @@ export function SuperAppHome() {
             type="search"
             value={fighterSearchQuery}
             onChange={(e) => setFighterSearchQuery(e.target.value)}
-            placeholder="Search by name or club"
-            aria-label="Search fighters by name or club"
+            placeholder={t("fighters.searchPlaceholder")}
+            aria-label={t("fighters.searchLabel")}
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0A3D91]/30 focus:border-[#0A3D91]/50"
           />
         </div>
@@ -2108,8 +2128,8 @@ export function SuperAppHome() {
           <div>
             <p className="text-sm font-semibold text-gray-500">
               {filteredFighters.length === fighters.length
-                ? `${pluralize(fighters.length, "fighter")}`
-                : `Showing ${filteredFighters.length} of ${pluralize(fighters.length, "fighter")}`}
+                ? tn("common.fighters", fighters.length)
+                : t("common.showingFighters", { shown: filteredFighters.length, total: tn("common.fighters", fighters.length) })}
             </p>
           </div>
         </div>
@@ -2120,8 +2140,8 @@ export function SuperAppHome() {
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
               <Users className="w-10 h-10 text-gray-400" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">No Fighters Found</h3>
-            <p className="text-gray-600 mb-6">Try a different search term or filter</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">{t("fighters.none")}</h3>
+            <p className="text-gray-600 mb-6">{t("fighters.noneText")}</p>
             <button
               onClick={() => {
                 setFighterSearchQuery("");
@@ -2133,7 +2153,7 @@ export function SuperAppHome() {
               }}
               className="px-6 py-2.5 bg-[#0A3D91] text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
             >
-              Clear Filters
+              {t("common.clearFilters")}
             </button>
           </div>
         ) : (
@@ -2159,7 +2179,7 @@ export function SuperAppHome() {
                   {fighter.verified && (
                     <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-[#0A3D91] to-blue-700 rounded-lg shadow-lg w-fit">
                       <Zap className="w-3.5 h-3.5 text-white fill-white" />
-                      <span className="text-xs font-black text-white uppercase">Verified</span>
+                      <span className="text-xs font-black text-white uppercase">{t("common.verified")}</span>
                     </div>
                   )}
                   {fighter.championships > 0 && (
@@ -2185,7 +2205,7 @@ export function SuperAppHome() {
                 <div>
                   {/* Fighter Name */}
                   <h3 className="text-2xl font-black text-gray-900 mb-2 leading-tight group-hover:text-[#0A3D91] transition-colors">
-                    {fighter.name}
+                    {localName(fighter.name, fighter.nameKhmer)}
                   </h3>
 
                   {/* Details */}
@@ -2196,7 +2216,7 @@ export function SuperAppHome() {
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <User className="w-4 h-4 text-gray-400" />
-                      <span className="font-semibold">{fighter.age != null ? `${fighter.age} years old` : fighter.weightClass}</span>
+                      <span className="font-semibold">{fighter.age != null ? t("common.years", { n: fighter.age }) : fighter.weightClass}</span>
                     </div>
                   </div>
 
@@ -2204,15 +2224,15 @@ export function SuperAppHome() {
                   <div className="flex items-center gap-3 mb-5">
                     <div className="flex-1 bg-gradient-to-br from-green-50 to-green-100/50 rounded-xl p-3 border border-green-200/50 text-center">
                       <p className="text-2xl font-black text-green-600 mb-0.5">{fighter.wins}</p>
-                      <p className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Wins</p>
+                      <p className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">{t("common.wins")}</p>
                     </div>
                     <div className="flex-1 bg-gradient-to-br from-red-50 to-red-100/50 rounded-xl p-3 border border-red-200/50 text-center">
                       <p className="text-2xl font-black text-red-600 mb-0.5">{fighter.losses}</p>
-                      <p className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Losses</p>
+                      <p className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">{t("common.losses")}</p>
                     </div>
                     <div className="flex-1 bg-gradient-to-br from-yellow-50 to-yellow-100/50 rounded-xl p-3 border border-yellow-200/50 text-center">
                       <p className="text-2xl font-black text-yellow-600 mb-0.5">{fighter.draws}</p>
-                      <p className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Draws</p>
+                      <p className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">{t("common.draws")}</p>
                     </div>
                   </div>
                 </div>
@@ -2222,7 +2242,7 @@ export function SuperAppHome() {
 
                   {/* View Profile Button */}
                   <button className="w-full px-5 py-3 bg-gradient-to-r from-[#0A3D91] to-blue-700 hover:from-blue-800 hover:to-blue-900 text-white rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 group/btn">
-                    <span>View Profile</span>
+                    <span>{t("common.viewProfile")}</span>
                     <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
                   </button>
                 </div>
@@ -2260,7 +2280,7 @@ export function SuperAppHome() {
                 <Handshake className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">Strategic Partners</h2>
+                <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">{t("partners.title")}</h2>
                 <p className="text-base text-gray-600 font-semibold mt-1">Official partners supporting Kun Khmer federation and fighters</p>
               </div>
             </div>
@@ -2280,7 +2300,7 @@ export function SuperAppHome() {
             }`}
           >
             <Building2 className={`w-4 h-4 ${strategicPartnersTab === "clubs" ? "text-[#0A3D91]" : "text-gray-400"}`} />
-            <span>Clubs & Gyms</span>
+            <span>{t("partners.clubs")}</span>
           </button>
 
           {/* Broadcasts Tab */}
@@ -2293,7 +2313,7 @@ export function SuperAppHome() {
             }`}
           >
             <Tv className={`w-4 h-4 ${strategicPartnersTab === "broadcasts" ? "text-purple-600" : "text-gray-400"}`} />
-            <span>Broadcast Partners</span>
+            <span>{t("partners.broadcasters")}</span>
           </button>
 
           {/* Sponsors Tab */}
@@ -2306,7 +2326,7 @@ export function SuperAppHome() {
             }`}
           >
             <Handshake className={`w-4 h-4 ${strategicPartnersTab === "sponsors" ? "text-yellow-600" : "text-gray-400"}`} />
-            <span>Official Sponsors</span>
+            <span>{t("partners.sponsors")}</span>
           </button>
         </div>
       </div>
@@ -2373,7 +2393,7 @@ export function SuperAppHome() {
                         <Users className="w-3.5 h-3.5 text-[#0A3D91]" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-0.5">Head Coach</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-0.5">{t("partners.headCoach")}</p>
                         <p className="text-xs font-black text-gray-900 truncate">
                           {club.headCoach || <span className="text-gray-300 font-medium italic">—</span>}
                         </p>
@@ -2389,7 +2409,7 @@ export function SuperAppHome() {
                   {/* View Details CTA */}
                   <div className="mt-auto pt-1">
                     <div className="w-full py-2.5 bg-gradient-to-r from-[#0A3D91] to-blue-600 text-white rounded-xl font-black text-xs uppercase tracking-wider text-center group-hover:shadow-lg group-hover:shadow-[#0A3D91]/30 transition-all relative overflow-hidden">
-                      <span className="relative z-10">View Details</span>
+                      <span className="relative z-10">{t("common.viewDetails")}</span>
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                     </div>
                   </div>
@@ -2449,7 +2469,7 @@ export function SuperAppHome() {
 
                   <div className="mt-auto pt-1">
                     <div className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl font-black text-xs uppercase tracking-wider text-center group-hover:shadow-lg group-hover:shadow-purple-600/30 transition-all relative overflow-hidden">
-                      <span className="relative z-10">View Details</span>
+                      <span className="relative z-10">{t("common.viewDetails")}</span>
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                     </div>
                   </div>
@@ -2531,7 +2551,7 @@ export function SuperAppHome() {
 
                           <div className="mt-auto pt-1">
                             <div className={`w-full py-2.5 bg-gradient-to-r ${m.btn} text-white rounded-xl font-black text-xs uppercase tracking-wider text-center group-hover:shadow-lg transition-all relative overflow-hidden`}>
-                              <span className="relative z-10">View Details</span>
+                              <span className="relative z-10">{t("common.viewDetails")}</span>
                               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                             </div>
                           </div>
@@ -2613,7 +2633,7 @@ export function SuperAppHome() {
                 </div>
                 <div className="text-center mt-2">
                   <span className="text-xs font-black text-[#0A3D91] group-hover:underline flex items-center justify-center gap-1">
-                    View Details <ChevronRight className="w-3.5 h-3.5" />
+                    {t("common.viewDetails")} <ChevronRight className="w-3.5 h-3.5" />
                   </span>
                 </div>
               </div>
@@ -2650,7 +2670,7 @@ export function SuperAppHome() {
                 </div>
                 <div className="text-center mt-2">
                   <span className="text-xs font-black text-[#0A3D91] group-hover:underline flex items-center justify-center gap-1">
-                    View Details <ChevronRight className="w-3.5 h-3.5" />
+                    {t("common.viewDetails")} <ChevronRight className="w-3.5 h-3.5" />
                   </span>
                 </div>
               </div>
@@ -2687,7 +2707,7 @@ export function SuperAppHome() {
                 </div>
                 <div className="text-center mt-2">
                   <span className="text-xs font-black text-[#0A3D91] group-hover:underline flex items-center justify-center gap-1">
-                    View Details <ChevronRight className="w-3.5 h-3.5" />
+                    {t("common.viewDetails")} <ChevronRight className="w-3.5 h-3.5" />
                   </span>
                 </div>
               </div>
@@ -2713,8 +2733,8 @@ export function SuperAppHome() {
               <Trophy className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">Matches & Events</h2>
-              <p className="text-base text-gray-600 font-semibold mt-1">Official Kun Khmer championship bouts and upcoming events</p>
+              <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">{t("matches.title")}</h2>
+              <p className="text-base text-gray-600 font-semibold mt-1">{t("matches.subtitle")}</p>
             </div>
           </div>
         </div>
@@ -2740,7 +2760,7 @@ export function SuperAppHome() {
             }`}
           >
             <Trophy className={`w-4 h-4 ${matchesEventsTab === "matches" ? "text-[#0A3D91]" : "text-gray-400"}`} />
-            <span>Matches</span>
+            <span>{t("matches.tabMatches")}</span>
           </button>
 
           {/* Results Tab */}
@@ -2762,7 +2782,7 @@ export function SuperAppHome() {
             }`}
           >
             <Trophy className={`w-4 h-4 ${matchesEventsTab === "previous" ? "text-[#0A3D91]" : "text-gray-400"}`} />
-            <span>Results</span>
+            <span>{t("matches.tabResults")}</span>
           </button>
 
           {/* Upcoming Events Tab */}
@@ -2779,7 +2799,7 @@ export function SuperAppHome() {
             }`}
           >
             <Calendar className={`w-4 h-4 ${matchesEventsTab === "events" ? "text-[#0A3D91]" : "text-gray-400"}`} />
-            <span>Upcoming Events</span>
+            <span>{t("matches.tabEvents")}</span>
           </button>
         </div>
       </div>
@@ -2836,13 +2856,13 @@ export function SuperAppHome() {
                 </div>
                 {selectedWeightClass === "all" && selectedLocation === "all" && selectedMatchType === "all" ? (
                   <>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">No upcoming fight cards yet</h3>
-                    <p className="text-gray-600">New fight cards are announced here as soon as they're confirmed. Check back soon.</p>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">{t("matches.noCards")}</h3>
+                    <p className="text-gray-600">{t("matches.noCardsText")}</p>
                   </>
                 ) : (
                   <>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">No fight cards match these filters</h3>
-                <p className="text-gray-600 mb-6">Try a different weight class, location or match type.</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{t("matches.noFiltered")}</h3>
+                <p className="text-gray-600 mb-6">{t("matches.noFilteredText")}</p>
                 <button
                   onClick={() => {
                     setSelectedWeightClass("all");
@@ -2851,7 +2871,7 @@ export function SuperAppHome() {
                   }}
                   className="px-6 py-2.5 bg-[#0A3D91] text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
                 >
-                  Clear All Filters
+                  {t("common.clearFilters")}
                 </button>
                   </>
                 )}
@@ -2898,32 +2918,35 @@ export function SuperAppHome() {
                     <Calendar className="w-5 h-5 text-[#F2C94C]" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-black text-white tracking-tight">Upcoming Events</h3>
-                    <p className="text-white/50 text-xs font-medium">Official Kun Khmer championship events</p>
+                    <h3 className="text-lg font-black text-white tracking-tight">{t("matches.eventsTitle")}</h3>
+                    <p className="text-white/50 text-xs font-medium">{t("matches.eventsText")}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 border border-white/20 rounded-xl">
                   <Trophy className="w-3.5 h-3.5 text-[#F2C94C]" />
-                  <span className="text-white font-black text-sm">{events.length}</span>
-                  <span className="text-white/60 text-xs font-medium">{events.length === 1 ? "Event" : "Events"}</span>
+                  <span className="text-white font-black text-sm">{upcomingEvents.length}</span>
+                  <span className="text-white/60 text-xs font-medium">{tn("common.event", upcomingEvents.length)}</span>
                 </div>
               </div>
             </div>
 
             {/* Events List */}
             <div className="p-6 md:p-8 space-y-4">
-              {events.length === 0 ? (
+              {upcomingEvents.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-16 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
                   <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
                     <Calendar className="w-8 h-8 text-gray-400" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-1">No Upcoming Events</h3>
-                  <p className="text-sm text-gray-500 font-medium max-w-sm mx-auto">There are no upcoming Kun Khmer championship events scheduled yet.</p>
+                  <h3 className="text-xl font-bold text-gray-900 mb-1">{t("matches.noEvents")}</h3>
+                  <p className="text-sm text-gray-500 font-medium max-w-sm mx-auto">{t("matches.noEventsText")}</p>
                 </div>
-              ) : (
-                events.map((event, index) => (
+              )}
+              {[...upcomingEvents, ...pastEvents].map((event, index) => (
+                  <Fragment key={event.id}>
+                  {index === upcomingEvents.length && (
+                    <h4 className="pt-4 text-xs font-bold uppercase tracking-wider text-gray-400">{t("matches.pastEvents")}</h4>
+                  )}
                   <div
-                    key={event.id}
                     onClick={() => openEvent(event.id)}
                     className="group relative bg-white rounded-2xl border border-gray-100 hover:border-[#0A3D91]/20 hover:shadow-[0_8px_30px_rgba(10,61,145,0.08)] transition-all duration-300 cursor-pointer overflow-hidden"
                   >
@@ -2996,7 +3019,7 @@ export function SuperAppHome() {
                           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0A3D91]/5 border border-[#0A3D91]/10 rounded-xl">
                             <Trophy className="w-3.5 h-3.5 text-[#0A3D91]" />
                             <span className="text-sm font-black text-[#0A3D91]">{event.matchesCount}</span>
-                            <span className="text-xs text-[#0A3D91]/70 font-medium">{event.matchesCount === 1 ? "Bout" : "Bouts"}</span>
+                            <span className="text-xs text-[#0A3D91]/70 font-medium">{tn("common.bout", event.matchesCount)}</span>
                           </div>
 
                           {/* View button */}
@@ -3006,7 +3029,7 @@ export function SuperAppHome() {
                             className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#0A3D91] to-[#1565C0] hover:from-[#051C42] hover:to-[#0A3D91] text-white rounded-xl text-xs font-bold shadow-sm hover:shadow-md transition-all duration-200 group/btn"
                           >
                             <Eye className="w-3.5 h-3.5" />
-                            <span>View Event</span>
+                            <span>{t("common.viewEvent")}</span>
                             <ArrowRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
                           </button>
                         </div>
@@ -3017,8 +3040,8 @@ export function SuperAppHome() {
                     {/* Bottom hover accent */}
                     <div className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-[#0A3D91] via-[#1565C0] to-[#C8102E] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </div>
-                ))
-              )}
+                  </Fragment>
+              ))}
             </div>
           </div>
         </>
@@ -3079,13 +3102,13 @@ export function SuperAppHome() {
                   <Trophy className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   {selectedWeightClass === "all" && selectedLocation === "all" && selectedMatchType === "all" ? (
                     <>
-                      <h3 className="text-xl font-black text-gray-900 mb-2">No results yet</h3>
-                      <p className="text-gray-500">Official results appear here once a fight card is completed.</p>
+                      <h3 className="text-xl font-black text-gray-900 mb-2">{t("matches.noResults")}</h3>
+                      <p className="text-gray-500">{t("matches.noResultsText")}</p>
                     </>
                   ) : (
                     <>
-                      <h3 className="text-xl font-black text-gray-900 mb-2">No results match these filters</h3>
-                      <p className="text-gray-500">Try a different weight class, location or match type.</p>
+                      <h3 className="text-xl font-black text-gray-900 mb-2">{t("matches.noFilteredResults")}</h3>
+                      <p className="text-gray-500">{t("matches.noFilteredText")}</p>
                     </>
                   )}
                 </div>
@@ -3122,7 +3145,7 @@ export function SuperAppHome() {
                         }`}
                       >
                         <ArrowLeft className="w-4 h-4" />
-                        <span>Previous</span>
+                        <span>{t("common.previous")}</span>
                       </button>
 
                       <div className="flex items-center gap-1">
@@ -3150,7 +3173,7 @@ export function SuperAppHome() {
                             : 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200 hover:border-[#0A3D91]'
                         }`}
                       >
-                        <span>Next</span>
+                        <span>{t("common.next")}</span>
                         <ArrowRight className="w-4 h-4" />
                       </button>
                     </div>
@@ -3200,7 +3223,7 @@ export function SuperAppHome() {
               <div className="flex items-center justify-center gap-4 text-white/80">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  <span>{new Date(match.date).toLocaleDateString()}</span>
+                  <span>{formatDate(match.date)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />
@@ -3351,7 +3374,7 @@ export function SuperAppHome() {
                 <Calendar className="w-5 h-5 text-[#0A3D91]" />
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase">Date & Time</p>
-                  <p className="text-sm font-bold text-gray-900">{new Date(match.date).toLocaleDateString()} • {match.time}</p>
+                  <p className="text-sm font-bold text-gray-900">{formatDate(match.date)} • {match.time}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -3403,14 +3426,33 @@ export function SuperAppHome() {
             className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-white bg-white hover:bg-[#0A3D91] rounded-xl font-bold transition-all border border-gray-200 hover:border-[#0A3D91]"
           >
             <ChevronRight className="w-4 h-4 rotate-180" />
-            Back to Events
+            {t("matches.backToEvents")}
           </button>
-          <ShareButtons
-            variant="compact"
-            title={`${event.name} — Kun Khmer`}
-            label="Share event"
-            className="px-4 py-2 bg-white text-gray-700 hover:text-[#0A3D91] border border-gray-200 hover:border-[#0A3D91] font-bold text-sm"
-          />
+          <div className="flex items-center gap-2">
+            {event.date && new Date(event.date).getTime() >= new Date().setHours(0, 0, 0, 0) && (
+              <button
+                type="button"
+                onClick={() => downloadCalendarEvent({
+                  id: event.id,
+                  title: event.name,
+                  date: event.date,
+                  location: event.venue,
+                  description: event.description,
+                  url: window.location.href,
+                })}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white text-gray-700 hover:text-[#0A3D91] border border-gray-200 hover:border-[#0A3D91] rounded-xl font-bold text-sm transition-all"
+              >
+                <Calendar className="w-4 h-4" aria-hidden />
+                <span className="hidden sm:inline">{t("common.addToCalendar")}</span>
+              </button>
+            )}
+            <ShareButtons
+              variant="compact"
+              title={`${event.name} — Kun Khmer`}
+              label={t("common.shareEvent")}
+              className="px-4 py-2 bg-white text-gray-700 hover:text-[#0A3D91] border border-gray-200 hover:border-[#0A3D91] font-bold text-sm"
+            />
+          </div>
         </div>
 
         {/* Event Hero Section - Clean Design */}
@@ -3440,7 +3482,7 @@ export function SuperAppHome() {
               <div className="flex items-center gap-3 px-6 py-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
                 <Trophy className="w-8 h-8 text-white" />
                 <div>
-                  <p className="text-xs font-bold text-white/70 uppercase">{totalMatches === 1 ? "Bout" : "Bouts"}</p>
+                  <p className="text-xs font-bold text-white/70 uppercase">{tn("common.bout", totalMatches)}</p>
                   <p className="text-3xl font-black text-white">{totalMatches}</p>
                 </div>
               </div>
@@ -3455,7 +3497,7 @@ export function SuperAppHome() {
                 <Calendar className="w-5 h-5 text-white" />
               </div>
               <div>
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Date</span>
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">{t("matches.date")}</span>
                 <p className="text-sm font-black text-gray-900">
                   {formatEventDate(event.date, true)}
                 </p>
@@ -3468,7 +3510,7 @@ export function SuperAppHome() {
                 <MapPin className="w-5 h-5 text-white" />
               </div>
               <div>
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Venue</span>
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">{t("matches.venue")}</span>
                 <p className="text-sm font-black text-gray-900 leading-tight">{event.venue}</p>
               </div>
             </div>
@@ -3480,7 +3522,7 @@ export function SuperAppHome() {
                 <Building2 className="w-5 h-5 text-white" />
               </div>
               <div>
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Organizer</span>
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">{t("matches.organizer")}</span>
                 <p className="text-sm font-black text-gray-900 leading-tight">{event.organizer}</p>
               </div>
             </div>
@@ -3493,7 +3535,7 @@ export function SuperAppHome() {
                 <Tv className="w-5 h-5 text-white" />
               </div>
               <div>
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Broadcast</span>
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">{t("matches.broadcast")}</span>
                 <p className="text-sm font-black text-gray-900 leading-tight">{event.station}</p>
               </div>
             </div>
@@ -3505,7 +3547,7 @@ export function SuperAppHome() {
             <div className="px-6 md:px-8 pb-6 md:pb-8">
               <div className="flex items-center gap-3 mb-3">
                 <Award className="w-5 h-5 text-[#F2C94C]" />
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Official Sponsors</span>
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">{t("matches.sponsors")}</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {event.sponsors.map((sponsor, idx) => (
@@ -3529,8 +3571,8 @@ export function SuperAppHome() {
                     <Trophy className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-2xl md:text-3xl font-black text-gray-900">Official Fight Card</h2>
-                    <p className="text-sm text-gray-600 font-semibold">{pluralize(totalMatches, "bout")}</p>
+                    <h2 className="text-2xl md:text-3xl font-black text-gray-900">{t("matches.fightCard")}</h2>
+                    <p className="text-sm text-gray-600 font-semibold">{tn("common.bouts", totalMatches)}</p>
                   </div>
                 </div>
               </div>
@@ -3555,8 +3597,8 @@ export function SuperAppHome() {
                     {batch.matches.map((match, idx) => {
                       const isCompleted = batch.status === 'Completed' || match.status === 'Completed';
                       
-                      const fAName = match.fighterA?.name || "Fighter A";
-                      const fBName = match.fighterB?.name || "Fighter B";
+                      const fAName = localName(match.fighterA?.name, match.fighterA?.nameKhmer) || "TBD";
+                      const fBName = localName(match.fighterB?.name, match.fighterB?.nameKhmer) || "TBD";
                       const fAClub = match.fighterA?.clubName || "Independent";
                       const fBClub = match.fighterB?.clubName || "Independent";
                       const fARecord = match.fighterA?.record || "";
@@ -3593,11 +3635,11 @@ export function SuperAppHome() {
                           <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
                             <div className="flex items-center gap-3">
                               <span className="px-3 py-1 bg-[#0A3D91]/10 text-[#0A3D91] text-xs font-black rounded-lg">
-                                BOUT #{idx + 1}
+                                {t("matches.boutNumber", { n: idx + 1 })}
                               </span>
-                              <span className="text-sm font-black text-gray-900">{match.matchType || "Ranking Fight"}</span>
+                              <span className="text-sm font-black text-gray-900">{match.isChampionshipBout ? t("matches.championshipBout") : t("matches.rankingFight")}</span>
                               <span className="px-2.5 py-1 bg-white border border-gray-200 text-gray-700 text-xs font-bold rounded-lg">
-                                {match.weightClass}
+                                {match.agreedWeight ? formatWeight(match.agreedWeight) : t("matches.catchweight")}
                               </span>
                             </div>
                             <PublicStatusBadge status={isCompleted ? "Completed" : match.status} />
@@ -3619,13 +3661,13 @@ export function SuperAppHome() {
                                 <div className="flex items-center gap-1.5 mb-0.5">
                                   <span className="font-bold text-gray-900 text-xs truncate block">{fAName}</span>
                                   {fAGrade && (
-                                    <span title="Fighter grade" className="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-gray-500 shrink-0">
-                                      Grade {fAGrade}
+                                    <span title={t("common.gradeHint")} className="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-gray-500 shrink-0">
+                                      {t("common.grade", { grade: fAGrade })}
                                     </span>
                                   )}
                                 </div>
                                 <div className="text-[10px] text-gray-500 font-medium truncate mb-0.5">{fAClub}</div>
-                                {fARecord && <div className="text-[10px] text-gray-500 font-semibold">{fARecord} (W-L-D)</div>}
+                                {fARecord && <div className="text-[10px] text-gray-500 font-semibold">{fARecord} ({t("common.wld")})</div>}
                               </div>
                               {isCompleted && (
                                 <span className={`absolute -top-2.5 -right-2.5 px-1.5 py-0.5 text-[8px] font-black uppercase rounded ${
@@ -3642,8 +3684,8 @@ export function SuperAppHome() {
                                 VS
                               </span>
                               <div className="text-[9px] text-gray-500 font-bold text-center leading-normal">
-                                <div>{match.weightClass || "Catchweight"}</div>
-                                {match.rounds && <div>{match.rounds} rounds</div>}
+                                <div>{match.agreedWeight ? formatWeight(match.agreedWeight) : t("matches.catchweight")}</div>
+                                {match.rounds && <div>{tn("common.rounds", Number(match.rounds))}</div>}
                               </div>
                             </div>
 
@@ -3655,14 +3697,14 @@ export function SuperAppHome() {
                               <div className="min-w-0 text-right">
                                 <div className="flex items-center justify-end gap-1.5 mb-0.5">
                                   {fBGrade && (
-                                    <span title="Fighter grade" className="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-gray-500 shrink-0">
-                                      Grade {fBGrade}
+                                    <span title={t("common.gradeHint")} className="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-gray-500 shrink-0">
+                                      {t("common.grade", { grade: fBGrade })}
                                     </span>
                                   )}
                                   <span className="font-bold text-gray-900 text-xs truncate block">{fBName}</span>
                                 </div>
                                 <div className="text-[10px] text-gray-500 font-medium truncate mb-0.5">{fBClub}</div>
-                                {fBRecord && <div className="text-[10px] text-gray-500 font-semibold">{fBRecord} (W-L-D)</div>}
+                                {fBRecord && <div className="text-[10px] text-gray-500 font-semibold">{fBRecord} ({t("common.wld")})</div>}
                               </div>
                               <img
                                 src={fighterBImage}
@@ -3683,7 +3725,7 @@ export function SuperAppHome() {
                           {match.isChampionshipBout && (
                             <div className="mt-3 pt-2 border-t border-dashed border-amber-250 flex items-center justify-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50/20 rounded-lg py-1 px-2">
                               <Trophy className="w-3 h-3 text-amber-500 shrink-0" />
-                              <span>CHAMPIONSHIP TITLE BOUT</span>
+                              <span className="uppercase">{t("matches.titleBout")}</span>
                             </div>
                           )}
 
@@ -3713,7 +3755,7 @@ export function SuperAppHome() {
         ) : (
           <div className="bg-white rounded-2xl p-8 border border-gray-100 text-center shadow-lg">
             <Trophy className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="text-lg font-black text-gray-900 mb-1">Fight Card Pending</h3>
+            <h3 className="text-lg font-black text-gray-900 mb-1">{t("matches.pendingCard")}</h3>
             <p className="text-sm text-gray-500 font-semibold">The matchmaking card and bout lineup for this event will be announced soon.</p>
           </div>
         )}
@@ -4039,7 +4081,7 @@ export function SuperAppHome() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-lg font-bold text-gray-900">{order.id}</h3>
-                  <p className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</p>
+                  <p className="text-sm text-gray-500">{formatDate(order.createdAt)}</p>
                 </div>
                 <span className={`px-4 py-2 rounded-xl text-sm font-bold ${
                   order.status === 'delivered' ? 'bg-green-100 text-green-700' :
@@ -4195,7 +4237,7 @@ export function SuperAppHome() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <SiteHeader activeSection={currentSection} onSectionChange={handleSectionChange} />
+      <SiteHeader activeSection={currentSection} onSectionChange={(s) => handleSectionChange(s as Section)} />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
@@ -4216,7 +4258,7 @@ export function SuperAppHome() {
         {currentSection === "profile" && renderProfile()}
       </main>
 
-      <SiteFooter onSectionChange={handleSectionChange} />
+      <SiteFooter onSectionChange={(s) => handleSectionChange(s as Section)} />
       {/* Video Player Modal */}
       {selectedVideo && (
         <div
@@ -4240,7 +4282,7 @@ export function SuperAppHome() {
               <h3 className="text-xl font-black text-white pr-12">{selectedVideo.title}</h3>
               <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
                 <Calendar className="w-4 h-4" />
-                <span className="font-semibold">{selectedVideo.date}</span>
+                <span className="font-semibold">{formatDate(selectedVideo.date)}</span>
               </div>
             </div>
 

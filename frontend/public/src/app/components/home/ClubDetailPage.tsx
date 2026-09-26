@@ -5,6 +5,7 @@ import {
   TrendingUp, Shield, Video, Zap, Building2, ChevronRight 
 } from "lucide-react";
 import { getWeightRangeCategory } from "../../data/masterData";
+import { useI18n } from "../../i18n/LanguageContext";
 
 interface Club {
   id: string;
@@ -85,6 +86,7 @@ interface ClubDetailPageProps {
 type TabType = 'overview' | 'fighters' | 'champions' | 'matches';
 
 export default function ClubDetailPage({ club, fighters, matches, onBack, onFighterClick }: ClubDetailPageProps) {
+  const { formatDate } = useI18n();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
   // Availability status check for fighters
@@ -546,7 +548,7 @@ export default function ClubDetailPage({ club, fighters, matches, onBack, onFigh
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-gray-400" />
                       <span className="text-xs font-bold text-gray-600">
-                        {new Date(match.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {formatDate(match.date)}
                       </span>
                       {match.venue && (
                         <>

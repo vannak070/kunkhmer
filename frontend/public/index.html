@@ -1,30 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kun Khmer — Official Platform</title>
+    <meta name="description" content="The official home of Kun Khmer, Cambodia's traditional combat sport: fighters, fight cards, results, news and videos." />
+    <!-- Remove before launch so search engines can index the site. -->
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#0A3D91" />
 
-  <!DOCTYPE html>
-  <html lang="en">
-    <head>
-      
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Kun Khmer — Official Platform</title>
-      <meta name="description" content="The official home of Kun Khmer, Cambodia's traditional combat sport: fighters, fight cards, results, news and videos." />
-      <meta name="robots" content="noindex, nofollow" />
+    <!-- Link previews (Facebook, Telegram, X, LINE, WhatsApp). SITE_URL is set in vite.config.ts. -->
+    <meta property="og:site_name" content="Kun Khmer" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Kun Khmer — Official Platform" />
+    <meta property="og:description" content="The official home of Kun Khmer, Cambodia's traditional combat sport: fighters, fight cards, results, news and videos." />
+    <meta property="og:url" content="%SITE_URL%/" />
+    <meta property="og:image" content="%SITE_URL%/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Kun Khmer Federation logo — Official Platform" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="km_KH" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Kun Khmer — Official Platform" />
+    <meta name="twitter:description" content="The official home of Kun Khmer, Cambodia's traditional combat sport." />
+    <meta name="twitter:image" content="%SITE_URL%/og-image.png" />
 
-      <!-- Favicon -->
-      <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
-      <link rel="icon" type="image/png" sizes="16x16" href="favicon.png" />
-      <link rel="apple-touch-icon" sizes="180x180" href="favicon.png" />
-      <meta name="msapplication-TileImage" content="favicon.png" />
-      <meta name="theme-color" content="#0A3D91" />
+    <link rel="icon" type="image/png" href="%BASE_URL%favicon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="%BASE_URL%apple-touch-icon.png" />
 
-      <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
-      
-    </head>
+    <!-- Khmer web font (Latin text keeps the system font) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
-    <body>
-      
-      <div id="root"></div>
-      <script type="module" src="/src/main.tsx"></script>
-      
-    </body>
-  </html>
-  
+    <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

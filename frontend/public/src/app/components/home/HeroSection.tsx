@@ -1,4 +1,6 @@
-import { Sparkles, ArrowRight, Calendar } from "lucide-react";
+import { Link } from "react-router";
+import { Sparkles, ArrowRight, Calendar, HelpCircle } from "lucide-react";
+import { useI18n } from "../../i18n/LanguageContext";
 
 interface HeroSectionProps {
   onExploreFighters: () => void;
@@ -6,6 +8,7 @@ interface HeroSectionProps {
 }
 
 export default function HeroSection({ onExploreFighters, onViewEvents }: HeroSectionProps) {
+  const { t } = useI18n();
   return (
     <div className="relative overflow-hidden rounded-2xl shadow-lg">
       {/* Vibrant gradient background */}
@@ -22,7 +25,7 @@ export default function HeroSection({ onExploreFighters, onViewEvents }: HeroSec
           {/* Compact badge */}
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F2C94C]/20 backdrop-blur-sm rounded-full mb-5 border border-[#F2C94C]/40">
             <Sparkles className="w-3.5 h-3.5 text-[#F2C94C]" />
-            <span className="text-xs font-bold text-[#F2C94C]">OFFICIAL PLATFORM</span>
+            <span className="text-xs font-bold uppercase text-[#F2C94C]">{t("home.badge")}</span>
           </div>
 
           {/* Bold heading with gradient */}
@@ -34,7 +37,7 @@ export default function HeroSection({ onExploreFighters, onViewEvents }: HeroSec
 
           {/* Concise tagline */}
           <p className="text-base md:text-lg text-white/95 mb-6 font-medium max-w-xl mx-auto">
-            The Official Digital Gateway to KUNKHMER Martial Arts—driving growth, recognition, and global access.
+            {t("home.tagline")}
           </p>
 
           {/* Compact CTAs */}
@@ -44,7 +47,7 @@ export default function HeroSection({ onExploreFighters, onViewEvents }: HeroSec
               className="group px-6 py-3 bg-[#F2C94C] text-[#0A3D91] rounded-xl font-bold hover:bg-[#FFD700] hover:shadow-lg hover:scale-105 transition-all"
             >
               <span className="flex items-center gap-2">
-                Explore Fighters
+                {t("home.exploreFighters")}
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </span>
             </button>
@@ -55,10 +58,18 @@ export default function HeroSection({ onExploreFighters, onViewEvents }: HeroSec
             >
               <span className="flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
-                View Events
+                {t("home.viewEvents")}
               </span>
             </button>
           </div>
+
+          <Link
+            to="/about"
+            className="inline-flex items-center gap-1.5 mt-5 text-sm font-semibold text-white/85 hover:text-white underline-offset-4 hover:underline"
+          >
+            <HelpCircle className="w-4 h-4" aria-hidden />
+            {t("home.newToKunKhmer")}
+          </Link>
         </div>
       </div>
     </div>

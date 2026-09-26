@@ -5,8 +5,9 @@ import { api } from "../utils/api";
 import { SiteHeader } from "../components/layout/SiteHeader";
 import { SiteFooter } from "../components/layout/SiteFooter";
 import { ShareButtons } from "../components/ShareButtons";
-import { usePageTitle } from "../hooks/usePageTitle";
-import { formatPublicDate, publicName, readTimeLabel } from "../utils/publicDisplay";
+import { usePageMeta } from "../hooks/usePageTitle";
+import { useI18n } from "../i18n/LanguageContext";
+import { publicName, readTimeMinutes } from "../utils/publicDisplay";
 
 interface NewsArticle {
   id: string;
@@ -27,7 +28,13 @@ export function ArticleDetail() {
   const [relatedArticles, setRelatedArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
 
-  usePageTitle(article?.title ?? (loading ? null : "Article not found"));
+  const { t, formatDate, formatNumber } = useI18n();
+  usePageMeta({
+    title: article?.title ?? (loading ? null : t("news.notFound")),
+    description: article?.excerpt || article?.content,
+    image: article?.image,
+    type: "article",
+  });
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -89,14 +96,14 @@ export function ArticleDetail() {
           {loading ? (
             <>
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A3D91] mb-4" />
-              <p className="text-sm text-slate-500 font-semibold">Loading article…</p>
+              <p className="text-sm text-slate-500 font-semibold">{t("common.loading")}</p>
             </>
           ) : (
             <>
-              <h1 className="text-2xl font-black text-gray-900 mb-2">Article not found</h1>
-              <p className="text-gray-500 mb-6">It may have been moved or unpublished.</p>
+              <h1 className="text-2xl font-black text-gray-900 mb-2">{t("news.notFound")}</h1>
+              <p className="text-gray-500 mb-6">{t("news.notFoundText")}</p>
               <Link to="/news-events" className="px-5 py-2.5 bg-[#0A3D91] text-white rounded-xl font-bold hover:bg-blue-800 transition-colors">
-                Browse all news
+                {t("news.browseAll")}
               </Link>
             </>
           )}
@@ -118,7 +125,7 @@ export function ArticleDetail() {
             className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 rounded-xl text-gray-700 font-bold transition-all border border-gray-200 hover:border-[#0A3D91] shadow-sm"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span>All news</span>
+            <span>{t("news.allNews")}</span>
           </button>
         </div>
       </div>
@@ -168,18 +175,18 @@ export function ArticleDetail() {
               {article.author && (
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-gray-400" />
-                  <span>By {article.author}</span>
+                  <span>{t("common.by", { name: article.author })}</span>
                 </div>
               )}
-              {formatPublicDate(article.date) && (
+              {formatDate(article.date) && (
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-gray-400" />
-                  <time dateTime={article.date}>{formatPublicDate(article.date, "long")}</time>
+                  <time dateTime={article.date}>{formatDate(article.date, "long")}</time>
                 </div>
               )}
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-gray-400" />
-                <span>{readTimeLabel(article.content)}</span>
+                <span>{t("common.minRead", { n: formatNumber(readTimeMinutes(article.content)) })}</span>
               </div>
             </div>
 
@@ -193,8 +200,8 @@ export function ArticleDetail() {
             {/* Share */}
             <div className="mt-10 pt-8 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <p className="text-base font-black text-gray-900">Share this article</p>
-                <p className="text-sm text-gray-500">Spread the word about Kun Khmer</p>
+                <p className="text-base font-black text-gray-900">{t("common.shareArticle")}</p>
+                <p className="text-sm text-gray-500">{t("common.shareArticleText")}</p>
               </div>
               <ShareButtons title={article.title} />
             </div>
@@ -206,7 +213,7 @@ export function ArticleDetail() {
           <div className="space-y-6">
             <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2 uppercase">
               <BookOpen className="w-6 h-6 text-primary" />
-              <span>More news</span>
+              <span>{t("news.moreNews")}</span>
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -239,7 +246,7 @@ export function ArticleDetail() {
                     </div>
                     <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 mt-4 pt-3 border-t border-gray-100">
                       <Calendar className="w-3.5 h-3.5" />
-                      <span>{formatPublicDate(rel.date)}</span>
+                      <span>{formatDate(rel.date)}</span>
                     </div>
                   </div>
                 </Link>

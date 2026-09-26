@@ -18,10 +18,24 @@ function figmaAssetResolver() {
 
 const basePath = process.env.VITE_BASE_PATH || '/'
 
+// Public origin used for absolute link-preview URLs in index.html (og:image, og:url).
+// Set SITE_URL in production, e.g. SITE_URL=https://kunkhmer.com (include the base path if any).
+const siteUrl = (process.env.SITE_URL || `http://localhost:5176${basePath}`).replace(/\/$/, '')
+
+function siteUrlInHtml() {
+  return {
+    name: 'site-url-in-html',
+    transformIndexHtml(html: string) {
+      return html.replaceAll('%SITE_URL%', siteUrl)
+    },
+  }
+}
+
 export default defineConfig({
   base: basePath,
   plugins: [
     figmaAssetResolver(),
+    siteUrlInHtml(),
     // The React and Tailwind plugins are both required for Make, even if
     // Tailwind is not being actively used – do not remove them
     react(),

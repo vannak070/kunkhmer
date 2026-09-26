@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, Link2, Share2 } from "lucide-react";
 import { toast } from "sonner";
+import { useI18n } from "../i18n/LanguageContext";
 
 interface ShareButtonsProps {
   title: string;
@@ -41,6 +42,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 export function ShareButtons({ title, url, variant = "full", label, className = "" }: ShareButtonsProps) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const shareUrl = url || window.location.href;
   const encodedUrl = encodeURIComponent(shareUrl);
@@ -49,10 +51,10 @@ export function ShareButtons({ title, url, variant = "full", label, className = 
   const copyLink = async () => {
     if (await copyToClipboard(shareUrl)) {
       setCopied(true);
-      toast.success("Link copied to clipboard");
+      toast.success(t("common.linkCopied"));
       setTimeout(() => setCopied(false), 2000);
     } else {
-      toast.error("Couldn't copy the link. Please copy it from the address bar.");
+      toast.error(t("common.copyFailed"));
     }
   };
 
@@ -74,7 +76,7 @@ export function ShareButtons({ title, url, variant = "full", label, className = 
         type="button"
         onClick={nativeShare}
         aria-label={`Share ${title}`}
-        title="Share"
+        title={t("common.share")}
         className={`inline-flex items-center justify-center gap-2 rounded-xl transition-all ${className}`}
       >
         <Share2 className="w-4 h-4" />
@@ -96,7 +98,7 @@ export function ShareButtons({ title, url, variant = "full", label, className = 
           key={n.label}
           type="button"
           onClick={() => openPopup(n.href)}
-          aria-label={`Share on ${n.label}`}
+          aria-label={t("common.shareOn", { network: n.label })}
           className={`px-4 py-2.5 text-white rounded-xl text-sm font-bold transition-colors ${n.className}`}
         >
           {n.label}
@@ -105,11 +107,11 @@ export function ShareButtons({ title, url, variant = "full", label, className = 
       <button
         type="button"
         onClick={copyLink}
-        aria-label="Copy link"
+        aria-label={t("common.copyLink")}
         className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 hover:border-[#0A3D91] text-gray-700 rounded-xl text-sm font-bold transition-colors"
       >
         {copied ? <Check className="w-4 h-4 text-green-600" /> : <Link2 className="w-4 h-4" />}
-        {copied ? "Copied" : "Copy link"}
+        {copied ? t("common.copied") : t("common.copyLink")}
       </button>
     </div>
   );

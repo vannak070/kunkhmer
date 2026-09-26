@@ -3,6 +3,8 @@
  * Keep internal workflow wording (Draft, Published, system accounts) out of the public site.
  */
 
+import type { MessageKey } from "../i18n/messages";
+
 const SYSTEM_ACCOUNT_NAMES = new Set([
   "system administrator",
   "administrator",
@@ -28,6 +30,8 @@ export type PublicStatusTone = "live" | "scheduled" | "pending" | "completed" | 
 
 export interface PublicStatus {
   label: string;
+  /** i18n key for the label (see i18n/messages.ts). */
+  labelKey: MessageKey;
   tone: PublicStatusTone;
 }
 
@@ -41,24 +45,24 @@ export function publicStatus(status?: string | null): PublicStatus | null {
     case "live":
     case "ongoing":
     case "in progress":
-      return { label: "Live", tone: "live" };
+      return { label: "Live", labelKey: "status.live", tone: "live" };
     case "completed":
     case "finished":
-      return { label: "Completed", tone: "completed" };
+      return { label: "Completed", labelKey: "status.completed", tone: "completed" };
     case "weight-in":
     case "weigh-in":
-      return { label: "Weigh-in", tone: "scheduled" };
+      return { label: "Weigh-in", labelKey: "status.weighIn", tone: "scheduled" };
     case "ready":
     case "ready to fight":
-      return { label: "Confirmed", tone: "scheduled" };
+      return { label: "Confirmed", labelKey: "status.confirmed", tone: "scheduled" };
     case "draft":
     case "pending":
     case "proposed":
     case "proposal":
-      return { label: "To be confirmed", tone: "pending" };
+      return { label: "To be confirmed", labelKey: "status.pending", tone: "pending" };
     case "cancelled":
     case "canceled":
-      return { label: "Cancelled", tone: "neutral" };
+      return { label: "Cancelled", labelKey: "status.cancelled", tone: "neutral" };
     default:
       // "published", "approved", "scheduled", "upcoming" and anything unknown: nothing to show.
       return null;

@@ -1,4 +1,5 @@
 import { publicStatus, PublicStatusTone } from "../utils/publicDisplay";
+import { useI18n } from "../i18n/LanguageContext";
 
 const TONE_CLASSES: Record<"light" | "dark", Record<PublicStatusTone, string>> = {
   light: {
@@ -26,6 +27,7 @@ interface PublicStatusBadgeProps {
 
 /** Visitor-facing status pill. Renders nothing for internal statuses such as "Published". */
 export function PublicStatusBadge({ status, surface = "light", className = "" }: PublicStatusBadgeProps) {
+  const { t } = useI18n();
   const s = publicStatus(status);
   if (!s) return null;
   return (
@@ -33,7 +35,7 @@ export function PublicStatusBadge({ status, surface = "light", className = "" }:
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide whitespace-nowrap ${TONE_CLASSES[surface][s.tone]} ${className}`}
     >
       {s.tone === "live" && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" aria-hidden />}
-      {s.label}
+      {t(s.labelKey)}
     </span>
   );
 }

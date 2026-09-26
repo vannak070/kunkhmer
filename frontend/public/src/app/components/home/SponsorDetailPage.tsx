@@ -4,6 +4,7 @@ import {
   Phone, Mail, Trophy, ShieldAlert, Activity, Calendar, 
   TrendingUp, Shield, Video, Globe, Crown 
 } from "lucide-react";
+import { useI18n } from "../../i18n/LanguageContext";
 
 interface Sponsor {
   id: string;
@@ -38,6 +39,7 @@ interface SponsorDetailPageProps {
 type TabType = 'overview' | 'events';
 
 export default function SponsorDetailPage({ sponsor, events, onBack, onEventClick }: SponsorDetailPageProps) {
+  const { formatDate } = useI18n();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
   const tierMeta: Record<string, { label: string; badge: string; text: string }> = {
@@ -273,7 +275,7 @@ export default function SponsorDetailPage({ sponsor, events, onBack, onEventClic
                       <span className="text-xs font-bold">Event Date</span>
                     </div>
                     <span className="text-xs font-black text-gray-900">
-                      {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {formatDate(event.date)}
                     </span>
                   </div>
 

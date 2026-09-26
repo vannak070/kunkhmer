@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { ArrowRight, Handshake, ExternalLink } from "lucide-react";
+import type { MessageKey } from "../../i18n/messages";
+import { useI18n } from "../../i18n/LanguageContext";
 
 interface Sponsor {
   id: string;
@@ -20,11 +22,11 @@ interface SponsorsSectionProps {
 
 const TIER_ORDER = ["platinum", "gold", "silver", "bronze"];
 
-const TIER_LABEL: Record<string, string> = {
-  platinum: "Platinum",
-  gold: "Gold",
-  silver: "Silver",
-  bronze: "Bronze",
+const TIER_LABEL: Record<string, MessageKey> = {
+  platinum: "tier.platinum",
+  gold: "tier.gold",
+  silver: "tier.silver",
+  bronze: "tier.bronze",
 };
 
 const TIER_COLOR: Record<string, string> = {
@@ -42,6 +44,7 @@ const TIER_BADGE_BG: Record<string, string> = {
 };
 
 export default function SponsorsSection({ sponsors, onViewAllClick }: SponsorsSectionProps) {
+  const { t } = useI18n();
   const [selectedSponsorId, setSelectedSponsorId] = useState<string | null>(null);
 
   const sortedSponsors = [...sponsors].sort(
@@ -70,25 +73,25 @@ export default function SponsorsSection({ sponsors, onViewAllClick }: SponsorsSe
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#0A3D91]/8 rounded-full border border-[#0A3D91]/15">
                 <Handshake className="w-3 h-3 text-[#0A3D91]" />
                 <span className="text-[10px] font-extrabold text-[#0A3D91] uppercase tracking-widest">
-                  Strategic Partnerships
+                  {t("home.partnersBadge")}
                 </span>
               </div>
               <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-tight">
-                Our Partners
+                {t("home.partnersTitle")}
               </h2>
             </div>
             <button
               onClick={onViewAllClick}
               className="group flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0A3D91] hover:bg-[#0d4ab0] text-white text-[11px] font-bold uppercase tracking-wider shadow-md shadow-[#0A3D91]/20 hover:shadow-lg transition-all duration-300 hover:-translate-y-px active:scale-95"
             >
-              View All
+              {t("common.viewAll")}
               <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
             </button>
           </div>
 
           {/* Description */}
           <p className="text-slate-500 text-sm font-medium leading-relaxed">
-            Proud to collaborate with Cambodia's most prestigious brands to elevate Kun Khmer's global stage.
+            {t("home.partnersText")}
           </p>
 
           {/* Divider */}
@@ -96,7 +99,7 @@ export default function SponsorsSection({ sponsors, onViewAllClick }: SponsorsSe
 
           {/* Logo grid label */}
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-            Click a partner logo to spotlight
+            {t("home.partnersPick")}
           </p>
 
           {/* Logo grid */}
@@ -139,10 +142,10 @@ export default function SponsorsSection({ sponsors, onViewAllClick }: SponsorsSe
 
           {/* Tier Legend */}
           <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tiers:</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t("tier.label")}:</span>
             {Object.entries(TIER_LABEL).map(([key, label]) => (
               <span key={key} className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${TIER_COLOR[key]}`}>
-                {label}
+                {t(label)}
               </span>
             ))}
           </div>
@@ -174,7 +177,7 @@ export default function SponsorsSection({ sponsors, onViewAllClick }: SponsorsSe
                   <div className={`absolute top-3 left-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r ${TIER_BADGE_BG[displayFeatured.tier]} shadow-lg`}>
                     <span className="w-1.5 h-1.5 bg-white/80 rounded-full animate-pulse" />
                     <span className="text-[10px] font-black text-white uppercase tracking-widest">
-                      {TIER_LABEL[displayFeatured.tier]} Sponsor
+                      {t("tier.sponsor", { tier: TIER_LABEL[displayFeatured.tier] ? t(TIER_LABEL[displayFeatured.tier]) : displayFeatured.tier })}
                     </span>
                   </div>
                 )}
@@ -210,7 +213,7 @@ export default function SponsorsSection({ sponsors, onViewAllClick }: SponsorsSe
                   }`}
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  Visit Website
+                  {t("home.visitWebsite")}
                 </a>
               </div>
 
@@ -218,7 +221,7 @@ export default function SponsorsSection({ sponsors, onViewAllClick }: SponsorsSe
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm font-medium py-12">
               <Handshake className="w-10 h-10 mb-3 opacity-30" />
-              <p>Select a partner logo to view details</p>
+              <p>{t("home.partnersEmpty")}</p>
             </div>
           )}
         </div>
