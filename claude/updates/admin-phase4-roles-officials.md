@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) — 2026-09-26 |
+| **Status** | Done — 2026-09-26 (committed e1860eb8) |
 | **Jira** | n/a |
 | **Feature** | officials.md (new), auth-users.md, matches-results.md, fighters.md |
 | **Requested by** | vannak070 |

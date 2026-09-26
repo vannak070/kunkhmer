@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) |
+| **Status** | Done |
 | **Jira** | n/a |
 | **Feature** | fighters.md, events.md, clubs.md, auth-users.md |
 | **Requested by** | vannak070 |

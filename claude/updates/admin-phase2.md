@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) |
+| **Status** | Done |
 | **Jira** | n/a |
 | **Feature** | admin portal |
 | **Requested by** | vannak070 |

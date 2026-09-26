@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) |
+| **Status** | Done |
 | **Jira** | n/a |
 | **Feature** | claude/features/public-site.md |
 | **Requested by** | vannak070 |
