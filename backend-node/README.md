@@ -52,4 +52,5 @@ prisma/schema.prisma  introspected from the existing database
 |---|---|
 | Auth / Users | ported |
 | Clubs | ported |
-| Fighters, Events, Matches, Champions, News, Videos, Settings | to do |
+| Fighters | ported (also fixes `professionalStatus` never being saved) |
+| Events, Matches, Champions, News, Videos, Settings | to do |

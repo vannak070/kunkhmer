@@ -18,7 +18,6 @@ exports[`fighters CRUD > creates a fighter with all fields 1`] = `
       "name": "string",
       "nameKhmer": "string",
       "nationality": "string",
-      "professionalStatus": "null",
       "province": "string",
       "record": "string",
       "status": "string",

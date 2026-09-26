@@ -42,3 +42,4 @@ intentional.
 
 - Re-submitting a title match result logs a second defense and double counts.
 - A video's fighter/club/match can't be cleared by sending an empty value.
+- A fighter's `professionalStatus` is never saved (the column isn't fillable).

@@ -14,6 +14,7 @@ import { STAFF, requireAuth, requireRole } from "../../lib/auth.ts";
 import { micro, now } from "../../lib/dates.ts";
 import { deleted, idParam, notFound, ok } from "../../lib/http.ts";
 import { inputOf } from "../../lib/input.ts";
+import { NOT_DELETED } from "../fighters/routes.ts";
 
 /** Club as Laravel serialized it: snake_case columns, rating as a number. */
 export function clubArray(club: Club) {
@@ -35,7 +36,8 @@ export function clubArray(club: Club) {
   };
 }
 
-const withFighterCount = { _count: { select: { fighters: true } } } as const;
+// Soft-deleted fighters don't count, matching Laravel's SoftDeletes scope.
+const withFighterCount = { _count: { select: { fighters: { where: NOT_DELETED } } } } as const;
 const withCount = (club: Club & { _count: { fighters: number } }) => ({
   ...clubArray(club),
   fighters_count: club._count.fighters,
