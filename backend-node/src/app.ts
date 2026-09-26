@@ -7,7 +7,9 @@ import { HttpError } from "./lib/http.ts";
 import { normalizeBody } from "./lib/input.ts";
 import authRoutes from "./modules/auth/routes.ts";
 import clubRoutes from "./modules/clubs/routes.ts";
+import eventRoutes from "./modules/events/routes.ts";
 import fighterRoutes from "./modules/fighters/routes.ts";
+import settingsRoutes from "./modules/settings/routes.ts";
 
 export async function buildApp(opts: { logger?: boolean } = {}): Promise<FastifyInstance> {
   const app = Fastify({
@@ -71,6 +73,8 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
       await api.register(authRoutes);
       await api.register(clubRoutes);
       await api.register(fighterRoutes);
+      await api.register(settingsRoutes);
+      await api.register(eventRoutes);
     },
     { prefix: "/api" },
   );

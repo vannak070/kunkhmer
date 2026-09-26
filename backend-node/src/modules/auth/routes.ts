@@ -24,7 +24,7 @@ import {
   revokeAllTokens,
   revokeToken,
 } from "../../lib/auth.ts";
-import { iso, now } from "../../lib/dates.ts";
+import { iso, micro, now, sql } from "../../lib/dates.ts";
 import { HttpError, deleted, idParam, notFound, ok } from "../../lib/http.ts";
 import { inputOf } from "../../lib/input.ts";
 
@@ -42,6 +42,22 @@ export function formatUser(user: User) {
     status: user.status,
     lastLogin: iso(user.last_login),
     createdAt: iso(user.created_at),
+  };
+}
+
+/** User as Laravel's toArray() serialized it (for nesting), without the password hash. */
+export function userArray(user: User) {
+  return {
+    id: user.id,
+    username: user.username,
+    full_name: user.full_name,
+    email: user.email,
+    role: user.role,
+    status: user.status,
+    club_id: user.club_id,
+    last_login: sql(user.last_login),
+    created_at: micro(user.created_at),
+    updated_at: micro(user.updated_at),
   };
 }
 

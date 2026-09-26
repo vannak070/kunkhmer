@@ -71,6 +71,11 @@ export function phpBool(value: unknown): boolean {
   return false;
 }
 
+/** PHP (bool) cast: false, 0, "0", "" and null are false; anything else is true. */
+export function phpCastBool(value: unknown): boolean {
+  return !(value === false || value === 0 || value === "0" || value === "" || value === null || value === undefined);
+}
+
 /** Tags given as an array or a comma-separated string. */
 export function parseTags(value: unknown): string[] {
   if (Array.isArray(value)) return value;
