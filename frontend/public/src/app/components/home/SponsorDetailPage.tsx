@@ -168,24 +168,28 @@ export default function SponsorDetailPage({ sponsor, events, onBack, onEventClic
                       <span>Partner Details</span>
                     </h3>
                     <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-blue-50 border border-blue-100 rounded-lg shrink-0 mt-0.5">
-                          <User className="w-4 h-4 text-[#0A3D91]" />
+                      {sponsor.contactPerson && (
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-blue-50 border border-blue-100 rounded-lg shrink-0 mt-0.5">
+                            <User className="w-4 h-4 text-[#0A3D91]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Contact Person</span>
+                            <span className="text-xs font-bold text-gray-800 break-all block">{sponsor.contactPerson}</span>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Contact Person</span>
-                          <span className="text-xs font-bold text-gray-800 break-all block">{sponsor.contactPerson || "Mr. Phanna Sok"}</span>
+                      )}
+                      {sponsor.contactEmail && (
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-blue-50 border border-blue-100 rounded-lg shrink-0 mt-0.5">
+                            <Mail className="w-4 h-4 text-[#0A3D91]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Contact Email</span>
+                            <a href={`mailto:${sponsor.contactEmail}`} className="text-xs font-bold text-gray-800 hover:text-[#0A3D91] transition-colors break-all block">{sponsor.contactEmail}</a>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-blue-50 border border-blue-100 rounded-lg shrink-0 mt-0.5">
-                          <Mail className="w-4 h-4 text-[#0A3D91]" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Contact Email</span>
-                          <a href={`mailto:${sponsor.contactEmail}`} className="text-xs font-bold text-gray-800 hover:text-[#0A3D91] transition-colors break-all block">{sponsor.contactEmail || "marketing@carabao.kh"}</a>
-                        </div>
-                      </div>
+                      )}
                       {sponsor.websiteUrl && (
                         <div className="flex items-start gap-3">
                           <div className="p-2 bg-blue-50 border border-blue-100 rounded-lg shrink-0 mt-0.5">

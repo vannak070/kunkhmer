@@ -170,7 +170,7 @@ export default function ClubDetailPage({ club, fighters, matches, onBack, onFigh
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl">
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-2.5 text-center shadow-sm">
               <div className="text-[9px] font-black text-white/70 uppercase tracking-wider mb-0.5">Head Coach</div>
-              <div className="text-xs font-bold text-white truncate">{club.headCoach || "Chan Reach"}</div>
+              <div className="text-xs font-bold text-white truncate">{club.headCoach || "—"}</div>
             </div>
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-2.5 text-center shadow-sm">
               <div className="text-[9px] font-black text-white/70 uppercase tracking-wider mb-0.5">Active Fighters</div>
@@ -178,7 +178,7 @@ export default function ClubDetailPage({ club, fighters, matches, onBack, onFigh
             </div>
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-2.5 text-center shadow-sm">
               <div className="text-[9px] font-black text-white/70 uppercase tracking-wider mb-0.5">Established</div>
-              <div className="text-xs font-bold text-white">{club.established || "2015"}</div>
+              <div className="text-xs font-bold text-white">{club.established || "—"}</div>
             </div>
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-2.5 text-center shadow-sm">
               <div className="text-[9px] font-black text-white/70 uppercase tracking-wider mb-0.5">Champions</div>
@@ -263,7 +263,7 @@ export default function ClubDetailPage({ club, fighters, matches, onBack, onFigh
                       <span>About the Camp</span>
                     </h3>
                     <p className="text-gray-800 leading-relaxed font-semibold text-sm">
-                      {club.description}
+                      {club.description || `${club.name} is an affiliated Kun Khmer club. A full club profile is coming soon.`}
                     </p>
                   </div>
                 </div>
@@ -278,24 +278,28 @@ export default function ClubDetailPage({ club, fighters, matches, onBack, onFigh
                       <span>Contact Info</span>
                     </h3>
                     <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-blue-50 border border-blue-100 rounded-lg shrink-0 mt-0.5">
-                          <Phone className="w-4 h-4 text-[#0A3D91]" />
+                      {club.phone && (
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-blue-50 border border-blue-100 rounded-lg shrink-0 mt-0.5">
+                            <Phone className="w-4 h-4 text-[#0A3D91]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Phone</span>
+                            <a href={`tel:${club.phone}`} className="text-xs font-bold text-gray-800 hover:text-[#0A3D91] transition-colors break-all block">{club.phone}</a>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Phone</span>
-                          <a href={`tel:${club.phone}`} className="text-xs font-bold text-gray-800 hover:text-[#0A3D91] transition-colors break-all block">{club.phone}</a>
+                      )}
+                      {club.email && (
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-blue-50 border border-blue-100 rounded-lg shrink-0 mt-0.5">
+                            <Mail className="w-4 h-4 text-[#0A3D91]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Email</span>
+                            <a href={`mailto:${club.email}`} className="text-xs font-bold text-gray-800 hover:text-[#0A3D91] transition-colors break-all block">{club.email}</a>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-blue-50 border border-blue-100 rounded-lg shrink-0 mt-0.5">
-                          <Mail className="w-4 h-4 text-[#0A3D91]" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Email</span>
-                          <a href={`mailto:${club.email}`} className="text-xs font-bold text-gray-800 hover:text-[#0A3D91] transition-colors break-all block">{club.email}</a>
-                        </div>
-                      </div>
+                      )}
                       <div className="flex items-start gap-3">
                         <div className="p-2 bg-blue-50 border border-blue-100 rounded-lg shrink-0 mt-0.5">
                           <MapPin className="w-4 h-4 text-[#0A3D91]" />

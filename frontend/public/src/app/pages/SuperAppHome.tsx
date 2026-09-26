@@ -13,6 +13,12 @@ import ClubDetailPage from "../components/home/ClubDetailPage";
 import SponsorDetailPage from "../components/home/SponsorDetailPage";
 import BroadcastDetailPage from "../components/home/BroadcastDetailPage";
 import HeroSection from "../components/home/HeroSection";
+import { SiteHeader } from "../components/layout/SiteHeader";
+import { SiteFooter } from "../components/layout/SiteFooter";
+import { ShareButtons } from "../components/ShareButtons";
+import { PublicStatusBadge } from "../components/PublicStatusBadge";
+import { usePageTitle } from "../hooks/usePageTitle";
+import { publicName, publicStatus, pluralize, readTimeLabel, formatVideoDuration, formatViews, isCompletedStatus, FEDERATION_NAME } from "../utils/publicDisplay";
 
 /**
  * DATA SYNCHRONIZATION WITH KUN KHMER DIGITAL PLATFORM
@@ -39,7 +45,6 @@ import { MatchFilters } from "../components/MatchFilters";
 
 type Section = "home" | "news-events" | "fighters" | "matches" | "match-detail" | "media" | "shop" | "strategic-partners" | "club-detail" | "sponsor-detail" | "broadcast-detail" | "cart" | "checkout" | "orders" | "profile" | "subscription";
 type Category = "all" | "gloves" | "shorts" | "equipment" | "apparel";
-type SearchFilter = "all" | "fighters" | "events" | "products";
 type NewsEventsTab = "news" | "media";
 type StrategicPartnersTab = "clubs" | "broadcasts" | "sponsors";
 type MatchesEventsTab = "matches" | "events" | "previous";
@@ -209,11 +214,8 @@ export function SuperAppHome() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchFilter, setSearchFilter] = useState<SearchFilter>("all");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [fighterSearchQuery, setFighterSearchQuery] = useState("");
   const [cartDropdownOpen, setCartDropdownOpen] = useState(false);
-  const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [newsEventsTab, setNewsEventsTab] = useState<NewsEventsTab>("news");
   const [strategicPartnersTab, setStrategicPartnersTab] = useState<StrategicPartnersTab>("clubs");
   const [matchesEventsTab, setMatchesEventsTab] = useState<MatchesEventsTab>("matches");
@@ -229,7 +231,6 @@ export function SuperAppHome() {
   const [showMatchFilters, setShowMatchFilters] = useState<boolean>(false);
   const [showProductFilters, setShowProductFilters] = useState<boolean>(false);
   const [selectedVideo, setSelectedVideo] = useState<MediaContent | null>(null);
-  const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null);
   const [newsCurrentPage, setNewsCurrentPage] = useState(1);
   const [mediaCurrentPage, setMediaCurrentPage] = useState(1);
   const [previousMatchesPage, setPreviousMatchesPage] = useState(1);
@@ -330,6 +331,7 @@ export function SuperAppHome() {
           name: m.fighter_a_name || fA?.name || "TBD Fighter A",
           image: m.fighter_a_image || fA?.image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100",
           clubName: m.club_a_name || fA?.clubName || "Independent",
+          record: m.fighter_a_record || fA?.record || "",
           grade: m.fighter_a_grade || fA?.grade || "C",
           weight: parseFloat(m.fighter_a_weight || m.agreed_weight || fA?.currentWeight || 0)
         },
@@ -338,6 +340,7 @@ export function SuperAppHome() {
           name: m.fighter_b_name || fB?.name || "TBD Fighter B",
           image: m.fighter_b_image || fB?.image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100",
           clubName: m.club_b_name || fB?.clubName || "Independent",
+          record: m.fighter_b_record || fB?.record || "",
           grade: m.fighter_b_grade || fB?.grade || "C",
           weight: parseFloat(m.fighter_b_weight || m.agreed_weight || fB?.currentWeight || 0)
         }
@@ -350,12 +353,12 @@ export function SuperAppHome() {
       event_id: b.event_id,
       batchNumber: b.name || b.batch_number || `BATCH-${b.week_number}`,
       eventName: b.event_name || b.event?.name || "Weekly Fight Card",
-      location: b.location || "Olympic Stadium Arena",
+      location: b.location || (dbEvents || []).find((e: any) => e.id === b.event_id)?.location || "Venue to be announced",
       date: b.date ? b.date.split("T")[0] : "",
       status: b.status || "Draft",
       totalMatches: batchMatches.length,
       matches: batchMatches,
-      organizerClub: b.creator_name,
+      organizerClub: publicName(b.creator_name, null),
       createdBy: b.creator_name
     };
   });
@@ -369,13 +372,13 @@ export function SuperAppHome() {
       try {
         const data = await api.news.list();
         if (data && data.length > 0) {
-          const mapped = data.map((art: any) => ({
+          const mapped = data.filter((art: any) => !art.status || art.status === "Published").map((art: any) => ({
             id: art.id,
             title: art.title,
             excerpt: art.subtitle || "",
             image: art.featured_image || art.featuredImage || "https://images.unsplash.com/photo-1504309092620-4d0ec726efa4?w=800",
             category: art.category || "General",
-            author: art.author || "Admin",
+            author: publicName(art.author),
             date: art.publish_date || art.publishDate || "",
             featured: Boolean(art.featured),
             content: art.content || ""
@@ -415,22 +418,12 @@ export function SuperAppHome() {
               }
             }
 
-            const viewsVal = vid.views || 0;
-            let formattedViews = "0";
-            if (viewsVal >= 1000000) {
-              formattedViews = (viewsVal / 1000000).toFixed(1) + "M";
-            } else if (viewsVal >= 1000) {
-              formattedViews = (viewsVal / 1000).toFixed(1) + "K";
-            } else {
-              formattedViews = viewsVal.toString();
-            }
-
             return {
               id: vid.id,
               title: vid.title,
               thumbnail: vid.thumbnail || "https://images.unsplash.com/photo-1504309092620-4d0ec726efa4?w=600",
-              duration: vid.duration || "00:00",
-              views: formattedViews,
+              duration: formatVideoDuration(vid.duration),
+              views: formatViews(vid.views),
               date: vid.created_at ? new Date(vid.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : "Recently",
               created_at: vid.created_at || "",
               youtubeId,
@@ -483,11 +476,6 @@ export function SuperAppHome() {
     fetchPartners();
   }, []);
 
-  // Scroll detection for header
-  const [showHeader, setShowHeader] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
-  const [isScrolled, setIsScrolled] = useState(false);
-
   // Sync URL parameter with current section
   useEffect(() => {
     if (params.section) {
@@ -528,11 +516,16 @@ export function SuperAppHome() {
         setMatchesEventsTab("matches");
       }
       
-      if (eventParam) {
-        setSelectedEventId(eventParam);
-      }
+      // The URL is the source of truth for the open event, so Back/Forward and shared links work.
+      setSelectedEventId(eventParam || null);
     }
   }, [currentSection, location.search]);
+
+  const openEvent = (eventId: string) => {
+    setMatchesEventsTab("events");
+    navigate(`/matches?tab=events&event=${eventId}`);
+    window.scrollTo(0, 0);
+  };
 
   // Scroll to top when section changes
   useEffect(() => {
@@ -549,34 +542,6 @@ export function SuperAppHome() {
     }, 4000);
     return () => clearInterval(interval);
   }, []);
-
-  // Scroll detection for header visibility
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-
-      // Track if page is scrolled for background change
-      setIsScrolled(currentScrollY > 20);
-
-      // Always show header at the top of page
-      if (currentScrollY < 10) {
-        setShowHeader(true);
-      }
-      // Hide header when scrolling down
-      else if (currentScrollY > lastScrollY && currentScrollY > 100) {
-        setShowHeader(false);
-      }
-      // Show header when scrolling up
-      else if (currentScrollY < lastScrollY) {
-        setShowHeader(true);
-      }
-
-      setLastScrollY(currentScrollY);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [lastScrollY]);
 
   // Update URL when section changes (without page reload)
   const handleSectionChange = (section: Section) => {
@@ -747,18 +712,23 @@ export function SuperAppHome() {
       id: event.id,
       name: event.name,
       date: event.date,
-      venue: event.location || "TBD Arena",
+      venue: event.location || "Venue to be announced",
       image: event.banner_image_url || event.image || "https://images.unsplash.com/photo-1504309092620-4d0ec726efa4?w=800",
       matches: matchesCount,
       matchesCount: matchesCount,
       status: event.status || "upcoming",
       description: event.description || "",
       station: typeof event.station === 'object' && event.station !== null
-        ? (event.station.name || "TBD TV")
-        : (event.broadcast_station_name || event.station || "TBD TV"),
-      organizer: typeof event.organizer === 'object' && event.organizer !== null
-        ? (event.organizer.full_name || event.organizer.username || "Kun Khmer Federation")
-        : (event.organizer || "Kun Khmer Federation"),
+        ? (event.station.name || "")
+        : (event.broadcast_station_name || event.station || ""),
+      // Hide system/admin accounts; only show a real organising body.
+      organizer: publicName(
+        event.organizer_name ||
+        (typeof event.organizer === 'object' && event.organizer !== null
+          ? (event.organizer.full_name || event.organizer.username)
+          : event.organizer),
+        ""
+      ) || "",
       sponsors: event.main_sponsor_name ? [event.main_sponsor_name] : []
     };
   });
@@ -777,10 +747,10 @@ export function SuperAppHome() {
       status: club.status || "active",
       // image is stored directly in the DB column
       image: club.image || `https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1200&auto=format&fit=crop&sig=${index % 10}`,
-      description: club.description || "Phnom Penh Top Team is a premier combat sports academy located in the heart of Cambodia. We offer high-quality instruction in Kun Khmer, Brazilian Jiu-Jitsu, and Wrestling, training both local champions and international athletes.",
-      phone: club.phone || "+855 12 345 678",
-      email: club.email || "contact@pptopteam.com",
-      established: club.established || "2015"
+      description: club.description || "",
+      phone: club.phone || "",
+      email: club.email || "",
+      established: club.established || ""
     };
   });
 
@@ -796,8 +766,8 @@ export function SuperAppHome() {
       image: station.image || `https://images.unsplash.com/photo-1650984661525-7e6b1b874e47?w=400&sig=${index % 10}`,
       description: `${typeStr} - ${reachStr}`,
       eventsCount,
-      contactPerson: station.contact_person || station.contactPerson || "Mr. Srey Vicheka",
-      contactEmail: station.contact_email || station.contactEmail || "contact@townfull.tv",
+      contactPerson: station.contact_person || station.contactPerson || "",
+      contactEmail: station.contact_email || station.contactEmail || "",
       type: typeStr,
       reach: reachStr
     };
@@ -819,8 +789,8 @@ export function SuperAppHome() {
       eventsSponsored,
       website_url: sponsor.website_url || sponsor.websiteUrl || null,
       websiteUrl: sponsor.websiteUrl || sponsor.website_url || null,
-      contactPerson: sponsor.contact_person || sponsor.contactPerson || "Mr. Phanna Sok",
-      contactEmail: sponsor.contact_email || sponsor.contactEmail || "marketing@carabao.kh",
+      contactPerson: sponsor.contact_person || sponsor.contactPerson || "",
+      contactEmail: sponsor.contact_email || sponsor.contactEmail || "",
     };
   });
 
@@ -996,49 +966,8 @@ export function SuperAppHome() {
 
   // Filter products
   const filteredProducts = products.filter(p =>
-    (selectedCategory === "all" || p.category === selectedCategory) &&
-    (searchQuery === "" || p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    selectedCategory === "all" || p.category === selectedCategory
   );
-
-  // Filter fighters based on search
-  const searchFilteredFighters = fighters.filter(fighter => {
-    if (searchQuery === "") return true;
-    const searchLower = searchQuery.toLowerCase();
-    return (fighter.name?.toLowerCase().includes(searchLower) || false) ||
-           (fighter.gym?.toLowerCase().includes(searchLower) || false);
-  });
-
-  // Filter events based on search
-  const searchFilteredEvents = events.filter(event => {
-    if (searchQuery === "") return true;
-    const searchLower = searchQuery.toLowerCase();
-    return (event.name?.toLowerCase().includes(searchLower) || false) ||
-           (event.venue?.toLowerCase().includes(searchLower) || false);
-  });
-
-  // Combined search results based on active search filter
-  const getSearchResults = () => {
-    if (searchQuery === "") return null;
-
-    switch (searchFilter) {
-      case "fighters":
-        return { type: "fighters", results: searchFilteredFighters };
-      case "events":
-        return { type: "events", results: searchFilteredEvents };
-      case "products":
-        return { type: "products", results: filteredProducts };
-      case "all":
-      default:
-        return {
-          type: "all",
-          results: {
-            fighters: searchFilteredFighters.slice(0, 4),
-            events: searchFilteredEvents.slice(0, 4),
-            products: filteredProducts.slice(0, 4)
-          }
-        };
-    }
-  };
 
   // Render Functions
   const renderHome = () => (
@@ -1101,10 +1030,7 @@ export function SuperAppHome() {
             <div
               key={event.id}
               onClick={() => {
-                setSelectedEventId(event.id);
-                setMatchesEventsTab("events");
-                handleSectionChange("matches");
-                navigate(`/matches?tab=events&event=${event.id}`);
+                openEvent(event.id);
               }}
               className="group relative bg-white rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-500 border-2 border-gray-200 hover:border-[#0A3D91] cursor-pointer hover:-translate-y-2"
             >
@@ -1116,16 +1042,23 @@ export function SuperAppHome() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
-                <div className="absolute top-4 left-4">
-                  <div className={`flex items-center gap-1.5 px-3 py-2 rounded-xl shadow-xl border-2 border-white text-xs font-black uppercase ${
-                    event.status === 'upcoming' ? 'bg-gradient-to-r from-green-600 to-green-700 text-white' :
-                    event.status === 'live' ? 'bg-gradient-to-r from-red-600 to-red-700 text-white' :
-                    event.status === 'completed' ? 'bg-gradient-to-r from-gray-600 to-gray-700 text-white' :
-                    'bg-gradient-to-r from-blue-600 to-blue-700 text-white'
-                  }`}>
-                    {event.status === 'upcoming' ? 'Upcoming' : event.status}
-                  </div>
-                </div>
+                {(() => {
+                  const st = publicStatus(event.status);
+                  const isFuture = event.date && new Date(event.date).getTime() >= new Date().setHours(0, 0, 0, 0);
+                  const label = st?.label ?? (isFuture ? "Upcoming" : null);
+                  if (!label) return null;
+                  return (
+                    <div className="absolute top-4 left-4">
+                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg shadow-lg text-xs font-bold uppercase tracking-wide ${
+                        st?.tone === 'live' ? 'bg-red-600 text-white' :
+                        st?.tone === 'completed' ? 'bg-gray-800 text-white' :
+                        'bg-white text-[#0A3D91]'
+                      }`}>
+                        {label}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="p-5 bg-gradient-to-br from-white to-gray-50">
@@ -1153,10 +1086,7 @@ export function SuperAppHome() {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setSelectedEventId(event.id);
-                    setMatchesEventsTab("events");
-                    handleSectionChange("matches");
-                    navigate(`/matches?tab=events&event=${event.id}`);
+                    openEvent(event.id);
                   }}
                   className="relative w-full px-4 py-3 bg-gradient-to-r from-[#0A3D91] to-[#1565C0] text-white rounded-xl font-black text-sm uppercase tracking-wider hover:shadow-xl hover:shadow-[#0A3D91]/30 transition-all group/btn overflow-hidden"
                 >
@@ -1233,10 +1163,12 @@ export function SuperAppHome() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                 
                 {/* Duration Badge */}
-                <div className="absolute bottom-3 right-3 flex items-center gap-1 px-2.5 py-1 bg-black/75 backdrop-blur-sm text-white rounded-lg border border-white/10 text-[10px] font-black">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>{video.duration}</span>
-                </div>
+                {video.duration && (
+                  <div className="absolute bottom-3 right-3 flex items-center gap-1 px-2.5 py-1 bg-black/75 backdrop-blur-sm text-white rounded-lg border border-white/10 text-[10px] font-black">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>{video.duration}</span>
+                  </div>
+                )}
 
                 {/* Category Badge */}
                 <div className="absolute top-3 left-3 px-2 py-0.5 bg-gradient-to-r from-[#0A3D91] to-blue-600 text-white rounded-lg text-[9px] font-black uppercase tracking-wider">
@@ -1256,10 +1188,12 @@ export function SuperAppHome() {
                   {video.title}
                 </h4>
                 <div className="flex items-center justify-between text-[11px] font-semibold text-gray-400">
-                  <div className="flex items-center gap-1">
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>{video.views} views</span>
-                  </div>
+                  {video.views ? (
+                    <div className="flex items-center gap-1">
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>{video.views}</span>
+                    </div>
+                  ) : <span />}
                   <span>{video.date}</span>
                 </div>
               </div>
@@ -1317,14 +1251,9 @@ export function SuperAppHome() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {newsArticles.slice(0, 2).map((article) => (
-            <div
+            <Link
               key={article.id}
-              onClick={() => {
-                setSelectedArticle(article);
-                setNewsEventsTab("news");
-                setCurrentSection("news-events");
-                navigate("/news-events?tab=news");
-              }}
+              to={`/article/${article.id}`}
               className="group relative bg-white rounded-2xl overflow-hidden hover:shadow-lg hover:-translate-y-2 transition-all duration-500 border-2 border-gray-200 hover:border-[#F2C94C] cursor-pointer flex flex-col"
             >
               {/* Article Image */}
@@ -1374,15 +1303,15 @@ export function SuperAppHome() {
                 </h3>
                 <p className="text-sm text-gray-600 line-clamp-2 mb-4 leading-relaxed">{article.excerpt}</p>
                 
-                <button className="mt-auto w-full px-4 py-2.5 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-[#0A3D91] hover:to-blue-700 text-gray-700 hover:text-white rounded-lg font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2">
+                <span className="mt-auto w-full px-4 py-2.5 bg-gradient-to-r from-gray-100 to-gray-200 group-hover:from-[#0A3D91] group-hover:to-blue-700 text-gray-700 group-hover:text-white rounded-lg font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2">
                   <span>Read Article</span>
                   <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-                </button>
+                </span>
               </div>
 
               {/* Decorative Corner */}
               <div className="absolute bottom-0 right-0 w-16 h-16 bg-gradient-to-tl from-[#0A3D91]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-tl-[50px]" />
-            </div>
+            </Link>
           ))}
         </div>
 
@@ -1455,10 +1384,7 @@ export function SuperAppHome() {
           navigate("/strategic-partners");
         }}
         onEventClick={(eventId) => {
-          setSelectedEventId(eventId);
-          setMatchesEventsTab("events");
-          setCurrentSection("matches");
-          navigate(`/matches?tab=events&event=${eventId}`);
+          openEvent(eventId);
         }}
       />
     );
@@ -1486,10 +1412,7 @@ export function SuperAppHome() {
           navigate("/strategic-partners");
         }}
         onEventClick={(eventId) => {
-          setSelectedEventId(eventId);
-          setMatchesEventsTab("events");
-          setCurrentSection("matches");
-          navigate(`/matches?tab=events&event=${eventId}`);
+          openEvent(eventId);
         }}
       />
     );
@@ -1574,7 +1497,7 @@ export function SuperAppHome() {
       </div>
 
       {/* Tab Content */}
-      {newsEventsTab === "news" && !selectedArticle && (
+      {newsEventsTab === "news" && (
         <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] p-6 md:p-8">
           {/* Filters Bar */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-100">
@@ -1629,9 +1552,9 @@ export function SuperAppHome() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 {filteredNews.slice((newsCurrentPage - 1) * newsPerPage, newsCurrentPage * newsPerPage).map((article, index) => {
                   return (
-                    <div
+                    <Link
                       key={article.id}
-                      onClick={() => setSelectedArticle(article)}
+                      to={`/article/${article.id}`}
                       className="group bg-white rounded-2xl border border-slate-100 hover:border-blue-100 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col"
                     >
                       {/* Article Image */}
@@ -1689,10 +1612,10 @@ export function SuperAppHome() {
                             <span>Read Article</span>
                             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                           </span>
-                          <span className="text-gray-400 font-semibold">5 min read</span>
+                          <span className="text-gray-400 font-semibold">{readTimeLabel(article.content)}</span>
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   );
                 })}
               </div>
@@ -1739,203 +1662,6 @@ export function SuperAppHome() {
       )}
 
       {/* Article Detail View - Inline */}
-      {newsEventsTab === "news" && selectedArticle && (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] overflow-hidden">
-          {/* Back Button */}
-          <div className="p-6 md:p-8 border-b border-gray-100">
-            <button
-              onClick={() => setSelectedArticle(null)}
-              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 rounded-xl text-gray-700 font-bold transition-all border border-gray-200 hover:border-[#0A3D91] shadow-sm"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              <span>Back to Latest News</span>
-            </button>
-          </div>
-
-          {/* Article Content */}
-          <div className="p-6 md:p-8">
-            {/* Article Header Image */}
-            <div className="relative h-96 bg-gray-900 overflow-hidden rounded-2xl mb-8">
-              <img
-                src={selectedArticle.image}
-                alt={selectedArticle.title}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-
-              {/* Category Badge */}
-              <div className="absolute top-6 left-6">
-                <span className={`px-4 py-2 rounded-lg text-sm font-bold uppercase shadow-xl backdrop-blur-sm ${
-                  selectedArticle.category === 'Events' ? 'bg-[#0A3D91]/95 text-white' :
-                  selectedArticle.category === 'News' ? 'bg-green-600/95 text-white' :
-                  selectedArticle.category === 'Training' ? 'bg-purple-600/95 text-white' :
-                  selectedArticle.category === 'Fighter Spotlight' ? 'bg-[#F2C94C]/95 text-gray-900' :
-                  'bg-gray-700/95 text-white'
-                }`}>
-                  {selectedArticle.category}
-                </span>
-              </div>
-
-              {/* Featured Badge */}
-              {selectedArticle.featured && (
-                <div className="absolute top-6 right-6">
-                  <div className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#C8102E] to-red-700 text-white text-sm font-black uppercase rounded-lg shadow-xl">
-                    <Star className="w-4 h-4 fill-white" />
-                    Featured
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Title */}
-            <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-6 leading-tight">
-              {selectedArticle.title}
-            </h1>
-
-            {/* Meta Information */}
-            <div className="flex flex-wrap items-center gap-6 pb-6 mb-8 border-b-2 border-gray-100">
-              {/* Author */}
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-[#0A3D91] to-blue-700 rounded-full flex items-center justify-center">
-                  <User className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase">Author</p>
-                  <p className="text-base font-bold text-gray-900">{selectedArticle.author}</p>
-                </div>
-              </div>
-
-              {/* Date */}
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-gray-600" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase">Published</p>
-                  <p className="text-base font-bold text-gray-900">
-                    {new Date(selectedArticle.date).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
-                  </p>
-                </div>
-              </div>
-
-              {/* Read Time */}
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-gray-600" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase">Read Time</p>
-                  <p className="text-base font-bold text-gray-900">5 min read</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Article Body */}
-            <div className="prose prose-lg max-w-none mb-12">
-              {selectedArticle.content.split('\n\n').map((paragraph, index) => (
-                <p key={index} className="text-lg text-gray-700 leading-relaxed mb-6 font-normal">
-                  {paragraph}
-                </p>
-              ))}
-            </div>
-
-            {/* Share Section */}
-            <div className="pt-8 border-t-2 border-gray-100 mb-12">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <h3 className="text-xl font-black text-gray-900 mb-2">Share this article</h3>
-                  <p className="text-sm text-gray-600">Spread the word about Kun Khmer</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all">
-                    <span>Facebook</span>
-                  </button>
-                  <button className="flex items-center gap-2 px-4 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold transition-all">
-                    <span>Twitter</span>
-                  </button>
-                  <button className="flex items-center gap-2 px-4 py-2.5 bg-gray-700 hover:bg-gray-800 text-white rounded-xl font-bold transition-all">
-                    <Share2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Related Articles */}
-            <div className="bg-gray-50 rounded-2xl p-6 md:p-8 border border-gray-200">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-14 h-14 bg-gradient-to-br from-[#0A3D91] to-blue-700 rounded-xl flex items-center justify-center shadow-md">
-                  <BookOpen className="w-7 h-7 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">Read More</h2>
-                  <p className="text-base text-gray-600 font-semibold mt-1">Other latest news</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {newsArticles.filter(a => a.id !== selectedArticle.id).map((relatedArticle) => (
-                  <button
-                    key={relatedArticle.id}
-                    onClick={() => setSelectedArticle(relatedArticle)}
-                    className="group bg-white rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 border-2 border-gray-100 hover:border-[#0A3D91]/30 text-left"
-                  >
-                    {/* Article Image */}
-                    <div className="relative h-48 bg-gray-200 overflow-hidden">
-                      <img
-                        src={relatedArticle.image}
-                        alt={relatedArticle.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-
-                      {/* Category Badge */}
-                      <div className="absolute top-3 right-3">
-                        <span className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase shadow-lg backdrop-blur-sm ${
-                          relatedArticle.category === 'Events' ? 'bg-[#0A3D91]/95 text-white' :
-                          relatedArticle.category === 'News' ? 'bg-green-600/95 text-white' :
-                          relatedArticle.category === 'Training' ? 'bg-purple-600/95 text-white' :
-                          relatedArticle.category === 'Fighter Spotlight' ? 'bg-[#F2C94C]/95 text-gray-900' :
-                          'bg-gray-700/95 text-white'
-                        }`}>
-                          {relatedArticle.category}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Article Info */}
-                    <div className="p-5">
-                      <h3 className="text-lg font-black text-gray-900 mb-2 line-clamp-2 leading-tight group-hover:text-[#0A3D91] transition-colors">
-                        {relatedArticle.title}
-                      </h3>
-                      <p className="text-sm text-gray-600 line-clamp-2 mb-4 font-medium leading-relaxed">
-                        {relatedArticle.excerpt}
-                      </p>
-
-                      {/* Meta */}
-                      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4 text-gray-500" />
-                          <span className="text-sm font-bold text-gray-700">{relatedArticle.author}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-gray-500" />
-                          <span className="text-sm font-bold text-gray-700">
-                            {new Date(relatedArticle.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {newsEventsTab === "media" && (
         <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] p-6 md:p-8">
@@ -2042,9 +1768,11 @@ export function SuperAppHome() {
                         </div>
 
                         {/* Duration overlay badge */}
-                        <div className="absolute bottom-3 right-3 px-2 py-0.5 bg-black/75 text-white text-[10px] font-bold rounded">
-                          {media.duration}
-                        </div>
+                        {media.duration && (
+                          <div className="absolute bottom-3 right-3 px-2 py-0.5 bg-black/75 text-white text-[10px] font-bold rounded">
+                            {media.duration}
+                          </div>
+                        )}
                       </div>
 
                       {/* Content */}
@@ -2060,10 +1788,12 @@ export function SuperAppHome() {
                             <Calendar className="w-3.5 h-3.5" />
                             {media.date}
                           </span>
-                          <span className="flex items-center gap-1 text-[#0A3D91]">
-                            <Eye className="w-3.5 h-3.5" />
-                            {media.views} views
-                          </span>
+                          {media.views && (
+                            <span className="flex items-center gap-1 text-[#0A3D91]">
+                              <Eye className="w-3.5 h-3.5" />
+                              {media.views}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2302,10 +2032,11 @@ export function SuperAppHome() {
         (selectedFighterGrade === "B" && !fighter.verified);
 
       // Search filter
-      if (searchQuery !== "") {
-        const searchLower = searchQuery.toLowerCase();
+      if (fighterSearchQuery.trim() !== "") {
+        const searchLower = fighterSearchQuery.trim().toLowerCase();
         const matchesSearch =
           (fighter.name?.toLowerCase().includes(searchLower) || false) ||
+          (fighter.nameKhmer?.toLowerCase().includes(searchLower) || false) ||
           (fighter.gym?.toLowerCase().includes(searchLower) || false);
 
         return matchesType && matchesWeight && matchesClub && matchesGrade && matchesSearch;
@@ -2329,14 +2060,16 @@ export function SuperAppHome() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#0A3D91] to-blue-700 text-white rounded-xl shadow-md">
-            <Trophy className="w-5 h-5" />
-            <div className="text-left">
-              <p className="text-xs font-semibold opacity-90">Total Athletes</p>
-              <p className="text-lg font-black leading-none">{fighters.length}</p>
-            </div>
-          </div>
+        <div className="relative w-full md:w-80">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" aria-hidden />
+          <input
+            type="search"
+            value={fighterSearchQuery}
+            onChange={(e) => setFighterSearchQuery(e.target.value)}
+            placeholder="Search by name or club"
+            aria-label="Search fighters by name or club"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0A3D91]/30 focus:border-[#0A3D91]/50"
+          />
         </div>
       </div>
 
@@ -2360,11 +2093,10 @@ export function SuperAppHome() {
         <div className="p-6 md:p-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
-              Official Athletes
-            </p>
-            <p className="text-3xl font-black text-gray-900">
-              {filteredFighters.length} <span className="text-lg font-bold text-gray-500">Fighters</span>
+            <p className="text-sm font-semibold text-gray-500">
+              {filteredFighters.length === fighters.length
+                ? `${pluralize(fighters.length, "fighter")}`
+                : `Showing ${filteredFighters.length} of ${pluralize(fighters.length, "fighter")}`}
             </p>
           </div>
         </div>
@@ -2379,8 +2111,12 @@ export function SuperAppHome() {
             <p className="text-gray-600 mb-6">Try a different search term or filter</p>
             <button
               onClick={() => {
-                setSearchQuery("");
+                setFighterSearchQuery("");
                 setFighterTypeFilter("all");
+                setFighterFilter("all");
+                setSelectedFighterWeightClass("all");
+                setSelectedFighterClub("all");
+                setSelectedFighterGrade("all");
               }}
               className="px-6 py-2.5 bg-[#0A3D91] text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
             >
@@ -2978,7 +2714,7 @@ export function SuperAppHome() {
           <button
             onClick={() => {
               setMatchesEventsTab("matches");
-              setSelectedEventId(null);
+              navigate("/matches", { replace: true });
               setMatchFilter("all");
               setSelectedWeightClass("all");
               setSelectedLocation("all");
@@ -2998,7 +2734,7 @@ export function SuperAppHome() {
           <button
             onClick={() => {
               setMatchesEventsTab("previous");
-              setSelectedEventId(null);
+              navigate("/matches?tab=results", { replace: true });
               setPreviousMatchesPage(1);
               setMatchFilter("all");
               setSelectedWeightClass("all");
@@ -3020,7 +2756,7 @@ export function SuperAppHome() {
           <button
             onClick={() => {
               setMatchesEventsTab("events");
-              setSelectedEventId(null);
+              navigate("/matches?tab=events", { replace: true });
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className={`px-6 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all duration-300 flex items-center gap-2.5 ${
@@ -3085,8 +2821,15 @@ export function SuperAppHome() {
                 <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                   <Trophy className="w-10 h-10 text-gray-400" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">No Matches Found</h3>
-                <p className="text-gray-600 mb-6">Try adjusting your filters to see more results</p>
+                {selectedWeightClass === "all" && selectedLocation === "all" && selectedMatchType === "all" ? (
+                  <>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">No upcoming fight cards yet</h3>
+                    <p className="text-gray-600">New fight cards are announced here as soon as they're confirmed. Check back soon.</p>
+                  </>
+                ) : (
+                  <>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">No fight cards match these filters</h3>
+                <p className="text-gray-600 mb-6">Try a different weight class, location or match type.</p>
                 <button
                   onClick={() => {
                     setSelectedWeightClass("all");
@@ -3097,6 +2840,8 @@ export function SuperAppHome() {
                 >
                   Clear All Filters
                 </button>
+                  </>
+                )}
               </div>
             );
           }
@@ -3147,7 +2892,7 @@ export function SuperAppHome() {
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 border border-white/20 rounded-xl">
                   <Trophy className="w-3.5 h-3.5 text-[#F2C94C]" />
                   <span className="text-white font-black text-sm">{events.length}</span>
-                  <span className="text-white/60 text-xs font-medium">Events</span>
+                  <span className="text-white/60 text-xs font-medium">{events.length === 1 ? "Event" : "Events"}</span>
                 </div>
               </div>
             </div>
@@ -3166,7 +2911,7 @@ export function SuperAppHome() {
                 events.map((event, index) => (
                   <div
                     key={event.id}
-                    onClick={() => setSelectedEventId(event.id)}
+                    onClick={() => openEvent(event.id)}
                     className="group relative bg-white rounded-2xl border border-gray-100 hover:border-[#0A3D91]/20 hover:shadow-[0_8px_30px_rgba(10,61,145,0.08)] transition-all duration-300 cursor-pointer overflow-hidden"
                   >
                     {/* Left brand accent bar */}
@@ -3185,22 +2930,7 @@ export function SuperAppHome() {
                           <div className="flex-1 min-w-0">
                             {/* Status + date row */}
                             <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                event.status.toLowerCase() === 'upcoming' || event.status === 'Published' || event.status === 'Approved'
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                  : event.status.toLowerCase() === 'live' || event.status === 'Ongoing' || event.status === 'In Progress'
-                                  ? 'bg-red-50 text-red-600 border border-red-200 animate-pulse'
-                                  : event.status.toLowerCase() === 'completed'
-                                  ? 'bg-gray-100 text-gray-600 border border-gray-200'
-                                  : 'bg-blue-50 text-blue-700 border border-blue-200'
-                              }`}>
-                                {event.status.toLowerCase() === 'live' || event.status === 'Ongoing' ? (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping inline-block" />
-                                ) : (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-current inline-block" />
-                                )}
-                                {event.status}
-                              </span>
+                              <PublicStatusBadge status={event.status} />
                               <span className="flex items-center gap-1 text-xs text-gray-400 font-medium">
                                 <Calendar className="w-3 h-3" />
                                 {formatEventDate(event.date)}
@@ -3225,14 +2955,18 @@ export function SuperAppHome() {
                                 <MapPin className="w-3 h-3 text-red-400" />
                                 {event.venue}
                               </span>
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-100 rounded-lg text-xs font-semibold text-gray-600">
-                                <Building2 className="w-3 h-3 text-blue-400" />
-                                {event.organizer}
-                              </span>
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-100 rounded-lg text-xs font-semibold text-gray-600">
-                                <Tv className="w-3 h-3 text-purple-400" />
-                                {event.station}
-                              </span>
+                              {event.organizer && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-100 rounded-lg text-xs font-semibold text-gray-600">
+                                  <Building2 className="w-3 h-3 text-blue-400" />
+                                  {event.organizer}
+                                </span>
+                              )}
+                              {event.station && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-100 rounded-lg text-xs font-semibold text-gray-600">
+                                  <Tv className="w-3 h-3 text-purple-400" />
+                                  {event.station}
+                                </span>
+                              )}
                               {event.sponsors && event.sponsors.length > 0 && (
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-100 rounded-lg text-xs font-semibold text-amber-700">
                                   <Award className="w-3 h-3" />
@@ -3249,13 +2983,13 @@ export function SuperAppHome() {
                           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0A3D91]/5 border border-[#0A3D91]/10 rounded-xl">
                             <Trophy className="w-3.5 h-3.5 text-[#0A3D91]" />
                             <span className="text-sm font-black text-[#0A3D91]">{event.matchesCount}</span>
-                            <span className="text-xs text-[#0A3D91]/70 font-medium">Bouts</span>
+                            <span className="text-xs text-[#0A3D91]/70 font-medium">{event.matchesCount === 1 ? "Bout" : "Bouts"}</span>
                           </div>
 
                           {/* View button */}
                           <button
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); setSelectedEventId(event.id); }}
+                            onClick={(e) => { e.stopPropagation(); openEvent(event.id); }}
                             className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#0A3D91] to-[#1565C0] hover:from-[#051C42] hover:to-[#0A3D91] text-white rounded-xl text-xs font-bold shadow-sm hover:shadow-md transition-all duration-200 group/btn"
                           >
                             <Eye className="w-3.5 h-3.5" />
@@ -3330,8 +3064,17 @@ export function SuperAppHome() {
               {paginatedBatches.length === 0 ? (
                 <div className="text-center py-12">
                   <Trophy className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-xl font-black text-gray-900 mb-2">No Matches Found</h3>
-                  <p className="text-gray-500">There are no matches matching your filters.</p>
+                  {selectedWeightClass === "all" && selectedLocation === "all" && selectedMatchType === "all" ? (
+                    <>
+                      <h3 className="text-xl font-black text-gray-900 mb-2">No results yet</h3>
+                      <p className="text-gray-500">Official results appear here once a fight card is completed.</p>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="text-xl font-black text-gray-900 mb-2">No results match these filters</h3>
+                      <p className="text-gray-500">Try a different weight class, location or match type.</p>
+                    </>
+                  )}
                 </div>
               ) : (
                 <>
@@ -3642,9 +3385,7 @@ export function SuperAppHome() {
       <div className="space-y-8">
         {/* Back Button */}
         <button
-          onClick={() => {
-            setSelectedEventId(null);
-          }}
+          onClick={() => navigate("/matches?tab=events")}
           className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-white bg-white hover:bg-[#0A3D91] rounded-xl font-bold transition-all border border-gray-200 hover:border-[#0A3D91]"
         >
           <ChevronRight className="w-4 h-4 rotate-180" />
@@ -3658,15 +3399,8 @@ export function SuperAppHome() {
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
               {/* Event Info */}
               <div className="flex-1">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className={`px-4 py-2 rounded-lg text-xs font-black uppercase ${
-                    event.status.toLowerCase() === 'upcoming' || event.status === 'Published' || event.status === 'Approved' ? 'bg-green-500 text-white' :
-                    event.status.toLowerCase() === 'live' || event.status === 'Ongoing' || event.status === 'In Progress' ? 'bg-red-500 text-white animate-pulse' :
-                    event.status.toLowerCase() === 'completed' ? 'bg-gray-700 text-white' :
-                    'bg-blue-500 text-white'
-                  }`}>
-                    {event.status}
-                  </span>
+                <div className="flex items-center gap-3 mb-4 empty:hidden">
+                  <PublicStatusBadge status={event.status} surface="dark" />
                   {eventBatches.some(batch => batch.status === 'Completed') && (
                     <span className="px-3 py-1.5 rounded-lg text-xs font-black uppercase bg-white/20 text-white border border-white/30">
                       Results Available
@@ -3685,7 +3419,7 @@ export function SuperAppHome() {
               <div className="flex items-center gap-3 px-6 py-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
                 <Trophy className="w-8 h-8 text-white" />
                 <div>
-                  <p className="text-xs font-bold text-white/70 uppercase">Total Bouts</p>
+                  <p className="text-xs font-bold text-white/70 uppercase">{totalMatches === 1 ? "Bout" : "Bouts"}</p>
                   <p className="text-3xl font-black text-white">{totalMatches}</p>
                 </div>
               </div>
@@ -3719,6 +3453,7 @@ export function SuperAppHome() {
             </div>
 
             {/* Organizer */}
+            {event.organizer && (
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
                 <Building2 className="w-5 h-5 text-white" />
@@ -3728,8 +3463,10 @@ export function SuperAppHome() {
                 <p className="text-sm font-black text-gray-900 leading-tight">{event.organizer}</p>
               </div>
             </div>
+            )}
 
             {/* Broadcast */}
+            {event.station && (
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center flex-shrink-0">
                 <Tv className="w-5 h-5 text-white" />
@@ -3739,6 +3476,7 @@ export function SuperAppHome() {
                 <p className="text-sm font-black text-gray-900 leading-tight">{event.station}</p>
               </div>
             </div>
+            )}
           </div>
 
           {/* Sponsors Section */}
@@ -3771,7 +3509,7 @@ export function SuperAppHome() {
                   </div>
                   <div>
                     <h2 className="text-2xl md:text-3xl font-black text-gray-900">Official Fight Card</h2>
-                    <p className="text-sm text-gray-600 font-semibold">{totalMatches} championship bouts</p>
+                    <p className="text-sm text-gray-600 font-semibold">{pluralize(totalMatches, "bout")}</p>
                   </div>
                 </div>
               </div>
@@ -3787,13 +3525,7 @@ export function SuperAppHome() {
                       <span className="px-5 py-2.5 bg-gradient-to-r from-[#0A3D91] to-blue-700 text-white text-sm font-black rounded-xl shadow-md">
                         {batch.batchNumber}
                       </span>
-                      <span className={`px-4 py-2 rounded-xl text-sm font-black ${
-                        batch.status === 'Approved' ? 'bg-green-500 text-white' :
-                        batch.status === 'Completed' ? 'bg-gray-700 text-white' :
-                        'bg-yellow-500 text-gray-900'
-                      }`}>
-                        {batch.status}
-                      </span>
+                      <PublicStatusBadge status={batch.status} />
                     </div>
                   </div>
 
@@ -3806,10 +3538,10 @@ export function SuperAppHome() {
                       const fBName = match.fighterB?.name || "Fighter B";
                       const fAClub = match.fighterA?.clubName || "Independent";
                       const fBClub = match.fighterB?.clubName || "Independent";
-                      const fARecord = match.fighterA?.record || "0-0-0";
-                      const fBRecord = match.fighterB?.record || "0-0-0";
-                      const fAGrade = match.fighterA?.grade || "A";
-                      const fBGrade = match.fighterB?.grade || "A";
+                      const fARecord = match.fighterA?.record || "";
+                      const fBRecord = match.fighterB?.record || "";
+                      const fAGrade = match.fighterA?.grade || "";
+                      const fBGrade = match.fighterB?.grade || "";
 
                       const fighterAImage = typeof match.fighterA.image === 'string' ? match.fighterA.image : "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=100";
                       const fighterBImage = typeof match.fighterB.image === 'string' ? match.fighterB.image : "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=100";
@@ -3847,14 +3579,7 @@ export function SuperAppHome() {
                                 {match.weightClass}
                               </span>
                             </div>
-                            <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase ${
-                              isCompleted ? 'bg-gray-600 text-white' :
-                              match.status === 'Ready' ? 'bg-green-500 text-white' :
-                              match.status === 'In Progress' || match.status === 'Live' ? 'bg-red-500 text-white animate-pulse' :
-                              'bg-blue-500 text-white'
-                            }`}>
-                              {isCompleted ? 'Completed' : match.status || 'Upcoming'}
-                            </span>
+                            <PublicStatusBadge status={isCompleted ? "Completed" : match.status} />
                           </div>
 
                           {/* Fighters Grid */}
@@ -3872,12 +3597,14 @@ export function SuperAppHome() {
                               <div className="min-w-0">
                                 <div className="flex items-center gap-1.5 mb-0.5">
                                   <span className="font-bold text-gray-900 text-xs truncate block">{fAName}</span>
-                                  <span className="text-[8px] font-bold px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-gray-500 uppercase shrink-0">
-                                    {fAGrade}
-                                  </span>
+                                  {fAGrade && (
+                                    <span title="Fighter grade" className="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-gray-500 shrink-0">
+                                      Grade {fAGrade}
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="text-[10px] text-gray-500 font-medium truncate mb-0.5">{fAClub}</div>
-                                <div className="text-[9px] text-gray-500/80 font-semibold">{fARecord} record</div>
+                                {fARecord && <div className="text-[10px] text-gray-500 font-semibold">{fARecord} (W-L-D)</div>}
                               </div>
                               {isCompleted && (
                                 <span className={`absolute -top-2.5 -right-2.5 px-1.5 py-0.5 text-[8px] font-black uppercase rounded ${
@@ -3895,7 +3622,7 @@ export function SuperAppHome() {
                               </span>
                               <div className="text-[9px] text-gray-500 font-bold text-center leading-normal">
                                 <div>{match.weightClass || "Catchweight"}</div>
-                                <div>{match.rounds}R</div>
+                                {match.rounds && <div>{match.rounds} rounds</div>}
                               </div>
                             </div>
 
@@ -3906,13 +3633,15 @@ export function SuperAppHome() {
                             }`}>
                               <div className="min-w-0 text-right">
                                 <div className="flex items-center justify-end gap-1.5 mb-0.5">
-                                  <span className="text-[8px] font-bold px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-gray-500 uppercase shrink-0">
-                                    {fBGrade}
-                                  </span>
+                                  {fBGrade && (
+                                    <span title="Fighter grade" className="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-gray-500 shrink-0">
+                                      Grade {fBGrade}
+                                    </span>
+                                  )}
                                   <span className="font-bold text-gray-900 text-xs truncate block">{fBName}</span>
                                 </div>
                                 <div className="text-[10px] text-gray-500 font-medium truncate mb-0.5">{fBClub}</div>
-                                <div className="text-[9px] text-gray-500/80 font-semibold">{fBRecord} record</div>
+                                {fBRecord && <div className="text-[10px] text-gray-500 font-semibold">{fBRecord} (W-L-D)</div>}
                               </div>
                               <img
                                 src={fighterBImage}
@@ -4445,219 +4174,7 @@ export function SuperAppHome() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Modern Header - Sticky */}
-      <header className={`sticky top-0 z-50 backdrop-blur-xl border-b shadow-sm transition-all duration-300 ${
-        showHeader ? 'translate-y-0' : '-translate-y-full'
-      } ${
-        isScrolled ? 'bg-white border-gray-200' : 'bg-white/80 border-gray-200/50'
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          {/* Top Bar */}
-          <div className="flex items-center justify-between py-4 gap-4">
-            {/* Logo - Bigger */}
-            <Link to="/" className="group flex items-center gap-3 flex-shrink-0">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-[#0A3D91]/20 to-blue-500/20 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <img
-                  src={kkfLogo}
-                  alt="KKF Logo"
-                  className="relative w-14 h-14 md:w-16 md:h-16 object-contain group-hover:scale-105 transition-transform duration-300"
-                />
-              </div>
-              <div className="hidden sm:block">
-                <h1 className="text-xl md:text-2xl font-black text-gray-900 leading-tight tracking-tight">KUNKHMER</h1>
-                <p className="text-xs md:text-sm text-gray-500 font-medium leading-tight">Official Platform</p>
-              </div>
-            </Link>
-
-            {/* Enhanced Search Bar with Integrated Filter Dropdown */}
-            <div className="hidden md:block flex-1 max-w-2xl">
-              <div className="relative flex items-center gap-2 bg-gradient-to-r from-gray-50 to-white border border-gray-200/80 rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-[#0A3D91]/30 focus-within:border-[#0A3D91]/50 focus-within:shadow-lg transition-all duration-300 hover:shadow-md">
-                {/* Search Icon */}
-                <div className="flex items-center justify-center w-7 h-7 bg-gradient-to-br from-[#0A3D91]/10 to-blue-500/10 rounded-lg">
-                  <Search className="w-3.5 h-3.5 text-[#0A3D91] flex-shrink-0" />
-                </div>
-
-                {/* Search Input */}
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search fighters, products, events..."
-                  className="flex-1 bg-transparent outline-none font-medium text-sm placeholder:text-gray-400"
-                />
-
-                {/* Divider */}
-                <div className="w-px h-5 bg-gradient-to-b from-transparent via-gray-300 to-transparent flex-shrink-0" />
-
-                {/* Filter Dropdown Button */}
-                <div className="relative flex-shrink-0">
-                  <button
-                    onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all hover:bg-white text-gray-700 border border-transparent hover:border-gray-200"
-                  >
-                    {searchFilter === "all" && "All"}
-                    {searchFilter === "fighters" && "Fighters"}
-                    {searchFilter === "events" && "Events"}
-                    {searchFilter === "products" && "Products"}
-                    <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${filterDropdownOpen ? "rotate-180" : ""}`} />
-                  </button>
-
-                  {/* Dropdown Menu */}
-                  {filterDropdownOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 py-2 z-50 overflow-hidden">
-                      {[
-                        { id: "all", label: "All" },
-                        { id: "fighters", label: "Fighters" },
-                        { id: "events", label: "Events" },
-                        { id: "products", label: "Products" }
-                      ].map((filter) => (
-                        <button
-                          key={filter.id}
-                          onClick={() => {
-                            setSearchFilter(filter.id as SearchFilter);
-                            setFilterDropdownOpen(false);
-                          }}
-                          className={`w-full text-left px-4 py-2.5 text-sm font-semibold transition-all ${
-                            searchFilter === filter.id
-                              ? "bg-gradient-to-r from-[#0A3D91] to-blue-600 text-white"
-                              : "text-gray-700 hover:bg-gray-50"
-                          }`}
-                        >
-                          {filter.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Right Actions */}
-            <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
-              {/* Bell — display only, not clickable */}
-              <div className="relative p-2.5 md:p-3 rounded-xl cursor-default select-none opacity-60">
-                <Bell className="w-5 h-5 text-gray-600" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-[#C8102E] rounded-full ring-2 ring-white" />
-              </div>
-
-              {/* Cart — display only, not clickable */}
-              <div className="relative">
-                <div className="relative p-2.5 md:p-3 rounded-xl cursor-default select-none opacity-60">
-                  <ShoppingCart className="w-5 h-5 text-gray-600" />
-                  {cartItemCount > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 bg-gradient-to-r from-[#C8102E] to-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-lg">
-                      {cartItemCount}
-                    </span>
-                  )}
-                </div>
-                
-              </div>
-
-              {/* Profile — display only, not clickable */}
-              <div className="p-2.5 md:p-3 rounded-xl cursor-default select-none opacity-60">
-                <User className="w-5 h-5 text-gray-600" />
-              </div>
-
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2.5 md:p-3 hover:bg-gray-100 rounded-xl transition-all group"
-              >
-                <Menu className="w-5 h-5 text-gray-600 group-hover:text-[#0A3D91] transition-colors" />
-              </button>
-            </div>
-          </div>
-
-          {/* Bottom Navigation with Icons */}
-          <nav className="hidden md:flex items-center gap-2 pb-4 border-t border-gray-100/80 pt-4 overflow-x-auto">
-            {[
-              { id: "home", label: "Home", icon: HomeIcon },
-              { id: "matches", label: "Matches & Events", icon: Trophy },
-              { id: "news-events", label: "News & Media", icon: BookOpen },
-              { id: "fighters", label: "Fighters", icon: Users },
-              { id: "strategic-partners", label: "Strategic Partners", icon: Handshake },
-              { id: "shop", label: "Shop", icon: ShoppingCart }
-            ].map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => handleSectionChange(id as Section)}
-                className={`group relative flex items-center gap-2.5 px-5 py-3 rounded-2xl whitespace-nowrap font-semibold transition-all duration-300 ${
-                  currentSection === id
-                    ? "bg-gradient-to-r from-[#0A3D91] to-blue-600 text-white shadow-lg scale-105"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                }`}
-              >
-                <div className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-300 ${
-                  currentSection === id
-                    ? "bg-white/20"
-                    : "bg-gray-100 group-hover:bg-gray-200"
-                }`}>
-                  <Icon className={`w-4 h-4 ${currentSection === id ? "text-white" : "text-gray-600 group-hover:text-gray-900"}`} />
-                </div>
-                <span className="text-sm font-bold tracking-wide">{label}</span>
-                {currentSection === id && (
-                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-12 h-1 bg-white/40 rounded-full"></div>
-                )}
-              </button>
-            ))}
-          </nav>
-
-          {/* Mobile Search */}
-          <div className="md:hidden pb-4">
-            <div className="relative">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-7 h-7 bg-gradient-to-br from-[#0A3D91]/10 to-blue-500/10 rounded-lg">
-                <Search className="w-3.5 h-3.5 text-[#0A3D91]" />
-              </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search fighters, products, events..."
-                className="w-full pl-12 pr-4 py-2.5 bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-xl font-medium text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0A3D91]/30 focus:border-[#0A3D91]/50 transition-all"
-              />
-            </div>
-          </div>
-
-          {/* Mobile Menu */}
-          {mobileMenuOpen && (
-            <div className="md:hidden pb-4 space-y-2 animate-fadeIn">
-              {[
-                { id: "home", label: "Home", icon: HomeIcon },
-                { id: "matches", label: "Matches & Events", icon: Trophy },
-                { id: "news-events", label: "News & Media", icon: BookOpen },
-                { id: "fighters", label: "Fighters", icon: Users },
-                { id: "strategic-partners", label: "Strategic Partners", icon: Handshake },
-                { id: "shop", label: "Shop", icon: ShoppingCart }
-              ].map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => {
-                    handleSectionChange(id as Section);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`group w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-semibold text-base transition-all ${
-                    currentSection === id
-                      ? "bg-gradient-to-r from-[#0A3D91] to-blue-600 text-white shadow-lg"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                  }`}
-                >
-                  <div className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all ${
-                    currentSection === id
-                      ? "bg-white/20"
-                      : "bg-gray-100 group-hover:bg-gray-200"
-                  }`}>
-                    <Icon className={`w-5 h-5 ${currentSection === id ? "text-white" : "text-gray-600 group-hover:text-gray-900"}`} />
-                  </div>
-                  <span className="font-bold">{label}</span>
-                  {currentSection === id && (
-                    <div className="ml-auto w-2 h-2 bg-white rounded-full"></div>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </header>
+      <SiteHeader activeSection={currentSection} onSectionChange={handleSectionChange} />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
@@ -4678,181 +4195,7 @@ export function SuperAppHome() {
         {currentSection === "profile" && renderProfile()}
       </main>
 
-      {/* Premium Footer */}
-      <footer className="relative bg-[#051C42] text-white overflow-hidden mt-20">
-        {/* Layered Background Glows */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(circle, #0A3D91 0%, transparent 65%)' }} />
-          <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-[0.08]" style={{ background: 'radial-gradient(circle, #C8102E 0%, transparent 70%)' }} />
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[900px] h-64 opacity-[0.06]" style={{ background: 'radial-gradient(ellipse, #1565C0 0%, transparent 70%)' }} />
-        </div>
-
-        <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-8">
-
-          {/* Top section — Brand + Nav Grid */}
-          <div className="pt-16 pb-12 grid grid-cols-1 md:grid-cols-12 gap-10 lg:gap-14">
-
-            {/* Brand Column — spans 4 cols */}
-            <div className="md:col-span-4">
-              {/* Logo + Name */}
-              <div className="flex items-center gap-3 mb-5">
-                <div className="flex items-center justify-center w-12 h-12 bg-white rounded-xl shadow-lg shadow-black/40 shrink-0">
-                  <img src={kkfLogo} alt="KKF Logo" className="w-9 h-9 object-contain" />
-                </div>
-                <div>
-                  <div className="text-xl font-black tracking-tight leading-none">KUNKHMER</div>
-                  <div className="text-[10px] text-[#F2C94C] font-bold tracking-[0.15em] uppercase mt-0.5">Official Digital Platform</div>
-                </div>
-              </div>
-
-              {/* Tagline */}
-              <p className="text-white/50 text-sm leading-relaxed mb-6 max-w-xs">
-                The official home of Cambodian martial arts — connecting fighters, fans, and the global Kun Khmer community.
-              </p>
-
-              {/* Social Icons */}
-              <div className="flex gap-2.5">
-                {[
-                  { label: 'Facebook', path: 'M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z' },
-                  { label: 'Instagram', path: 'M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z' },
-                  { label: 'Twitter/X', path: 'M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z' },
-                  { label: 'YouTube', path: 'M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z' },
-                ].map((social) => (
-                  <a
-                    key={social.label}
-                    href="#"
-                    aria-label={social.label}
-                    className="group w-9 h-9 rounded-xl bg-white/5 border border-white/8 hover:bg-[#0A3D91]/60 hover:border-[#0A3D91] flex items-center justify-center transition-all duration-200 hover:scale-110"
-                  >
-                    <svg className="w-3.5 h-3.5 text-white/50 group-hover:text-white transition-colors" fill="currentColor" viewBox="0 0 24 24">
-                      <path d={social.path} />
-                    </svg>
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            {/* Nav Columns — span 8 cols, split into 3 equal sub-cols */}
-            <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-8">
-
-              {/* Platform */}
-              <div>
-                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Platform</h4>
-                <ul className="space-y-2.5">
-                  {[
-                    { label: 'Home', section: 'home' as Section },
-                    { label: 'Matches & Events', section: 'matches' as Section },
-                    { label: 'News & Media', section: 'news-events' as Section },
-                    { label: 'Fighters', section: 'fighters' as Section },
-                    { label: 'Partners', section: 'strategic-partners' as Section },
-                  ].map(({ label, section }) => (
-                    <li key={label}>
-                      <button
-                        onClick={() => handleSectionChange(section)}
-                        className="text-white/45 hover:text-white text-xs font-medium transition-colors duration-150 text-left leading-snug hover:translate-x-0.5 transform transition-transform"
-                      >
-                        {label}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Resources */}
-              <div>
-                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Resources</h4>
-                <ul className="space-y-2.5">
-                  <li>
-                    <Link
-                      to="/home"
-                      className="text-white/45 hover:text-white text-xs font-medium transition-colors duration-150 text-left leading-snug hover:translate-x-0.5 transform transition-transform inline-block"
-                    >
-                      Admin Platform
-                    </Link>
-                  </li>
-                  {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map((item) => (
-                    <li key={item}>
-                      <button className="text-white/45 hover:text-white text-xs font-medium transition-colors duration-150 text-left leading-snug hover:translate-x-0.5 transform transition-transform text-left">
-                        {item}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Contact */}
-              <div>
-                <h4 className="text-[11px] font-extrabold text-[#F2C94C] tracking-[0.15em] uppercase mb-4">Contact</h4>
-                <ul className="space-y-2.5">
-                  <li className="flex items-start gap-2">
-                    <MapPin className="w-3.5 h-3.5 text-white/30 shrink-0 mt-0.5" />
-                    <span className="text-white/45 text-xs leading-snug">Phnom Penh, Cambodia</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <svg className="w-3.5 h-3.5 text-white/30 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                    </svg>
-                    <span className="text-white/45 text-xs leading-snug">info@kunkhmer.com</span>
-                  </li>
-                  <li className="mt-3">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      Platform Online
-                    </span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Newsletter Strip */}
-          <div className="py-7 px-8 mb-10 rounded-2xl bg-gradient-to-r from-[#0A3D91]/40 via-[#0B4AAD]/30 to-[#0A3D91]/40 border border-white/[0.07] flex flex-col sm:flex-row items-center justify-between gap-5">
-            <div>
-              <p className="font-bold text-sm text-white">Stay updated with Kun Khmer</p>
-              <p className="text-white/40 text-xs mt-0.5">Get match results, fighter news & event announcements.</p>
-            </div>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <input
-                type="email"
-                placeholder="Your email address"
-                className="flex-1 sm:w-64 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[#0A3D91] transition-colors"
-              />
-              <button className="px-5 py-2.5 rounded-xl bg-[#0A3D91] hover:bg-blue-700 text-white text-sm font-bold transition-colors whitespace-nowrap">
-                Subscribe
-              </button>
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
-
-          {/* Bottom Bar */}
-          <div className="py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            {/* Copyright + Flag */}
-            <div className="flex items-center gap-3">
-              <span className="text-2xl" role="img" aria-label="Cambodia flag">🇰🇭</span>
-              <div>
-                <p className="text-white/35 text-xs font-medium">© 2026 KUNKHMER Federation. All rights reserved.</p>
-                <p className="text-white/20 text-[10px] mt-0.5">Preserving & promoting Cambodian martial arts heritage.</p>
-              </div>
-            </div>
-
-            {/* Legal Links */}
-            <div className="flex items-center gap-1 flex-wrap justify-center">
-              {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map((item, i, arr) => (
-                <span key={item} className="flex items-center gap-1">
-                  <button className="text-white/30 hover:text-white/70 text-[11px] font-medium transition-colors px-1">
-                    {item}
-                  </button>
-                  {i < arr.length - 1 && <span className="text-white/15 text-xs">·</span>}
-                </span>
-              ))}
-            </div>
-          </div>
-
-        </div>
-      </footer>
+      <SiteFooter onSectionChange={handleSectionChange} />
       {/* Video Player Modal */}
       {selectedVideo && (
         <div
