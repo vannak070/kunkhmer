@@ -1,6 +1,7 @@
 // User Management Data Structure - Updated with 2-Role System
 
-export type UserRole = 'kkf_super_admin' | 'kkf_officer' | 'organizer' | 'kkf_manager' | 'club';
+// 'official' = Referee or Judge accounts; 'none' = a role the admin doesn't know (no access).
+export type UserRole = 'kkf_super_admin' | 'kkf_officer' | 'organizer' | 'kkf_manager' | 'club' | 'official' | 'none';
 
 export interface User {
   id: string;
@@ -24,6 +25,15 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   kkf_super_admin: [
     // System (e.g. deleting a championship title)
     'system.manage_settings',
+    // Phase 4: menu areas by role
+    'dashboard.view',
+    'officials.manage', // Officials page: add/edit referees and judges
+    'officials.assign', // Assign referees and judges to bouts (API: KKF staff only)
+    'content.manage', // Media (news, video)
+    'partners.manage', // Broadcasters and sponsors
+    'clubs.manage', // Add / edit clubs (API: KKF staff only)
+    'settings.view', // System Settings
+    'process.view', // Process Flow
     // Users
     'users.view',
     'users.create',
@@ -118,9 +128,17 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
 
   // ⚙️ 2. KKF Officer - Execution & Operations (All day-to-day tasks)
   kkf_officer: [
+    // Phase 4: menu areas by role
+    'dashboard.view',
+    'officials.manage', // Officials page: add/edit referees and judges
+    'officials.assign', // Assign referees and judges to bouts (API: KKF staff only)
+    'content.manage', // Media (news, video)
+    'partners.manage', // Broadcasters and sponsors
+    'clubs.manage', // Add / edit clubs (API: KKF staff only)
+    'settings.view', // System Settings
+    'process.view', // Process Flow
     // Users (View only)
-    'users.view',
-    
+      
     // Events (Full CRUD, no approval)
     'events.view',
     'events.create',
@@ -233,6 +251,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
 
   // 📝 3. Organizer - Creates matches and events, requests approval
   organizer: [
+    'dashboard.view',
+    'process.view',
     'events.view',
     'events.create',
     'events.edit',
@@ -250,6 +270,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
 
   // 👔 4. KKF Manager - Approves matches and events
   kkf_manager: [
+    'dashboard.view',
     'events.view',
     'events.approve',
     'events.reject',
@@ -265,6 +286,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   
   // 🥊 5. Club - Views and accepts matches
   club: [
+    'dashboard.view',
     'events.view',
     'matches.view',
     'matches.view_proposals', // Match Proposals: accept or decline bouts for their fighters
@@ -276,6 +298,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'fighters.edit',
     'clubs.view',
   ],
+  // Referees and judges: only their own assigned bouts ("My bouts").
+  official: [
+    'bouts.view_own',
+  ],
+  none: [],
 };
 
 export const ROLE_LABELS: Record<UserRole, { label: string; color: string; description: string }> = {
@@ -303,6 +330,16 @@ export const ROLE_LABELS: Record<UserRole, { label: string; color: string; descr
     label: 'Club / Gym',
     color: 'bg-emerald-100 text-emerald-700 border-emerald-300',
     description: '🥊 Manages fighters, reviews and accepts/rejects match proposals.',
+  },
+  official: {
+    label: 'Referee / Judge',
+    color: 'bg-sky-100 text-sky-700 border-sky-300',
+    description: 'Sees the bouts KKF assigned them (My bouts).',
+  },
+  none: {
+    label: 'No access',
+    color: 'bg-slate-100 text-slate-600 border-slate-300',
+    description: 'A role the management system does not recognise.',
   },
 };
 
@@ -408,7 +445,7 @@ export const getCurrentUser = (): User | null => {
     const dbUser = JSON.parse(userStr);
     
     // Map database role string to frontend UserRole type
-    let frontendRole: UserRole = 'club';
+    let frontendRole: UserRole = 'none';
     if (dbUser.role === 'Super Admin') {
       frontendRole = 'kkf_super_admin';
     } else if (dbUser.role === 'KKF Officer') {
@@ -417,6 +454,8 @@ export const getCurrentUser = (): User | null => {
       frontendRole = 'organizer';
     } else if (dbUser.role === 'Club/Gym') {
       frontendRole = 'club';
+    } else if (dbUser.role === 'Referee' || dbUser.role === 'Judge') {
+      frontendRole = 'official';
     }
 
     return {

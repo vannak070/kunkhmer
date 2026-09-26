@@ -1,5 +1,5 @@
-import { Home, CalendarDays, Dumbbell, ChevronDown, Shield, LogOut, User as UserIcon, ClipboardCheck, Settings, Building2, Users, FileText, Newspaper, Bell, Handshake, Menu, X } from "lucide-react";
-import { Outlet, NavLink, useLocation, useNavigate, Link } from "react-router";
+import { Home, CalendarDays, Dumbbell, ChevronDown, Shield, LogOut, User as UserIcon, ClipboardCheck, Settings, Building2, Users, FileText, Newspaper, Bell, Handshake, Menu, X, Gavel, Lock } from "lucide-react";
+import { Outlet, NavLink, Navigate, useLocation, useNavigate, Link } from "react-router";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useState, useEffect } from "react";
@@ -22,11 +22,15 @@ interface NavItem {
   submenu?: { label: string; path: string; permission: string | null }[];
 }
 
-/** Menu grouped by job, so staff can find things quickly. Paths and permissions are unchanged. */
+/** Menu grouped by job, so staff can find things quickly. Each item shows only for roles with its permission. */
 const navGroups: { title: string | null; items: NavItem[] }[] = [
   {
     title: null,
-    items: [{ icon: Home, label: "Dashboard", path: "/home", permission: null }],
+    items: [
+      { icon: Home, label: "Dashboard", path: "/home", permission: "dashboard.view" },
+      // Referees and judges: their assigned bouts.
+      { icon: Gavel, label: "My bouts", path: "/home/my-bouts", permission: "bouts.view_own" },
+    ],
   },
   {
     title: "Competition",
@@ -64,20 +68,20 @@ const navGroups: { title: string | null; items: NavItem[] }[] = [
         icon: Newspaper,
         label: "Media",
         path: "/home/media",
-        permission: null,
+        permission: "content.manage",
         submenu: [
-          { label: "News", path: "/home/media/news", permission: null },
-          { label: "Video", path: "/home/media/video", permission: null },
+          { label: "News", path: "/home/media/news", permission: "content.manage" },
+          { label: "Video", path: "/home/media/video", permission: "content.manage" },
         ],
       },
       {
         icon: Handshake,
         label: "Strategic Partners",
         path: "/home/strategic-partners",
-        permission: null,
+        permission: "partners.manage",
         submenu: [
-          { label: "Broadcasters", path: "/home/strategic-partners/broadcasters", permission: null },
-          { label: "Sponsors", path: "/home/strategic-partners/sponsors", permission: null },
+          { label: "Broadcasters", path: "/home/strategic-partners/broadcasters", permission: "partners.manage" },
+          { label: "Sponsors", path: "/home/strategic-partners/sponsors", permission: "partners.manage" },
         ],
       },
     ],
@@ -86,14 +90,39 @@ const navGroups: { title: string | null; items: NavItem[] }[] = [
     title: "Administration",
     items: [
       { icon: Users, label: "Users", path: "/home/user-management", permission: "users.view" },
-      { icon: Shield, label: "KKF Officers", path: "/home/kkf-officers", permission: "officials.assign" },
-      { icon: Settings, label: "System Settings", path: "/home/settings", permission: null },
-      { icon: FileText, label: "Process Flow", path: "/home/process-flow", permission: null },
+      { icon: Shield, label: "Officials", path: "/home/officials", permission: "officials.manage" },
+      { icon: Settings, label: "System Settings", path: "/home/settings", permission: "settings.view" },
+      { icon: FileText, label: "Process Flow", path: "/home/process-flow", permission: "process.view" },
     ],
   },
 ];
 
 const navItems = navGroups.flatMap((g) => g.items);
+
+/**
+ * Pages outside the menu that need a permission (create/edit screens). The API
+ * refuses these actions anyway; the guard just avoids showing a form that can't save.
+ */
+const PAGE_GUARDS: { match: RegExp; permission: string }[] = [
+  { match: /^\/home\/fighters\/(kunkhmer|foreigner)\/new$/, permission: "fighters.create" },
+  { match: /^\/home\/fighters\/[^/]+\/edit$/, permission: "fighters.edit" },
+  { match: /^\/home\/matches\/[^/]+\/assign-officials$/, permission: "officials.assign" },
+  { match: /^\/home\/matches\/(new|[^/]+\/(edit|create-match))$/, permission: "matches.create" },
+  { match: /^\/home\/(events\/new|match\/new)$/, permission: "events.create" },
+  { match: /^\/home\/clubs\/(new|[^/]+\/edit)$/, permission: "clubs.manage" },
+];
+
+/** The permission a path needs: a page guard, else the most specific menu entry it falls under. */
+function requiredPermission(pathname: string): string | null {
+  const guard = PAGE_GUARDS.find((g) => g.match.test(pathname));
+  if (guard) return guard.permission;
+  const entries = navItems.flatMap((i) => [i, ...(i.submenu ?? [])]).filter((e) => e.path !== "/home");
+  const hit = entries
+    .map((e) => ({ path: e.path.split("?")[0], permission: e.permission }))
+    .filter((e) => pathname === e.path || pathname.startsWith(`${e.path}/`))
+    .sort((a, b) => b.path.length - a.path.length)[0];
+  return hit?.permission ?? (pathname === "/home" ? "dashboard.view" : null);
+}
 
 /** Account role as the API names it ("Super Admin", "KKF Officer", ...). */
 const apiRole = () => (api.auth.getCurrentUser()?.role as string | undefined) ?? "";
@@ -116,6 +145,9 @@ export function Layout() {
   }, [location.pathname]);
 
   const allowed = (permission: string | null) => !permission || permissions.hasPermission(permission);
+  // Referees and judges have no dashboard: their home is "My bouts".
+  const hasDashboard = allowed("dashboard.view");
+  const pageAllowed = allowed(requiredPermission(location.pathname));
   const fullName = permissions.currentUser?.fullName || "Guest";
   const initial = fullName.charAt(0).toUpperCase() || "U";
 
@@ -238,11 +270,11 @@ export function Layout() {
           <button type="button" onClick={() => setMobileMenu(true)} aria-label="Open menu" className="md:hidden w-10 h-10 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
             <Menu className="w-5 h-5" />
           </button>
-          <HeaderSearch />
+          {hasDashboard ? <HeaderSearch /> : <div className="flex-1" />}
 
           <div className="flex items-center gap-2 md:gap-4 shrink-0">
             {/* Bell = the dashboard's "Needs your attention" count. */}
-            <Link
+            {hasDashboard && <Link
               to="/home#todo"
               title={todoCount ? `${todoCount} ${todoCount === 1 ? "thing needs" : "things need"} your attention` : "Nothing needs your attention"}
               aria-label={todoCount ? `${todoCount} to-do items` : "No to-do items"}
@@ -254,7 +286,7 @@ export function Layout() {
                   {todoCount > 99 ? "99+" : todoCount}
                 </span>
               )}
-            </Link>
+            </Link>}
             <div className="hidden md:block h-8 w-px bg-border mx-2" />
             <div className="relative">
               <button
@@ -293,13 +325,27 @@ export function Layout() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
-          <Outlet />
+          {!permissions.currentUser ? (
+            // Signed out (or the session expired): sign in first.
+            <Navigate to="/login" replace />
+          ) : !hasDashboard && location.pathname === "/home" && allowed("bouts.view_own") ? (
+            <Navigate to="/home/my-bouts" replace />
+          ) : pageAllowed ? (
+            <Outlet />
+          ) : (
+            <div className="max-w-lg mx-auto mt-10 rounded-2xl border border-slate-200 bg-white p-8 text-center">
+              <Lock className="w-8 h-8 text-slate-400 mx-auto mb-3" aria-hidden />
+              <h1 className="text-lg font-semibold text-slate-900 mb-1">Not available for your role</h1>
+              <p className="text-sm text-slate-600 mb-5">Your account ({apiRole() || "no role"}) can't use this page. Ask a KKF Super Admin if you need access.</p>
+              <Link to="/home" className="inline-flex items-center h-10 px-4 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-[#083073]">Go to your home page</Link>
+            </div>
+          )}
         </main>
       </div>
 
       {/* Phone bottom navigation */}
       <nav aria-label="Quick" className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-border flex items-center justify-around px-2 z-50">
-        {[navItems[0], ...navItems.slice(1).filter((i) => allowed(i.permission)).slice(0, 3)].map((item) => {
+        {navItems.filter((i) => allowed(i.permission)).slice(0, 4).map((item) => {
           const isActive = item.path === "/home" ? location.pathname === "/home" : location.pathname.startsWith(item.path);
           const Icon = item.icon;
           return (

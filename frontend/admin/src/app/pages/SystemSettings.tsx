@@ -1,15 +1,12 @@
 import { useState, useEffect } from "react";
 import { 
-  Swords, Calendar, GitFork, Crown, Users, Settings, 
+  Swords, Calendar, GitFork, Crown, Settings, 
   Plus, Trash2, X, Check, ChevronRight
 } from "lucide-react";
 import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
 import { api } from "../utils/api";
 import { GLOVE_TYPES, WEIGHT_RANGES, ORGANIZERS, VENUES, FIGHTING_RULES, SYSTEM_CONFIGS, type Venue } from "../data/masterData";
-import { 
-  getJudges, getReferees, addJudge, addReferee, deleteJudge, deleteReferee, type Official 
-} from "../utils/officialsStore";
 
 // Traditional Cambodian line-art watermarks for branding UI
 const AngkorWatWatermark = () => (
@@ -63,7 +60,8 @@ const FighterWatermark = () => (
   </div>
 );
 
-export type ActiveTab = "fighting" | "event" | "match" | "champion" | "user" | "system";
+// Referees and judges moved to the Officials page (real accounts, Phase 4).
+export type ActiveTab = "fighting" | "event" | "match" | "champion" | "system";
 
 export interface SettingsCategoryConfig {
   id: ActiveTab;
@@ -104,13 +102,6 @@ export const CATEGORIES_CONFIG: SettingsCategoryConfig[] = [
   },
 
   {
-    id: "user",
-    label: "User Settings",
-    icon: Users,
-    title: "Access Control & System Roles",
-    desc: "Manage system clearances and registered referees or judges."
-  },
-  {
     id: "system",
     label: "System Settings",
     icon: Settings,
@@ -147,7 +138,6 @@ export function SystemSettings() {
     if (activeTab === "event") setSubTab("organizers");
     else if (activeTab === "match") setSubTab("weightRanges");
     else if (activeTab === "champion") setSubTab("sponsors");
-    else if (activeTab === "user") setSubTab("referees");
     else setSubTab("");
   }, [activeTab]);
 
@@ -185,12 +175,6 @@ export function SystemSettings() {
           ];
         }
 
-      case "user":
-        if (subTab === "referees") {
-          return getReferees().map(ref => ({ id: ref.id, title: ref.name, subtitle: `${ref.grade} (${ref.experience} experience)` }));
-        } else {
-          return getJudges().map(jdg => ({ id: jdg.id, title: jdg.name, subtitle: `${jdg.grade} (${jdg.experience} experience)` }));
-        }
       case "system":
         return SYSTEM_CONFIGS.map(sc => ({ id: sc.id, title: sc.en || sc.kh, subtitle: "" }));
       default:
@@ -208,8 +192,6 @@ export function SystemSettings() {
         return WEIGHT_RANGES.length + GLOVE_TYPES.length;
       case "champion":
         return sponsors.length + 3; // sponsors + titles
-      case "user":
-        return getReferees().length + getJudges().length;
       case "system":
         return SYSTEM_CONFIGS.length;
       default:
@@ -230,9 +212,6 @@ export function SystemSettings() {
       case "champion":
         if (subTab === "sponsors") return "Add sponsor (e.g., Wing Bank / Financial Services / Gold)...";
         return "Add title status template...";
-      case "user":
-        if (subTab === "referees") return "Add referee (e.g., Som Panha / 10 years / International A)...";
-        return "Add judge (e.g., Meas Sopheak / 8 years / National B)...";
       case "system":
         return "Add system variable (e.g., GMT+7 Timezone)...";
       default:
@@ -251,8 +230,6 @@ export function SystemSettings() {
       case "champion":
         if (subTab === "sponsors") return "Tip: Format as 'Sponsor Name / Industry / Tier' (e.g., Wing Bank / Financial Services / Gold). Tiers: Platinum, Gold, Silver, Bronze.";
         break;
-      case "user":
-        return "Tip: Format as 'Full Name / Experience / Grade' (e.g., Som Panha / 10 years / International A).";
     }
     return "Tip: Enter the configuration value (e.g. Lightweight (60kg)).";
   };
@@ -335,26 +312,6 @@ export function SystemSettings() {
           return;
         }
       } 
-      else if (activeTab === "user") {
-        const parts = value.split("/");
-        const name = parts[0]?.trim() || value;
-        const experience = parts[1]?.trim() || "5 years";
-        const grade = parts[2]?.trim() || "National A";
-        
-        const newOfficial: Official = {
-          id: `${subTab === "referees" ? "R" : "J"}-${Date.now()}`,
-          name,
-          experience,
-          grade,
-          status: "Available"
-        };
-
-        if (subTab === "referees") {
-          addReferee(newOfficial);
-        } else {
-          addJudge(newOfficial);
-        }
-      } 
       else if (activeTab === "system") {
         SYSTEM_CONFIGS.push({
           id: `s-${Date.now()}`,
@@ -414,13 +371,6 @@ export function SystemSettings() {
         } else {
           toast.warning("Title templates are core system properties and cannot be deleted.");
           return;
-        }
-      } 
-      else if (activeTab === "user") {
-        if (subTab === "referees") {
-          deleteReferee(id);
-        } else {
-          deleteJudge(id);
         }
       } 
       else if (activeTab === "system") {
@@ -518,34 +468,6 @@ export function SystemSettings() {
             }`}
           >
             Title Statuses (3)
-          </button>
-        </div>
-      );
-    }
-    if (activeTab === "user") {
-      return (
-        <div className="flex gap-2 mb-5">
-          <button
-            type="button"
-            onClick={() => setSubTab("referees")}
-            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all border ${
-              subTab === "referees" 
-                ? "bg-primary border-primary text-white shadow-sm" 
-                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
-            }`}
-          >
-            Certified Referees ({getReferees().length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setSubTab("judges")}
-            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all border ${
-              subTab === "judges" 
-                ? "bg-primary border-primary text-white shadow-sm" 
-                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
-            }`}
-          >
-            Certified Judges ({getJudges().length})
           </button>
         </div>
       );

@@ -14,9 +14,9 @@ Staff sign in to the admin system; Super Admins manage user accounts and roles.
 |---|---|
 | Super Admin | everything, incl. user management |
 | KKF Officer | federation staff: verify fighters, results, titles, content, partners |
-| Organizer | create/edit events, batches, matches (becomes the event organizer) |
+| Organizer | create/edit own events and their fight cards and bouts (becomes the event organizer); no fighter registration |
 | Club/Gym | tied to one club (`club_id`): manage own fighters, respond to own matches |
-| Referee, Judge | accounts exist for match officials; no write access yet |
+| Referee, Judge | match officials (grade, year started); see "My bouts" only — managed by KKF staff on the Officials page (`officials.md`) |
 
 ## API (`backend/src/modules/auth/routes.ts`)
 | Method | Path | Who | Notes |
@@ -42,8 +42,11 @@ User shape (camelCase): `id, username, fullName, email, role, clubId, status, la
 - Admin `pages/Login.tsx` → `api.auth.login`; token + user in `localStorage`;
   a 401 anywhere clears them and redirects to `/login` (`utils/api.ts`).
 - Admin maps API roles to UI roles in `data/users.ts#getCurrentUser`
-  (`Super Admin` → `kkf_super_admin`, …; unknown roles such as Referee fall
-  back to `club`). UI permissions: `ROLE_PERMISSIONS` there, via `hooks/usePermissions.ts`.
+  (`Super Admin` → `kkf_super_admin`, …, Referee/Judge → `official`; unknown
+  roles → `none`, no access). UI permissions: `ROLE_PERMISSIONS` there, via
+  `hooks/usePermissions.ts`. Menu items need a permission; `components/Layout.tsx`
+  also guards pages by the same permissions (plus `PAGE_GUARDS` for create/edit
+  screens) and shows "Not available for your role"; signed-out visitors go to `/login`.
 - `pages/UserManagement.tsx` ("Staff accounts", Super Admin): real `/users` list with search,
   role and status filters, a roles guide, add/edit dialog (generated password, club picker
   for Club/Gym, reset password, "Can sign in" toggle), Deactivate / Reactivate, and
@@ -62,5 +65,5 @@ User shape (camelCase): `id, username, fullName, email, role, clubId, status, la
 `api-tests/tests/auth.test.ts`
 
 ## Open questions / gaps
-- Login rate limiting; Referee/Judge UI roles; minimum password length is only
+- Login rate limiting; minimum password length is only
   enforced for own password changes and in the admin UI (the API create/reset don't check it).

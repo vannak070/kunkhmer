@@ -5,12 +5,21 @@ import { type Actors, del, findById, get, post, put, setupActors, shape, shapeOf
 let a: Actors;
 let eventId: string;
 let otherClubId: string;
+let judges: string[];
 
 beforeAll(async () => {
   a = await setupActors();
-  // Published so its fight cards and bouts are publicly readable.
+  // Published so its fight cards and bouts are publicly readable, and run by the
+  // test organizer (organizers only work on their own events).
   eventId = (await post("/events", { name: `Match Event ${uniq()}`, date: "2026-10-01", location: "Phnom Penh", status: "Published" }, a.admin.token)).body.data.id;
+  await put(`/events/${eventId}`, { organizerId: a.organizer.id }, a.admin.token);
   otherClubId = (await post("/clubs", { name: `Other Club ${uniq()}` }, a.admin.token)).body.data.id;
+  judges = [];
+  for (let i = 0; i < 2; i++) {
+    const username = `judge_${uniq()}`;
+    const res = await post("/officials", { username, fullName: `Judge ${i + 1}`, email: `${username}@test.local`, password: "judge password", role: "Judge" }, a.admin.token);
+    judges.push(res.body.data.id);
+  }
 });
 
 async function newFighter(clubId: string | null = a.clubId) {
@@ -147,7 +156,7 @@ describe("batches (sub-events)", () => {
 
 describe("matches", () => {
   it("creates a match, deriving the event from the batch", async () => {
-    const m = await newMatch({ refereeId: a.referee.id, judgeIds: ["j1", "j2"], sortOrder: 2 }, { accept: false });
+    const m = await newMatch({ refereeId: a.referee.id, judgeIds: judges, sortOrder: 2 }, { accept: false });
     expect(m).toMatchObject({
       event_id: eventId,
       rounds: 5,
@@ -158,7 +167,7 @@ describe("matches", () => {
       club_a_response: "pending",
       club_b_response: "pending",
       club_a_responder_name: null,
-      judge_ids: ["j1", "j2"],
+      judge_ids: judges,
       referee_name: "Test Referee",
       date: "2026-10-08",
       isTitleMatch: false,
@@ -450,5 +459,65 @@ describe("match proposals (club confirmation)", () => {
     expect((await get("/matches/proposals?state=declined", a.club.token)).body.data.map((m: any) => m.id)).not.toContain(ours.id);
     expect((await get("/matches/proposals", a.referee.token)).status).toBe(403);
     expect((await get("/matches/proposals")).status).toBe(401);
+  });
+});
+
+describe("organizers work only on their own events", () => {
+  let othersEvent: string;
+  beforeAll(async () => {
+    // An event the test organizer doesn't run.
+    othersEvent = (await post("/events", { name: `Other Organizer ${uniq()}`, date: "2026-10-15", location: "Siem Reap" }, a.admin.token)).body.data.id;
+  });
+
+  it("can't add or edit fight cards in another organizer's event", async () => {
+    const res = await post("/matches/batches", { ...fullBatch(), eventId: othersEvent }, a.organizer.token);
+    expect(shapeOf(res)).toMatchSnapshot();
+    expect(res.status).toBe(403);
+    const theirCard = (await post("/matches/batches", { ...fullBatch(), eventId: othersEvent }, a.officer.token)).body.data.id;
+    expect((await put(`/matches/batches/${theirCard}`, { name: "Mine now" }, a.organizer.token)).status).toBe(403);
+    // Nor move their own card into someone else's event.
+    expect((await put(`/matches/batches/${await newBatch()}`, { eventId: othersEvent }, a.organizer.token)).status).toBe(403);
+  });
+
+  it("can't add or edit bouts in another organizer's event", async () => {
+    const theirCard = (await post("/matches/batches", { ...fullBatch(), eventId: othersEvent }, a.officer.token)).body.data.id;
+    const bout = { subEventId: theirCard, fighterAId: await newFighter(), fighterBId: await newFighter(otherClubId), rounds: 5, roundTime: 3, knockdownLimit: 3, agreedWeight: 60, gloveSize: "8oz", gloveBrand: "Twins" };
+    expect((await post("/matches", bout, a.organizer.token)).status).toBe(403);
+    const theirs = (await post("/matches", bout, a.officer.token)).body.data;
+    expect((await put(`/matches/${theirs.id}`, { rounds: 3 }, a.organizer.token)).status).toBe(403);
+    // Nor move one of their own bouts onto someone else's card.
+    const ours = await newMatch({}, { accept: false });
+    expect((await put(`/matches/${ours.id}`, { subEventId: theirCard }, a.organizer.token)).status).toBe(403);
+  });
+});
+
+describe("referees and judges", () => {
+  it("are assigned by KKF staff only", async () => {
+    const m = await newMatch({}, { accept: false });
+    const res = await put(`/matches/${m.id}`, { refereeId: a.referee.id }, a.organizer.token);
+    expect(shapeOf(res)).toMatchSnapshot();
+    expect(res.status).toBe(403);
+    expect((await post("/matches", { subEventId: m.sub_event_id, fighterAId: await newFighter(), fighterBId: await newFighter(otherClubId), rounds: 5, roundTime: 3, knockdownLimit: 3, agreedWeight: 60, gloveSize: "8oz", gloveBrand: "Twins", judgeIds: judges }, a.organizer.token)).status).toBe(403);
+    // Sending the unchanged (empty) officials is fine for an organizer.
+    expect((await put(`/matches/${m.id}`, { refereeId: null, judgeIds: [], rounds: 3 }, a.organizer.token)).status).toBe(200);
+
+    const assigned = await put(`/matches/${m.id}`, { refereeId: a.referee.id, judgeIds: judges }, a.officer.token);
+    expect(assigned.body.data).toMatchObject({ referee_id: a.referee.id, judge_ids: judges, referee_name: "Test Referee" });
+  });
+
+  it("must be active officials in the right role, each listed once", async () => {
+    const m = await newMatch({}, { accept: false });
+    const assign = (body: Record<string, unknown>) => put(`/matches/${m.id}`, body, a.officer.token);
+    expect((await assign({ refereeId: judges[0] })).status).toBe(422);
+    expect((await assign({ refereeId: a.organizer.id })).status).toBe(422);
+    expect((await assign({ judgeIds: [a.referee.id] })).status).toBe(422);
+    expect((await assign({ judgeIds: [judges[0], judges[0]] })).status).toBe(422);
+    expect((await assign({ judgeIds: ["not-a-uuid"] })).status).toBe(422);
+
+    await put(`/officials/${judges[1]}`, { status: "Inactive" }, a.admin.token);
+    const res = await assign({ judgeIds: [judges[1]] });
+    expect(res.status).toBe(422);
+    expect(res.body.error).toMatch(/active KKF judge/);
+    await put(`/officials/${judges[1]}`, { status: "Active" }, a.admin.token);
   });
 });

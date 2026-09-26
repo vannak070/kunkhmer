@@ -48,13 +48,17 @@ async function build(): Promise<Overview> {
   const isStaff = role === "Super Admin" || role === "KKF Officer";
   const isOrganizer = role === "Organizer";
   const isClub = role === "Club/Gym";
-  const [fighters, events, matches, champions, clubs] = await Promise.all([
-    api.fighters.list().catch(() => []),
-    api.events.list().catch(() => []),
-    api.matches.list().catch(() => []),
-    api.champions.list().catch(() => []),
-    api.clubs.list().catch(() => []),
-  ]);
+  // Referees and judges have no dashboard, so don't load it for them.
+  const noDashboard = role === "Referee" || role === "Judge";
+  const [fighters, events, matches, champions, clubs] = noDashboard
+    ? [[], [], [], [], []]
+    : await Promise.all([
+        api.fighters.list().catch(() => []),
+        api.events.list().catch(() => []),
+        api.matches.list().catch(() => []),
+        api.champions.list().catch(() => []),
+        api.clubs.list().catch(() => []),
+      ]);
   const today = todayUtc();
   const todos: TodoItem[] = [];
 

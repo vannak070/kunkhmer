@@ -24,10 +24,14 @@ export const Role = {
   KkfOfficer: "KKF Officer",
   Organizer: "Organizer",
   Club: "Club/Gym",
+  Referee: "Referee",
+  Judge: "Judge",
 } as const;
 
 /** KKF staff: Super Admin or KKF Officer. */
 export const STAFF = [Role.SuperAdmin, Role.KkfOfficer];
+/** Match officials, assigned to bouts by KKF staff. */
+export const OFFICIALS = [Role.Referee, Role.Judge];
 
 declare module "fastify" {
   interface FastifyRequest {

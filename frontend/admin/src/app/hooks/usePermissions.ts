@@ -71,7 +71,7 @@ export function usePermissions() {
   };
 
   const isReferee = (): boolean => {
-    return currentUser?.role === 'referee_judge';
+    return currentUser?.role === 'official';
   };
 
   return {

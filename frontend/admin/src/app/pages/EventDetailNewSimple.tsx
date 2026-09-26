@@ -76,7 +76,9 @@ export function EventDetailNew() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [cancelReason, setCancelReason] = useState("");
 
-  const { canEditEvent } = permissions;
+  // Organizers edit only events they organize (the API enforces the same).
+  const me = api.auth.getCurrentUser();
+  const canEditEvent = permissions.canEditEvent && (me?.role !== "Organizer" || !event || event.organizer_id === me?.id);
 
   const availableFighters = useMemo(() => {
     const selectedWeight = matchForm.weightClass;

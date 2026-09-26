@@ -127,11 +127,10 @@ and phone width in both languages.
 
 ## Known gaps and tech debt
 
-- Admin pages still on mock data (`frontend/admin/src/app/data/*.ts`), not the
-  API: KKFOfficers (hidden from the menu until real);
-  officials list for AssignOfficials is localStorage. Users/Profile moved to the
-  API and the other mock-only pages were removed (2026-09-26, see
-  `updates/admin-phase2.md`). UI says "Fight card"; code/API still say batch / sub_event.
+- System Settings master data (rules, venues, weights, gloves…) is still local
+  (`data/masterData.ts`, localStorage) — Phase 5. Officials, Users and Profile
+  are on the API (see `features/officials.md`). UI says "Fight card"; code/API
+  still say batch / sub_event.
 - No login rate limiting. (Fighter edits are now STAFF + own-club only.)
 - Correcting a title match result to a different winner doesn't reverse the
   title change (the championship updates on the first result only).

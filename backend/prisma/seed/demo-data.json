@@ -158,7 +158,9 @@
       "club_id": null,
       "last_login": null,
       "created_at": null,
-      "updated_at": null
+      "updated_at": null,
+      "official_grade": "International A",
+      "official_since": 2008
     },
     {
       "id": "d7b30002-9f5b-4b24-a208-bdab9a3f764e",
@@ -171,7 +173,9 @@
       "club_id": null,
       "last_login": null,
       "created_at": null,
-      "updated_at": null
+      "updated_at": null,
+      "official_grade": "International A",
+      "official_since": 2012
     },
     {
       "id": "d7b30003-9f5b-4b24-a208-bdab9a3f764e",
@@ -184,7 +188,9 @@
       "club_id": null,
       "last_login": null,
       "created_at": null,
-      "updated_at": null
+      "updated_at": null,
+      "official_grade": "National A",
+      "official_since": 2016
     },
     {
       "id": "d7b30004-9f5b-4b24-a208-bdab9a3f764e",
@@ -197,7 +203,9 @@
       "club_id": null,
       "last_login": null,
       "created_at": null,
-      "updated_at": null
+      "updated_at": null,
+      "official_grade": "National B",
+      "official_since": 2019
     },
     {
       "id": "d7b30005-9f5b-4b24-a208-bdab9a3f764e",
@@ -210,7 +218,9 @@
       "club_id": null,
       "last_login": null,
       "created_at": null,
-      "updated_at": null
+      "updated_at": null,
+      "official_grade": "International A",
+      "official_since": 2014
     },
     {
       "id": "d7b30006-9f5b-4b24-a208-bdab9a3f764e",
@@ -223,7 +233,9 @@
       "club_id": null,
       "last_login": null,
       "created_at": null,
-      "updated_at": null
+      "updated_at": null,
+      "official_grade": "National A",
+      "official_since": 2017
     },
     {
       "id": "e7c50001-9323-4ac0-8035-a2f8848fe8a4",
@@ -236,7 +248,9 @@
       "club_id": null,
       "last_login": null,
       "created_at": null,
-      "updated_at": null
+      "updated_at": null,
+      "official_grade": "International A",
+      "official_since": 2011
     },
     {
       "id": "e7c50002-9323-4ac0-8035-a2f8848fe8a4",
@@ -249,7 +263,9 @@
       "club_id": null,
       "last_login": null,
       "created_at": null,
-      "updated_at": null
+      "updated_at": null,
+      "official_grade": "International A",
+      "official_since": 2014
     },
     {
       "id": "e7c50003-9323-4ac0-8035-a2f8848fe8a4",
@@ -262,7 +278,9 @@
       "club_id": null,
       "last_login": null,
       "created_at": null,
-      "updated_at": null
+      "updated_at": null,
+      "official_grade": "National A",
+      "official_since": 2016
     },
     {
       "id": "e7c50004-9323-4ac0-8035-a2f8848fe8a4",
@@ -275,7 +293,9 @@
       "club_id": null,
       "last_login": null,
       "created_at": null,
-      "updated_at": null
+      "updated_at": null,
+      "official_grade": "National B",
+      "official_since": 2018
     },
     {
       "id": "e7c50005-9323-4ac0-8035-a2f8848fe8a4",
@@ -288,7 +308,9 @@
       "club_id": null,
       "last_login": null,
       "created_at": null,
-      "updated_at": null
+      "updated_at": null,
+      "official_grade": "National B",
+      "official_since": 2020
     },
     {
       "id": "e7c50006-9323-4ac0-8035-a2f8848fe8a4",
@@ -301,7 +323,9 @@
       "club_id": null,
       "last_login": null,
       "created_at": null,
-      "updated_at": null
+      "updated_at": null,
+      "official_grade": "International A",
+      "official_since": 2015
     },
     {
       "id": "e7c50007-9323-4ac0-8035-a2f8848fe8a4",
@@ -314,7 +338,9 @@
       "club_id": null,
       "last_login": null,
       "created_at": null,
-      "updated_at": null
+      "updated_at": null,
+      "official_grade": "National A",
+      "official_since": 2017
     }
   ],
   "fighters": [

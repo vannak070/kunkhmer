@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { clsx } from "clsx";
 import { CalendarView } from "../components/CalendarView";
 import { api } from "../utils/api";
-import { getJudges } from "../utils/officialsStore";
+import { useOfficials } from "../hooks/useOfficials";
 
 
 // Helper function to get status border color
@@ -61,6 +61,7 @@ const getStatusBadgeClass = (status: BatchStatus): string => {
 
 export function MatchesEnhanced({ embedded = false }: { embedded?: boolean }) {
   const permissions = usePermissions();
+  const { nameOf } = useOfficials();
   const navigate = useNavigate();
   const [batches, setBatches] = useState<MatchBatch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -945,7 +946,7 @@ export function MatchesEnhanced({ embedded = false }: { embedded?: boolean }) {
                                     {match.judgeIds && match.judgeIds.length > 0 && (
                                       <span 
                                         className="inline-flex items-center gap-1.5 text-[9px] bg-purple-50 text-purple-700 border border-purple-200/50 px-2.5 py-1 rounded-lg font-semibold uppercase tracking-wider cursor-help"
-                                        title={match.judgeIds.map((jid: string) => getJudges().find(j => j.id === jid)?.name || "Judge").join(", ")}
+                                        title={match.judgeIds.map((jid: string) => nameOf(jid) || "Judge").join(", ")}
                                       >
                                         👥 Judges: {match.judgeIds.length} Assigned
                                       </span>

@@ -237,7 +237,27 @@ exports[`fighters permissions > club cannot verify or delete fighters 1`] = `
 }
 `;
 
+exports[`fighters permissions > organizer cannot register fighters (clubs and KKF staff do) 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
 exports[`fighters permissions > organizer cannot verify or delete fighters 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`fighters permissions > referee cannot register fighters (clubs and KKF staff do) 1`] = `
 {
   "body": {
     "error": "string",

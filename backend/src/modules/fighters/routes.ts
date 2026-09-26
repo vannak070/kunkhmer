@@ -3,7 +3,7 @@
  *
  *   GET    /fighters              public; ?status= and ?clubId= filters
  *   GET    /fighters/:id          public; id, exact name, name slug or Khmer name
- *   POST   /fighters              any logged-in user (Club/Gym: own club, always Draft)
+ *   POST   /fighters              Super Admin, KKF Officer, Club/Gym (own club, always Draft)
  *   PUT    /fighters/:id          Super Admin, KKF Officer; Club/Gym only their own club's fighters
  *   POST   /fighters/:id/verify   Super Admin, KKF Officer → Active, clears review note
  *   POST   /fighters/:id/reject   Super Admin, KKF Officer → Rejected + reason (review note)
@@ -164,7 +164,8 @@ export default async function fighterRoutes(app: FastifyInstance) {
     protectedRoutes.addHook("preHandler", requireAuth);
 
     protectedRoutes.post("/fighters", async (request, reply) => {
-      const user = currentUser(request);
+      // Clubs and KKF staff register fighters (not organizers or officials).
+      const user = requireRole(request, [...STAFF, Role.Club]);
       const input = inputOf(request.body);
 
       // Club/Gym users can only register fighters for their own club.

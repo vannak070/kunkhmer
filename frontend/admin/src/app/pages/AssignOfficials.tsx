@@ -4,7 +4,7 @@ import {
   Shield, Users, CheckCircle, ArrowLeft, Send, 
   Plus, X, AlertCircle, UserCheck, Check, Sparkles
 } from "lucide-react";
-import { getJudges, getReferees } from "../utils/officialsStore";
+import { officialOption, useOfficials } from "../hooks/useOfficials";
 import { api } from "../utils/api";
 import { toast } from "sonner";
 import { clsx } from "clsx";
@@ -19,6 +19,8 @@ export default function AssignOfficials() {
   
   // Track assignments: Record<matchId, { refereeId, judgeIds: [j1, j2, j3] }>
   const [matchOfficials, setMatchOfficials] = useState<Record<string, { refereeId: string, judgeIds: string[] }>>({});
+  // Real referees/judges; with the card's date, each shows how many bouts they already have that night.
+  const { referees, judges } = useOfficials(batch?.date);
 
   useEffect(() => {
     if (batchId) {
@@ -77,7 +79,7 @@ export default function AssignOfficials() {
   const getFilteredJudgesForSlot = (matchId: string, slotIndex: number) => {
     const current = matchOfficials[matchId]?.judgeIds || ["", "", ""];
     const selectedOtherSlots = current.filter((_, idx) => idx !== slotIndex && current[idx]);
-    return getJudges().filter(j => j.status === "Available" && !selectedOtherSlots.includes(j.id));
+    return judges.filter(j => !selectedOtherSlots.includes(j.id));
   };
 
   const handleAutoFillOfficials = () => {
@@ -122,7 +124,7 @@ export default function AssignOfficials() {
           const assignment = matchOfficials[m.id];
           return api.matches.update(m.id, {
             refereeId: assignment.refereeId,
-            judgeIds: assignment.judgeIds,
+            judgeIds: assignment.judgeIds.filter(Boolean),
           });
         })
       );
@@ -135,7 +137,7 @@ export default function AssignOfficials() {
     }
   };
 
-  const availableReferees = getReferees().filter(r => r.status === "Available");
+  const availableReferees = referees;
 
   if (loading) {
     return (
@@ -256,7 +258,7 @@ export default function AssignOfficials() {
                           <option value="">Select referee...</option>
                           {availableReferees.map(ref => (
                             <option key={ref.id} value={ref.id}>
-                              {ref.name} ({ref.grade})
+                              {officialOption(ref)}
                             </option>
                           ))}
                         </select>
@@ -279,7 +281,7 @@ export default function AssignOfficials() {
                           <option value="">Select judge...</option>
                           {getFilteredJudgesForSlot(m.id, 0).map(judge => (
                             <option key={judge.id} value={judge.id}>
-                              {judge.name} ({judge.grade})
+                              {officialOption(judge)}
                             </option>
                           ))}
                         </select>
@@ -302,7 +304,7 @@ export default function AssignOfficials() {
                           <option value="">Select judge...</option>
                           {getFilteredJudgesForSlot(m.id, 1).map(judge => (
                             <option key={judge.id} value={judge.id}>
-                              {judge.name} ({judge.grade})
+                              {officialOption(judge)}
                             </option>
                           ))}
                         </select>
@@ -325,7 +327,7 @@ export default function AssignOfficials() {
                           <option value="">Select judge...</option>
                           {getFilteredJudgesForSlot(m.id, 2).map(judge => (
                             <option key={judge.id} value={judge.id}>
-                              {judge.name} ({judge.grade})
+                              {officialOption(judge)}
                             </option>
                           ))}
                         </select>

@@ -2,14 +2,15 @@
  * Batches (sub-events) and matches  →  /api/matches/*
  *
  *   GET    /matches/batches[/:id]   public
- *   POST   /matches/batches         Super Admin, KKF Officer, Organizer
- *   PUT    /matches/batches/:id     Super Admin, KKF Officer, Organizer
+ *   POST   /matches/batches         Super Admin, KKF Officer, Organizer (own events)
+ *   PUT    /matches/batches/:id     Super Admin, KKF Officer, Organizer (own events)
  *   DELETE /matches/batches/:id     Super Admin
  *
  *   GET    /matches[/:id]           public; ?subEventId= filter, in sort order
  *   GET    /matches/proposals       signed in; a club sees bouts with its fighters; ?state=
- *   POST   /matches                 Super Admin, KKF Officer, Organizer
+ *   POST   /matches                 Super Admin, KKF Officer, Organizer (own events)
  *   PUT    /matches/:id             same (Club/Gym answer through /respond)
+ *                                   Only KKF staff set the referee and judges.
  *   POST   /matches/:id/respond     Club/Gym for its own side(s); KKF staff for either club
  *   DELETE /matches/:id             Super Admin
  *   POST   /matches/:id/result      Super Admin, KKF Officer
@@ -21,7 +22,8 @@ import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../../db.ts";
 import type { Prisma } from "../../generated/prisma/client.ts";
-import { Role, STAFF, requireAuth, requireRole } from "../../lib/auth.ts";
+import type { User } from "../../generated/prisma/client.ts";
+import { Role, STAFF, hasRole, requireAuth, requireRole } from "../../lib/auth.ts";
 import { now, toDate } from "../../lib/dates.ts";
 import { HttpError, deleted, idParam, isUuid, notFound, ok } from "../../lib/http.ts";
 import { type Input, inputOf, parseBool } from "../../lib/input.ts";
@@ -31,6 +33,7 @@ import { formatMatch, formatSubEvent, matchArray, matchRelations, subEventArray,
 import { recordMatchResult } from "./results.ts";
 import { PUBLIC_BOUT, RESPONSES, openSide, proposalStatus, sidesFor } from "./proposals.ts";
 import { notifyFollowers } from "../fans/notify.ts";
+import { assertOfficials, officialsOf } from "../officials/routes.ts";
 
 const ORGANIZERS = [...STAFF, Role.Organizer];
 
@@ -72,6 +75,32 @@ function matchUpdate(input: Input): Prisma.MatchUncheckedUpdateInput {
   }
   if (input.has("gloveConfirmedDate")) data.glove_confirmed_date = toDate(input.get("gloveConfirmedDate"));
   return data;
+}
+
+/** An Organizer may only work on fight cards and bouts of events they organize. */
+async function requireOwnEvent(user: User, eventId: string | null | undefined) {
+  if (user.role !== Role.Organizer || !eventId || !isUuid(eventId)) return;
+  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { organizer_id: true } });
+  if (event && event.organizer_id !== user.id) {
+    throw new HttpError(403, "Forbidden: This event belongs to another organizer");
+  }
+}
+
+/** The event a fight card belongs to (null if the card doesn't exist). */
+const eventOfBatch = async (subEventId: unknown) =>
+  isUuid(subEventId) ? ((await prisma.subEvent.findUnique({ where: { id: subEventId }, select: { event_id: true } }))?.event_id ?? null) : null;
+
+const judgeList = (value: unknown) => (Array.isArray(value) ? value.map(String) : []);
+
+/**
+ * Referee and judges: only KKF staff assign them (an Organizer sending a change
+ * gets 403), and they must be active officials.
+ */
+async function checkOfficials(user: User, next: { refereeId: string | null; judgeIds: string[] }, current = { refereeId: null as string | null, judgeIds: [] as string[] }) {
+  const changed = next.refereeId !== current.refereeId || JSON.stringify(next.judgeIds) !== JSON.stringify(current.judgeIds);
+  if (!changed) return;
+  if (!hasRole(user, STAFF)) throw new HttpError(403, "Forbidden: Only KKF assigns referees and judges");
+  await assertOfficials(next.refereeId, next.judgeIds);
 }
 
 /** Only KKF-verified fighters can be matched. */
@@ -133,6 +162,7 @@ export default async function matchRoutes(app: FastifyInstance) {
     protectedRoutes.post("/matches/batches", async (request, reply) => {
       const user = requireRole(request, ORGANIZERS);
       const input = inputOf(request.body);
+      await requireOwnEvent(user, input.get("eventId"));
       const at = now();
       const subEvent = await prisma.subEvent.create({
         data: {
@@ -154,11 +184,13 @@ export default async function matchRoutes(app: FastifyInstance) {
     });
 
     protectedRoutes.put("/matches/batches/:id", async (request, reply) => {
-      requireRole(request, ORGANIZERS);
+      const user = requireRole(request, ORGANIZERS);
       const id = idParam(request.params, "Sub-event (batch)");
-      await loadSubEvent(id);
+      const existing = await loadSubEvent(id);
 
       const input = inputOf(request.body);
+      await requireOwnEvent(user, existing.event_id);
+      if (input.has("eventId")) await requireOwnEvent(user, input.get("eventId"));
       const data: Prisma.SubEventUncheckedUpdateInput = input.pick({
         eventId: "event_id",
         name: "name",
@@ -185,7 +217,7 @@ export default async function matchRoutes(app: FastifyInstance) {
     });
 
     protectedRoutes.post("/matches", async (request, reply) => {
-      requireRole(request, ORGANIZERS);
+      const user = requireRole(request, ORGANIZERS);
       const input = inputOf(request.body);
 
       // Derive the event from the batch when it isn't given.
@@ -195,6 +227,8 @@ export default async function matchRoutes(app: FastifyInstance) {
         eventId = (await prisma.subEvent.findUnique({ where: { id: subEventId } }))?.event_id ?? null;
       }
       if (!eventId) throw new HttpError(422, "The eventId field is required");
+      await requireOwnEvent(user, eventId);
+      await checkOfficials(user, { refereeId: input.get("refereeId"), judgeIds: judgeList(input.get("judgeIds")) });
 
       const fighterAId = input.required<string>("fighterAId");
       const fighterBId = input.required<string>("fighterBId");
@@ -237,12 +271,28 @@ export default async function matchRoutes(app: FastifyInstance) {
     });
 
     protectedRoutes.put("/matches/:id", async (request, reply) => {
-      requireRole(request, ORGANIZERS);
+      const user = requireRole(request, ORGANIZERS);
       const id = idParam(request.params, "Match");
       const match = await prisma.match.findUnique({ where: { id } });
       if (!match) throw notFound("Match");
 
-      const data = matchUpdate(inputOf(request.body));
+      const input = inputOf(request.body);
+      await requireOwnEvent(user, match.event_id);
+      if (input.has("eventId")) await requireOwnEvent(user, input.get("eventId"));
+      if (input.has("subEventId")) await requireOwnEvent(user, await eventOfBatch(input.get("subEventId")));
+      if (input.present("refereeId") || input.present("judgeIds")) {
+        const current = officialsOf(match);
+        await checkOfficials(
+          user,
+          {
+            refereeId: input.present("refereeId") ? input.get("refereeId") : current.referee,
+            judgeIds: input.present("judgeIds") ? judgeList(input.get("judgeIds")) : current.judges,
+          },
+          { refereeId: current.referee, judgeIds: current.judges },
+        );
+      }
+
+      const data = matchUpdate(input);
       // Swapping a fighter sends that side back to its (new) club.
       const swapped = (["a", "b"] as const).filter((s) => {
         const next = data[`fighter_${s}_id`];

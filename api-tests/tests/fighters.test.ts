@@ -182,11 +182,17 @@ describe("fighters permissions", () => {
   });
 
   it("non-staff cannot set a fighter's status, and only staff or the fighter's club may edit", async () => {
-    const created = await post("/fighters", { ...fullFighter(a.clubId), status: "Active" }, a.organizer.token);
+    const created = await post("/fighters", { ...fullFighter(a.clubId), status: "Active" }, a.club.token);
     expect(created.body.data.status).toBe("Draft");
     const updated = await put(`/fighters/${created.body.data.id}`, { status: "Active" }, a.organizer.token);
     expect(updated.status).toBe(403);
     expect((await put(`/fighters/${created.body.data.id}`, { alias: "x" }, a.referee.token)).status).toBe(403);
+  });
+
+  it.each(["organizer", "referee"] as const)("%s cannot register fighters (clubs and KKF staff do)", async (who) => {
+    const res = await post("/fighters", fullFighter(a.clubId), a[who].token);
+    expect(shapeOf(res)).toMatchSnapshot();
+    expect(res.status).toBe(403);
   });
 
   it.each(["organizer", "club", "referee"] as const)("%s cannot verify or delete fighters", async (who) => {

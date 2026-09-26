@@ -5,11 +5,12 @@ import {
   Trophy, Users, Shield, Edit2, Save, X, Video, Clock, AlertCircle
 } from "lucide-react";
 import { api } from "../utils/api";
-import { getJudges, getReferees } from "../utils/officialsStore";
+import { useOfficials } from "../hooks/useOfficials";
 import { toast } from "sonner";
 import { clsx } from "clsx";
 
 export function MatchDetail() {
+  const { byId } = useOfficials();
   const { id } = useParams();
   const navigate = useNavigate();
   const [match, setMatch] = useState<any>(null);
@@ -96,16 +97,19 @@ export function MatchDetail() {
     loadData();
   }, [id]);
 
-  const assignedReferee = match?.referee_id 
-    ? getReferees().find(r => r.id === match.referee_id) || { name: match.refereeName || "Assigned Referee", grade: "Class A", experience: "50+ fights" }
-    : match?.refereeName 
-    ? { name: match.refereeName, grade: "Class A", experience: "50+ fights" }
-    : null;
-
-  const assignedJudges = Array.isArray(match?.judge_ids) && match.judge_ids.length > 0
-    ? match.judge_ids.map((jid: string, idx: number) => 
-        getJudges().find(j => j.id === jid) || { id: jid, name: `Judge ${idx + 1}`, grade: "Class A", experience: "30+ fights" }
-      )
+  // Real officials (KKF staff and organizers can list them); only known details are shown.
+  const official = (id: string | null | undefined, fallbackName: string) => {
+    const o = byId(id);
+    return {
+      id: id ?? "",
+      name: o?.fullName ?? fallbackName,
+      grade: o?.grade ?? "Grade not set",
+      experience: o?.yearsExperience != null ? `${o.yearsExperience} years` : "",
+    };
+  };
+  const assignedReferee = match?.referee_id ? official(match.referee_id, match.referee_name || match.refereeName || "Assigned referee") : null;
+  const assignedJudges = Array.isArray(match?.judge_ids)
+    ? match.judge_ids.map((jid: string, idx: number) => official(jid, `Judge ${idx + 1}`))
     : [];
 
   const getMatchTypeBadge = () => {

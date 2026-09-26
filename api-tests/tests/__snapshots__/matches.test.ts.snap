@@ -902,7 +902,7 @@ exports[`matches > creates a match, deriving the event from the batch 1`] = `
   "isTitleMatch": "boolean",
   "is_title_match": "boolean",
   "judge_ids": [
-    "string",
+    "uuid",
   ],
   "knockdown_limit": "number",
   "proposal_status": "string",
@@ -1351,5 +1351,25 @@ exports[`matches > updates a match, accepting sortOrder or sort_order 1`] = `
     "success": "boolean",
   },
   "status": 200,
+}
+`;
+
+exports[`organizers work only on their own events > can't add or edit fight cards in another organizer's event 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
+}
+`;
+
+exports[`referees and judges > are assigned by KKF staff only 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 403,
 }
 `;

@@ -3,8 +3,11 @@ import { Plus, Search, MapPin, Dumbbell, Star, Edit2, Trash2 } from "lucide-reac
 import { Link } from "react-router";
 import { api } from "../utils/api";
 import { toast } from "sonner";
+import { usePermissions } from "../hooks/usePermissions";
 
 export function Clubs() {
+  // Only KKF staff add, edit or remove clubs (the API refuses other roles).
+  const permissions = usePermissions();
   const [clubs, setClubs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -57,13 +60,15 @@ export function Clubs() {
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Clubs Directory</h1>
           <p className="text-sm text-muted-foreground mt-1 font-medium">Manage Kun Khmer training camps and gyms</p>
         </div>
-        <Link 
-          to="/home/clubs/new" 
-          className="btn-secondary py-2.5 px-5"
-        >
-          <Plus className="w-4 h-4" />
-          Add Club
-        </Link>
+        {permissions.hasPermission("clubs.manage") && (
+          <Link 
+            to="/home/clubs/new" 
+            className="btn-secondary py-2.5 px-5"
+          >
+            <Plus className="w-4 h-4" />
+            Add Club
+          </Link>
+        )}
       </header>
 
       {/* Search & Filter Bar */}
@@ -134,7 +139,7 @@ export function Clubs() {
                   </div>
                   
                   {/* Action Overlays on Hover */}
-                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-200 flex gap-2 translate-y-[-5px] group-hover:translate-y-0">
+                  {permissions.hasPermission("clubs.manage") && <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-200 flex gap-2 translate-y-[-5px] group-hover:translate-y-0">
                     <Link 
                       to={`/home/clubs/${club.id}/edit`}
                       className="p-2 bg-white/95 hover:bg-white text-primary border border-border/40 rounded-xl shadow-md backdrop-blur-md transition-all duration-150 hover:scale-105 active:scale-95"
@@ -147,7 +152,7 @@ export function Clubs() {
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
-                  </div>
+                  </div>}
                 </div>
                 
                 {/* Card Content Section */}

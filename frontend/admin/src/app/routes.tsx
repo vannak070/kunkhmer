@@ -31,7 +31,8 @@ import AssignOfficials from "./pages/AssignOfficials";
 import { ShareFightCard } from "./pages/ShareFightCard";
 import { UserManagement } from "./pages/UserManagement";
 import { Navigate, useParams } from "react-router";
-import { KKFOfficers } from "./pages/KKFOfficers";
+import { Officials } from "./pages/Officials";
+import { MyBouts } from "./pages/MyBouts";
 import { News } from "./pages/News";
 import { Video } from "./pages/Video";
 import { StrategicPartners } from "./pages/StrategicPartners";
@@ -216,7 +217,9 @@ export const router = createBrowserRouter(
       { path: "kkf-workflow/:requestId", element: <Navigate to="/home" replace /> },
       { path: "profile", element: <Profile /> },
       { path: "match-proposals", element: <MatchProposals /> },
-      { path: "kkf-officers", element: <KKFOfficers /> },
+      { path: "officials", element: <Officials /> },
+      { path: "kkf-officers", element: <Navigate to="/home/officials" replace /> },
+      { path: "my-bouts", element: <MyBouts /> },
       { path: "user-management", element: <UserManagement /> },
       { path: "user-management/new", element: <UserManagement /> },
       { path: "user-management/:userId/edit", element: <UserManagement /> },

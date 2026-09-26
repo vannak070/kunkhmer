@@ -145,7 +145,8 @@ export function EventNextSteps({ event, cards, canEdit, onEditDetails, onAddFigh
           : `${withResult.length} of ${bouts.length} results recorded.`,
       done: bouts.length > 0 && withResult.length === bouts.length,
       later: !bouts.length || !fightNightPassed,
-      action: missingResult && fightNightPassed ? { label: "Record result", run: () => navigate(`/home/match/${missingResult.id}`) } : undefined,
+      // Only KKF records results.
+      action: missingResult && fightNightPassed && isStaff ? { label: "Record result", run: () => navigate(`/home/match/${missingResult.id}`) } : undefined,
     },
   ];
 

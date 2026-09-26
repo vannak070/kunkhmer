@@ -20,12 +20,20 @@ import { useEffect } from "react";
 import { usePermissions } from "../hooks/usePermissions";
 import { toast } from "sonner";
 import { clsx } from "clsx";
-import { getJudges, getReferees } from "../utils/officialsStore";
+import { officialOption, officialSummary, useOfficials } from "../hooks/useOfficials";
 
 export function BatchDetail() {
   const { batchId } = useParams();
   const navigate = useNavigate();
   const permissions = usePermissions();
+  // Referees and judges come from the API; the card's date adds each one's bouts that night.
+  const [cardDate, setCardDate] = useState<string | null>(null);
+  const { referees, judges, nameOf } = useOfficials(cardDate);
+  // Match permissions apply to this card only if it's KKF staff, or the organizer of its event.
+  const me = api.auth.getCurrentUser();
+  const canOnCard = (permission: string) =>
+    permissions.hasPermission(permission) &&
+    (me?.role !== "Organizer" || !batch?.eventOrganizerId || batch.eventOrganizerId === me?.id);
 
   // === All state declarations at the top ===
   const [batch, setBatch] = useState<any>(null);
@@ -68,7 +76,7 @@ export function BatchDetail() {
   const getFilteredJudgesForSlot = (matchId: string, slotIndex: number) => {
     const current = matchOfficials[matchId]?.judgeIds || [];
     const selectedOtherSlots = current.filter((_, idx) => idx !== slotIndex);
-    return getJudges().filter(j => j.status === "Available" && !selectedOtherSlots.includes(j.id));
+    return judges.filter(j => !selectedOtherSlots.includes(j.id));
   };
 
   const handleAutoFillOfficials = () => {
@@ -256,11 +264,14 @@ export function BatchDetail() {
           organizerClub: b.creator_name,
           createdBy: b.creator_name,
           eventId: b.event_id,
+          // Organizers may only change fight cards of their own events.
+          eventOrganizerId: b.event?.organizer_id ?? null,
           broadcastStation: b.broadcast_station_name,
           mainSponsor: b.main_sponsor_name
         };
 
         setBatch(mappedBatch);
+        setCardDate(mappedBatch.date || null);
         setMatches(batchMatches);
       }
     } catch (err: any) {
@@ -493,12 +504,12 @@ export function BatchDetail() {
       try {
         await api.matches.update(selectedMatchForOfficials, {
           refereeId: selectedReferee,
-          judgeIds: selectedJudges,
+          judgeIds: selectedJudges.filter(Boolean),
         });
 
         // Update specific match
-        const referee = getReferees().find(r => r.id === selectedReferee);
-        const judges = selectedJudges.map(id => getJudges().find(j => j.id === id)?.name || "");
+        const refereeName = nameOf(selectedReferee);
+        const judgeNames = selectedJudges.map(id => nameOf(id) || "");
         
         const updatedMatches = batch.matches.map((m: any) => {
           if (m.id === selectedMatchForOfficials) {
@@ -506,10 +517,10 @@ export function BatchDetail() {
               ...m,
               refereeId: selectedReferee,
               referee_id: selectedReferee,
-              refereeName: referee?.name || "Assigned",
+              refereeName: refereeName || "Assigned",
               judgeIds: selectedJudges,
               judge_ids: selectedJudges,
-              judgeNames: judges,
+              judgeNames,
               officials: true
             };
           }
@@ -548,7 +559,7 @@ export function BatchDetail() {
             const assignment = matchOfficials[m.id];
             return api.matches.update(m.id, {
               refereeId: assignment.refereeId,
-              judgeIds: assignment.judgeIds,
+              judgeIds: assignment.judgeIds.filter(Boolean),
             });
           })
         );
@@ -556,16 +567,14 @@ export function BatchDetail() {
         // Save assignments for all matches
         const updatedMatches = batch.matches.map((m: any) => {
           const assignment = matchOfficials[m.id];
-          const referee = getReferees().find(r => r.id === assignment.refereeId);
-          const judges = assignment.judgeIds.map(id => getJudges().find(j => j.id === id)?.name || "");
           return {
             ...m,
             refereeId: assignment.refereeId,
             referee_id: assignment.refereeId,
-            refereeName: referee?.name || "Assigned",
+            refereeName: nameOf(assignment.refereeId) || "Assigned",
             judgeIds: assignment.judgeIds,
             judge_ids: assignment.judgeIds,
-            judgeNames: judges,
+            judgeNames: assignment.judgeIds.map(id => nameOf(id) || ""),
             officials: true
           };
         });
@@ -886,7 +895,7 @@ export function BatchDetail() {
               {/* Quick Action Buttons */}
               <div className="flex items-center gap-3 flex-wrap">
                 {/* Add Match */}
-                {batch.status === "Draft" && permissions.hasPermission('matches.create') && (
+                {batch.status === "Draft" && canOnCard('matches.create') && (
                   <button
                     onClick={handleAddMatch}
                     className="btn-secondary px-5 py-2.5 font-semibold uppercase tracking-wider text-xs rounded-xl shadow-md hover:-translate-y-[1px]"
@@ -897,7 +906,7 @@ export function BatchDetail() {
                 )}
 
                 {/* Edit Batch */}
-                {batch.status === "Draft" && permissions.hasPermission('matches.edit') && (
+                {batch.status === "Draft" && canOnCard('matches.edit') && (
                   <button
                     onClick={() => navigate(`/home/matches/${batch.id}/edit`)}
                     className="btn-outline px-5 py-2.5 font-semibold uppercase tracking-wider text-xs rounded-xl shadow-sm hover:-translate-y-[1px]"
@@ -919,7 +928,7 @@ export function BatchDetail() {
                 )}
 
                 {/* Move to Weight-In */}
-                {batch.status === "Draft" && permissions.hasPermission('matches.edit') && (
+                {batch.status === "Draft" && canOnCard('matches.edit') && (
                   <button
                     onClick={handleMoveToWeightIn}
                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow hover:-translate-y-[1px] active:scale-[0.98]"
@@ -930,7 +939,7 @@ export function BatchDetail() {
                 )}
 
                 {/* Complete Weigh-In & Schedule */}
-                {batch.status === "Weight-In" && permissions.hasPermission('matches.edit') && (
+                {batch.status === "Weight-In" && canOnCard('matches.edit') && (
                   <button
                     onClick={handleCompleteWeightIn}
                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow hover:-translate-y-[1px] active:scale-[0.98]"
@@ -941,7 +950,7 @@ export function BatchDetail() {
                 )}
 
                 {/* Launch Event (Go Live) */}
-                {(batch.status === "Scheduled" || batch.status === "Ready" || batch.status === "Approved") && permissions.hasPermission('matches.edit') && (
+                {(batch.status === "Scheduled" || batch.status === "Ready" || batch.status === "Approved") && canOnCard('matches.edit') && (
                   <button
                     onClick={handleGoLive}
                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow hover:-translate-y-[1px] active:scale-[0.98]"
@@ -952,7 +961,7 @@ export function BatchDetail() {
                 )}
 
                 {/* Finalize Event & Complete Batch */}
-                {batch.status === "Live" && permissions.hasPermission('matches.edit') && (
+                {batch.status === "Live" && canOnCard('matches.edit') && (
                   <button
                     onClick={handleFinalizeEvent}
                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow hover:-translate-y-[1px] active:scale-[0.98]"
@@ -1013,7 +1022,7 @@ export function BatchDetail() {
                 })()}
 
                 {/* Delete Batch */}
-                {batch.status === "Draft" && permissions.hasPermission('matches.delete') && (
+                {batch.status === "Draft" && canOnCard('matches.delete') && (
                   <button
                     onClick={() => setShowDeleteConfirm(true)}
                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl font-semibold uppercase tracking-wider text-xs transition-all border border-red-200/60 shadow-sm hover:-translate-y-[1px] active:scale-[0.98] ml-auto"
@@ -1180,7 +1189,7 @@ export function BatchDetail() {
                     : "Add matches to this fight card to get started"
                   }
                 </p>
-                {!searchQuery && batch.status === "Draft" && permissions.hasPermission('matches.create') && (
+                {!searchQuery && batch.status === "Draft" && canOnCard('matches.create') && (
                   <button
                     onClick={handleAddMatch}
                     className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold transition-all shadow-md text-sm hover:-translate-y-[1px]"
@@ -1304,6 +1313,11 @@ export function BatchDetail() {
                                 <span className="badge-premium badge-emerald text-[9px] uppercase tracking-wider py-1 font-semibold shadow-sm">
                                   <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
                                   ASSIGNED
+                                </span>
+                              ) : !permissions.hasPermission('officials.assign') ? (
+                                // Only KKF assigns referees and judges.
+                                <span className="badge-premium text-[9px] uppercase tracking-wider py-1 font-semibold text-slate-500">
+                                  NO OFFICIALS YET
                                 </span>
                               ) : (
                                 <button
@@ -1499,7 +1513,7 @@ export function BatchDetail() {
                                   <div className="flex justify-between items-start">
                                     <span className="text-slate-500 font-medium">Referee:</span>
                                     <span className="text-slate-800 font-semibold text-right">
-                                      {match.refereeName || (match.refereeId ? getReferees().find((r: any) => r.id === match.refereeId)?.name : "None assigned")}
+                                      {match.refereeName || nameOf(match.refereeId) || (match.refereeId ? "Assigned" : "None assigned")}
                                     </span>
                                   </div>
                                   <div className="flex justify-between items-start">
@@ -1508,7 +1522,7 @@ export function BatchDetail() {
                                       {match.judgeIds && match.judgeIds.length > 0 ? (
                                         <ul className="list-none text-right">
                                           {match.judgeIds.map((jid: string, jIdx: number) => {
-                                            const jName = getJudges().find((j: any) => j.id === jid)?.name || "Judge";
+                                            const jName = nameOf(jid) || "Judge";
                                             return <li key={jid}>{jIdx + 1}. {jName}</li>;
                                           })}
                                         </ul>
@@ -1628,9 +1642,9 @@ export function BatchDetail() {
                               className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg p-2 focus:border-primary focus:outline-none"
                             >
                               <option value="">Select...</option>
-                              {getReferees().filter(r => r.status === "Available").map(referee => (
+                              {referees.map(referee => (
                                 <option key={referee.id} value={referee.id}>
-                                  {referee.name} ({referee.grade})
+                                  {officialOption(referee)}
                                 </option>
                               ))}
                             </select>
@@ -1651,7 +1665,7 @@ export function BatchDetail() {
                               <option value="">Select...</option>
                               {getFilteredJudgesForSlot(m.id, 0).map(judge => (
                                 <option key={judge.id} value={judge.id}>
-                                  {judge.name} ({judge.grade})
+                                  {officialOption(judge)}
                                 </option>
                               ))}
                             </select>
@@ -1672,7 +1686,7 @@ export function BatchDetail() {
                               <option value="">Select...</option>
                               {getFilteredJudgesForSlot(m.id, 1).map(judge => (
                                 <option key={judge.id} value={judge.id}>
-                                  {judge.name} ({judge.grade})
+                                  {officialOption(judge)}
                                 </option>
                               ))}
                             </select>
@@ -1693,7 +1707,7 @@ export function BatchDetail() {
                               <option value="">Select...</option>
                               {getFilteredJudgesForSlot(m.id, 2).map(judge => (
                                 <option key={judge.id} value={judge.id}>
-                                  {judge.name} ({judge.grade})
+                                  {officialOption(judge)}
                                 </option>
                               ))}
                             </select>
@@ -1721,9 +1735,9 @@ export function BatchDetail() {
                     className="input-premium font-medium text-slate-700 rounded-xl px-4 py-2.5"
                   >
                     <option value="">Select referee...</option>
-                    {getReferees().filter(r => r.status === "Available").map(referee => (
+                    {referees.map(referee => (
                       <option key={referee.id} value={referee.id}>
-                        {referee.name} - {referee.grade} ({referee.experience})
+                        {officialOption(referee)}
                       </option>
                     ))}
                   </select>
@@ -1732,7 +1746,7 @@ export function BatchDetail() {
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Judges (3 required)</label>
                   <div className="bg-slate-50/50 border border-slate-200/80 rounded-xl p-4 max-h-56 overflow-y-auto space-y-2">
-                    {getJudges().filter(j => j.status === "Available").map(judge => {
+                    {judges.map(judge => {
                       const isSelected = selectedJudges.includes(judge.id);
                       return (
                         <button
@@ -1746,9 +1760,9 @@ export function BatchDetail() {
                           }`}
                         >
                           <div className="flex-1">
-                            <div className="font-semibold text-xs">{judge.name}</div>
+                            <div className="font-semibold text-xs">{judge.fullName}</div>
                             <div className={`text-[10px] mt-0.5 font-medium ${isSelected ? "text-white/90" : "text-slate-500"}`}>
-                              {judge.grade} • {judge.experience}
+                              {[officialSummary(judge), judge.boutsOnDate ? `${judge.boutsOnDate} bout${judge.boutsOnDate === 1 ? "" : "s"} that night` : null].filter(Boolean).join(" · ") || "Judge"}
                             </div>
                           </div>
                           {isSelected && (

@@ -64,8 +64,8 @@ export function userArray(user: User) {
   };
 }
 
-const hashPassword = (password: string) => bcrypt.hash(password, BCRYPT_ROUNDS);
-const MIN_PASSWORD = 8;
+export const hashPassword = (password: string) => bcrypt.hash(password, BCRYPT_ROUNDS);
+export const MIN_PASSWORD = 8;
 
 async function findUser(id: string) {
   const user = await prisma.user.findUnique({ where: { id } });

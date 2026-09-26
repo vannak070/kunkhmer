@@ -5,10 +5,12 @@ import type { FighterApprovalStatus } from "../data/fighterApproval";
 import unknownFighterImg from "figma:asset/b9f2c3f9c8bd58ed74f9c92de40fb83809a138b3.png";
 import { useState, useEffect } from "react";
 import { api } from "../utils/api";
+import { usePermissions } from "../hooks/usePermissions";
 
 type TabType = 'overview' | 'fighters' | 'champions' | 'matches';
 
 export function ClubDetail() {
+  const canManageClubs = usePermissions().hasPermission("clubs.manage");
   const { id } = useParams();
   const [club, setClub] = useState<any>(null);
   const [clubFighters, setClubFighters] = useState<any[]>([]);
@@ -139,9 +141,11 @@ export function ClubDetail() {
             </p>
           </div>
         </div>
-        <Link to={`/home/clubs/${club.id}/edit`} className="btn-outline py-2.5 px-5 shadow-sm">
-          Edit Profile
-        </Link>
+        {canManageClubs && (
+          <Link to={`/home/clubs/${club.id}/edit`} className="btn-outline py-2.5 px-5 shadow-sm">
+            Edit Profile
+          </Link>
+        )}
       </header>
 
       {/* Hero Section */}

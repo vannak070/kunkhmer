@@ -319,6 +319,29 @@ export const api = {
     }
   },
 
+  // --- OFFICIALS (referees and judges) ---
+  officials: {
+    /** KKF staff and organizers. `date` adds each official's bouts that fight night (boutsOnDate). */
+    async list(params: { role?: "Referee" | "Judge"; date?: string } = {}) {
+      const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v) as [string, string][]).toString();
+      const res = await request(`/officials${q ? `?${q}` : ""}`);
+      return res.data;
+    },
+    async create(input: any) {
+      const res = await request("/officials", { method: "POST", body: JSON.stringify(input) });
+      return res.data;
+    },
+    async update(id: string, input: any) {
+      const res = await request(`/officials/${id}`, { method: "PUT", body: JSON.stringify(input) });
+      return res.data;
+    },
+    /** For a signed-in referee or judge: the bouts they're assigned to. */
+    async myBouts() {
+      const res = await request("/officials/me/bouts");
+      return res.data;
+    }
+  },
+
   // --- CHAMPIONS ---
   champions: {
     async list() {

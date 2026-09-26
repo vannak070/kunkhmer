@@ -15,7 +15,7 @@ records publicly.
 |---|---|---|---|
 | GET | `/fighters` | public | `?status=`, `?clubId=`; newest first; excludes soft-deleted. Without a staff token, unverified fighters (`Draft`, `Pending KKF Verification`, `Rejected`) are left out |
 | GET | `/fighters/:key` | public | key = UUID, exact name, slug (`sok-chan`) or Khmer name; unverified → 404 without a staff token |
-| POST | `/fighters` | any logged-in user | requires name, nameKhmer, dateOfBirth, currentWeight, height; 201 |
+| POST | `/fighters` | STAFF, Club/Gym (own club) | Organizer/Referee/Judge → 403; requires name, nameKhmer, dateOfBirth, currentWeight, height; 201 |
 | PUT | `/fighters/:id` | STAFF; Club/Gym own club only | others 403; a club editing a `Rejected` fighter re-submits it (status → Draft) |
 | POST | `/fighters/:id/verify` | STAFF | status → Active, sets verifiedBy/verifiedDate, clears `reviewNote`; empty body OK |
 | POST | `/fighters/:id/reject` | STAFF | `{reason}` required → status Rejected, `reviewNote` = reason |
