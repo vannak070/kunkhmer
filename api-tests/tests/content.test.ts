@@ -129,8 +129,6 @@ describe("videos", () => {
     expect(shapeOf(res)).toMatchSnapshot();
   });
 
-  // The Laravel backend couldn't do this (empty strings became null before
-  // its isset() check); fixed in the Node.js backend.
   it("clears a relation when given an empty value", async () => {
     const { body } = await post("/videos", fullVideo(), a.officer.token);
     const res = await put(`/videos/${body.data.id}`, { fighterId: "" }, a.officer.token);

@@ -1,6 +1,5 @@
 /**
- * Bearer-token authentication, compatible with Laravel Sanctum's
- * personal_access_tokens table so tokens issued by either backend work:
+ * Staff bearer-token authentication (table personal_access_tokens):
  *
  *   plain token  = "<row id>|<40 random chars><crc32 of them, 8 hex>"
  *   stored token = sha256(everything after the "|")
@@ -14,7 +13,8 @@ import { now } from "./dates.ts";
 import { FAN_TOKEN_PREFIX } from "./fanAuth.ts";
 import { forbidden } from "./http.ts";
 
-const TOKENABLE_TYPE = "App\\Models\\User";
+/** Owner type of staff tokens (the table could hold tokens for other account types). */
+const TOKENABLE_TYPE = "user";
 const ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
 const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -94,7 +94,7 @@ export async function resolveUser(request: FastifyRequest) {
   await prisma.personalAccessToken.update({ where: { id: token.id }, data: { last_used_at: now() } });
 }
 
-/** preHandler for protected routes: 401 like Laravel's auth:sanctum. */
+/** preHandler for protected routes: 401 `{ message: "Unauthenticated." }` without a valid token. */
 export async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
   if (!request.user) return reply.code(401).send({ message: "Unauthenticated." });
 }

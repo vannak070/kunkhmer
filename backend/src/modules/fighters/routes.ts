@@ -20,10 +20,10 @@ import { dateOnly, iso, micro, now, toDate } from "../../lib/dates.ts";
 import { HttpError, deleted, idParam, isUuid, notFound, ok } from "../../lib/http.ts";
 import { inputOf } from "../../lib/input.ts";
 
-/** Soft-deleted fighters are invisible everywhere, as with Laravel's SoftDeletes. */
+/** Soft-deleted fighters are invisible everywhere. */
 export const NOT_DELETED = { deleted_at: null } satisfies Prisma.FighterWhereInput;
 
-/** A related fighter, or null if soft-deleted (Laravel's relations skipped those). */
+/** A related fighter, or null if soft-deleted. */
 export const visibleFighter = <F extends Fighter>(f: F | null | undefined): F | null => (f && !f.deleted_at ? f : null);
 
 type FighterWithClub = Fighter & { club: Club | null };
@@ -56,7 +56,7 @@ export function formatFighter(f: FighterWithClub) {
   };
 }
 
-/** Fighter as Laravel's toArray() serialized it, for nesting in other responses. */
+/** Fighter as a snake_case row, for nesting in other responses. */
 export function fighterArray(f: Fighter) {
   return {
     id: f.id,

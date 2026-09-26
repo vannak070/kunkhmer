@@ -43,12 +43,11 @@ describe("fighters CRUD", () => {
       record: "10-2-1",
       status: "Draft",
     });
-    // professionalStatus is checked separately below (the Laravel backend returned null here).
+    // professionalStatus is checked separately below.
     const { professionalStatus: _, ...rest } = res.body.data;
     expect(shapeOf({ ...res, body: { ...res.body, data: rest } })).toMatchSnapshot();
   });
 
-  // The Laravel backend never saved professional_status; fixed in the Node.js backend.
   it("saves professionalStatus on create and update", async () => {
     const created = await post("/fighters", { ...fullFighter(a.clubId), professionalStatus: "Amateur" }, a.officer.token);
     expect(created.body.data.professionalStatus).toBe("Amateur");

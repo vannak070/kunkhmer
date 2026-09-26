@@ -6,7 +6,7 @@
  *   PUT    /events/:id            Super Admin, KKF Officer, Organizer
  *   DELETE /events/:id            Super Admin
  *
- * Responses carry both Laravel's snake_case row (with organizer, broadcast
+ * Responses carry both the snake_case row (with organizer, broadcast
  * station, main sponsor and sponsors nested) and the camelCase extras the
  * frontends read (eventType, sponsorIds, organizer_name, ...).
  */
@@ -17,7 +17,7 @@ import type { Prisma } from "../../generated/prisma/client.ts";
 import { Role, STAFF, requireAuth, requireRole } from "../../lib/auth.ts";
 import { micro, now, toDate } from "../../lib/dates.ts";
 import { deleted, idParam, notFound, ok } from "../../lib/http.ts";
-import { type Input, inputOf, phpBool } from "../../lib/input.ts";
+import { type Input, inputOf, parseBool } from "../../lib/input.ts";
 import { userArray } from "../auth/routes.ts";
 import { sponsorArray, stationArray } from "../settings/routes.ts";
 
@@ -33,7 +33,7 @@ export const eventRelations = {
 type EventRow = Prisma.EventGetPayload<object>;
 type EventWithRelations = Prisma.EventGetPayload<{ include: typeof eventRelations }>;
 
-/** Event columns as Laravel's toArray() serialized them. */
+/** Event columns as a snake_case row. */
 export function eventArray(e: EventRow) {
   return {
     id: e.id,
@@ -86,15 +86,15 @@ function formatEvent(e: EventWithRelations) {
 }
 
 /**
- * Laravel returned only the attributes it had just set on create, so the
- * KKF approval fields (never set on create) were missing from that response.
+ * The create response leaves out the KKF approval fields (they are never
+ * set on create); the frontends rely on this shape.
  */
 function formatCreatedEvent(e: EventWithRelations) {
   const { kkf_approval_date: _date, kkf_approved_by: _by, ...rest } = formatEvent(e);
   return rest;
 }
 
-/** Replace the event's sponsor list (Laravel's sync()). */
+/** Replace the event's sponsor list. */
 function syncSponsors(eventId: string, sponsorIds: unknown): Prisma.PrismaPromise<unknown>[] {
   const ids = [...new Set(Array.isArray(sponsorIds) ? sponsorIds.map(String) : [])];
   return [
@@ -103,7 +103,7 @@ function syncSponsors(eventId: string, sponsorIds: unknown): Prisma.PrismaPromis
   ];
 }
 
-const bool = (input: Input, key: string) => phpBool(input.get(key));
+const bool = (input: Input, key: string) => parseBool(input.get(key));
 
 async function loadEvent(id: string) {
   const event = await prisma.event.findUnique({ where: { id }, include: eventRelations });

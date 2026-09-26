@@ -13,7 +13,7 @@ import type { NewsArticle, Prisma } from "../../generated/prisma/client.ts";
 import { STAFF, requireAuth, requireRole } from "../../lib/auth.ts";
 import { dateOnly, micro, now, toDate } from "../../lib/dates.ts";
 import { deleted, idParam, notFound, ok } from "../../lib/http.ts";
-import { inputOf, parseTags, phpBool } from "../../lib/input.ts";
+import { inputOf, parseTags, parseBool } from "../../lib/input.ts";
 
 export function newsArray(a: NewsArticle) {
   return {
@@ -69,7 +69,7 @@ export default async function newsRoutes(app: FastifyInstance) {
           category: input.get("category", "General"),
           featured_image: input.get("featuredImage"),
           tags: parseTags(input.get("tags")),
-          featured: phpBool(input.get("featured", false)),
+          featured: parseBool(input.get("featured", false)),
           views: 0,
           created_at: at,
           updated_at: at,
@@ -94,7 +94,7 @@ export default async function newsRoutes(app: FastifyInstance) {
         featuredImage: "featured_image",
       });
       if (input.has("publishDate")) data.publish_date = toDate(input.get("publishDate"));
-      if (input.has("featured")) data.featured = phpBool(input.get("featured"));
+      if (input.has("featured")) data.featured = parseBool(input.get("featured"));
       if (input.has("tags")) data.tags = parseTags(input.get("tags"));
       if (Object.keys(data).length > 0) data.updated_at = now();
 

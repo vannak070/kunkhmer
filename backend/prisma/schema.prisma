@@ -1,9 +1,7 @@
 // Kun Khmer database schema.
 //
-// Introspected from the existing Laravel/PostgreSQL database, then tidied:
-// PascalCase model names mapped onto the original tables, readable relation
-// names, and Laravel-internal tables (cache, jobs, sessions, migrations) left
-// out. Column names stay snake_case because the API still returns them.
+// PascalCase model names map onto snake_case tables. Column names stay
+// snake_case because the API returns them as they are.
 //
 // Timestamps are `timestamp(0) without time zone` holding UTC.
 
@@ -39,7 +37,7 @@ model User {
   @@map("users")
 }
 
-/// Bearer tokens, in the same format as Laravel Sanctum so existing logins keep working.
+/// Staff bearer tokens (see src/lib/auth.ts); tokenable_type is "user".
 model PersonalAccessToken {
   id             BigInt    @id @default(autoincrement())
   tokenable_type String    @db.VarChar(255)

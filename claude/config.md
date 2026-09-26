@@ -52,7 +52,7 @@ the untracked `docker-compose.override.yml`. Default login: `admin` / `admin123`
 
 - Every response is `{ success: true, data }` or `{ success: false, error }`;
   401 is `{ message: "Unauthenticated." }`.
-- Response shapes were copied exactly from the old Laravel API: some modules
+- Response shapes are fixed and the frontends depend on them: some modules
   return snake_case rows with nested relations (events, matches, champions,
   news, videos, settings, clubs), others camelCase (users, fighters), plus
   three date formats. The admin UI depends on these. **Do not "clean up" a
@@ -71,7 +71,7 @@ the untracked `docker-compose.override.yml`. Default login: `admin` / `admin123`
 - **Permissions on every write**: `requireRole(request, STAFF)` etc. from
   `lib/auth.ts`. Roles are strings: `Super Admin`, `KKF Officer`,
   `Organizer`, `Club/Gym`, `Referee`, `Judge`. `STAFF` = Super Admin + KKF Officer.
-- **Input** (`lib/input.ts`) follows Laravel semantics: strings trimmed, `""`
+- **Input** (`lib/input.ts`): strings trimmed, `""`
   becomes `null`; `has(k)` = present and not null; `get(k, fallback)`;
   `required(k)` throws 422; `present(k)` = key sent at all (use it when an
   empty value must clear a field).
@@ -93,13 +93,13 @@ the untracked `docker-compose.override.yml`. Default login: `admin` / `admin123`
   Edit the schema, run `npm run db:migrate`, commit the migration. Never edit
   an applied migration.
 - On every start `src/scripts/prepare-db.ts` creates the DB if missing,
-  baselines a Laravel-era database, applies migrations and seeds the admin.
+  baselines a database that predates migrations, applies migrations and seeds the admin.
 - Demo data lives in `backend/prisma/seed/demo-data.json`.
 
 ## Security
 
-- Passwords: bcrypt (`bcryptjs`, 12 rounds). Tokens: Sanctum-compatible bearer
-  tokens in `personal_access_tokens`; logging in revokes earlier tokens.
+- Passwords: bcrypt (`bcryptjs`, 12 rounds). Tokens: `"<id>|<secret>"` bearer
+  tokens, hashed in `personal_access_tokens`; logging in revokes earlier tokens.
 - Public-site fans are a separate account type with their own `kkf_` tokens
   (`lib/fanAuth.ts`); never mix them with staff auth — see `features/fan-accounts.md`.
 - Never commit `.env` files. Never log tokens or password hashes.

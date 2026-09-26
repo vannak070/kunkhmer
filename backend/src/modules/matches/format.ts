@@ -1,4 +1,4 @@
-/** Response shapes for batches (sub-events) and matches, as Laravel serialized them. */
+/** Response shapes for batches (sub-events) and matches. */
 import type { BoutResult, Match, Prisma, SubEvent } from "../../generated/prisma/client.ts";
 import { dateOnly, micro } from "../../lib/dates.ts";
 import { userArray } from "../auth/routes.ts";
@@ -28,8 +28,8 @@ export const subEventRelations = { event: true, createdBy: true } as const satis
 type SubEventWithRelations = Prisma.SubEventGetPayload<{ include: typeof subEventRelations }>;
 
 /**
- * Batch with its event and creator. Laravel serialized the createdBy relation
- * under "created_by", replacing the creator's id with the user object.
+ * Batch with its event and creator. Note: "created_by" holds the creator's
+ * user object here, not their id (the frontends rely on this).
  */
 export function formatSubEvent(s: SubEventWithRelations) {
   return {

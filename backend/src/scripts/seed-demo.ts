@@ -1,5 +1,5 @@
 /**
- * Loads the demo data set (what Laravel's TestSeeder created): clubs,
+ * Loads the demo data set: clubs,
  * fighters, users for every role, events, batches, matches, results and
  * championship titles. Data lives in prisma/seed/demo-data.json.
  *

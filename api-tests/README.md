@@ -1,9 +1,7 @@
 # API contract tests
 
 Black-box HTTP tests for the Kun Khmer API: behaviour, permissions and
-response formats of every endpoint. They were recorded against the original
-Laravel backend and used to verify the Node.js rewrite, so they pin exactly
-what the frontends rely on.
+response formats of every endpoint — exactly what the frontends rely on.
 
 ## Running
 

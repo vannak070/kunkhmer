@@ -19,7 +19,7 @@ the public site.
 | DELETE | `/settings/sponsors/:id` | Super Admin | removed from events' sponsor lists; main sponsor set to null |
 | … | `/settings/broadcast-stations[/:id]` | same rules | type default "Cable TV", reach "National" |
 
-`active` uses PHP-style casting: `false`, `0`, `"0"`, `""`, null are false.
+`active`: `false`, `0`, `"0"`, `""` and null are false; anything else is true.
 
 ## Frontend
 - Admin: `StrategicPartners.tsx` (`/home/strategic-partners/:partnerType`), `SystemSettings.tsx`.

@@ -23,7 +23,7 @@ Response: snake_case event row + nested `organizer`, `broadcast_station`,
 `broadcast_station_name/_logo_url`, `main_sponsor_name/_logo_url`,
 `sponsorIds`, `eventType`, `isTournament`, `tournamentFormat`,
 `tournamentWeightClass`, `expectedParticipants`. Create omits `kkf_*` fields
-(Laravel quirk, pinned by snapshots).
+(the frontends rely on this; pinned by snapshots).
 
 ## Data
 `events` (`event_type` single-day/multi-week, tournament fields,

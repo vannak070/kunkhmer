@@ -296,8 +296,6 @@ describe("title matches update the championship registry", () => {
     expect(c.defenses).toEqual([]);
   });
 
-  // The Laravel backend re-ran the championship logic on every submission,
-  // logging a second defense and double counting; fixed in the Node.js backend.
   it("does not double count when a title result is re-submitted", async () => {
     const holder = await newFighter();
     const championshipId = await newTitle(holder);

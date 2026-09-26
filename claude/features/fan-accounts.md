@@ -74,7 +74,7 @@ separation, profile, follows, notifications. 14/14 pass.
 
 ## Open questions / review notes
 - `notifyEmail` uses `Boolean(...)`, so the string `"false"` counts as true;
-  `phpBool()` from `lib/input.ts` would match the rest of the API.
+  `parseBool()` from `lib/input.ts` would match the rest of the API.
 - `notify_email` is stored but no email is sent yet — only in-app notifications.
 - Correcting a result to a different winner doesn't update the earlier
   `bout_result` notification (the unique index skips it).

@@ -4,10 +4,9 @@
  * fighters' W-L-D records — all in one transaction.
  *
  * The championship is only updated the first time a result is recorded for a
- * match. Laravel re-ran it on every submission, so re-saving a title result
- * logged a second defense and counted it twice. Correcting a title result to
- * a different winner does not reverse the title change; that needs an admin
- * correction.
+ * match, so re-saving a title result can't log a second defense or count it
+ * twice. Correcting a title result to a different winner does not reverse the
+ * title change; that needs an admin correction.
  */
 import { randomUUID } from "node:crypto";
 import { prisma } from "../../db.ts";

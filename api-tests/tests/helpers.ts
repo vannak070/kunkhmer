@@ -2,8 +2,7 @@
  * Shared helpers for the API contract tests.
  *
  * The tests only talk HTTP, so they don't depend on the backend's
- * implementation (they were first recorded against the old Laravel backend
- * and verified the Node.js rewrite). Response formats are pinned
+ * implementation. Response formats are pinned
  * with shape snapshots: every key, its JSON type and — for strings — its
  * format (uuid, date, datetime flavour). Values themselves are not pinned.
  */

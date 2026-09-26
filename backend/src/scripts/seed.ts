@@ -1,6 +1,6 @@
 /**
  * Creates the default Super Admin when the database has no users
- * (what Laravel's DefaultSeeder did). Change the password after first login,
+ * Change the password after first login,
  * or set SEED_ADMIN_PASSWORD before the first start.
  */
 import { randomUUID } from "node:crypto";

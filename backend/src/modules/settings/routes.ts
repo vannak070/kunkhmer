@@ -14,7 +14,7 @@ import type { BroadcastStation, Sponsor } from "../../generated/prisma/client.ts
 import { Role, STAFF, requireAuth, requireRole } from "../../lib/auth.ts";
 import { micro, now } from "../../lib/dates.ts";
 import { deleted, idParam, notFound, ok } from "../../lib/http.ts";
-import { type Input, inputOf, phpCastBool } from "../../lib/input.ts";
+import { type Input, inputOf, isTruthy } from "../../lib/input.ts";
 
 export function sponsorArray(s: Sponsor) {
   return {
@@ -60,9 +60,9 @@ const CONTACT_FIELDS = {
   websiteUrl: "website_url",
 };
 
-/** `active` is optional and PHP-cast to a boolean. */
+/** `active` is optional; any truthy value except "0" counts as true. */
 function activeFlag(input: Input, data: Record<string, unknown>, fallback?: boolean) {
-  if (input.has("active")) data.active = phpCastBool(input.get("active"));
+  if (input.has("active")) data.active = isTruthy(input.get("active"));
   else if (fallback !== undefined) data.active = fallback;
 }
 

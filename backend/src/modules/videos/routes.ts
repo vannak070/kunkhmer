@@ -55,7 +55,7 @@ function formatVideo(v: VideoWithRelations) {
   };
 }
 
-/** Laravel returned only the attributes it had set on create, so no deleted_at. */
+/** The create response has no deleted_at (its format predates soft deletes being returned). */
 function formatCreatedVideo(v: VideoWithRelations) {
   const { deleted_at: _, ...rest } = formatVideo(v);
   return rest;
@@ -124,7 +124,7 @@ export default async function videoRoutes(app: FastifyInstance) {
         status: "status",
         thumbnail: "thumbnail",
       });
-      // A present-but-empty link clears it (Laravel intended this but never could).
+      // A present-but-empty link ("" or null) clears it.
       for (const [key, column] of [["fighterId", "fighter_id"], ["clubId", "club_id"], ["matchId", "match_id"]] as const) {
         if (input.present(key)) data[column] = input.get(key);
       }

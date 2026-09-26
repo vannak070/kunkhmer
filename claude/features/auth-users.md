@@ -33,8 +33,8 @@ Staff sign in to the admin system; Super Admins manage user accounts and roles.
 User shape (camelCase): `id, username, fullName, email, role, clubId, status, lastLogin, createdAt`.
 
 ## Data
-`users` (bcrypt `password_hash`), `personal_access_tokens` (Sanctum format:
-token `"<id>|<secret>"`, stored as sha256 of the secret).
+`users` (bcrypt `password_hash`), `personal_access_tokens` (token
+`"<id>|<secret>"`, stored as sha256 of the secret; `tokenable_type` "user").
 
 ## Frontend
 - Admin `pages/Login.tsx` → `api.auth.login`; token + user in `localStorage`;

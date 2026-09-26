@@ -3,8 +3,9 @@
  *
  *   1. waits for PostgreSQL (and creates the database if it doesn't exist)
  *   2. RESET_DATABASE=true only: drops everything (used by the test service)
- *   3. a database created by the old Laravel backend already has the schema
- *      of migration 0_init, so that migration is marked as applied, not run
+ *   3. a database that already has the app's tables but no migration history
+ *      (created before Prisma managed the schema) gets 0_init marked as
+ *      applied, not run
  *   4. applies pending Prisma migrations
  *   5. seeds the default Super Admin when there are no users
  */
@@ -63,7 +64,7 @@ try {
   }
 
   if (!(await tableExists(client, "_prisma_migrations")) && (await tableExists(client, "users"))) {
-    console.log(`Existing Laravel database found: marking ${BASELINE} as applied`);
+    console.log(`Existing database without migration history: marking ${BASELINE} as applied`);
     prisma("migrate", "resolve", "--applied", BASELINE);
   }
 } finally {

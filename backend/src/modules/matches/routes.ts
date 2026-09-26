@@ -19,7 +19,7 @@ import type { Prisma } from "../../generated/prisma/client.ts";
 import { Role, STAFF, requireAuth, requireRole } from "../../lib/auth.ts";
 import { now, toDate } from "../../lib/dates.ts";
 import { HttpError, deleted, idParam, isUuid, notFound, ok } from "../../lib/http.ts";
-import { type Input, inputOf, phpBool } from "../../lib/input.ts";
+import { type Input, inputOf, parseBool } from "../../lib/input.ts";
 import { visibleFighter } from "../fighters/routes.ts";
 import { formatMatch, formatSubEvent, matchArray, matchRelations, subEventArray, subEventRelations } from "./format.ts";
 import { recordMatchResult } from "./results.ts";
@@ -64,7 +64,7 @@ function matchUpdate(input: Input): Prisma.MatchUncheckedUpdateInput {
     if (input.has(key)) data[column] = int(input.get(key))!;
   }
   for (const [key, column] of [["fighterAConfirmed", "fighter_a_confirmed"], ["fighterBConfirmed", "fighter_b_confirmed"], ["refereeConfirmed", "referee_confirmed"], ["isTitleMatch", "is_title_match"]] as const) {
-    if (input.has(key)) data[column] = phpBool(input.get(key));
+    if (input.has(key)) data[column] = parseBool(input.get(key));
   }
   if (input.has("gloveConfirmedDate")) data.glove_confirmed_date = toDate(input.get("gloveConfirmedDate"));
   return data;
@@ -185,7 +185,7 @@ export default async function matchRoutes(app: FastifyInstance) {
           club_b_response: input.get("clubBResponse", "pending"),
           referee_id: input.get("refereeId"),
           judge_ids: input.get("judgeIds", []),
-          is_title_match: input.has("isTitleMatch") ? phpBool(input.get("isTitleMatch")) : false,
+          is_title_match: input.has("isTitleMatch") ? parseBool(input.get("isTitleMatch")) : false,
           championship_id: input.get("championshipId"),
           sort_order: int(input.get("sortOrder", 0))!,
           created_at: at,

@@ -1,12 +1,11 @@
 /**
- * Date formatting matching what the Laravel API returned. Several formats are
- * in use and the frontends depend on them, so each serializer picks the one
- * Laravel produced for that field:
+ * Date formats used in API responses. Several are in use and the frontends
+ * depend on them, so each serializer uses the format that field has always had:
  *
- *   micro    2026-09-26T04:59:43.000000Z   model timestamps and datetime/date casts
- *   iso      2026-09-26T04:59:43+00:00     Carbon::toIso8601String()
- *   sql      2026-09-26 04:59:43           timestamp column without a cast
- *   dateOnly 2026-09-26                    date column without a cast
+ *   micro    2026-09-26T04:59:43.000000Z   row timestamps and most date/datetime fields
+ *   iso      2026-09-26T04:59:43+00:00     camelCase responses (users, fighters, fans)
+ *   sql      2026-09-26 04:59:43           a few nested fields (e.g. a user's last_login)
+ *   dateOnly 2026-09-26                    plain dates (date of birth, publish date)
  */
 
 const pad = (n: number, width = 2) => String(n).padStart(width, "0");
@@ -25,7 +24,7 @@ export const iso = (d: D) => (d ? `${parts(d).date}T${parts(d).time}+00:00` : nu
 export const sql = (d: D) => (d ? `${parts(d).date} ${parts(d).time}` : null);
 export const dateOnly = (d: D) => (d ? parts(d).date : null);
 
-/** Current time truncated to whole seconds, as Laravel stores it. */
+/** Current time truncated to whole seconds (timestamp columns have no fractions). */
 export const now = () => new Date(Math.floor(Date.now() / 1000) * 1000);
 
 /** Parse a date or datetime string from input the way the DB column would store it. */

@@ -45,7 +45,7 @@ export function formatUser(user: User) {
   };
 }
 
-/** User as Laravel's toArray() serialized it (for nesting), without the password hash. */
+/** User as a snake_case row (for nesting), without the password hash. */
 export function userArray(user: User) {
   return {
     id: user.id,
