@@ -550,16 +550,6 @@ export function EventDetailNew() {
 
 
 
-  const handlePublish = async () => {
-    try {
-      await api.events.update(id!, { status: "Published" });
-      toast.success("Event published — fans can now see it");
-      loadData();
-    } catch (err: any) {
-      toast.error(err?.message || "Could not publish the event.");
-    }
-  };
-
   const handleCheckAction = (checkId: number) => {
     if (checkId === 4) {
       setShowAddBatchModal(true);
@@ -774,7 +764,7 @@ export function EventDetailNew() {
         canEdit={Boolean(canEditEvent)}
         onEditDetails={handleEditEvent}
         onAddFightCard={() => setShowAddBatchModal(true)}
-        onPublish={handlePublish}
+        onChanged={loadData}
       />
 
       {/* Inline Action Forms */}

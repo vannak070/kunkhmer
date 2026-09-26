@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress |
+| **Status** | Done (not committed) |
 | **Jira** | n/a |
 | **Feature** | fighters.md, events.md, clubs.md, auth-users.md |
 | **Requested by** | vannak070 |
@@ -54,9 +54,37 @@ Admin
 - Public site: fewer records visible (only approved events / verified fighters).
 
 ## Acceptance criteria
-- [ ] Contract tests for every new endpoint and rule; full suite passes with `CI=true`.
-- [ ] Club can add a fighter; it's hidden publicly until KKF verifies it.
-- [ ] Organizer submits → staff approves or sends back → organizer publishes.
-- [ ] Admin build passes; browser check desktop + phone.
+- [x] Contract tests for every new endpoint and rule; full suite passes with `CI=true`.
+- [x] Club can add a fighter; it's hidden publicly until KKF verifies it.
+- [x] Organizer submits → staff approves or sends back → organizer publishes.
+- [x] Admin build passes; browser check desktop + phone.
 
 ## Log
+
+### 2026-09-26
+- Migration `20260927000003_approvals_review_notes` (renamed from a 2026-09-26
+  timestamp so it sorts after the existing migrations; dev DB record updated):
+  `fighters.review_note`, `events.kkf_comment`.
+- Backend: fighters reject + club-only edits + resubmission + public hiding;
+  match create blocks unverified fighters; events submit/approve/reject,
+  organizer ownership and status rules, public hiding of unpublished events and
+  their fight cards/bouts; AI tools use the same public filters.
+- Tests: 13 new cases (fighter verification, event approval, matching rules);
+  existing tests now create Active fighters / Published events where they need
+  public or matchable data. Snapshots: additions only (173 lines; existing
+  entries gained `kkf_comment` / `reviewNote`). `CI=true` 168/168; typecheck clean.
+- Admin: `components/FighterReview.tsx` (Verify / Send back dialog), Fighters
+  queue + filters, FighterDetail banners, AddFighter club mode (club locked,
+  status hidden, no stock-photo fallback — saves no image instead),
+  EventNextSteps approval step + send-back dialog + comment banner, dashboard
+  role-aware to-dos (events to approve / sent back / ready to publish, fighters
+  to verify, club: fighters sent back), club UI gets `fighters.create/edit`.
+- Verified end to end in the browser with temporary accounts (deleted after):
+  club fighter → Draft in own club, hidden publicly → sent back with reason →
+  club edit re-submits → verified from the profile → public. Organizer event →
+  Draft → submit → sent back with comment (banner shown) → organizer can't
+  publish early (422) → re-submit → approved (who/when recorded, still hidden)
+  → organizer publishes → public. Club Add Fighter: club locked, status hidden.
+- Known follow-ups: clubs still see Media / Partners / System Settings in the
+  menu (Phase 4 roles); FighterDetail shows a "The Warrior" placeholder alias.
+

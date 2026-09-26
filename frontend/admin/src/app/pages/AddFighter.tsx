@@ -36,6 +36,11 @@ export function AddFighter() {
 
   const isKunKhmer = location.pathname.includes("/kunkhmer");
   const isEditMode = !!id;
+  // Club/Gym accounts register fighters for their own club; KKF verifies them afterwards.
+  const me = api.auth.getCurrentUser();
+  const isClubUser = me?.role === "Club/Gym";
+  const isStaff = me?.role === "Super Admin" || me?.role === "KKF Officer";
+  const [reviewNote, setReviewNote] = useState<string | null>(null);
 
   const [clubs, setClubs] = useState<any[]>([]);
   const [fighter, setFighter] = useState({
@@ -65,6 +70,10 @@ export function AddFighter() {
       try {
         const list = await api.clubs.list();
         setClubs(list);
+        if (isClubUser && me?.clubId) {
+          const own = list.find((c: any) => c.id === me.clubId);
+          setFighter((p) => ({ ...p, clubId: me.clubId, gym: own?.name ?? p.gym }));
+        }
       } catch (err: any) {
         toast.error("Failed to load clubs: " + err.message);
       }
@@ -108,6 +117,7 @@ export function AddFighter() {
               weightClass: f.currentWeight ? getWeightRangeCategory(parseFloat(f.currentWeight)) : (f.current_weight ? getWeightRangeCategory(parseFloat(f.current_weight)) : ""),
             });
             if (f.image) setPhotoPreview(f.image);
+            setReviewNote(f.status === "Rejected" ? f.reviewNote ?? null : null);
           }
         } catch (err: any) {
           toast.error("Failed to load fighter data: " + err.message);
@@ -203,7 +213,8 @@ export function AddFighter() {
     if (!fighter.termsAccepted || !fighter.consentCompete || !fighter.medicalFitness) {
       toast.error("Please accept all legal & compliance terms before saving."); return;
     }
-    const finalImage = fighter.image || "https://images.unsplash.com/photo-1601039834001-7d32a613c60d?auto=format&fit=crop&q=80&w=600";
+    // No photo stays empty — never a stock photo of someone else.
+    const finalImage = fighter.image || null;
     const payload = {
       name: fighter.nameEN,
       nameKhmer: fighter.nameKH,
@@ -219,7 +230,8 @@ export function AddFighter() {
       grade: fighter.grade as 'A' | 'B' | 'C' | 'D',
       image: finalImage,
       record: fighter.record,
-      status: fighter.status
+      // Only KKF staff set status; everyone else's fighters wait for verification.
+      ...(isStaff ? { status: fighter.status } : {}),
     };
 
     try {
@@ -228,8 +240,12 @@ export function AddFighter() {
         toast.success("Fighter updated successfully!");
         navigate(`/home/fighters/${id}`);
       } else {
-        await api.fighters.create(payload);
-        toast.success("Fighter registered successfully!");
+        const created = await api.fighters.create(payload);
+        if (created?.status && created.status !== "Active") {
+          toast.success("Fighter registered", { description: "KKF will verify this fighter before they can be matched." });
+        } else {
+          toast.success("Fighter registered successfully!");
+        }
         navigate("/home/fighters");
       }
     } catch (err: any) {
@@ -738,6 +754,8 @@ export function AddFighter() {
                   <div className="relative">
                     <select
                       value={fighter.clubId}
+                      disabled={isClubUser}
+                      title={isClubUser ? "Fighters you register always belong to your club" : undefined}
                       onChange={(e) => {
                         const club = clubs.find((c) => c.id === e.target.value);
                         setFighter((p) => ({
@@ -983,7 +1001,22 @@ export function AddFighter() {
               </div>
             </div>
 
-            {/* Status */}
+            {/* Status (KKF staff only) */}
+            {!isStaff ? (
+              <div className="card-premium space-y-2">
+                <h3 className="text-sm font-bold text-foreground">KKF verification</h3>
+                {reviewNote ? (
+                  <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+                    <strong>KKF sent this fighter back:</strong> {reviewNote}
+                    <br />Fix the details and save — it goes back to KKF automatically.
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-600">
+                    {fighter.status === "Active" ? "Verified by KKF." : "After you save, KKF checks this fighter. They can't be matched until they're verified."}
+                  </p>
+                )}
+              </div>
+            ) : (
             <div className="card-premium">
               <h3 className="text-sm font-bold text-foreground mb-3">Status</h3>
               <div className="relative">
@@ -993,10 +1026,12 @@ export function AddFighter() {
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
                   <option value="Suspended">Suspended</option>
+                  <option value="Rejected">Sent back</option>
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               </div>
             </div>
+            )}
 
             {/* Form Actions */}
             <div className="bg-white rounded-xl border border-border p-4 shadow-sm flex flex-col gap-3">

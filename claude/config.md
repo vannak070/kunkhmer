@@ -132,8 +132,7 @@ and phone width in both languages.
   officials list for AssignOfficials is localStorage. Users/Profile moved to the
   API and the other mock-only pages were removed (2026-09-26, see
   `updates/admin-phase2.md`). UI says "Fight card"; code/API still say batch / sub_event.
-- Fighter create/edit is allowed for any logged-in role (status and club are
-  protected); no login rate limiting.
+- No login rate limiting. (Fighter edits are now STAFF + own-club only.)
 - Correcting a title match result to a different winner doesn't reverse the
   title change (the championship updates on the first result only).
 - `utils/api.ts` and parts of `data/` are duplicated between the two

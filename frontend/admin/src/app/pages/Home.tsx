@@ -4,16 +4,20 @@
  */
 import { useState } from "react";
 import { Link } from "react-router";
-import { toast } from "sonner";
 import {
-  CalendarDays, CalendarPlus, CheckCircle2, ChevronRight, ClipboardList, FilePenLine, Gavel, Layers, Newspaper,
+  CalendarCheck, CalendarDays, CalendarPlus, Megaphone, MessageSquareWarning, ChevronRight, ClipboardList, FilePenLine, Gavel, Layers, Newspaper,
   PartyPopper, RefreshCw, ShieldCheck, Trophy, UserCheck, UserPlus, Users,
 } from "lucide-react";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { type TodoItem, type TodoKind, useAdminOverview } from "../hooks/useAdminOverview";
+import { FighterReviewActions } from "../components/FighterReview";
 
 const GROUPS: { kind: TodoKind; title: string; hint: string; icon: typeof Gavel; tone: string; action: string }[] = [
+  { kind: "eventApproval", title: "Events to approve", hint: "Organizers submitted these events. Approve them, or send them back with a comment.", icon: CalendarCheck, tone: "text-violet-700 bg-violet-50", action: "Review" },
+  { kind: "eventSentBack", title: "Events sent back", hint: "KKF asked for changes. Fix them and submit again.", icon: MessageSquareWarning, tone: "text-amber-700 bg-amber-50", action: "Open event" },
+  { kind: "readyToPublish", title: "Ready to publish", hint: "Approved by KKF but not visible to fans yet.", icon: Megaphone, tone: "text-emerald-700 bg-emerald-50", action: "Publish" },
+  { kind: "fighterSentBack", title: "Fighters sent back", hint: "KKF asked for changes to these profiles. Edit and save to send them again.", icon: MessageSquareWarning, tone: "text-red-700 bg-red-50", action: "Fix profile" },
   { kind: "result", title: "Results to record", hint: "Bouts that already happened but have no result. Fans and rankings wait for these.", icon: Gavel, tone: "text-red-600 bg-red-50", action: "Record result" },
   { kind: "fighter", title: "Fighters to verify", hint: "Registered fighters waiting for KKF approval before they can be matched.", icon: UserCheck, tone: "text-amber-700 bg-amber-50", action: "Review" },
   { kind: "draftEvent", title: "Draft events", hint: "Events fans can't see yet. Finish the details and publish them.", icon: FilePenLine, tone: "text-violet-700 bg-violet-50", action: "Open event" },
@@ -32,23 +36,9 @@ function TodoGroup({ group, items, canApprove, onApproved }: {
   group: (typeof GROUPS)[number]; items: TodoItem[]; canApprove: boolean; onApproved: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [busy, setBusy] = useState<string | null>(null);
   const shown = expanded ? items : items.slice(0, 4);
   const Icon = group.icon;
 
-  const approve = async (t: TodoItem) => {
-    if (!t.fighterId) return;
-    setBusy(t.id);
-    try {
-      await api.fighters.verify(t.fighterId);
-      toast.success(`${t.title} is verified and can now be matched`);
-      onApproved();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not verify this fighter.");
-    } finally {
-      setBusy(null);
-    }
-  };
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
@@ -66,10 +56,8 @@ function TodoGroup({ group, items, canApprove, onApproved }: {
               <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
               <p className="text-xs text-slate-500 truncate">{t.detail}</p>
             </div>
-            {t.kind === "fighter" && canApprove && (
-              <button type="button" disabled={busy === t.id} onClick={() => approve(t)} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold shrink-0">
-                <CheckCircle2 className="w-4 h-4" aria-hidden /> {busy === t.id ? "Verifying…" : "Verify"}
-              </button>
+            {t.kind === "fighter" && canApprove && t.fighterId && (
+              <FighterReviewActions compact fighter={{ id: t.fighterId, name: t.title }} onDone={onApproved} />
             )}
             <Link to={t.href} className="inline-flex items-center gap-1 h-9 px-3 rounded-lg border border-slate-200 hover:border-primary text-sm font-medium text-slate-700 hover:text-primary shrink-0">
               {group.action} <ChevronRight className="w-4 h-4" aria-hidden />
@@ -92,9 +80,10 @@ export function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const me = api.auth.getCurrentUser();
   const canApprove = me?.role === "Super Admin" || me?.role === "KKF Officer";
+  const isClub = me?.role === "Club/Gym";
 
   const quick = [
-    { label: "Add a fighter", href: "/home/fighters/kunkhmer/new", icon: UserPlus, show: permissions.hasPermission("fighters.create") },
+    { label: isClub ? "Register a fighter" : "Add a fighter", href: "/home/fighters/kunkhmer/new", icon: UserPlus, show: permissions.hasPermission("fighters.create") },
     { label: "Create an event", href: "/home/events/new", icon: CalendarPlus, show: permissions.hasPermission("events.create") },
     { label: "Create a fight card", href: "/home/matches/new", icon: Layers, show: permissions.hasPermission("events.create") },
     { label: "Write news", href: "/home/media/news", icon: Newspaper, show: canApprove },

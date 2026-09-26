@@ -154,6 +154,11 @@ export const api = {
       const res = await request(`/fighters/${id}/verify`, { method: "POST" });
       return res.data;
     },
+    /** Send back to the club with a reason (status Rejected). */
+    async reject(id: string, reason: string) {
+      const res = await request(`/fighters/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) });
+      return res.data;
+    },
     async delete(id: string) {
       return request(`/fighters/${id}`, { method: "DELETE" });
     }
@@ -214,6 +219,21 @@ export const api = {
     },
     async delete(id: string) {
       return request(`/events/${id}`, { method: "DELETE" });
+    },
+    /** Organizer / staff: Draft → Pending KKF Approval. */
+    async submit(id: string) {
+      const res = await request(`/events/${id}/submit`, { method: "POST" });
+      return res.data;
+    },
+    /** KKF staff: Pending → Approved. */
+    async approve(id: string) {
+      const res = await request(`/events/${id}/approve`, { method: "POST" });
+      return res.data;
+    },
+    /** KKF staff: Pending → Draft with a comment for the organizer. */
+    async reject(id: string, comment: string) {
+      const res = await request(`/events/${id}/reject`, { method: "POST", body: JSON.stringify({ comment }) });
+      return res.data;
     }
   },
 

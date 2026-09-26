@@ -10,6 +10,7 @@ import unknownFighterImg from "figma:asset/b9f2c3f9c8bd58ed74f9c92de40fb83809a13
 import { usePermissions } from "../hooks/usePermissions";
 import { getWeightRangeCategory } from "../data/masterData";
 import { toast } from "sonner";
+import { FighterReviewActions, canReviewFighters, isWaiting } from "../components/FighterReview";
 
 const tabs = [
   { id: "overview", label: "Overview", icon: User },
@@ -195,6 +196,26 @@ export function FighterDetail() {
           </Link>
         )}
       </header>
+
+      {/* KKF verification */}
+      {isWaiting(fighter.status) && (
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 flex flex-col md:flex-row md:items-center gap-4">
+          <div className="flex-1">
+            <p className="font-semibold text-amber-900">Waiting for KKF verification</p>
+            <p className="text-sm text-amber-800">This fighter can't be matched or shown on the fan website until KKF verifies them.</p>
+          </div>
+          {canReviewFighters() && (
+            <FighterReviewActions fighter={fighter} onDone={(u) => setFighter((f: any) => ({ ...f, status: u.status, reviewNote: u.reviewNote, verifiedDate: u.verifiedDate }))} />
+          )}
+        </div>
+      )}
+      {fighter.status === "Rejected" && (
+        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5">
+          <p className="font-semibold text-red-900">Sent back to the club</p>
+          <p className="text-sm text-red-800 mt-1">{fighter.reviewNote || "No reason given."}</p>
+          <p className="text-xs text-red-700 mt-2">When the club edits and saves the profile, it comes back to KKF for verification.</p>
+        </div>
+      )}
 
       {/* Hero Section */}
       <div className="relative min-h-[300px] md:h-80 rounded-2xl overflow-hidden border border-border/60 shadow-lg bg-gradient-to-br from-[#0A3D91] via-[#0847A8] to-slate-950 flex flex-col justify-end p-6 md:p-8 mb-6">

@@ -14,8 +14,11 @@ venue, broadcaster and sponsors; KKF approves them.
 | Method | Path | Who | Notes |
 |---|---|---|---|
 | GET | `/events`, `/events/:id` | public | newest date first |
-| POST | `/events` | STAFF, Organizer | requires name, date, location; creator becomes organizer; 201 |
-| PUT | `/events/:id` | STAFF, Organizer | `sponsorIds` replaces the sponsor list |
+| POST | `/events` | STAFF, Organizer | requires name, date, location; creator becomes organizer; Organizer events always start Draft; 201 |
+| PUT | `/events/:id` | STAFF; Organizer own events only | `sponsorIds` replaces the sponsor list; Organizer may set status only to Published (once Approved) or Cancelled (422 otherwise) |
+| POST | `/events/:id/submit` | Organizer (own), STAFF | Draft → Pending KKF Approval; clears `kkf_comment` |
+| POST | `/events/:id/approve` | STAFF | Pending → Approved; sets `kkf_approval_date` / `kkf_approved_by` |
+| POST | `/events/:id/reject` | STAFF | `{comment}` required; Pending → Draft with `kkf_comment` |
 | DELETE | `/events/:id` | Super Admin | cascades to batches and matches |
 
 Response: snake_case event row + nested `organizer`, `broadcast_station`,
@@ -38,6 +41,14 @@ Event + sponsor list are saved in one transaction.
 ## Tests
 `api-tests/tests/events.test.ts`
 
+## Approval flow (Phase 3a, 2026-09-26)
+Draft → (submit) Pending KKF Approval → (approve) Approved → (publish) Published; KKF can send a
+pending event back to Draft with a comment. KKF staff may publish directly. Without a staff
+token, `GET /events`, `/events/:id`, fight cards and bouts hide Draft / Pending / Approved
+events. Admin: the event page "Next steps" step "Approve & publish" shows Submit / Approve /
+Send back / Publish by role, plus the KKF comment banner; dashboard lists events to approve,
+sent back, and ready to publish.
+
 ## Open questions / gaps
-- No API for KKF approval (`kkf_approval_date`/`kkf_approved_by`); the admin
-  workflow pages (`KKFWorkflow*`) use mock data.
+- Approval history keeps only the latest approval and the latest send-back
+  comment (no full audit trail).

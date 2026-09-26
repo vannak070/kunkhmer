@@ -267,6 +267,9 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'matches.accept',
     'matches.reject',
     'fighters.view',
+    // Register and edit their own club's fighters (KKF verifies them).
+    'fighters.create',
+    'fighters.edit',
     'clubs.view',
   ],
 };

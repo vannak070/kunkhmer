@@ -8,6 +8,7 @@ import type { FighterStatus } from "../data/fighterStatuses";
 import unknownFighterImg from "figma:asset/b9f2c3f9c8bd58ed74f9c92de40fb83809a138b3.png";
 import { WEIGHT_RANGES, getWeightRangeCategory } from "../data/masterData";
 import { toast } from "sonner";
+import { FighterReviewActions, canReviewFighters, isWaiting } from "../components/FighterReview";
 
 // Helper function to derive advanced fighter status based on matches
 const getFighterStatus = (fighter: any, matches: any[] = []) => {
@@ -57,7 +58,9 @@ export function Fighters() {
   const isForeigner = location.pathname.includes('/foreigner');
   
   // Dropdown Filter States
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  // ?status=waiting (e.g. from the dashboard) opens the verification queue.
+  const [filterStatus, setFilterStatus] = useState<string>(() => (new URLSearchParams(location.search).get('status') === 'waiting' ? 'waiting' : 'all'));
+  const reviewer = canReviewFighters();
   const [filterAvailability, setFilterAvailability] = useState<string>('all');
   const [filterWeightRange, setFilterWeightRange] = useState<string>('all');
 
@@ -116,7 +119,7 @@ export function Fighters() {
                           aliasStr.includes(searchStr) ||
                           gymStr.includes(searchStr);
 
-    const matchesStatus = filterStatus === 'all' || f.status === filterStatus;
+    const matchesStatus = filterStatus === 'all' || (filterStatus === 'waiting' ? isWaiting(f.status) : f.status === filterStatus);
     const matchesWeightRange = filterWeightRange === 'all' || getWeightRangeCategory(f.weight) === filterWeightRange;
 
     // Availability filter
@@ -180,6 +183,22 @@ export function Fighters() {
         )}
       </header>
 
+      {/* Verification queue banner */}
+      {(() => {
+        const waiting = fighters.filter((f) => isWaiting(f.status)).length;
+        if (!waiting || filterStatus === 'waiting') return null;
+        return (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3">
+            <p className="text-sm font-medium text-amber-900">
+              {waiting} {waiting === 1 ? "fighter is" : "fighters are"} waiting for KKF verification{reviewer ? "" : " — they can't be matched until KKF verifies them"}.
+            </p>
+            <button type="button" onClick={() => setFilterStatus('waiting')} className="h-9 px-4 rounded-lg bg-white border border-amber-300 text-sm font-semibold text-amber-900 hover:bg-amber-100">
+              Show {waiting === 1 ? "it" : "them"}
+            </button>
+          </div>
+        );
+      })()}
+
       {/* Toolbar with Dropdown Filters */}
       <div className="flex flex-col gap-4 relative z-10">
         {/* Search Bar */}
@@ -209,9 +228,9 @@ export function Fighters() {
                 className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm text-foreground font-medium appearance-none focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm cursor-pointer hover:border-slate-300 transition-all"
               >
                 <option value="all">All Status</option>
+                <option value="waiting">Waiting for verification</option>
+                <option value="Rejected">Sent back to club</option>
                 <option value="Active">Active</option>
-                <option value="Draft">Draft</option>
-                <option value="Pending KKF Verification">Pending KKF Verification</option>
                 <option value="Injured">Injured</option>
                 <option value="Suspended">Suspended</option>
                 <option value="Inactive">Inactive</option>
@@ -390,6 +409,25 @@ export function Fighters() {
                       <span className="text-xs font-semibold line-clamp-1">{fighter.gym}</span>
                     </div>
                   </div>
+
+                  {/* KKF verification */}
+                  {isWaiting(fighter.status) && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 space-y-2">
+                      <p className="text-xs font-semibold text-amber-900">Waiting for KKF verification</p>
+                      {reviewer && (
+                        <FighterReviewActions
+                          compact
+                          fighter={fighter}
+                          onDone={(u) => setFighters((list) => list.map((x) => (x.id === fighter.id ? { ...x, status: u.status, reviewNote: u.reviewNote } : x)))}
+                        />
+                      )}
+                    </div>
+                  )}
+                  {fighter.status === "Rejected" && (
+                    <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+                      <strong>Sent back:</strong> {fighter.reviewNote || "no reason given"}
+                    </p>
+                  )}
 
                   {/* Style Chip */}
                   {fighter.style && (
