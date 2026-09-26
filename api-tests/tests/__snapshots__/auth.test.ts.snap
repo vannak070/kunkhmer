@@ -72,6 +72,26 @@ exports[`POST /users/login > returns a token and the user on valid credentials 1
 }
 `;
 
+exports[`own profile (PUT /users/me, PUT /users/me/password) > lets any signed-in user edit their own name and email 1`] = `
+{
+  "body": {
+    "data": {
+      "clubId": "null",
+      "createdAt": "datetime(+00:00)",
+      "email": "string",
+      "fullName": "string",
+      "id": "uuid",
+      "lastLogin": "datetime(+00:00)",
+      "role": "string",
+      "status": "string",
+      "username": "string",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
 exports[`user management as Super Admin > creates, reads, updates and deletes a user > create 1`] = `
 {
   "body": {

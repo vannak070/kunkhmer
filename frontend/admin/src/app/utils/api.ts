@@ -59,9 +59,29 @@ export const api = {
       }
       return res.data;
     },
-    logout() {
+    /** Ends the session on the server (best effort), then clears it locally. */
+    async logout() {
+      try {
+        if (localStorage.getItem("token")) await request("/users/logout", { method: "POST" });
+      } catch {
+        // Already expired or offline: clearing locally is enough.
+      }
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+    },
+    async me() {
+      const res = await request("/users/me");
+      localStorage.setItem("user", JSON.stringify(res.data));
+      return res.data;
+    },
+    /** Edit your own name and email. */
+    async updateMe(input: { fullName?: string; email?: string }) {
+      const res = await request("/users/me", { method: "PUT", body: JSON.stringify(input) });
+      localStorage.setItem("user", JSON.stringify(res.data));
+      return res.data;
+    },
+    async changePassword(currentPassword: string, newPassword: string) {
+      return request("/users/me/password", { method: "PUT", body: JSON.stringify({ currentPassword, newPassword }) });
     },
     getCurrentUser() {
       const userStr = localStorage.getItem("user");

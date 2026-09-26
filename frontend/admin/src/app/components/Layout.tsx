@@ -1,281 +1,276 @@
-import { Home, CalendarDays, ShieldAlert, Dumbbell, Gavel, Award, LineChart, ChevronDown, Flag, Globe, Radio, DollarSign, UserCog, Shield, LogOut, User as UserIcon, ClipboardCheck, ShieldCheck, Settings, Box, Building2, Users, FileText, Package, ShoppingBag, Tag, Newspaper, Video, Search, Bell } from "lucide-react";
+import { Home, CalendarDays, Dumbbell, ChevronDown, Shield, LogOut, User as UserIcon, ClipboardCheck, Settings, Building2, Users, FileText, Newspaper, Search, Bell, Handshake, Menu, X } from "lucide-react";
 import { Outlet, NavLink, useLocation, useNavigate, Link } from "react-router";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useState, useEffect } from "react";
 import { usePermissions } from "../hooks/usePermissions";
-import { logoutUser } from "../data/users";
+import { api } from "../utils/api";
 import logoImg from "../../assets/modern_logo.png";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-function EmojiIcon({ emoji, className }: { emoji: string; className?: string }) {
-  return (
-    <span 
-      className={cn("inline-flex items-center justify-center grayscale brightness-200", className)} 
-      style={{ fontSize: '1.25rem', lineHeight: '1' }}
-    >
-      {emoji}
-    </span>
-  );
+type NavIcon = typeof Home;
+interface NavItem {
+  icon: NavIcon;
+  label: string;
+  path: string;
+  permission: string | null;
+  submenu?: { label: string; path: string; permission: string | null }[];
 }
 
-const navItems = [
-  { icon: Home, label: "Dashboard", path: "/home", permission: null },
-  { 
-    emoji: "🏛️",
-    label: "Clubs", 
-    path: "/home/clubs",
-    permission: "fighters.view"
+/** Menu grouped by job, so staff can find things quickly. Paths and permissions are unchanged. */
+const navGroups: { title: string | null; items: NavItem[] }[] = [
+  {
+    title: null,
+    items: [{ icon: Home, label: "Dashboard", path: "/home", permission: null }],
   },
   {
-    emoji: "🤝",
-    label: "Strategic Partners",
-    path: "/home/strategic-partners",
-    permission: null,
-    submenu: [
-      { emoji: "📺", label: "Broadcasters", path: "/home/strategic-partners/broadcasters", permission: null },
-      { emoji: "🏆", label: "Sponsors", path: "/home/strategic-partners/sponsors", permission: null }
-    ]
+    title: "Competition",
+    items: [
+      {
+        icon: CalendarDays,
+        label: "Program",
+        path: "/home/program",
+        permission: "events.view",
+        submenu: [
+          { label: "Overview", path: "/home/program?tab=overview", permission: "events.view" },
+          { label: "Events", path: "/home/program?tab=events", permission: "events.view" },
+          { label: "Matches", path: "/home/program?tab=matches", permission: "events.view" },
+          { label: "Champions", path: "/home/program?tab=champions", permission: "events.view" },
+        ],
+      },
+      {
+        icon: Dumbbell,
+        label: "Fighters",
+        path: "/home/fighters",
+        permission: "fighters.view",
+        submenu: [
+          { label: "Kun Khmer", path: "/home/fighters/kunkhmer", permission: "fighters.view" },
+          { label: "Foreigner", path: "/home/fighters/foreigner", permission: "fighters.view" },
+        ],
+      },
+      { icon: Building2, label: "Clubs", path: "/home/clubs", permission: "fighters.view" },
+      { icon: ClipboardCheck, label: "Match Proposals", path: "/home/match-proposals", permission: "matches.view_proposals" },
+    ],
   },
-  { 
-    emoji: "🧑‍🤝‍🧑",
-    label: "Fighters", 
-    path: "/home/fighters",
-    permission: "fighters.view",
-    submenu: [
-      { icon: Flag, label: "Kun Khmer", path: "/home/fighters/kunkhmer", permission: "fighters.view" },
-      { icon: Globe, label: "Foreigner", path: "/home/fighters/foreigner", permission: "fighters.view" }
-    ]
-  },
-  { 
-    emoji: "🗓️",
-    label: "Program", 
-    path: "/home/program",
-    permission: "events.view",
-    submenu: [
-      { emoji: "📊", label: "Overview", path: "/home/program?tab=overview", permission: "events.view" },
-      { emoji: "🎟️", label: "Events", path: "/home/program?tab=events", permission: "events.view" },
-      { emoji: "⚔️", label: "Matches", path: "/home/program?tab=matches", permission: "events.view" },
-      { emoji: "🏆", label: "Champions", path: "/home/program?tab=champions", permission: "events.view" }
-    ]
-  },
-  { icon: ClipboardCheck, label: "Match Proposals", path: "/home/match-proposals", permission: "matches.view_proposals" },
-  { icon: Shield, label: "KKF Officers", path: "/home/kkf-officers", permission: "officials.assign" },
   {
-    emoji: "📰",
-    label: "Media",
-    path: "/home/media",
-    permission: null,
-    submenu: [
-      { icon: Newspaper, label: "News", path: "/home/media/news", permission: null },
-      { icon: Video, label: "Video", path: "/home/media/video", permission: null }
-    ]
+    title: "Content & partners",
+    items: [
+      {
+        icon: Newspaper,
+        label: "Media",
+        path: "/home/media",
+        permission: null,
+        submenu: [
+          { label: "News", path: "/home/media/news", permission: null },
+          { label: "Video", path: "/home/media/video", permission: null },
+        ],
+      },
+      {
+        icon: Handshake,
+        label: "Strategic Partners",
+        path: "/home/strategic-partners",
+        permission: null,
+        submenu: [
+          { label: "Broadcasters", path: "/home/strategic-partners/broadcasters", permission: null },
+          { label: "Sponsors", path: "/home/strategic-partners/sponsors", permission: null },
+        ],
+      },
+    ],
   },
-  { icon: Users, label: "Users", path: "/home/user-management", permission: "users.view" },
-  { icon: FileText, label: "Process Flow", path: "/home/process-flow", permission: null },
-  { icon: Settings, label: "System Settings", path: "/home/settings", permission: null },
+  {
+    title: "Administration",
+    items: [
+      { icon: Users, label: "Users", path: "/home/user-management", permission: "users.view" },
+      { icon: Shield, label: "KKF Officers", path: "/home/kkf-officers", permission: "officials.assign" },
+      { icon: Settings, label: "System Settings", path: "/home/settings", permission: null },
+      { icon: FileText, label: "Process Flow", path: "/home/process-flow", permission: null },
+    ],
+  },
 ];
+
+const navItems = navGroups.flatMap((g) => g.items);
+
+/** Account role as the API names it ("Super Admin", "KKF Officer", ...). */
+const apiRole = () => (api.auth.getCurrentUser()?.role as string | undefined) ?? "";
 
 export function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const permissions = usePermissions();
   const [openSubmenu, setOpenSubmenu] = useState<string | null>("Program");
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [mobileMenu, setMobileMenu] = useState(false);
 
   useEffect(() => {
-    const activeItem = navItems.find(item => 
-      item.submenu && item.submenu.some(sub => {
-        const pathOnly = sub.path.split("?")[0];
-        return location.pathname.startsWith(pathOnly);
-      })
+    const activeItem = navItems.find((item) =>
+      item.submenu?.some((sub) => location.pathname.startsWith(sub.path.split("?")[0])),
     );
-    if (activeItem) {
-      setOpenSubmenu(activeItem.label);
-    }
+    if (activeItem) setOpenSubmenu(activeItem.label);
+    setMobileMenu(false);
   }, [location.pathname]);
 
-  const toggleSubmenu = (label: string) => {
-    setOpenSubmenu(openSubmenu === label ? null : label);
-  };
+  const allowed = (permission: string | null) => !permission || permissions.hasPermission(permission);
+  const fullName = permissions.currentUser?.fullName || "Guest";
+  const initial = fullName.charAt(0).toUpperCase() || "U";
 
-  const permissions = usePermissions();
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logoutUser();
+  const handleLogout = async () => {
+    await api.auth.logout();
     navigate("/login");
   };
 
+  const sidebar = (
+    <>
+      <div className="h-16 flex items-center justify-between px-5 border-b border-slate-200 shrink-0">
+        <Link to="/home" className="flex items-center gap-3 min-w-0">
+          <img src={logoImg} alt="" className="w-9 h-9 rounded-full object-contain bg-white shrink-0" />
+          <div className="min-w-0">
+            <p className="font-extrabold text-[#0A3D91] text-sm tracking-wide leading-none">KUNKHMER</p>
+            <p className="text-[11px] text-slate-500 mt-1">Management system</p>
+          </div>
+        </Link>
+        <button type="button" onClick={() => setMobileMenu(false)} aria-label="Close menu" className="md:hidden w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <nav aria-label="Main" className="flex-1 px-3 py-4 overflow-y-auto no-scrollbar space-y-5">
+        {navGroups.map((group) => {
+          const items = group.items.filter((item) => allowed(item.permission));
+          if (items.length === 0) return null;
+          return (
+            <div key={group.title ?? "top"}>
+              {group.title && <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{group.title}</p>}
+              <div className="space-y-0.5">
+                {items.map((item) => {
+                  const isActive = item.path === "/home" ? location.pathname === "/home" : location.pathname.startsWith(item.path);
+                  const Icon = item.icon;
+                  const rowClass = cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
+                    isActive ? "bg-[#eef3fb] text-[#0A3D91]" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                  );
+                  const iconClass = cn("w-[18px] h-[18px] shrink-0", isActive ? "text-[#0A3D91]" : "text-slate-400");
+                  if (!item.submenu) {
+                    return (
+                      <NavLink key={item.path} to={item.path} className={rowClass}>
+                        <Icon className={iconClass} aria-hidden />
+                        <span>{item.label}</span>
+                      </NavLink>
+                    );
+                  }
+                  const open = openSubmenu === item.label;
+                  return (
+                    <div key={item.path}>
+                      <button type="button" onClick={() => setOpenSubmenu(open ? null : item.label)} aria-expanded={open} className={rowClass}>
+                        <Icon className={iconClass} aria-hidden />
+                        <span className="flex-1 text-left">{item.label}</span>
+                        <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", open && "rotate-180")} aria-hidden />
+                      </button>
+                      {open && (
+                        <div className="mt-0.5 mb-1 ml-[21px] pl-3 border-l border-slate-200 space-y-0.5">
+                          {item.submenu.filter((sub) => allowed(sub.permission)).map((sub) => {
+                            const here = location.pathname + (location.search || "");
+                            const subActive = sub.path.includes("?")
+                              ? here === sub.path || (sub.path.endsWith("overview") && here === "/home/program")
+                              : location.pathname === sub.path || location.pathname.startsWith(sub.path + "/");
+                            return (
+                              <NavLink
+                                key={sub.path}
+                                to={sub.path}
+                                className={cn(
+                                  "block px-3 py-2 rounded-lg text-sm transition-colors",
+                                  subActive ? "text-[#0A3D91] font-semibold bg-[#eef3fb]" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100",
+                                )}
+                              >
+                                {sub.label}
+                              </NavLink>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </nav>
+
+      <div className="p-3 border-t border-slate-200 shrink-0">
+        <div className="flex items-center gap-3 rounded-xl p-2 hover:bg-slate-50">
+          <Link to="/home/profile" className="flex items-center gap-3 flex-1 min-w-0" title="My profile">
+            <span className="w-9 h-9 rounded-full bg-[#0A3D91] text-white flex items-center justify-center font-bold text-sm shrink-0">{initial}</span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-slate-900 truncate">{fullName}</span>
+              <span className="block text-xs text-slate-500 truncate">{apiRole()}</span>
+            </span>
+          </Link>
+          <button type="button" onClick={handleLogout} title="Sign out" aria-label="Sign out" className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50">
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div className="flex h-screen bg-background text-foreground font-sans selection:bg-accent/30 overflow-hidden">
-      
-      {/* Desktop Sidebar - Solid Navy Blue */}
-      <aside className="hidden md:flex w-[260px] flex-col bg-[#0A3D91] text-white border-r border-[#083073] relative z-40 shadow-xl shrink-0">
-        <div className="h-16 flex items-center px-6 border-b border-white/10 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center overflow-hidden p-0.5 shadow-sm shrink-0">
-              <img src={logoImg} alt="Logo" className="w-full h-full object-contain" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-extrabold text-[#F2C94C] text-sm tracking-wide leading-none uppercase">DIGITAL KUNKHMER</span>
-              <span className="text-[10px] text-white/60 uppercase tracking-widest mt-1">Management System</span>
-            </div>
-          </div>
-        </div>
-        
-        <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto no-scrollbar">
-          {navItems
-            .filter(item => !item.permission || permissions.hasPermission(item.permission))
-            .map((item) => {
-            const isActive = item.path === "/home" ? location.pathname === "/home" : location.pathname.startsWith(item.path);
-            const hasSubmenu = item.submenu && item.submenu.length > 0;
-            const isSubmenuOpen = openSubmenu === item.label;
-            
-            return (
-              <div key={item.path}>
-                {hasSubmenu ? (
-                  <>
-                    <button
-                      onClick={() => toggleSubmenu(item.label)}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium group",
-                        isActive
-                          ? "bg-white/10 text-white"
-                          : "text-white/70 hover:bg-white/5 hover:text-white"
-                      )}
-                    >
-                      {item.icon ? (
-                        <item.icon className={cn("w-[18px] h-[18px]", isActive ? "text-white" : "text-white/70 group-hover:text-white")} />
-                      ) : (
-                        <EmojiIcon emoji={item.emoji!} className="w-[18px] h-[18px]" />
-                      )}
-                      <span className="flex-1 text-left">{item.label}</span>
-                      <ChevronDown className={cn("w-4 h-4 transition-transform", isSubmenuOpen ? "rotate-180" : "")} />
-                    </button>
-                    
-                    {isSubmenuOpen && (
-                      <div className="mt-1 mb-2 space-y-1 relative before:absolute before:left-[21px] before:top-0 before:bottom-0 before:w-px before:bg-white/10">
-                        {item.submenu
-                          .filter(subItem => !subItem.permission || permissions.hasPermission(subItem.permission))
-                          .map((subItem) => {
-                          const currentPathWithSearch = location.pathname + (location.search || "");
-                          const isSubActive = subItem.path.includes("?") 
-                            ? (currentPathWithSearch === subItem.path || (subItem.path.endsWith("overview") && currentPathWithSearch === "/home/program"))
-                            : (location.pathname === subItem.path || location.pathname.startsWith(subItem.path + "/"));
-                          return (
-                            <NavLink
-                              key={subItem.path}
-                              to={subItem.path}
-                              className={cn(
-                                "flex items-center gap-3 pl-10 pr-3 py-2 rounded-lg transition-colors text-sm",
-                                isSubActive
-                                  ? "bg-white/10 text-white font-medium"
-                                  : "text-white/60 hover:text-white hover:bg-white/5"
-                              )}
-                            >
-                              <span className="truncate">{subItem.label}</span>
-                            </NavLink>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <NavLink
-                    to={item.path}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium group",
-                      isActive
-                        ? "bg-white/10 text-white"
-                        : "text-white/70 hover:bg-white/5 hover:text-white"
-                    )}
-                  >
-                    {item.icon ? (
-                      <item.icon className={cn("w-[18px] h-[18px]", isActive ? "text-white" : "text-white/70 group-hover:text-white")} />
-                    ) : (
-                      <EmojiIcon emoji={item.emoji!} className="w-[18px] h-[18px]" />
-                    )}
-                    <span>{item.label}</span>
-                  </NavLink>
-                )}
-              </div>
-            );
-          })}
-        </nav>
+      {/* Desktop sidebar (light) */}
+      <aside className="hidden md:flex w-[260px] flex-col bg-white border-r border-slate-200 shrink-0">{sidebar}</aside>
 
-        {/* User Profile Snippet in Sidebar */}
-        <div className="p-4 bg-[#083073] border-t border-white/10 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white font-bold border border-white/10">
-              {permissions.currentUser?.fullName?.charAt(0) || "U"}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">{permissions.currentUser?.fullName || "Guest"}</p>
-              <p className="text-xs text-white/60 truncate capitalize">{permissions.currentUser?.role?.replace('_', ' ') || ""}</p>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="w-8 h-8 flex items-center justify-center rounded hover:bg-white/10 text-white/70 hover:text-white transition-colors"
-              title="Logout"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
+      {/* Phone menu drawer */}
+      {mobileMenu && (
+        <div className="md:hidden fixed inset-0 z-[60]">
+          <button type="button" aria-label="Close menu" onClick={() => setMobileMenu(false)} className="absolute inset-0 bg-slate-900/40" />
+          <aside className="relative h-full w-[280px] max-w-[85vw] flex flex-col bg-white shadow-2xl">{sidebar}</aside>
         </div>
-      </aside>
+      )}
 
-      {/* Main Content Area */}
+      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 bg-[#F8FAFC]">
-        {/* Top Header */}
-        <header className="h-16 bg-white border-b border-border flex items-center justify-between px-6 shrink-0 shadow-sm z-30">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between gap-3 px-4 md:px-6 shrink-0 z-30">
+          <button type="button" onClick={() => setMobileMenu(true)} aria-label="Open menu" className="md:hidden w-10 h-10 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+            <Menu className="w-5 h-5" />
+          </button>
           <div className="flex items-center w-full max-w-md relative group">
             <Search className="w-4 h-4 text-muted-foreground absolute left-3 group-focus-within:text-primary transition-colors" />
-            <input 
-              type="text" 
-              placeholder="Search fighters, matches, events..." 
+            <input
+              type="text"
+              placeholder="Search fighters, matches, events..."
               className="w-full pl-9 pr-4 py-2 bg-muted/15 border border-border/60 hover:border-slate-300 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/5 rounded-xl text-sm transition-all outline-none"
             />
           </div>
-          
-          <div className="flex items-center gap-4">
+
+          <div className="flex items-center gap-2 md:gap-4 shrink-0">
             <button className="relative p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-muted">
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full ring-2 ring-white" />
             </button>
-            <div className="h-8 w-px bg-border mx-2" />
+            <div className="hidden md:block h-8 w-px bg-border mx-2" />
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
                 className="flex items-center gap-2 cursor-pointer focus:outline-none hover:opacity-85 transition-opacity"
               >
-                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
-                  {permissions.currentUser?.fullName?.charAt(0) || "U"}
-                </div>
+                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">{initial}</div>
                 <ChevronDown className="w-4 h-4 text-muted-foreground" />
               </button>
-              
+
               {showProfileMenu && (
                 <div className="absolute right-0 mt-2 w-48 bg-white border border-border rounded-lg shadow-lg py-1 z-50 animate-fadeIn">
-                  <Link 
-                    to="/home/profile" 
-                    onClick={() => setShowProfileMenu(false)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
-                  >
+                  <Link to="/home/profile" onClick={() => setShowProfileMenu(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors">
                     <UserIcon className="w-4 h-4 text-muted-foreground" />
-                    <span>View Profile</span>
+                    <span>My profile</span>
                   </Link>
-                  <Link 
-                    to="/home/settings" 
-                    onClick={() => setShowProfileMenu(false)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
-                  >
+                  <Link to="/home/settings" onClick={() => setShowProfileMenu(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors">
                     <Settings className="w-4 h-4 text-muted-foreground" />
                     <span>Settings</span>
                   </Link>
                   <hr className="border-border my-1" />
-                  <button 
+                  <button
                     onClick={() => {
                       setShowProfileMenu(false);
                       handleLogout();
@@ -283,7 +278,7 @@ export function Layout() {
                     className="w-full flex items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-red-50 text-left transition-colors"
                   >
                     <LogOut className="w-4 h-4" />
-                    <span>Logout</span>
+                    <span>Sign out</span>
                   </button>
                 </div>
               )}
@@ -291,34 +286,27 @@ export function Layout() {
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
           <Outlet />
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-border flex items-center justify-around px-2 z-50">
-        {navItems.slice(0, 5).map((item) => {
+      {/* Phone bottom navigation */}
+      <nav aria-label="Quick" className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-border flex items-center justify-around px-2 z-50">
+        {[navItems[0], ...navItems.slice(1).filter((i) => allowed(i.permission)).slice(0, 3)].map((item) => {
           const isActive = item.path === "/home" ? location.pathname === "/home" : location.pathname.startsWith(item.path);
+          const Icon = item.icon;
           return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors",
-                isActive ? "text-primary" : "text-muted-foreground"
-              )}
-            >
-              {item.icon ? (
-                <item.icon className="w-5 h-5" />
-              ) : (
-                <EmojiIcon emoji={item.emoji!} className="w-5 h-5 grayscale-0" />
-              )}
+            <NavLink key={item.path} to={item.path} className={cn("flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors", isActive ? "text-primary" : "text-muted-foreground")}>
+              <Icon className="w-5 h-5" />
               <span className="text-[10px] font-medium">{item.label}</span>
             </NavLink>
           );
         })}
+        <button type="button" onClick={() => setMobileMenu(true)} className="flex flex-col items-center justify-center w-full h-full space-y-1 text-muted-foreground">
+          <Menu className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Menu</span>
+        </button>
       </nav>
     </div>
   );

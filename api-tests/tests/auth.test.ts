@@ -194,3 +194,87 @@ describe("user management permissions", () => {
     expect((await post("/users", newUserInput())).status).toBe(401);
   });
 });
+
+describe("own profile (PUT /users/me, PUT /users/me/password)", () => {
+  async function freshUser() {
+    const input = newUserInput("Organizer");
+    const res = await post("/users", input, a.admin.token);
+    expect(res.status).toBe(201);
+    return { id: res.body.data.id as string, ...input, token: await login(input.username, input.password) };
+  }
+
+  it("lets any signed-in user edit their own name and email", async () => {
+    const u = await freshUser();
+    const email = `renamed_${uniq()}@test.local`;
+    const res = await put("/users/me", { fullName: "Renamed User", email, role: "Super Admin", status: "Inactive" }, u.token);
+    expect(res.status).toBe(200);
+    // Only name and email are editable here; role and status are ignored.
+    expect(res.body.data).toMatchObject({ id: u.id, fullName: "Renamed User", email, role: "Organizer", status: "Active" });
+    expect(shapeOf(res)).toMatchSnapshot();
+  });
+
+  it("rejects a duplicate email with 422", async () => {
+    const u = await freshUser();
+    const other = await freshUser();
+    const res = await put("/users/me", { email: other.email }, u.token);
+    expect(res.status).toBe(422);
+  });
+
+  it("changes the password with the current one, keeps this session and ends others", async () => {
+    const u = await freshUser();
+    const newPassword = randomPassword();
+    const res = await put("/users/me/password", { currentPassword: u.password, newPassword }, u.token);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ success: true, message: "Password changed successfully" });
+    expect((await get("/users/me", u.token)).status).toBe(200);
+    expect((await post("/users/login", { username: u.username, password: u.password })).status).toBe(401);
+    expect((await post("/users/login", { username: u.username, password: newPassword })).status).toBe(200);
+  });
+
+  it("rejects a wrong current password or a short new one with 422", async () => {
+    const u = await freshUser();
+    const wrong = await put("/users/me/password", { currentPassword: "not-it", newPassword: randomPassword() }, u.token);
+    expect(wrong.status).toBe(422);
+    expect(wrong.body).toEqual({ success: false, error: "The current password is incorrect" });
+    const short = await put("/users/me/password", { currentPassword: u.password, newPassword: "short" }, u.token);
+    expect(short.status).toBe(422);
+    const missing = await put("/users/me/password", {}, u.token);
+    expect(missing.status).toBe(422);
+  });
+
+  it("requires authentication", async () => {
+    expect((await put("/users/me", { fullName: "x" })).status).toBe(401);
+    expect((await put("/users/me/password", { currentPassword: "a", newPassword: "b" })).status).toBe(401);
+  });
+});
+
+describe("Super Admin safety rules on PUT /users/:id", () => {
+  it("does not let an admin deactivate or demote themself", async () => {
+    const off = await put(`/users/${a.admin.id}`, { status: "Inactive" }, a.admin.token);
+    expect(off.status).toBe(422);
+    expect(off.body).toEqual({ success: false, error: "You cannot deactivate your own account" });
+    const demote = await put(`/users/${a.admin.id}`, { role: "KKF Officer" }, a.admin.token);
+    expect(demote.status).toBe(422);
+    expect(demote.body).toEqual({ success: false, error: "You cannot remove your own Super Admin role" });
+  });
+
+  it("signs a user out when they are deactivated, and lets them back in when reactivated", async () => {
+    const input = newUserInput("Organizer");
+    const created = await post("/users", input, a.admin.token);
+    const token = await login(input.username, input.password);
+    const off = await put(`/users/${created.body.data.id}`, { status: "Inactive" }, a.admin.token);
+    expect(off.status).toBe(200);
+    expect((await get("/users/me", token)).status).toBe(401);
+    expect((await post("/users/login", { username: input.username, password: input.password })).status).toBe(401);
+    await put(`/users/${created.body.data.id}`, { status: "Active" }, a.admin.token);
+    expect((await post("/users/login", { username: input.username, password: input.password })).status).toBe(200);
+  });
+
+  it("signs a user out when an admin resets their password", async () => {
+    const input = newUserInput("Organizer");
+    const created = await post("/users", input, a.admin.token);
+    const token = await login(input.username, input.password);
+    await put(`/users/${created.body.data.id}`, { password: randomPassword() }, a.admin.token);
+    expect((await get("/users/me", token)).status).toBe(401);
+  });
+});

@@ -4,10 +4,13 @@
  *   POST   /users/login    public   → { token, user }
  *   POST   /users/logout   auth     → revoke the current token
  *   GET    /users/me       auth     → current user
+ *   PUT    /users/me       auth     → edit own fullName / email
+ *   PUT    /users/me/password  auth → change own password (currentPassword + newPassword)
  *   GET    /users          Super Admin
  *   POST   /users          Super Admin
  *   GET    /users/:id      Super Admin, or the user themself
- *   PUT    /users/:id      Super Admin
+ *   PUT    /users/:id      Super Admin (can't deactivate or demote themself; a status or
+ *                          password change signs that user out everywhere)
  *   DELETE /users/:id      Super Admin (not their own account)
  */
 import { randomUUID } from "node:crypto";
@@ -62,6 +65,7 @@ export function userArray(user: User) {
 }
 
 const hashPassword = (password: string) => bcrypt.hash(password, BCRYPT_ROUNDS);
+const MIN_PASSWORD = 8;
 
 async function findUser(id: string) {
   const user = await prisma.user.findUnique({ where: { id } });
@@ -101,6 +105,33 @@ export default async function authRoutes(app: FastifyInstance) {
 
     protectedRoutes.get("/users/me", async (request, reply) => ok(reply, formatUser(currentUser(request))));
 
+    protectedRoutes.put("/users/me", async (request, reply) => {
+      const me = currentUser(request);
+      const data: Record<string, unknown> = inputOf(request.body).pick({ fullName: "full_name", email: "email" });
+      if (Object.keys(data).length > 0) data.updated_at = now();
+      const user = await prisma.user.update({ where: { id: me.id }, data });
+      return ok(reply, formatUser(user));
+    });
+
+    protectedRoutes.put("/users/me/password", async (request, reply) => {
+      const me = currentUser(request);
+      const input = inputOf(request.body);
+      const current = input.required("currentPassword");
+      const next = String(input.required("newPassword"));
+      if (!(await bcrypt.compare(String(current), me.password_hash))) {
+        throw new HttpError(422, "The current password is incorrect");
+      }
+      if (next.length < MIN_PASSWORD) {
+        throw new HttpError(422, `The new password must be at least ${MIN_PASSWORD} characters`);
+      }
+      await prisma.user.update({ where: { id: me.id }, data: { password_hash: await hashPassword(next), updated_at: now() } });
+      // Keep this session, sign out everywhere else.
+      await prisma.personalAccessToken.deleteMany({
+        where: { tokenable_type: "user", tokenable_id: me.id, ...(request.tokenId !== null ? { id: { not: request.tokenId } } : {}) },
+      });
+      return reply.send({ success: true, message: "Password changed successfully" });
+    });
+
     protectedRoutes.get("/users", async (request, reply) => {
       requireRole(request, [Role.SuperAdmin]);
       const users = await prisma.user.findMany({ orderBy: { created_at: { sort: "desc", nulls: "last" } } });
@@ -135,9 +166,9 @@ export default async function authRoutes(app: FastifyInstance) {
     });
 
     protectedRoutes.put("/users/:id", async (request, reply) => {
-      requireRole(request, [Role.SuperAdmin]);
+      const me = requireRole(request, [Role.SuperAdmin]);
       const id = idParam(request.params, "User");
-      await findUser(id);
+      const existing = await findUser(id);
 
       const input = inputOf(request.body);
       const data: Record<string, unknown> = input.pick({
@@ -148,10 +179,18 @@ export default async function authRoutes(app: FastifyInstance) {
         clubId: "club_id",
         status: "status",
       });
+      if (me.id === id && "status" in data && data.status !== "Active") {
+        throw new HttpError(422, "You cannot deactivate your own account");
+      }
+      if (me.id === id && "role" in data && data.role !== Role.SuperAdmin) {
+        throw new HttpError(422, "You cannot remove your own Super Admin role");
+      }
       if (input.has("password")) data.password_hash = await hashPassword(String(input.get("password")));
       if (Object.keys(data).length > 0) data.updated_at = now();
 
       const user = await prisma.user.update({ where: { id }, data });
+      const statusChanged = "status" in data && data.status !== existing.status;
+      if (me.id !== id && (statusChanged || input.has("password"))) await revokeAllTokens(id);
       return ok(reply, formatUser(user));
     });
 

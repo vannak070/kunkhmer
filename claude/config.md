@@ -128,9 +128,9 @@ and phone width in both languages.
 ## Known gaps and tech debt
 
 - Admin pages still on mock data (`frontend/admin/src/app/data/*.ts`), not the
-  API: UserManagement, KKFWorkflow(+Detail), MatchProposals, Matches (old),
-  KKFOfficers, StoreManagement/StoreSettings/CategoriesSetting, Profile,
-  SubEventDetail, AssignFightersToEvent.
+  API: KKFWorkflow(+Detail), MatchProposals, Matches (old), KKFOfficers,
+  StoreManagement/StoreSettings/CategoriesSetting, SubEventDetail,
+  AssignFightersToEvent. (Users and Profile moved to the API 2026-09-26.)
 - Fighter create/edit is allowed for any logged-in role (status and club are
   protected); no login rate limiting.
 - Correcting a title match result to a different winner doesn't reverse the
