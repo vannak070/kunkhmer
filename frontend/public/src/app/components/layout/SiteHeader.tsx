@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { BookOpen, Handshake, Home as HomeIcon, Info, Languages, Menu, Trophy, Users, X } from "lucide-react";
+import { BookOpen, Handshake, Home as HomeIcon, Info, Languages, Menu, Sparkles, Trophy, Users, X } from "lucide-react";
 import kkfLogo from "../../../assets/kkf-logo-192.png";
 import { GlobalSearch } from "./GlobalSearch";
+import { useHubVisible } from "../hub/useHubChat";
 import { HeaderAccount } from "./HeaderAccount";
 import { appPath } from "../../utils/basePath";
 import { useI18n } from "../../i18n/LanguageContext";
 import type { MessageKey } from "../../i18n/messages";
 
 /** SuperAppHome sections plus standalone pages that appear in the main navigation. */
-export type NavSection = "home" | "matches" | "news-events" | "fighters" | "strategic-partners" | "about";
+export type NavSection = "hub" | "home" | "matches" | "news-events" | "fighters" | "strategic-partners" | "about";
 
 export const NAV_ITEMS: { id: NavSection; labelKey: MessageKey; icon: typeof HomeIcon }[] = [
+  { id: "hub", labelKey: "nav.hub", icon: Sparkles },
   { id: "home", labelKey: "nav.home", icon: HomeIcon },
   { id: "matches", labelKey: "nav.matches", icon: Trophy },
   { id: "news-events", labelKey: "nav.news", icon: BookOpen },
@@ -21,10 +23,16 @@ export const NAV_ITEMS: { id: NavSection; labelKey: MessageKey; icon: typeof Hom
 ];
 
 /** Sections that live outside SuperAppHome and are always reached by routing. */
-const STANDALONE: NavSection[] = ["about"];
+const STANDALONE: NavSection[] = ["hub", "about"];
 
 export function sectionPath(section: NavSection): string {
   return section === "home" ? "/" : `/${section}`;
+}
+
+/** Menu items to show: KUNKHMER HUB is left out when the AI is switched off (production only). */
+export function useNavItems() {
+  const hubVisible = useHubVisible();
+  return hubVisible ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.id !== "hub");
 }
 
 /** Navigate to a nav section, letting SuperAppHome handle its own sections when it provides a handler. */
@@ -62,6 +70,7 @@ function LanguageToggle({ className = "" }: { className?: string }) {
 export function SiteHeader({ activeSection, onSectionChange }: SiteHeaderProps) {
   const { t } = useI18n();
   const goSection = useNavigateSection(onSectionChange);
+  const navItems = useNavItems();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const lastY = useRef(0);
@@ -119,7 +128,7 @@ export function SiteHeader({ activeSection, onSectionChange }: SiteHeaderProps) 
         </div>
 
         <nav aria-label={t("nav.main")} className="hidden md:flex items-center gap-1 pb-3 overflow-x-auto">
-          {NAV_ITEMS.map(({ id, labelKey, icon: Icon }) => {
+          {navItems.map(({ id, labelKey, icon: Icon }) => {
             const active = activeSection === id;
             return (
               <a
@@ -131,7 +140,11 @@ export function SiteHeader({ activeSection, onSectionChange }: SiteHeaderProps) 
                 }}
                 aria-current={active ? "page" : undefined}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl whitespace-nowrap text-sm font-bold transition-colors ${
-                  active ? "bg-[#0A3D91] text-white shadow-md" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  active
+                    ? "bg-[#0A3D91] text-white shadow-md"
+                    : id === "hub"
+                      ? "bg-[#eef3fb] text-[var(--kk-blue)] ring-1 ring-[#d5e0f3] hover:bg-[#dfe8f7]"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 }`}
               >
                 <Icon className="w-4 h-4" aria-hidden />
@@ -147,7 +160,7 @@ export function SiteHeader({ activeSection, onSectionChange }: SiteHeaderProps) 
 
         {mobileMenuOpen && (
           <nav id="mobile-nav" aria-label={t("nav.main")} className="md:hidden pb-4 space-y-1">
-            {NAV_ITEMS.map(({ id, labelKey, icon: Icon }) => {
+            {navItems.map(({ id, labelKey, icon: Icon }) => {
               const active = activeSection === id;
               return (
                 <a
@@ -159,7 +172,7 @@ export function SiteHeader({ activeSection, onSectionChange }: SiteHeaderProps) 
                   }}
                   aria-current={active ? "page" : undefined}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-bold transition-colors ${
-                    active ? "bg-[#0A3D91] text-white" : "text-gray-700 hover:bg-gray-100"
+                    active ? "bg-[#0A3D91] text-white" : id === "hub" ? "bg-[#eef3fb] text-[var(--kk-blue)]" : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
                   <Icon className="w-5 h-5" aria-hidden />

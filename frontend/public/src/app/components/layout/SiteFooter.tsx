@@ -1,9 +1,8 @@
 import { ArrowUp, Handshake, Mail, MapPin } from "lucide-react";
 import kkfLogo from "../../../assets/kkf-logo-192.png";
-import { NAV_ITEMS, NavSection, sectionPath, useNavigateSection } from "./SiteHeader";
+import { NavSection, sectionPath, useNavigateSection, useNavItems } from "./SiteHeader";
 import { appPath } from "../../utils/basePath";
 import { useI18n } from "../../i18n/LanguageContext";
-import { AskKunKhmer } from "../ai/AskKunKhmer";
 
 /** Official channels. Leave `url` empty to hide a network until the federation has an account. */
 export const SOCIAL_LINKS: { label: string; url: string; path: string }[] = [
@@ -39,13 +38,11 @@ interface SiteFooterProps {
 export function SiteFooter({ onSectionChange, flush = false }: SiteFooterProps) {
   const { t } = useI18n();
   const go = useNavigateSection(onSectionChange);
+  const navItems = useNavItems();
   const socials = SOCIAL_LINKS.filter((s) => s.url);
   const partnerMail = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(t("home.partnerEmailSubject"))}`;
 
   return (
-    <>
-    {/* Floating "Ask Kun Khmer" chat; lives here because the footer is on every page. */}
-    <AskKunKhmer />
     <footer className={`bg-[#eef3fb] border-t border-[#d5e0f3] text-gray-700 ${flush ? "" : "mt-20"}`}>
       <div className="max-w-7xl mx-auto px-4 md:px-6 pt-12 md:pt-16 pb-10 grid grid-cols-1 md:grid-cols-12 gap-10 lg:gap-14">
         {/* Brand */}
@@ -85,7 +82,7 @@ export function SiteFooter({ onSectionChange, flush = false }: SiteFooterProps) 
         <nav aria-label={t("footer.explore")} className="md:col-span-3">
           <h2 className="kk-label text-gray-500 mb-4">{t("footer.explore")}</h2>
           <ul className="grid grid-cols-2 md:grid-cols-1 gap-x-6 gap-y-2.5">
-            {NAV_ITEMS.map(({ id, labelKey }) => (
+            {navItems.map(({ id, labelKey }) => (
               <li key={id}>
                 <a
                   href={appPath(sectionPath(id))}
@@ -141,6 +138,5 @@ export function SiteFooter({ onSectionChange, flush = false }: SiteFooterProps) 
         </div>
       </div>
     </footer>
-    </>
   );
 }

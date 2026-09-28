@@ -11,6 +11,7 @@ import { fightHistory, latestResults, useFanData, type Broadcaster } from "../..
 import { CountdownChip, DemoBanner, FormGuide, ResultRow } from "../fan/FanWidgets";
 import { CONTACT_EMAIL } from "../layout/SiteFooter";
 import { textLang } from "../../utils/publicDisplay";
+import { HubAskBox } from "../hub/HubAskBox";
 import kkfLogo from "../../../assets/kkf-logo-192.png";
 
 export interface HomeArticle {
@@ -232,7 +233,8 @@ function Hero({ feature, partners, onNavigate }: { feature: React.ReactNode; par
             </p>
             <h1 className="kk-display text-5xl sm:text-6xl md:text-7xl text-[var(--kk-navy)]">{t("home.heroTitle")}</h1>
             <p className="mt-5 text-lg text-gray-600 max-w-xl leading-relaxed">{t("home.tagline")}</p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <HubAskBox />
+            <div className="mt-7 flex flex-wrap gap-3">
               <button
                 type="button"
                 onClick={() => onNavigate("matches")}

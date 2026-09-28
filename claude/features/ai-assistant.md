@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Demo built (2026-09-26): "Ask Kun Khmer" chat, needs an API key to run. Rest of the plan follows `features/statistics.md` |
+| **Status** | Live on the public site as **KUNKHMER HUB** (`/hub`, 2026-09-28; was the "Ask Kun Khmer" corner chat), needs an API key to run. Rest of the plan follows `features/statistics.md` |
 | **Jira** | TBD |
 | **Figma** | TBD |
 | **Owner** | vannak070 |
@@ -56,11 +56,11 @@ real records, never from made-up facts.
 - Who approves AI drafts (KKF Officer, Super Admin)?
 - Monthly budget cap?
 
-## Demo: "Ask Kun Khmer" chat (built 2026-09-26, ahead of statistics at the owner's request)
+## KUNKHMER HUB chat (built 2026-09-26 as "Ask Kun Khmer"; made the site's main function 2026-09-28, see `updates/kunkhmer-hub.md`)
 
 **Turn it on**: put `ANTHROPIC_API_KEY=...` in `backend/.env` (never committed),
 then `docker restart kunkhmer_backend`. Without a key `GET /api/ai/status` says
-`enabled: false` and `POST /api/ai/chat` returns 503; production builds hide the chat button, development builds show it with a "not set up yet" notice (input disabled).
+`enabled: false` and `POST /api/ai/chat` returns 503; production builds hide the Hub menu item and home box and `/hub` says the Hub isn't available; development builds show a "not set up yet" notice (input disabled).
 `AI_ENABLED=false` forces it off (the test API sets this); `AI_MODEL`
 (default `claude-opus-5`) and `AI_RATE_LIMIT` (default 20 per IP per 10 min). The IP is the visitor's real one
 through our proxy (`lib/clientIp.ts`, `TRUST_PROXY`; see `updates/rate-limit-real-client-ip.md`);
@@ -71,7 +71,7 @@ the counter is in memory, so it resets on restart and isn't shared between API i
 | API | `backend/src/modules/ai/routes.ts` — `GET /api/ai/status` → `{ enabled }`; `POST /api/ai/chat` `{ messages: [{role, content}], lang }` → `{ reply }` (public, no auth). Max 12 messages, 1500 chars each, alternating and ending with the user; 422 otherwise. 503 when off, 429 over the rate limit, 502 when the model API fails. |
 | Tools | `backend/src/modules/ai/tools.ts` — read-only Prisma queries: `search_fighters`, `get_fighter`, `list_events`, `get_event`, `latest_results`, `list_champions`. Public data only (no deleted fighters, no Draft events, no contact fields); every item has a site `url`. |
 | Model call | Anthropic TypeScript SDK (`@anthropic-ai/sdk`), manual tool loop (max 6 rounds), `effort: "low"`, system prompt + tools cached (`cache_control`), date/language hint after the cache breakpoint, `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`) so a safety decline is retried on another model; a final refusal returns a polite fixed message. |
-| UI | `frontend/public/src/app/components/ai/AskKunKhmer.tsx` — floating button + chat panel (bottom sheet on phones), suggestion chips, tiny Markdown (links, bold, bullets), "AI-generated" disclaimer; rendered next to `SiteFooter` so it's on every page. Strings `ai.*` in EN + KM. |
+| UI | `pages/KunKhmerHub.tsx` — full page at `/hub` (first, highlighted menu item): hero, big input, topic cards with sample questions, then the conversation with the input pinned to the bottom; `?q=<question>` is asked once on arrival. `components/hub/HubAskBox.tsx` — "Ask KUNKHMER HUB" box in the home hero, opens `/hub?q=`. `components/hub/useHubChat.ts` — chat state (kept per tab in sessionStorage, so following a link and coming back keeps the conversation) and the shared status check. `HubMarkdown.tsx` — tiny Markdown (links, bold, bullets). "AI-generated" disclaimer. Answers in English or Khmer only (owner decision 2026-09-28). Strings `ai.*`, `hub.*`, `nav.hub` in EN + KM; the name "KUNKHMER HUB" stays in Latin letters in both. |
 | Tests | `api-tests/tests/ai.test.ts` pins status + 503 contract (the test API never calls the model). |
 
 Not yet done for public launch: login rate limiting, a daily spend cap,
