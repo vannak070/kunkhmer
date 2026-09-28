@@ -36,6 +36,7 @@ import { MyBouts } from "./pages/MyBouts";
 import { News } from "./pages/News";
 import { Video } from "./pages/Video";
 import { StrategicPartners } from "./pages/StrategicPartners";
+import { PartnerOrganizations } from "./pages/PartnerOrganizations";
 import { ProgramDashboard } from "./pages/ProgramDashboard";
 import { HubAnswers } from "./pages/HubAnswers";
 import { StaffAssistant } from "./pages/StaffAssistant";
@@ -241,6 +242,9 @@ export const router = createBrowserRouter(
       { path: "store-settings", element: <Navigate to="/home" replace /> },
       { path: "media/news", element: <News /> },
       { path: "media/video", element: <Video /> },
+      { path: "strategic-partners/organizations/new", element: <PartnerOrganizations /> },
+      { path: "strategic-partners/organizations/:orgId/edit", element: <PartnerOrganizations /> },
+      { path: "strategic-partners/organizations", element: <PartnerOrganizations /> },
       { path: "strategic-partners/:partnerType/new", element: <StrategicPartners /> },
       { path: "strategic-partners/:partnerType/:partnerId/edit", element: <StrategicPartners /> },
       { path: "strategic-partners/:partnerType", element: <StrategicPartners /> },

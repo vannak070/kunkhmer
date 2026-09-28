@@ -436,6 +436,7 @@ export function SuperAppHome() {
   const [clubsList, setClubsList] = useState<any[]>([]);
   const [broadcastersList, setBroadcastersList] = useState<any[]>([]);
   const [sponsorsList, setSponsorsList] = useState<any[]>([]);
+  const [organizationsList, setOrganizationsList] = useState<any[]>([]);
   const [loadingPartners, setLoadingPartners] = useState(true);
 
   useEffect(() => {
@@ -456,6 +457,10 @@ export function SuperAppHome() {
       }
     };
     fetchPartners();
+    // International partners load on their own so an error there never hides the other partners.
+    api.settings.listPartnerOrganizations()
+      .then((data: any[]) => setOrganizationsList(data || []))
+      .catch((err: unknown) => console.error("Failed to fetch international partners:", err));
   }, []);
 
   // Sync URL parameter with current section
@@ -1741,6 +1746,7 @@ export function SuperAppHome() {
           fighters={fighters}
           videos={mediaContent}
           sponsors={sponsorsList}
+          organizations={organizationsList}
           onOpenEvent={openEvent}
           onPlayVideo={(id) => setSelectedVideo(mediaContent.find((v) => v.id === id) ?? null)}
           onNavigate={(section) => handleSectionChange(section)}
@@ -1758,6 +1764,7 @@ export function SuperAppHome() {
             clubs={clubsList}
             broadcasters={broadcastersList}
             sponsors={sponsorsList}
+            organizations={organizationsList}
             events={dbEvents}
             loading={loadingPartners}
             onOpenClub={(id) => {

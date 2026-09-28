@@ -171,6 +171,28 @@ model Sponsor {
   @@map("sponsors")
 }
 
+/// International partners (K-1, WKN, Kombat …): promotions and sanctioning bodies KKF works with.
+/// Not sponsors (no tier, not on events). See claude/features/international-partners.md.
+model PartnerOrganization {
+  id             String    @id @db.Uuid
+  name           String    @db.VarChar(255)
+  short_name     String?   @db.VarChar(50)
+  org_type       String    @default("Promotion") @db.VarChar(50)
+  country        String?   @db.VarChar(100)
+  logo_url       String?
+  image          String?
+  description    String?
+  description_km String?
+  partner_since  Int?
+  website_url    String?
+  active         Boolean   @default(true)
+  sort_order     Int       @default(0)
+  created_at     DateTime? @db.Timestamp(0)
+  updated_at     DateTime? @db.Timestamp(0)
+
+  @@map("partner_organizations")
+}
+
 model Event {
   id                      String    @id @db.Uuid
   name                    String    @db.VarChar(255)

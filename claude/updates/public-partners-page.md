@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done — committed f4b4010f (2026-09-28) |
+| **Status** | Done — committed f4b4010f (2026-09-28); follow-up below not committed |
 | **Jira** | n/a |
 | **Feature** | claude/features/public-site.md |
 | **Requested by** | vannak070 (2026-09-28: "http://localhost:5176/strategic-partners improve as well", after the News & Media redesign "follow match and event page") |
@@ -60,3 +60,12 @@ and the tab state removed), `i18n/messages.ts`.
   sideways scroll.
 - Owner follow-up: Official Sponsors is now the first and default tab (Clubs moved to `?tab=clubs`,
   club detail Back returns there) and inactive clubs are hidden from the list and the club count.
+### 2026-09-28 — follow-up (owner: "improve display of Official Sponsors and Broadcast Partner … like Clubs & Gyms")
+- Sponsor and broadcaster cards now use the club-card layout: 16:9 banner (the partner's `image`) with
+  the logo on it — or, without a banner, the logo large on the light brand background — then badge,
+  name, industry or type · reach, fight nights, website link / "View details".
+- New International Partners tab (second) — see `features/international-partners.md`.
+- Tabs and search now sit on one row only from `xl` (four tabs no longer squeeze and scroll at 1024 px).
+- Checked on dev data (2 sponsors, 1 broadcaster with banners) and on a temporary copy on the test
+  API (24 active international partners): tabs, cards, `&org=` dialog (Esc closes), home strip order,
+  Khmer labels.

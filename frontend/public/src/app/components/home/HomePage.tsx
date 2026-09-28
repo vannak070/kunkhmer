@@ -65,6 +65,8 @@ interface HomePageProps {
   videos: HomeVideo[];
   /** Raw rows from /settings/sponsors. */
   sponsors: any[];
+  /** Raw rows from /settings/partner-organizations (international partners). */
+  organizations?: any[];
   onOpenEvent: (id: string) => void;
   onPlayVideo: (id: string) => void;
   onNavigate: (section: "matches" | "fighters" | "news-events" | "strategic-partners") => void;
@@ -76,6 +78,7 @@ interface Partner {
   logo: string | null;
   url: string | null;
   broadcaster?: boolean;
+  international?: boolean;
 }
 
 const TIER_ORDER = ["platinum", "gold", "silver", "bronze"];
@@ -92,7 +95,8 @@ function Picture({ src, className = "" }: { src?: string | null; className?: str
   );
 }
 
-function toPartners(sponsors: any[], broadcasters: Broadcaster[]): Partner[] {
+/** Sponsors by tier, then international partners (admin order), then the broadcaster(s). */
+function toPartners(sponsors: any[], broadcasters: Broadcaster[], organizations: any[] = []): Partner[] {
   const bySponsorTier = sponsors
     .filter((s) => s.active !== false && s.name)
     .sort((a, b) => {
@@ -103,8 +107,11 @@ function toPartners(sponsors: any[], broadcasters: Broadcaster[]): Partner[] {
       return rank(a) - rank(b);
     })
     .map((s) => ({ id: s.id, name: s.name, logo: s.logo_url || s.logoUrl || null, url: s.website_url || s.websiteUrl || null }));
+  const orgs = organizations
+    .filter((o) => o.active !== false && o.name)
+    .map((o) => ({ id: o.id, name: o.short_name || o.name, logo: o.logo_url || null, url: o.website_url || null, international: true }));
   const tv = broadcasters.map((b) => ({ id: b.id, name: b.name, logo: b.logo ?? null, url: b.websiteUrl ?? null, broadcaster: true }));
-  return [...bySponsorTier, ...tv];
+  return [...bySponsorTier, ...orgs, ...tv];
 }
 
 // ─── Layout helpers ─────────────────────────────────────────────────────────
@@ -245,7 +252,7 @@ function PartnerStrip({ partners, centered = false }: { partners: Partner[]; cen
             <PartnerLogo p={p} size="lg" />
             <span className="min-w-0 text-center sm:text-left">
               <span lang={textLang(p.name)} className="block font-semibold text-[var(--kk-navy)] leading-tight line-clamp-2 break-words">{p.name}</span>
-              {p.broadcaster && <span className="mt-0.5 block text-xs text-gray-500">{t("home.officialBroadcaster")}</span>}
+              {(p.broadcaster || p.international) && <span className="mt-0.5 block text-xs text-gray-500">{t(p.broadcaster ? "home.officialBroadcaster" : "partners.internationalBadge")}</span>}
             </span>
           </>
         );
@@ -441,7 +448,7 @@ function BecomePartner({ partners, stats, onViewPartners }: { partners: Partner[
                       <PartnerLogo p={p} />
                       <span className="min-w-0">
                         <span lang={textLang(p.name)} className="block font-semibold text-gray-900 leading-tight line-clamp-2 break-words">{p.name}</span>
-                        {p.broadcaster && <span className="block text-xs text-gray-500">{t("home.officialBroadcaster")}</span>}
+                        {(p.broadcaster || p.international) && <span className="block text-xs text-gray-500">{t(p.broadcaster ? "home.officialBroadcaster" : "partners.internationalBadge")}</span>}
                       </span>
                     </li>
                   ))}
@@ -505,11 +512,11 @@ function AboutKunKhmer() {
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function HomePage(props: HomePageProps) {
-  const { articles, upcomingEvents, pastEvents, fighters, videos, sponsors, onOpenEvent, onPlayVideo, onNavigate } = props;
+  const { articles, upcomingEvents, pastEvents, fighters, videos, sponsors, organizations, onOpenEvent, onPlayVideo, onNavigate } = props;
   const { t } = useI18n();
   const fan = useFanData();
 
-  const partners = toPartners(sponsors, fan?.broadcasters ?? []);
+  const partners = toPartners(sponsors, fan?.broadcasters ?? [], organizations);
   const rawEvent = (id?: string) => (id ? fan?.events.find((e: any) => e.id === id) : undefined);
 
   // Hero: the next fight night when there is one; news stays in the news section.

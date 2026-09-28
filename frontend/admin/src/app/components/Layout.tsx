@@ -83,6 +83,7 @@ const navGroups: { title: string | null; items: NavItem[] }[] = [
         submenu: [
           { label: "Broadcasters", path: "/home/strategic-partners/broadcasters", permission: "partners.manage" },
           { label: "Sponsors", path: "/home/strategic-partners/sponsors", permission: "partners.manage" },
+          { label: "International Partners", path: "/home/strategic-partners/organizations", permission: "partners.manage" },
         ],
       },
       { icon: Sparkles, label: "Hub answers", path: "/home/hub-answers", permission: "hub.review" },

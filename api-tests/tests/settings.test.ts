@@ -47,6 +47,27 @@ const resources = {
     updated: { reach: "Regional", active: false },
     snake: { stream_url: "https://example.com/live", contact_person: "Vanna", logo_url: "https://example.com/logo.png" },
   },
+  "partner-organizations": {
+    path: "/settings/partner-organizations",
+    full: () => ({
+      name: `Org ${uniq()}`,
+      shortName: "WKN",
+      orgType: "Sanctioning body",
+      country: "France",
+      logoUrl: "https://example.com/logo.png",
+      image: "https://example.com/img.png",
+      description: "World Kickboxing Network",
+      descriptionKm: "បណ្ដាញគុនពិភពលោក",
+      partnerSince: 2024,
+      websiteUrl: "https://example.com",
+      active: true,
+      sortOrder: 2,
+    }),
+    defaults: { org_type: "Promotion", active: true, sort_order: 0, partner_since: null },
+    update: { country: "Japan", active: false, partnerSince: "" },
+    updated: { country: "Japan", active: false, partner_since: null },
+    snake: { short_name: "WKN", org_type: "Sanctioning body", partner_since: 2024, sort_order: 2, description_km: "បណ្ដាញគុនពិភពលោក" },
+  },
 } as const;
 
 describe.each(Object.entries(resources))("%s", (_name, r) => {
@@ -104,5 +125,12 @@ describe.each(Object.entries(resources))("%s", (_name, r) => {
 
   it("requires authentication for writes", async () => {
     expect((await post(r.path, r.full())).status).toBe(401);
+  });
+});
+
+describe("partner organizations: numbers", () => {
+  it.each([["partnerSince", "1850"], ["partnerSince", "soon"], ["sortOrder", "1.5"]])("rejects %s = %s", async (field, value) => {
+    const res = await post("/settings/partner-organizations", { name: `Bad ${uniq()}`, [field]: value }, a.officer.token);
+    expect(res.status).toBe(422);
   });
 });

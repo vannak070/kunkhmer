@@ -530,6 +530,28 @@ export const api = {
     },
     async deleteBroadcastStation(id: string) {
       return request(`/settings/broadcast-stations/${id}`, { method: "DELETE" });
+    },
+    // International partners (K-1, WKN, Kombat …)
+    async listPartnerOrganizations() {
+      const res = await request("/settings/partner-organizations");
+      return res.data;
+    },
+    async createPartnerOrganization(input: any) {
+      const res = await request("/settings/partner-organizations", {
+        method: "POST",
+        body: JSON.stringify(input)
+      });
+      return res.data;
+    },
+    async updatePartnerOrganization(id: string, input: any) {
+      const res = await request(`/settings/partner-organizations/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(input)
+      });
+      return res.data;
+    },
+    async deletePartnerOrganization(id: string) {
+      return request(`/settings/partner-organizations/${id}`, { method: "DELETE" });
     }
   },
 

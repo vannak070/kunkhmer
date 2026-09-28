@@ -387,6 +387,11 @@ export const api = {
       const res = await request("/settings/broadcast-stations");
       return res.data;
     },
+    /** International partners (K-1, WKN, Kombat …). */
+    async listPartnerOrganizations() {
+      const res = await request("/settings/partner-organizations");
+      return res.data;
+    },
     async createBroadcastStation(input: any) {
       const res = await request("/settings/broadcast-stations", {
         method: "POST",
