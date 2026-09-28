@@ -50,3 +50,7 @@ Out of scope: the fight night card itself, the partners strip, the sections belo
 - 2026-09-28: partners redesigned: the "Official partners" heading is gone (kept only as the
   list's `aria-label`); each partner is its own white card with a larger logo (`PartnerLogo size="lg"`,
   56–64px), name and broadcaster role, lifting on hover. Phones: two per row, an odd last card centred.
+- 2026-09-28: KUNKHMER HUB moved out of first place in the menu into an "About Kun Khmer" dropdown
+  (`SiteHeader.tsx` `NavDropdown`: About Kun Khmer, KUNKHMER HUB → `/hub`; click to open, Escape /
+  outside click closes; About is highlighted on `/about` and `/hub`). Phone menu shows HUB indented
+  under About; footer lists it after About. Desktop nav wraps instead of scrolling so the dropdown isn't clipped.

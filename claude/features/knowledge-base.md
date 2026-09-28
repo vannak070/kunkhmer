@@ -39,31 +39,34 @@ Defaults chosen while building (owner may change):
 
 Item: `{ id, slug, category, titleEn, titleKm, bodyEn, bodyKm, kmReviewed, status, source,
 sortOrder, createdBy, updatedBy, publishedBy, publishedAt, createdAt, updatedAt }` — dates ISO.
-Categories: `history`, `rules`, `techniques`, `culture` (Kun Kru & music), `glossary`,
-`regulations`, `faq`. `slug` is unique (made from the English title if not sent); 422 on clash.
+Categories: `history`, `organisations`, `people` (legends), `rules`, `techniques`, `culture`
+(Kun Kru & music), `glossary`, `regulations`, `faq`. `slug` is unique (made from the English title if not sent); 422 on clash.
 
 ## Data
 `knowledge_articles` (migration `20260928000003_knowledge_articles`).
-Starter drafts: `backend/prisma/seed/knowledge-drafts.json`, loaded with
+Starter drafts (67: 9 first, 58 from the 2026-09-28 research round): `backend/prisma/seed/knowledge-drafts.json`, loaded with
 `npm run db:seed:knowledge` (adds missing slugs only, never overwrites or publishes).
 They were written in our own words from the English Wikipedia article "Kun Khmer"
 (read 2026-09-28) and are **unofficial until KKF checks them**; each has a `source` note
 and the Khmer text needs a native-speaker review.
 
 ## Hub integration
-`modules/knowledge/hub.ts` builds a "Federation knowledge base" block from published articles
-and appends it to the cached system prompt (rebuilt only after a publish / edit / delete, so
-the prompt cache stays warm). Prompt rules: answer sport questions from it; if it doesn't
-cover something, answer briefly and generally and say the federation hasn't published details;
-Kun Khmer vs Muay Thai origins / SEA Games naming only from an article, otherwise a short
-neutral answer with a link to the beginner's guide. If the block grows past ~50k tokens,
-switch to a `search_knowledge` tool (not needed yet; the size is logged on build).
+`modules/knowledge/hub.ts` → `knowledge()`: published articles (Khmer wording only when reviewed).
+Up to ~12k tokens they're appended to the cached system prompt ("inline"); above that the prompt
+carries only a title index and the Hub reads the 1–3 articles it needs with the `search_knowledge`
+tool ("index" — the case with the 67 starter drafts). Rebuilt only after a publish / edit / delete
+so the prompt cache stays warm. Search: word matching with rare-word weighting, Khmer 3-letter
+pieces, unreviewed Khmer used for matching only. Prompt rules: answer sport questions from it; if it
+doesn't cover something, answer briefly and say the federation hasn't published details; origins /
+SEA Games naming only from an article, otherwise a short neutral answer with a link to the guide.
+See `updates/hub-knowledge-expansion.md`.
 
 ## Frontend
 Admin `pages/KnowledgeBase.tsx` at `/home/knowledge` (menu "Knowledge base" under Content &
 partners, permission `knowledge.manage` for Super Admin + KKF Officer): list with status /
 Khmer-review chips and filters, editor with English / Khmer tabs, Publish / Unpublish /
-"Khmer reviewed" for Super Admins. No public `/learn` pages yet (optional later).
+"Khmer reviewed" for Super Admins. "Save as FAQ" on the Hub answers page opens a new FAQ draft
+with the fan's question. No public `/learn` pages yet (optional later).
 
 ## Acceptance criteria
 - [x] Officers create and edit drafts; only Super Admins publish, unpublish, edit published, mark Khmer reviewed (contract tests).

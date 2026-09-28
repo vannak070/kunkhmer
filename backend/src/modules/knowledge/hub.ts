@@ -36,6 +36,8 @@ interface Article {
   titleKm: string | null;
   text: string;
   textKm: string | null;
+  /** Lower-cased title + all text (incl. unreviewed Khmer) — used only for matching, never shown. */
+  haystack: { title: string; body: string };
 }
 
 export interface Knowledge {
@@ -77,6 +79,10 @@ async function build(): Promise<Knowledge> {
       titleKm: r.title_km,
       text: r.body_en.trim(),
       textKm: r.km_reviewed && r.body_km?.trim() ? r.body_km.trim() : null,
+      haystack: {
+        title: `${r.title_en} ${r.title_km ?? ""} ${r.slug.replace(/-/g, " ")}`.toLowerCase(),
+        body: `${r.body_en} ${r.body_km ?? ""}`.toLowerCase(),
+      },
     }));
   if (articles.length === 0) return { mode: "none", prompt: "", articles };
 
@@ -136,11 +142,21 @@ export async function searchKnowledge(query: string, opts: { slug?: string; cate
   }
   const words = terms(query);
   const pool = opts.category ? kb.articles.filter((a) => a.category === opts.category) : kb.articles;
+  // Rare words matter more than words found in almost every article (like "fight").
+  const n = kb.articles.length;
+  const weight = new Map(
+    words.map((w) => {
+      const df = kb.articles.filter((a) => a.haystack.title.includes(w) || a.haystack.body.includes(w)).length;
+      // Words in more than half of the articles say nothing about which one is meant.
+      return [w, df > n / 2 ? 0 : Math.log(1 + n / (1 + df))];
+    }),
+  );
   const scored = pool
     .map((a) => {
-      const title = `${a.title} ${a.titleKm ?? ""} ${a.slug.replace(/-/g, " ")}`.toLowerCase();
-      const body = `${a.text} ${a.textKm ?? ""}`.toLowerCase();
-      const score = words.reduce((s, w) => s + count(title, w) * 5 + Math.min(count(body, w), 5), 0);
+      const score = words.reduce(
+        (s, w) => s + weight.get(w)! * (count(a.haystack.title, w) * 4 + Math.min(count(a.haystack.body, w), 4)),
+        0,
+      );
       return { a, score };
     })
     .filter((x) => x.score > 0)
