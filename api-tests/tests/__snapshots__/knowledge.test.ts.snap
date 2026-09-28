@@ -1,0 +1,57 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Knowledge base > lets an officer create a draft, never published 1`] = `
+{
+  "body": {
+    "data": {
+      "bodyEn": "string",
+      "bodyKm": "string",
+      "category": "string",
+      "createdAt": "datetime(+00:00)",
+      "createdBy": "string",
+      "id": "uuid",
+      "kmReviewed": "boolean",
+      "publishedAt": "null",
+      "publishedBy": "null",
+      "slug": "string",
+      "sortOrder": "number",
+      "source": "string",
+      "status": "string",
+      "titleEn": "string",
+      "titleKm": "string",
+      "updatedAt": "datetime(+00:00)",
+      "updatedBy": "string",
+    },
+    "success": "boolean",
+  },
+  "status": 201,
+}
+`;
+
+exports[`Knowledge base > only the Super Admin publishes, edits published text and approves Khmer 1`] = `
+{
+  "body": {
+    "data": {
+      "bodyEn": "string",
+      "bodyKm": "string",
+      "category": "string",
+      "createdAt": "datetime(+00:00)",
+      "createdBy": "string",
+      "id": "uuid",
+      "kmReviewed": "boolean",
+      "publishedAt": "datetime(+00:00)",
+      "publishedBy": "string",
+      "slug": "string",
+      "sortOrder": "number",
+      "source": "string",
+      "status": "string",
+      "titleEn": "string",
+      "titleKm": "string",
+      "updatedAt": "datetime(+00:00)",
+      "updatedBy": "string",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;

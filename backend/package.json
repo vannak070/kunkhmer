@@ -16,7 +16,8 @@
     "db:prepare": "tsx src/scripts/prepare-db.ts",
     "db:seed": "tsx src/scripts/seed.ts",
     "db:migrate": "prisma migrate dev",
-    "db:seed:demo": "tsx src/scripts/seed-demo.ts"
+    "db:seed:demo": "tsx src/scripts/seed-demo.ts",
+    "db:seed:knowledge": "tsx src/scripts/seed-knowledge.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

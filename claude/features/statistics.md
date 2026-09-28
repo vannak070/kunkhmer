@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft — comes before the AI assistant (see `features/ai-assistant.md`) |
+| **Status** | Draft — queued; the AI assistant (KUNKHMER HUB) went ahead first at the owner's request. Its planned statistics tools (Phase B in `features/ai-assistant.md`) should share these aggregates |
 | **Jira** | TBD |
 | **Figma** | TBD |
 | **Owner** | vannak070 |

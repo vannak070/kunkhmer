@@ -56,6 +56,54 @@ export const api = {
       const res = await request("/ai/chat", { method: "POST", body: JSON.stringify({ messages, lang }) });
       return res.data.reply;
     },
+    /**
+     * Streams an answer (Server-Sent Events from /ai/chat/stream). `onDelta` gets text as it's
+     * written; `onReset` means "discard the text so far". Resolves with the final answer and its log id.
+     */
+    async chatStream(
+      messages: { role: "user" | "assistant"; content: string }[],
+      lang: string,
+      conversationId: string,
+      on: { onDelta: (text: string) => void; onReset: () => void },
+    ): Promise<{ reply: string; logId: string | null }> {
+      const response = await fetch(`${API_BASE_URL}/ai/chat/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        body: JSON.stringify({ messages, lang, conversationId }),
+      });
+      if (!response.ok || !response.body) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let result: { reply: string; logId: string | null } | null = null;
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let cut: number;
+        while ((cut = buffer.indexOf("\n\n")) >= 0) {
+          const chunk = buffer.slice(0, cut);
+          buffer = buffer.slice(cut + 2);
+          const event = /^event: (.+)$/m.exec(chunk)?.[1];
+          const raw = /^data: (.*)$/m.exec(chunk)?.[1];
+          const data = raw ? JSON.parse(raw) : {};
+          if (event === "delta") on.onDelta(data.text ?? "");
+          else if (event === "reset") on.onReset();
+          else if (event === "done") result = { reply: data.reply, logId: data.logId ?? null };
+          else if (event === "error") throw new Error(data.message || "Something went wrong.");
+        }
+      }
+      if (!result) throw new Error("The answer was interrupted. Please try again.");
+      return result;
+    },
+    /** 👍 (1) or 👎 (-1) on an answer. */
+    async feedback(logId: string, rating: 1 | -1) {
+      const res = await request("/ai/feedback", { method: "POST", body: JSON.stringify({ logId, rating }) });
+      return res.data;
+    },
   },
 
   // --- AUTH & USERS ---

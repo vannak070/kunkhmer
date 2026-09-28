@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { BookOpen, CalendarDays, RotateCcw, Send, Sparkles, Trophy, Users, type LucideIcon } from "lucide-react";
+import { BookOpen, CalendarDays, RotateCcw, Send, Sparkles, Trophy, Users, type LucideIcon, ThumbsUp, ThumbsDown } from "lucide-react";
 import { SiteHeader } from "../components/layout/SiteHeader";
 import { SiteFooter } from "../components/layout/SiteFooter";
 import { HubMarkdown } from "../components/hub/HubMarkdown";
@@ -26,7 +26,9 @@ export function KunKhmerHub() {
   const { t } = useI18n();
   usePageMeta({ title: "KUNKHMER HUB", description: t("hub.metaDescription") });
   const enabled = useHubEnabled();
-  const { messages, busy, error, send, clear } = useHubChat();
+  const { messages, busy, error, send, clear, rate } = useHubChat();
+  const last = messages[messages.length - 1];
+  const writing = Boolean(last?.streaming && last.content);
   const [params, setParams] = useSearchParams();
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -193,14 +195,34 @@ export function KunKhmerHub() {
                       <span aria-hidden className="w-8 h-8 mt-1 rounded-full bg-[#eef3fb] text-[var(--kk-blue)] flex items-center justify-center shrink-0">
                         <Sparkles className="w-4 h-4" />
                       </span>
-                      <div lang={textLang(m.content)} className="min-w-0 flex-1 text-gray-800 leading-relaxed space-y-1 break-words pt-1">
-                        <HubMarkdown text={m.content} />
+                      <div className="min-w-0 flex-1 pt-1">
+                        <div lang={textLang(m.content)} className="text-gray-800 leading-relaxed space-y-1 break-words">
+                          <HubMarkdown text={m.content} />
+                          {m.streaming && <span aria-hidden className="inline-block w-2 h-4 ml-0.5 align-middle bg-[var(--kk-blue)] animate-pulse rounded-sm" />}
+                        </div>
+                        {!m.streaming && m.logId && (
+                          <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
+                            {m.feedback ? (
+                              <span>{t("hub.thanks")}</span>
+                            ) : (
+                              <>
+                                <span className="mr-1">{t("hub.helpful")}</span>
+                                <button type="button" onClick={() => rate(i, 1)} aria-label={t("hub.helpfulYes")} title={t("hub.helpfulYes")} className="kk-focus w-8 h-8 rounded-full hover:bg-emerald-50 hover:text-emerald-700 flex items-center justify-center">
+                                  <ThumbsUp className="w-4 h-4" aria-hidden />
+                                </button>
+                                <button type="button" onClick={() => rate(i, -1)} aria-label={t("hub.helpfulNo")} title={t("hub.helpfulNo")} className="kk-focus w-8 h-8 rounded-full hover:bg-red-50 hover:text-red-700 flex items-center justify-center">
+                                  <ThumbsDown className="w-4 h-4" aria-hidden />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ),
                 )}
 
-                {(busy || arriving) && (
+                {(busy || arriving) && !writing && (
                   <div className="flex gap-3 items-center text-gray-500">
                     <span aria-hidden className="w-8 h-8 rounded-full bg-[#eef3fb] text-[var(--kk-blue)] flex items-center justify-center shrink-0">
                       <Sparkles className="w-4 h-4 animate-pulse" />

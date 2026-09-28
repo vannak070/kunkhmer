@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress — phases 1–4 done; step 2 (event page, `d4fe0ab2`) and the light home with partner promotion (`23d6a1ce`) committed; queued: statistics page (`statistics.md`), then step 3 (menu consolidation) |
+| **Status** | In progress — phases 1–4 done; step 2 (event page, `d4fe0ab2`) and the light home with partner promotion (`23d6a1ce`) committed; KUNKHMER HUB (`/hub`, the site's main function) committed `476c64de` 2026-09-28; queued: statistics page (`statistics.md`), then step 3 (menu consolidation) |
 | **Jira** | TBD |
 | **Figma** | TBD — brand guideline: design system artifact "Kun Khmer Brand" (https://claude.ai/artifact/5dHcDztT7toqRYCFrcKFLT, owner-private) |
 
@@ -72,8 +72,8 @@ and Khmer (`claude/tests/test-admin-ui.md` pattern), and run `vite build` in the
 `kunkhmer_frontend_public` container.
 
 ## Open questions / next steps
-- **Next (agreed 2026-09-26)**: public statistics (`features/statistics.md`),
-  then the AI assistant (`features/ai-assistant.md`).
+- **Next**: public statistics (`features/statistics.md`) and the KUNKHMER HUB
+  plan (knowledge base etc., `features/ai-assistant.md`) — both wait on open questions.
 - **Step 3**: dark header for Fight Night pages, menu consolidation
   (Events · Fighters · News · About), then tickets per event (step 4).
 - Event countdown is in days because events store a date only; switch to

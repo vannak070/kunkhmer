@@ -37,6 +37,8 @@ import { News } from "./pages/News";
 import { Video } from "./pages/Video";
 import { StrategicPartners } from "./pages/StrategicPartners";
 import { ProgramDashboard } from "./pages/ProgramDashboard";
+import { HubAnswers } from "./pages/HubAnswers";
+import { KnowledgeBase } from "./pages/KnowledgeBase";
 
 /** Old or removed admin URLs → the page that does that job now (Phase 2). */
 function ToFightCard() {
@@ -220,6 +222,8 @@ export const router = createBrowserRouter(
       { path: "officials", element: <Officials /> },
       { path: "kkf-officers", element: <Navigate to="/home/officials" replace /> },
       { path: "my-bouts", element: <MyBouts /> },
+      { path: "hub-answers", element: <HubAnswers /> },
+      { path: "knowledge", element: <KnowledgeBase /> },
       { path: "user-management", element: <UserManagement /> },
       { path: "user-management/new", element: <UserManagement /> },
       { path: "user-management/:userId/edit", element: <UserManagement /> },

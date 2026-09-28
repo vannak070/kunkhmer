@@ -11,3 +11,33 @@ exports[`AI assistant > reports status publicly 1`] = `
   "status": 200,
 }
 `;
+
+exports[`AI assistant — streaming, feedback and staff review (Phase C) > shows usage and the answer log to KKF staff only 1`] = `
+{
+  "body": {
+    "data": {
+      "capUsd": "number",
+      "capped": "boolean",
+      "enabled": "boolean",
+      "helpful": "number",
+      "month": "string",
+      "notHelpful": "number",
+      "outcomes": {},
+      "questions": "number",
+      "spendUsd": "number",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`AI assistant — streaming, feedback and staff review (Phase C) > validates feedback 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 404,
+}
+`;

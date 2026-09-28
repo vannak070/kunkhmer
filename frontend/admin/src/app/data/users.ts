@@ -23,6 +23,8 @@ export interface User {
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   // 👑 1. KKF Super Admin - Full system control & approvals
   kkf_super_admin: [
+    'hub.review', // KUNKHMER HUB answers, feedback and spend
+    'knowledge.manage', // KUNKHMER HUB knowledge base (publishing: Super Admin only)
     // System (e.g. deleting a championship title)
     'system.manage_settings',
     // Phase 4: menu areas by role
@@ -128,6 +130,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
 
   // ⚙️ 2. KKF Officer - Execution & Operations (All day-to-day tasks)
   kkf_officer: [
+    'hub.review', // KUNKHMER HUB answers, feedback and spend
+    'knowledge.manage', // KUNKHMER HUB knowledge base (publishing: Super Admin only)
     // Phase 4: menu areas by role
     'dashboard.view',
     'officials.manage', // Officials page: add/edit referees and judges

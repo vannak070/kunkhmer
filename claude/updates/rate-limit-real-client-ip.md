@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done |
+| **Status** | Done — committed 3e172477 (code) + 2a52a56a (docs), 2026-09-28 |
 | **Jira** | n/a |
 | **Feature** | claude/features/ai-assistant.md, claude/features/fan-accounts.md |
 | **Requested by** | vannak070 |

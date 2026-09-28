@@ -557,3 +557,71 @@ model GloveBrand {
 
   @@map("glove_brands")
 }
+
+/// KUNKHMER HUB answers, logged anonymously for staff review and the spend cap.
+/// Never stores an IP address, fan account or other personal data.
+model HubLog {
+  id                 String    @id @db.Uuid
+  created_at         DateTime  @db.Timestamp(0)
+  /// Random id from the browser tab, groups one conversation; not tied to a person.
+  conversation_id    String?   @db.VarChar(64)
+  lang               String    @db.VarChar(5)
+  question           String
+  answer             String
+  /// answered | refused | too_long | error | capped
+  outcome            String    @db.VarChar(20)
+  tools              Json      @default("[]")
+  model              String    @db.VarChar(100)
+  input_tokens       Int       @default(0)
+  output_tokens      Int       @default(0)
+  cache_read_tokens  Int       @default(0)
+  cache_write_tokens Int       @default(0)
+  cost_usd           Decimal   @default(0) @db.Decimal(10, 6)
+  duration_ms        Int       @default(0)
+  /// 1 = helpful, -1 = not helpful, null = no feedback
+  feedback           Int?      @db.SmallInt
+  feedback_at        DateTime? @db.Timestamp(0)
+
+  @@index([created_at])
+  @@map("hub_logs")
+}
+
+/// Per-visitor question counter for the Hub rate limit. `key` is a SHA-256 hash of the IP;
+/// rows expire with their window and are never joined to hub_logs.
+model HubRateLimit {
+  key          String   @db.VarChar(64)
+  window_start DateTime @db.Timestamp(0)
+  count        Int      @default(0)
+
+  @@id([key, window_start])
+  @@map("hub_rate_limits")
+}
+
+/// Federation knowledge base for KUNKHMER HUB: approved articles about the sport (EN + KM).
+/// Officers write drafts; only a Super Admin publishes. The Hub reads Published rows only.
+model KnowledgeArticle {
+  id           String    @id @db.Uuid
+  slug         String    @unique @db.VarChar(120)
+  /// history | rules | techniques | culture | glossary | regulations | faq
+  category     String    @db.VarChar(30)
+  title_en     String    @db.VarChar(255)
+  title_km     String?   @db.VarChar(255)
+  body_en      String
+  body_km      String?
+  /// Khmer text checked by KKF; unreviewed Khmer never reaches the Hub.
+  km_reviewed  Boolean   @default(false)
+  /// Draft | Published
+  status       String    @default("Draft") @db.VarChar(20)
+  /// Where the facts come from, for reviewers (not shown to fans).
+  source       String?
+  sort_order   Int       @default(0)
+  created_by   String?   @db.VarChar(255)
+  updated_by   String?   @db.VarChar(255)
+  published_by String?   @db.VarChar(255)
+  published_at DateTime? @db.Timestamp(0)
+  created_at   DateTime  @db.Timestamp(0)
+  updated_at   DateTime  @db.Timestamp(0)
+
+  @@index([status])
+  @@map("knowledge_articles")
+}

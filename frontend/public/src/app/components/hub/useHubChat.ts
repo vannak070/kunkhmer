@@ -7,11 +7,34 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../../utils/api";
 import { useI18n } from "../../i18n/LanguageContext";
 
-export type ChatMessage = { role: "user" | "assistant"; content: string };
+export type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+  /** Answer id in the anonymous log, for 👍/👎. */
+  logId?: string | null;
+  feedback?: 1 | -1;
+  /** Still being written (streaming). */
+  streaming?: boolean;
+};
 
 /** The API accepts at most 12 messages; keep the most recent ones, starting with a user turn. */
 const HISTORY = 11;
 const STORAGE_KEY = "kk-hub-chat";
+const CONVERSATION_KEY = "kk-hub-conversation";
+
+/** A random id per browser tab so staff can read a conversation in order; not linked to a person. */
+function conversationId(): string {
+  try {
+    let id = sessionStorage.getItem(CONVERSATION_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      sessionStorage.setItem(CONVERSATION_KEY, id);
+    }
+    return id;
+  } catch {
+    return crypto.randomUUID();
+  }
+}
 export const MAX_QUESTION = 1500;
 
 let statusRequest: Promise<boolean> | null = null;
@@ -45,7 +68,7 @@ function loadMessages(): ChatMessage[] {
   try {
     const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? "[]");
     return Array.isArray(saved)
-      ? saved.filter((m) => (m?.role === "user" || m?.role === "assistant") && typeof m.content === "string")
+      ? saved.filter((m) => (m?.role === "user" || m?.role === "assistant") && typeof m.content === "string" && !m.streaming)
       : [];
   } catch {
     return [];
@@ -74,15 +97,29 @@ export function useHubChat() {
     setMessages(next);
     setError(null);
     setBusy(true);
-    let history = next.slice(-HISTORY);
+    let history = next.slice(-HISTORY).map(({ role, content: c }) => ({ role, content: c }));
     if (history[0]?.role === "assistant") history = history.slice(1);
+    // The answer grows in place as it streams in.
+    const setAnswer = (update: (a: ChatMessage) => ChatMessage) =>
+      setMessages((m) => {
+        const last = m[m.length - 1];
+        const current = last?.role === "assistant" && last.streaming ? last : { role: "assistant" as const, content: "", streaming: true };
+        const rest = last === current ? m.slice(0, -1) : m;
+        return [...rest, update(current)];
+      });
     try {
-      const reply = await api.ai.chat(history, lang);
-      setMessages((m) => [...m, { role: "assistant", content: reply }]);
+      const { reply, logId } = await api.ai.chatStream(history, lang, conversationId(), {
+        onDelta: (text) => setAnswer((a) => ({ ...a, content: a.content + text })),
+        onReset: () => setAnswer((a) => ({ ...a, content: "" })),
+      });
+      setAnswer(() => ({ role: "assistant", content: reply, logId }));
       return true;
     } catch (e) {
-      // Drop the unanswered question so the conversation keeps alternating.
-      setMessages((m) => m.slice(0, -1));
+      // Drop the unanswered question (and any half-written answer) so the conversation keeps alternating.
+      setMessages((m) => {
+        const trimmed = m[m.length - 1]?.streaming ? m.slice(0, -1) : m;
+        return trimmed.slice(0, -1);
+      });
       setError(e instanceof Error && e.message ? e.message : t("ai.error"));
       return false;
     } finally {
@@ -94,7 +131,18 @@ export function useHubChat() {
   const clear = () => {
     setMessages([]);
     setError(null);
+    try {
+      sessionStorage.removeItem(CONVERSATION_KEY);
+    } catch {}
   };
 
-  return { messages, busy, error, send, clear };
+  /** 👍/👎 on answer `index`; shown as given right away, saved in the background. */
+  const rate = (index: number, rating: 1 | -1) => {
+    const target = messages[index];
+    if (!target?.logId) return;
+    setMessages((m) => m.map((x, i) => (i === index ? { ...x, feedback: rating } : x)));
+    api.ai.feedback(target.logId, rating).catch(() => {});
+  };
+
+  return { messages, busy, error, send, clear, rate };
 }

@@ -14,6 +14,7 @@ import fanRoutes from "./modules/fans/routes.ts";
 import fighterRoutes from "./modules/fighters/routes.ts";
 import matchRoutes from "./modules/matches/routes.ts";
 import newsRoutes from "./modules/news/routes.ts";
+import knowledgeRoutes from "./modules/knowledge/routes.ts";
 import officialRoutes from "./modules/officials/routes.ts";
 import settingsRoutes from "./modules/settings/routes.ts";
 import settingsListRoutes from "./modules/settings/lists.ts";
@@ -91,6 +92,7 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
       await api.register(officialRoutes);
       await api.register(championRoutes);
       await api.register(newsRoutes);
+      await api.register(knowledgeRoutes);
       await api.register(videoRoutes);
       await api.register(fanRoutes);
     },

@@ -4,10 +4,15 @@
  * See claude/features/ai-assistant.md.
  */
 import Anthropic from "@anthropic-ai/sdk";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "../../config.ts";
-import { HttpError, ok } from "../../lib/http.ts";
+import { prisma } from "../../db.ts";
+import { STAFF, requireAuth, requireRole } from "../../lib/auth.ts";
+import { iso, now } from "../../lib/dates.ts";
+import { HttpError, isUuid, notFound, ok } from "../../lib/http.ts";
+import { knowledgeText } from "../knowledge/hub.ts";
 import { runTool, TOOLS } from "./tools.ts";
+import { type Tokens, capReached, logAnswer, monthSpend, noTokens, rateLimit } from "./usage.ts";
 
 const MAX_MESSAGES = 12;
 const MAX_CHARS = 1500;
@@ -24,6 +29,9 @@ Rules:
 - Never mention internal statuses (Draft, Published, workflow states) or system accounts.
 - Don't give betting tips or predictions presented as fact; you may compare records and say it's not a prediction.
 - For topics unrelated to Kun Khmer, politely say you can only help with Kun Khmer.
+- Don't narrate your lookups (no "let me check"); write only the answer.
+- Questions about the sport itself (history, rules, techniques, Kun Kru, music, terms) are answered from the federation knowledge base at the end of these instructions when it covers them. If it doesn't, give a brief general answer from the background below and say the federation hasn't published more detail on it. Never invent dates, names or numbers.
+- The origins of Kun Khmer compared with Muay Thai or other regional styles, and the SEA Games naming question: answer only from a knowledge base article on that topic. Without one, give a short, neutral, respectful answer (Kun Khmer is Cambodia's traditional martial art with roots in the Angkor era) and point to the [beginner's guide](/about); don't take sides or criticise any country.
 
 Background on the sport (general knowledge from the site's beginner guide, not federation records):
 - Kun Khmer is Cambodia's traditional combat sport, a stand-up striking art using punches, kicks, elbows and knees, plus the clinch. It was long known as Pradal Serey.
@@ -31,6 +39,9 @@ Background on the sport (general knowledge from the site's beginner guide, not f
 - A traditional ensemble plays live music throughout every fight. Before the bout fighters perform the Kun Kru, a ritual dance honouring their teachers.
 - Fights end by knockout, referee stoppage or the judges' decision (effective strikes, control and aggression).
 - A fighter's record is written W-L-D (wins, losses, draws). The site has a [beginner's guide](/about) and a list of [fight nights](/matches?tab=events).`;
+
+const KNOWLEDGE_INTRO = `# Federation knowledge base
+Articles approved by the Kun Khmer Federation. Use them for questions about the sport; summarise in your own words and keep answers short. Fighter, event, result and champion facts still come only from your tools.`;
 
 const REFUSED = {
   en: "Sorry, I can't help with that. Ask me about Kun Khmer fighters, fight nights, results or the rules.",
@@ -40,24 +51,6 @@ const TOO_LONG = {
   en: "That took too many steps. Please ask a shorter, more specific question.",
   km: "សំណួរនេះត្រូវការជំហានច្រើនពេក។ សូមសួរសំណួរខ្លី និងច្បាស់ជាងនេះ។",
 };
-
-// ─── Per-IP rate limit (in memory, single API instance) ─────────────────────
-
-const WINDOW_MS = 10 * 60_000;
-const hits = new Map<string, { count: number; resetAt: number }>();
-
-function rateLimit(ip: string) {
-  const t = Date.now();
-  const entry = hits.get(ip);
-  if (!entry || entry.resetAt < t) {
-    hits.set(ip, { count: 1, resetAt: t + WINDOW_MS });
-    if (hits.size > 10_000) for (const [k, v] of hits) if (v.resetAt < t) hits.delete(k);
-    return;
-  }
-  if (++entry.count > config.ai.rateLimit) {
-    throw new HttpError(429, "Too many questions. Please wait a few minutes and try again.");
-  }
-}
 
 // ─── Input ──────────────────────────────────────────────────────────────────
 
@@ -88,28 +81,77 @@ function parseHistory(body: any): Anthropic.Beta.BetaMessageParam[] {
 let client: Anthropic | null = null;
 const anthropic = () => (client ??= new Anthropic({ apiKey: config.ai.apiKey }));
 
-async function answer(history: Anthropic.Beta.BetaMessageParam[], lang: "en" | "km"): Promise<string> {
+const CAPPED = {
+  en: "KUNKHMER HUB is resting until next month — it has answered all the questions it can this month. Please check the fighter and event pages in the meantime.",
+  km: "KUNKHMER HUB កំពុងសម្រាកដល់ខែក្រោយ ព្រោះបានឆ្លើយសំណួរអស់ចំនួនសម្រាប់ខែនេះហើយ។ សូមមើលទំព័រកីឡាករ និងព្រឹត្តិការណ៍ជាបណ្ដោះអាសន្ន។",
+};
+
+interface Answer {
+  text: string;
+  outcome: "answered" | "refused" | "too_long";
+  tools: string[];
+  model: string;
+  tokens: Tokens;
+}
+
+/**
+ * Runs the tool loop. With `stream`, text is passed on as it's written; `onReset` fires when a
+ * round turns out to be a tool call, so the client drops text that wasn't the final answer.
+ */
+async function answer(
+  history: Anthropic.Beta.BetaMessageParam[],
+  lang: "en" | "km",
+  stream?: { onDelta: (text: string) => void; onReset: () => void },
+): Promise<Answer> {
   const messages = [...history];
+  const knowledge = await knowledgeText();
   const system: Anthropic.Beta.BetaTextBlockParam[] = [
     // Stable prefix (tools + this block) is cached; the date and language hint come after it.
-    { type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } },
+    // The knowledge text only changes when a Super Admin publishes or edits an article.
+    { type: "text", text: knowledge ? `${SYSTEM}\n\n${KNOWLEDGE_INTRO}\n\n${knowledge}` : SYSTEM, cache_control: { type: "ephemeral" } },
     { type: "text", text: `Today's date: ${new Date().toISOString().slice(0, 10)}. Site language: ${lang === "km" ? "Khmer" : "English"}.` },
   ];
+  const tools: string[] = [];
+  const tokens = noTokens();
+  let model = config.ai.model;
+  const done = (text: string, outcome: Answer["outcome"]): Answer => ({ text, outcome, tools, model, tokens });
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const response = await anthropic().beta.messages.create({
+    const params = {
       model: config.ai.model,
       max_tokens: 8000,
       system,
       tools: TOOLS,
       messages,
-      output_config: { effort: "low" },
+      output_config: { effort: "low" as const },
       betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-    });
+      fallbacks: "default" as const,
+    };
+    let emitted = false;
+    let response: Anthropic.Beta.BetaMessage;
+    if (stream) {
+      const s = anthropic().beta.messages.stream(params);
+      s.on("text", (delta) => {
+        emitted = true;
+        stream.onDelta(delta);
+      });
+      response = await s.finalMessage();
+    } else {
+      response = await anthropic().beta.messages.create(params);
+    }
 
-    if (response.stop_reason === "refusal") return REFUSED[lang];
+    model = response.model || model;
+    tokens.input += response.usage.input_tokens ?? 0;
+    tokens.output += response.usage.output_tokens ?? 0;
+    tokens.cacheRead += response.usage.cache_read_input_tokens ?? 0;
+    tokens.cacheWrite += response.usage.cache_creation_input_tokens ?? 0;
+
+    if (response.stop_reason === "refusal") {
+      if (emitted) stream?.onReset();
+      return done(REFUSED[lang], "refused");
+    }
     if (response.stop_reason === "pause_turn") {
+      if (emitted) stream?.onReset();
       messages.push({ role: "assistant", content: response.content });
       continue;
     }
@@ -121,9 +163,11 @@ async function answer(history: Anthropic.Beta.BetaMessageParam[], lang: "en" | "
         .map((b) => b.text)
         .join("")
         .trim();
-      return text || REFUSED[lang];
+      return text ? done(text, "answered") : done(REFUSED[lang], "refused");
     }
 
+    if (emitted) stream?.onReset();
+    tools.push(...toolUses.map((t) => t.name));
     messages.push({ role: "assistant", content: response.content });
     const results = await Promise.all(
       toolUses.map(async (t): Promise<Anthropic.Beta.BetaToolResultBlockParam> => {
@@ -133,28 +177,168 @@ async function answer(history: Anthropic.Beta.BetaMessageParam[], lang: "en" | "
     );
     messages.push({ role: "user", content: results });
   }
-  return TOO_LONG[lang];
+  return done(TOO_LONG[lang], "too_long");
 }
+
+// ─── Request handling ───────────────────────────────────────────────────────
+
+interface Prepared {
+  history: Anthropic.Beta.BetaMessageParam[];
+  lang: "en" | "km";
+  question: string;
+  conversationId: string | null;
+}
+
+/** Validation, rate limit and spend cap — everything that happens before a model call. */
+async function prepare(request: FastifyRequest): Promise<Prepared> {
+  if (!config.ai.enabled) throw new HttpError(503, "The AI assistant is not configured.");
+  const body = request.body as any;
+  const history = parseHistory(body);
+  const lang = body?.lang === "km" ? "km" : "en";
+  const rawConversation = typeof body?.conversationId === "string" ? body.conversationId : null;
+  const conversationId = rawConversation && /^[A-Za-z0-9-]{8,64}$/.test(rawConversation) ? rawConversation : null;
+  const question = String(history[history.length - 1].content);
+  await rateLimit(request.ip);
+  if (await capReached()) {
+    await logAnswer({ conversationId, lang, question, answer: CAPPED[lang], outcome: "capped", tools: [], model: config.ai.model, tokens: noTokens(), durationMs: 0 });
+    throw new HttpError(503, CAPPED[lang]);
+  }
+  return { history, lang, question, conversationId };
+}
+
+function apiErrorMessage(error: unknown, request: FastifyRequest): HttpError | null {
+  if (error instanceof Anthropic.RateLimitError) return new HttpError(429, "The assistant is busy. Please try again in a minute.");
+  if (error instanceof Anthropic.APIError) {
+    request.log.error({ status: error.status, type: error.name }, "AI request failed");
+    return new HttpError(502, "The assistant is unavailable right now. Please try again later.");
+  }
+  return null;
+}
+
+const LOG_PAGE = 50;
 
 export default async function aiRoutes(app: FastifyInstance) {
   app.get("/ai/status", async (_request, reply) => ok(reply, { enabled: config.ai.enabled }));
 
   app.post("/ai/chat", async (request, reply) => {
-    if (!config.ai.enabled) throw new HttpError(503, "The AI assistant is not configured.");
-    const history = parseHistory(request.body);
-    const lang = (request.body as any)?.lang === "km" ? "km" : "en";
-    rateLimit(request.ip);
+    const p = await prepare(request);
+    const started = Date.now();
     try {
-      return ok(reply, { reply: await answer(history, lang) });
+      const a = await answer(p.history, p.lang);
+      const logId = await logAnswer({ ...p, answer: a.text, outcome: a.outcome, tools: a.tools, model: a.model, tokens: a.tokens, durationMs: Date.now() - started });
+      return ok(reply, { reply: a.text, logId });
     } catch (error) {
-      if (error instanceof Anthropic.RateLimitError) {
-        throw new HttpError(429, "The assistant is busy. Please try again in a minute.");
-      }
-      if (error instanceof Anthropic.APIError) {
-        request.log.error({ status: error.status, type: error.name }, "AI request failed");
-        throw new HttpError(502, "The assistant is unavailable right now. Please try again later.");
-      }
-      throw error;
+      const http = apiErrorMessage(error, request);
+      if (!http) throw error;
+      await logAnswer({ ...p, answer: http.message, outcome: "error", tools: [], model: config.ai.model, tokens: noTokens(), durationMs: Date.now() - started });
+      throw http;
     }
+  });
+
+  /**
+   * Same as /ai/chat, streamed as Server-Sent Events:
+   *   delta {text}  — more of the answer; reset — discard text so far; done {reply, logId}; error {message}.
+   * Errors before the first byte (validation, rate limit, cap) are normal JSON errors.
+   */
+  app.post("/ai/chat/stream", async (request, reply) => {
+    const p = await prepare(request);
+    const started = Date.now();
+    reply.hijack();
+    reply.raw.writeHead(200, {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+    const send = (event: string, data: unknown) => reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    try {
+      const a = await answer(p.history, p.lang, { onDelta: (text) => send("delta", { text }), onReset: () => send("reset", {}) });
+      const logId = await logAnswer({ ...p, answer: a.text, outcome: a.outcome, tools: a.tools, model: a.model, tokens: a.tokens, durationMs: Date.now() - started });
+      send("done", { reply: a.text, logId });
+    } catch (error) {
+      const http = apiErrorMessage(error, request) ?? new HttpError(500, "Something went wrong. Please try again.");
+      if (!(error instanceof Anthropic.APIError)) request.log.error({ err: error }, "Hub stream failed");
+      await logAnswer({ ...p, answer: http.message, outcome: "error", tools: [], model: config.ai.model, tokens: noTokens(), durationMs: Date.now() - started }).catch(() => {});
+      send("error", { message: http.message });
+    } finally {
+      reply.raw.end();
+    }
+  });
+
+  /** 👍 / 👎 on an answer. Anyone who got the answer's id can rate it; the latest rating wins. */
+  app.post("/ai/feedback", async (request, reply) => {
+    const body = request.body as any;
+    const id = typeof body?.logId === "string" ? body.logId : "";
+    const rating = Number(body?.rating);
+    if (rating !== 1 && rating !== -1) throw new HttpError(422, "The rating must be 1 or -1");
+    if (!isUuid(id)) throw notFound("Answer");
+    const updated = await prisma.hubLog.updateMany({ where: { id }, data: { feedback: rating, feedback_at: now() } });
+    if (!updated.count) throw notFound("Answer");
+    return ok(reply, { logId: id, rating });
+  });
+
+  app.register(async (staffRoutes) => {
+    staffRoutes.addHook("preHandler", requireAuth);
+
+    /** This month's usage for the admin review page. */
+    staffRoutes.get("/ai/usage", async (request, reply) => {
+      requireRole(request, STAFF);
+      const d = new Date();
+      const since = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+      const where = { created_at: { gte: since } };
+      const [spend, total, byOutcome, helpful, notHelpful] = await Promise.all([
+        monthSpend(),
+        prisma.hubLog.count({ where }),
+        prisma.hubLog.groupBy({ by: ["outcome"], where, _count: { _all: true } }),
+        prisma.hubLog.count({ where: { ...where, feedback: 1 } }),
+        prisma.hubLog.count({ where: { ...where, feedback: -1 } }),
+      ]);
+      return ok(reply, {
+        month: since.toISOString().slice(0, 7),
+        spendUsd: Number(spend.toFixed(4)),
+        capUsd: config.ai.monthlyCapUsd,
+        capped: spend >= config.ai.monthlyCapUsd,
+        questions: total,
+        outcomes: Object.fromEntries(byOutcome.map((o) => [o.outcome, o._count._all])),
+        helpful,
+        notHelpful,
+        enabled: config.ai.enabled,
+      });
+    });
+
+    /** Logged answers, newest first. ?feedback=down|up, ?outcome=answered|refused|too_long|error|capped, ?page=1. */
+    staffRoutes.get("/ai/logs", async (request, reply) => {
+      requireRole(request, STAFF);
+      const q = request.query as { feedback?: string; outcome?: string; page?: string };
+      const where: Record<string, unknown> = {};
+      if (q.feedback === "down") where.feedback = -1;
+      if (q.feedback === "up") where.feedback = 1;
+      if (q.outcome) where.outcome = q.outcome;
+      const page = Math.max(1, Number(q.page) || 1);
+      const [rows, total] = await Promise.all([
+        prisma.hubLog.findMany({ where, orderBy: { created_at: "desc" }, skip: (page - 1) * LOG_PAGE, take: LOG_PAGE }),
+        prisma.hubLog.count({ where }),
+      ]);
+      return ok(reply, {
+        page,
+        pageSize: LOG_PAGE,
+        total,
+        items: rows.map((r) => ({
+          id: r.id,
+          createdAt: iso(r.created_at),
+          conversationId: r.conversation_id,
+          lang: r.lang,
+          question: r.question,
+          answer: r.answer,
+          outcome: r.outcome,
+          tools: r.tools,
+          model: r.model,
+          tokens: { input: r.input_tokens, output: r.output_tokens, cacheRead: r.cache_read_tokens, cacheWrite: r.cache_write_tokens },
+          costUsd: Number(r.cost_usd),
+          durationMs: r.duration_ms,
+          feedback: r.feedback,
+        })),
+      });
+    });
   });
 }

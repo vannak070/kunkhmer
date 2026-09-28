@@ -46,6 +46,46 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}): Pr
 }
 
 export const api = {
+  // --- KUNKHMER HUB review (KKF staff) ---
+  ai: {
+    async usage() {
+      const res = await request("/ai/usage");
+      return res.data;
+    },
+    async logs(params: Record<string, string> = {}) {
+      const res = await request(`/ai/logs?${new URLSearchParams(params).toString()}`);
+      return res.data;
+    },
+  },
+
+  // --- Knowledge base for KUNKHMER HUB (KKF staff; publishing is Super Admin only) ---
+  knowledge: {
+    async list(params: Record<string, string> = {}) {
+      const res = await request(`/knowledge?${new URLSearchParams(params).toString()}`);
+      return res.data;
+    },
+    async create(data: Record<string, unknown>) {
+      const res = await request("/knowledge", { method: "POST", body: JSON.stringify(data) });
+      return res.data;
+    },
+    async update(id: string, data: Record<string, unknown>) {
+      const res = await request(`/knowledge/${id}`, { method: "PUT", body: JSON.stringify(data) });
+      return res.data;
+    },
+    async publish(id: string) {
+      const res = await request(`/knowledge/${id}/publish`, { method: "POST", body: "{}" });
+      return res.data;
+    },
+    async unpublish(id: string) {
+      const res = await request(`/knowledge/${id}/unpublish`, { method: "POST", body: "{}" });
+      return res.data;
+    },
+    async remove(id: string) {
+      const res = await request(`/knowledge/${id}`, { method: "DELETE" });
+      return res.data;
+    },
+  },
+
   // --- AUTH & USERS ---
   auth: {
     async login(username: string, password_hash: string) {

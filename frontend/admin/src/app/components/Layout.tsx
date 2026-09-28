@@ -1,4 +1,4 @@
-import { Home, CalendarDays, Dumbbell, ChevronDown, Shield, LogOut, User as UserIcon, ClipboardCheck, Settings, Building2, Users, Newspaper, Bell, Handshake, Menu, X, Gavel, Lock, HelpCircle } from "lucide-react";
+import { Home, CalendarDays, Dumbbell, ChevronDown, Shield, LogOut, User as UserIcon, ClipboardCheck, Settings, Building2, Users, Newspaper, Bell, Handshake, Menu, X, Gavel, Lock, HelpCircle, Sparkles, BookOpen } from "lucide-react";
 import { Outlet, NavLink, Navigate, useLocation, useNavigate, Link } from "react-router";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -84,6 +84,8 @@ const navGroups: { title: string | null; items: NavItem[] }[] = [
           { label: "Sponsors", path: "/home/strategic-partners/sponsors", permission: "partners.manage" },
         ],
       },
+      { icon: Sparkles, label: "Hub answers", path: "/home/hub-answers", permission: "hub.review" },
+      { icon: BookOpen, label: "Knowledge base", path: "/home/knowledge", permission: "knowledge.manage" },
     ],
   },
   {

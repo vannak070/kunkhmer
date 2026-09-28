@@ -32,5 +32,7 @@ export const config = {
     model: process.env.AI_MODEL ?? "claude-opus-5",
     /** Chat requests allowed per IP per 10 minutes. */
     rateLimit: Number(process.env.AI_RATE_LIMIT ?? 20),
+    /** Monthly spending limit in USD (estimated from token usage); the Hub pauses when reached. */
+    monthlyCapUsd: Number(process.env.AI_MONTHLY_CAP_USD ?? 50),
   },
 };

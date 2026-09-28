@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) — 2026-09-28 |
+| **Status** | Done — committed e8b1db20 (2026-09-28) |
 | **Jira** | n/a |
 | **Feature** | public-site.md |
 | **Requested by** | vannak070 |

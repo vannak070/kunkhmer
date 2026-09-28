@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-09-28) — waiting for owner review in the browser |
+| **Status** | Done — committed 476c64de (2026-09-28); owner browser review not yet confirmed |
 | **Jira** | n/a |
 | **Feature** | claude/features/ai-assistant.md, claude/features/public-site.md |
 | **Requested by** | vannak070 (2026-09-28) |
