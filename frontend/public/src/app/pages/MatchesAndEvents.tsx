@@ -2,12 +2,14 @@
  * Matches & Events (/matches): the fan's view of fight nights — what's coming up, official
  * results, and every fight night on the calendar. Light style, bouts visible without extra
  * clicks, real data only. Tabs are real URLs: ?tab=upcoming (default) | results | events
- * (old ?tab=matches / previous links still work). See claude/updates/public-matches-page.md.
+ * (old ?tab=matches / previous links still work). See claude/updates/public-matches-page.md and
+ * public-matches-page-2.md (latest-night spotlight, tab icons, months + year filter, Hub questions).
  */
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ArrowRight, CalendarDays, CalendarPlus, Clock, Crown, MapPin, Search, Sparkles, Trophy, Tv, X } from "lucide-react";
 import { BoutRow, FighterAvatar } from "../components/event/EventParts";
+import { HubAskAbout } from "../components/hub/HubAskAbout";
 import { CountdownChip, DemoBanner, daysUntil } from "../components/fan/FanWidgets";
 import { broadcasterForEvent, mainEventBout, useFanData, type Bout, type FanData } from "../data/fanData";
 import { weightClassFor } from "../data/weightClasses";
@@ -49,6 +51,36 @@ function groupByCard(bouts: Bout[]): CardGroup[] {
 }
 
 const time = (d?: string) => new Date(d || 0).getTime();
+const KM_DIGITS = "០១២៣៤៥៦៧៨៩";
+
+type T = ReturnType<typeof useI18n>["t"];
+
+/** The event page's KUNKHMER HUB questions for one fight night (results, what's coming, or about it). */
+function hubQuestions(t: T, data: FanData, eventId?: string, name?: string): string[] {
+  if (!eventId) return [];
+  const bouts = data.bouts.filter((b) => b.eventId === eventId);
+  const event = data.events.find((e) => e.id === eventId);
+  // Bouts don't always carry the fight night's name; fall back to the event itself.
+  const eventName: string | undefined = name || event?.name;
+  if (!eventName) return [];
+  const upcoming = (daysUntil(event?.end_date || event?.date || bouts[0]?.date) ?? -1) >= 0;
+  if (bouts.some((b) => b.completed)) {
+    const main = mainEventBout(bouts);
+    return [t("hub.askEventResults", { event: eventName }), ...(main?.completed ? [t("hub.askEventMain", { event: eventName })] : [])];
+  }
+  if (upcoming) return [...(bouts.length ? [t("hub.askEventCard", { event: eventName })] : []), t("hub.askEventWatch", { event: eventName })];
+  return [t("hub.askEventAbout", { event: eventName })];
+}
+
+/** Hub questions only on the first card of each fight night. */
+function withQuestions(groups: CardGroup[], t: T, data: FanData) {
+  const seen = new Set<string>();
+  return groups.map((g) => {
+    const first = Boolean(g.eventId) && !seen.has(g.eventId!);
+    if (g.eventId) seen.add(g.eventId);
+    return { group: g, ask: first ? hubQuestions(t, data, g.eventId, g.eventName) : [] };
+  });
+}
 
 export function MatchesAndEvents() {
   const data = useFanData();
@@ -57,6 +89,7 @@ export function MatchesAndEvents() {
   const tab = tabFromParam(params.get("tab"));
   const [query, setQuery] = useState("");
   const [weight, setWeight] = useState("all");
+  const [year, setYear] = useState("all");
 
   const setTab = (next: Tab) => {
     const p = new URLSearchParams(params);
@@ -101,11 +134,13 @@ export function MatchesAndEvents() {
   const eventQuery = query.trim().toLowerCase();
   const eventsShown = (list: any[]) => (eventQuery ? list.filter((e) => [e.name, e.location].some((s: string) => s?.toLowerCase().includes(eventQuery))) : list);
 
-  const tabs: { id: Tab; label: string; count: number }[] = [
-    { id: "upcoming", label: t("fights.tabUpcoming"), count: view.upcoming.length },
-    { id: "results", label: t("fights.tabResults"), count: view.results.length },
-    { id: "events", label: t("fights.tabEvents"), count: view.upcomingEvents.length + view.pastEvents.length },
+  const tabs: { id: Tab; label: string; count: number; icon: React.ReactNode }[] = [
+    { id: "upcoming", label: t("fights.tabUpcoming"), count: view.upcoming.length, icon: <Clock className="w-4 h-4" aria-hidden /> },
+    { id: "results", label: t("fights.tabResults"), count: view.results.length, icon: <Trophy className="w-4 h-4" aria-hidden /> },
+    { id: "events", label: t("fights.tabEvents"), count: view.upcomingEvents.length + view.pastEvents.length, icon: <CalendarDays className="w-4 h-4" aria-hidden /> },
   ];
+  const pastYears = [...new Set(view.pastEvents.map((e) => new Date(e.date).getUTCFullYear()).filter((y) => !isNaN(y)))].sort((a, b) => b - a);
+  const pastShown = eventsShown(view.pastEvents).filter((e) => year === "all" || String(new Date(e.date).getUTCFullYear()) === year);
 
   return (
     <div className="space-y-8">
@@ -133,12 +168,13 @@ export function MatchesAndEvents() {
               role="tab"
               aria-selected={tab === x.id}
               onClick={() => setTab(x.id)}
-              className={`kk-focus flex-1 sm:flex-none whitespace-nowrap px-4 md:px-5 h-11 rounded-xl text-sm font-semibold transition ${
+              className={`kk-focus flex-1 sm:flex-none inline-flex items-center justify-center gap-2 whitespace-nowrap px-3 sm:px-4 md:px-5 h-11 rounded-xl text-sm font-semibold transition ${
                 tab === x.id ? "bg-white text-[var(--kk-navy)] shadow-sm" : "text-gray-600 hover:text-gray-900"
               }`}
             >
+              <span className={`hidden sm:inline ${tab === x.id ? "text-[var(--kk-blue)]" : "text-gray-400"}`}>{x.icon}</span>
               {x.label}
-              {x.count > 0 && <span className={`ml-1.5 text-xs ${tab === x.id ? "text-[var(--kk-blue)]" : "text-gray-400"}`}>{x.count}</span>}
+              {x.count > 0 && <span className={`text-xs ${tab === x.id ? "text-[var(--kk-blue)]" : "text-gray-400"}`}>{x.count}</span>}
             </button>
           ))}
         </div>
@@ -178,9 +214,26 @@ export function MatchesAndEvents() {
         <div className="space-y-8">
           {!filtering && view.nextEvent && <NextFightNight data={data} event={view.nextEvent} />}
           {upcomingGroups.length === 0 ? (
-            filtering ? <NoMatch /> : !view.nextEvent && <Empty title={t("matches.noCards")} text={t("matches.noCardsText")} onResults={() => setTab("results")} showResults={view.results.length > 0 || view.pending.length > 0} />
+            filtering ? <NoMatch /> : !view.nextEvent && (
+              <>
+                {/* Nothing scheduled: show the latest fight night rather than an empty page. */}
+                {view.latestEvent && (
+                  <div className="space-y-3">
+                    <NextFightNight data={data} event={view.latestEvent} past />
+                    <HubAskAbout questions={hubQuestions(t, data, view.latestEvent.id, view.latestEvent.name)} />
+                  </div>
+                )}
+                <Empty
+                  compact={Boolean(view.latestEvent)}
+                  title={t("matches.noCards")}
+                  text={t("matches.noCardsText")}
+                  onResults={() => setTab("results")}
+                  showResults={!view.latestEvent && (view.results.length > 0 || view.pending.length > 0)}
+                />
+              </>
+            )
           ) : (
-            upcomingGroups.map((g) => <CardSection key={g.key} group={g} />)
+            withQuestions(upcomingGroups, t, data).map(({ group, ask }) => <CardSection key={group.key} group={group} ask={ask} />)
           )}
         </div>
       )}
@@ -192,7 +245,7 @@ export function MatchesAndEvents() {
             filtering ? <NoMatch /> : <Empty title={t("matches.noResults")} text={t("matches.noResultsText")} />
           ) : (
             <>
-              {resultGroups.map((g) => <CardSection key={g.key} group={g} result />)}
+              {withQuestions(resultGroups, t, data).map(({ group, ask }) => <CardSection key={group.key} group={group} ask={ask} result />)}
               {pendingGroups.length > 0 && (
                 <section aria-labelledby="pending-title" className="space-y-3">
                   <h2 id="pending-title" className="kk-heading text-lg text-gray-900 flex items-center gap-2">
@@ -225,8 +278,8 @@ export function MatchesAndEvents() {
           ) : (
             <>
               <EventGrid title={t("fights.upcomingNights")} events={eventsShown(view.upcomingEvents)} data={data} emptyText={eventQuery ? undefined : t("fights.noUpcomingNights")} />
-              <EventGrid title={t("matches.pastEvents")} events={eventsShown(view.pastEvents)} data={data} />
-              {eventQuery && eventsShown(view.upcomingEvents).length + eventsShown(view.pastEvents).length === 0 && <NoMatch />}
+              <PastEvents events={pastShown} data={data} years={pastYears} year={year} onYear={setYear} />
+              {(eventQuery || year !== "all") && eventsShown(view.upcomingEvents).length + pastShown.length === 0 && <NoMatch />}
             </>
           )}
         </div>
@@ -245,7 +298,7 @@ function buildView(data: FanData) {
   const pending = data.bouts.filter((b) => !b.completed && !isUpcoming(b.date));
   const upcomingEvents = data.events.filter((e) => isUpcoming(eventDay(e))).sort((a, b) => time(a.date) - time(b.date));
   const pastEvents = data.events.filter((e) => !isUpcoming(eventDay(e))).sort((a, b) => time(b.date) - time(a.date));
-  return { upcoming, results, pending, upcomingEvents, pastEvents, nextEvent: upcomingEvents[0] ?? null };
+  return { upcoming, results, pending, upcomingEvents, pastEvents, nextEvent: upcomingEvents[0] ?? null, latestEvent: pastEvents[0] ?? null };
 }
 
 // ─── Pieces ──────────────────────────────────────────────────────────────────
@@ -275,18 +328,24 @@ function Stat({ icon, value, label }: { icon: React.ReactNode; value: number; la
   );
 }
 
-function NextFightNight({ data, event }: { data: FanData; event: any }) {
+/** The next fight night, or with `past` the latest one (shown when nothing is scheduled). */
+function NextFightNight({ data, event, past = false }: { data: FanData; event: any; past?: boolean }) {
   const { t, tn, formatDate } = useI18n();
   const bouts = data.bouts.filter((b) => b.eventId === event.id).sort((a, b) => time(a.date) - time(b.date) || a.sortOrder - b.sortOrder);
   const main = mainEventBout(bouts);
   const station = broadcasterForEvent(data, event);
+  const hasResults = bouts.some((b) => b.completed);
   return (
     <section aria-labelledby="next-night" className="rounded-3xl border border-[#d5e0f3] bg-white overflow-hidden shadow-[0_10px_40px_rgba(26,71,151,0.06)]">
       <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <div className="p-6 md:p-8 flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="kk-label text-[var(--kk-red)]">{t("fights.nextNight")}</span>
-            <CountdownChip date={event.date} />
+            <span className="kk-label text-[var(--kk-red)]">{t(past ? "fights.latestNight" : "fights.nextNight")}</span>
+            {past ? (
+              !hasResults && <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600"><Clock className="w-3.5 h-3.5" aria-hidden />{t("fights.pendingTitle")}</span>
+            ) : (
+              <CountdownChip date={event.date} />
+            )}
           </div>
           <div className="flex items-start gap-4">
             <div className="shrink-0 w-16 rounded-2xl border border-[#d5e0f3] bg-[#eef3fb] text-center py-2" aria-hidden>
@@ -302,23 +361,23 @@ function NextFightNight({ data, event }: { data: FanData; event: any }) {
               <li className="flex items-start gap-2"><MapPin className="w-4 h-4 mt-0.5 text-[var(--kk-red)] shrink-0" aria-hidden /><span lang={textLang(event.location)}>{event.location}</span></li>
             )}
             {station && (
-              <li className="flex items-center gap-2"><Tv className="w-4 h-4 text-[var(--kk-blue)] shrink-0" aria-hidden />{t("fights.liveOn", { station: station.name })}</li>
+              <li className="flex items-center gap-2"><Tv className="w-4 h-4 text-[var(--kk-blue)] shrink-0" aria-hidden />{past ? station.name : t("fights.liveOn", { station: station.name })}</li>
             )}
             {bouts.length > 0 && (
               <li className="flex items-center gap-2"><Trophy className="w-4 h-4 text-[var(--kk-gold)] shrink-0" aria-hidden />{tn("common.bouts", bouts.length)}</li>
             )}
           </ul>
           <div className="flex flex-wrap gap-2 mt-auto pt-2">
-            <Link to={`/events/${event.id}`} className="kk-focus inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-[var(--kk-blue)] text-white text-sm font-semibold hover:bg-[var(--kk-navy)] transition">
-              {t("fights.viewCard")} <ArrowRight className="w-4 h-4" aria-hidden />
+            <Link to={`/events/${event.id}${past && hasResults ? "?view=results" : ""}`} className="kk-focus inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-[var(--kk-blue)] text-white text-sm font-semibold hover:bg-[var(--kk-navy)] transition">
+              {t(past && hasResults ? "fights.seeResults" : "fights.viewCard")} <ArrowRight className="w-4 h-4" aria-hidden />
             </Link>
-            <button
+            {!past && <button
               type="button"
               onClick={() => downloadCalendarEvent({ id: event.id, title: event.name, date: event.date, location: event.location ?? undefined, url: `${window.location.origin}/events/${event.id}` })}
               className="kk-focus inline-flex items-center gap-2 h-11 px-4 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:border-gray-300"
             >
               <CalendarPlus className="w-4 h-4" aria-hidden /> {t("fights.addToCalendar")}
-            </button>
+            </button>}
           </div>
         </div>
         <div className="bg-gradient-to-br from-[#eef3fb] to-[#fdf1f3] p-6 md:p-8 flex items-center justify-center">
@@ -363,7 +422,7 @@ function FaceOff({ bout }: { bout: Bout }) {
   );
 }
 
-function CardSection({ group, result = false }: { group: CardGroup; result?: boolean }) {
+function CardSection({ group, result = false, ask = [] }: { group: CardGroup; result?: boolean; ask?: string[] }) {
   const { t, tn, formatDate } = useI18n();
   const title = group.cardName || group.eventName || t("event.fightNight");
   return (
@@ -394,12 +453,12 @@ function CardSection({ group, result = false }: { group: CardGroup; result?: boo
           <BoutRow key={b.id} bout={b} number={i + 1} result={result} />
         ))}
       </ol>
+      {ask.length > 0 && <HubAskAbout questions={ask} />}
     </section>
   );
 }
 
 function EventGrid({ title, events, data, emptyText }: { title: string; events: any[]; data: FanData; emptyText?: string }) {
-  const { t, tn, formatDate } = useI18n();
   if (events.length === 0 && !emptyText) return null;
   return (
     <section className="space-y-3">
@@ -408,46 +467,92 @@ function EventGrid({ title, events, data, emptyText }: { title: string; events: 
         <p className="text-sm text-gray-600 rounded-2xl border border-dashed border-gray-300 bg-white p-5">{emptyText}</p>
       ) : (
         <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {events.map((e) => {
-            const bouts = data.bouts.filter((b) => b.eventId === e.id).length;
-            const station = broadcasterForEvent(data, e);
-            return (
-              <li key={e.id}>
-                <Link to={`/events/${e.id}`} className="kk-focus group flex flex-col h-full rounded-2xl border border-gray-200 bg-white overflow-hidden hover:border-[var(--kk-blue)]/40 hover:shadow-md transition">
-                  <div className="relative h-36 bg-gradient-to-br from-[#eef3fb] to-[#fdf1f3] flex items-center justify-center">
-                    {isRealImage(e.image) ? (
-                      <img src={e.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                    ) : (
-                      <div className="text-center" aria-hidden>
-                        <DateBlock date={e.date} size="lg" />
-                      </div>
-                    )}
-                    <span className="absolute top-3 left-3"><CountdownChip date={e.date} /></span>
-                  </div>
-                  <div className="p-4 flex flex-col gap-1.5 flex-1">
-                    <p className="text-xs font-semibold text-gray-500">{formatDate(e.date, "weekday")}</p>
-                    <p lang={textLang(e.name)} className="font-bold text-gray-900 leading-snug group-hover:text-[var(--kk-blue)] break-words">{e.name}</p>
-                    {e.location && <p lang={textLang(e.location)} className="text-sm text-gray-600 flex items-start gap-1.5"><MapPin className="w-3.5 h-3.5 mt-0.5 text-[var(--kk-red)] shrink-0" aria-hidden />{e.location}</p>}
-                    {station && <p className="text-sm text-gray-600 flex items-center gap-1.5"><Tv className="w-3.5 h-3.5 text-[var(--kk-blue)] shrink-0" aria-hidden />{station.name}</p>}
-                    <p className="mt-auto pt-2 text-sm font-semibold text-[var(--kk-blue)] flex items-center justify-between">
-                      <span>{bouts > 0 ? tn("common.bouts", bouts) : t("fights.cardSoonShort")}</span>
-                      <ArrowRight className="w-4 h-4 transition group-hover:translate-x-0.5" aria-hidden />
-                    </p>
-                  </div>
-                </Link>
-              </li>
-            );
-          })}
+          {events.map((e) => <EventTile key={e.id} e={e} data={data} />)}
         </ul>
       )}
     </section>
   );
 }
 
-function Empty({ title, text, onResults, showResults }: { title: string; text: string; onResults?: () => void; showResults?: boolean }) {
+/** Past fight nights, newest first, under month headings; a year filter when they span several years. */
+function PastEvents({ events, data, years, year, onYear }: { events: any[]; data: FanData; years: number[]; year: string; onYear: (y: string) => void }) {
+  const { t, lang } = useI18n();
+  if (events.length === 0 && years.length <= 1) return null;
+  const months = new Map<string, any[]>();
+  for (const e of events) {
+    const d = new Date(e.date);
+    const key = isNaN(d.getTime()) ? "?" : `${d.getUTCFullYear()}-${String(d.getUTCMonth()).padStart(2, "0")}`;
+    months.set(key, [...(months.get(key) ?? []), e]);
+  }
+  const monthLabel = (key: string) => {
+    if (key === "?") return "";
+    const [y, m] = key.split("-").map(Number);
+    return lang === "km"
+      ? `ខែ${KM_MONTHS[m]} ឆ្នាំ${String(y).replace(/\d/g, (x) => KM_DIGITS[Number(x)])}`
+      : new Date(Date.UTC(y, m, 1)).toLocaleDateString("en", { month: "long", year: "numeric", timeZone: "UTC" });
+  };
+  return (
+    <section className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="kk-heading text-xl text-gray-900">{t("matches.pastEvents")}</h2>
+        {years.length > 1 && (
+          <label>
+            <span className="sr-only">{t("fights.year")}</span>
+            <select value={year} onChange={(e) => onYear(e.target.value)} className="kk-focus h-11 px-3 rounded-xl border border-gray-200 bg-white text-sm">
+              <option value="all">{t("fights.allYears")}</option>
+              {years.map((y) => <option key={y} value={String(y)}>{lang === "km" ? String(y).replace(/\d/g, (x) => KM_DIGITS[Number(x)]) : y}</option>)}
+            </select>
+          </label>
+        )}
+      </div>
+      {[...months.entries()].map(([key, list]) => (
+        <div key={key} className="space-y-3">
+          {monthLabel(key) && <h3 lang={lang} className="text-sm font-semibold text-gray-500 border-b border-gray-200 pb-2">{monthLabel(key)}</h3>}
+          <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {list.map((e) => <EventTile key={e.id} e={e} data={data} />)}
+          </ul>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function EventTile({ e, data }: { e: any; data: FanData }) {
+  const { t, tn, formatDate } = useI18n();
+  const bouts = data.bouts.filter((b) => b.eventId === e.id).length;
+  const station = broadcasterForEvent(data, e);
+  return (
+    <li>
+      <Link to={`/events/${e.id}`} className="kk-focus group flex flex-col h-full rounded-2xl border border-gray-200 bg-white overflow-hidden hover:border-[var(--kk-blue)]/40 hover:shadow-md transition">
+        <div className="relative h-36 bg-gradient-to-br from-[#eef3fb] to-[#fdf1f3] flex items-center justify-center">
+          {isRealImage(e.image) ? (
+            <img src={e.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          ) : (
+            <div className="text-center" aria-hidden>
+              <DateBlock date={e.date} size="lg" />
+            </div>
+          )}
+          <span className="absolute top-3 left-3"><CountdownChip date={e.date} /></span>
+        </div>
+        <div className="p-4 flex flex-col gap-1.5 flex-1">
+          <p className="text-xs font-semibold text-gray-500">{formatDate(e.date, "weekday")}</p>
+          <p lang={textLang(e.name)} className="font-bold text-gray-900 leading-snug group-hover:text-[var(--kk-blue)] break-words">{e.name}</p>
+          {e.location && <p lang={textLang(e.location)} className="text-sm text-gray-600 flex items-start gap-1.5"><MapPin className="w-3.5 h-3.5 mt-0.5 text-[var(--kk-red)] shrink-0" aria-hidden />{e.location}</p>}
+          {station && <p className="text-sm text-gray-600 flex items-center gap-1.5"><Tv className="w-3.5 h-3.5 text-[var(--kk-blue)] shrink-0" aria-hidden />{station.name}</p>}
+          <p className="mt-auto pt-2 text-sm font-semibold text-[var(--kk-blue)] flex items-center justify-between">
+            <span>{bouts > 0 ? tn("common.bouts", bouts) : t("fights.cardSoonShort")}</span>
+            <ArrowRight className="w-4 h-4 transition group-hover:translate-x-0.5" aria-hidden />
+          </p>
+        </div>
+      </Link>
+    </li>
+  );
+}
+
+function Empty({ title, text, onResults, showResults, compact = false }: { title: string; text: string; onResults?: () => void; showResults?: boolean; compact?: boolean }) {
   const { t } = useI18n();
   return (
-    <div className="rounded-3xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
+    <div className={`rounded-3xl border border-dashed border-gray-300 bg-white px-6 text-center ${compact ? "py-8" : "py-12"}`}>
       <div className="w-14 h-14 mx-auto rounded-2xl bg-[#eef3fb] text-[var(--kk-blue)] flex items-center justify-center mb-4"><CalendarDays className="w-7 h-7" aria-hidden /></div>
       <h2 className="kk-heading text-xl text-gray-900">{title}</h2>
       <p className="text-gray-600 mt-1 max-w-md mx-auto">{text}</p>

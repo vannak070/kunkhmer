@@ -7,8 +7,8 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Building2, CalendarDays, Crown, Search, Sparkles, Users, X } from "lucide-react";
-import { DemoBanner } from "../components/fan/FanWidgets";
-import { nextBout, useFanData, type FanData } from "../data/fanData";
+import { DemoBanner, FormGuide } from "../components/fan/FanWidgets";
+import { fightHistory, nextBout, useFanData, type FanData } from "../data/fanData";
 import { getFighterSlug } from "../data/masterData";
 import { weightClassFor, type WeightClass } from "../data/weightClasses";
 import { textLang } from "../utils/publicDisplay";
@@ -33,6 +33,16 @@ function ageOf(dob?: string | null): number | null {
   return now.getFullYear() - birth.getFullYear() - (now < new Date(now.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0);
 }
 
+/** Current title holders (fan data keeps approved titles only; vacant ones are skipped): fighter id → title names. */
+export function currentTitles(data: FanData | null): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  for (const c of data?.champions ?? []) {
+    if (!c.current_holder_id || String(c.status || "").toLowerCase() === "vacant") continue;
+    map.set(c.current_holder_id, [...(map.get(c.current_holder_id) ?? []), c.title_name].filter(Boolean));
+  }
+  return map;
+}
+
 function recordOf(f: any) {
   const [w, l, d] = String(f.record || "").split("-").map((x) => parseInt(x, 10) || 0);
   return { w: w ?? 0, l: l ?? 0, d: d ?? 0 };
@@ -53,15 +63,7 @@ export function FightersDirectory() {
   const requested = params.get("gender");
   const gender: Gender = showGenderTabs && (requested === "men" || requested === "women") ? requested : "all";
 
-  // Current title holders: approved (fan data filters that) and not vacant.
-  const titles = useMemo(() => {
-    const map = new Map<string, string[]>();
-    for (const c of data?.champions ?? []) {
-      if (!c.current_holder_id || String(c.status || "").toLowerCase() === "vacant") continue;
-      map.set(c.current_holder_id, [...(map.get(c.current_holder_id) ?? []), c.title_name].filter(Boolean));
-    }
-    return map;
-  }, [data]);
+  const titles = useMemo(() => currentTitles(data), [data]);
 
   const classes = data?.weightClasses ?? [];
   const classOf = (f: any) => weightClassFor(weightOf(f), classes);
@@ -222,7 +224,7 @@ export function FightersDirectory() {
           <ul className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
             {list.slice(0, shown).map((f) => (
               <li key={f.id}>
-                <FighterCard f={f} data={data} weightClass={classOf(f)} titles={titles.get(f.id) ?? []} />
+                <FighterCard f={f} data={data} titles={titles.get(f.id) ?? []} />
               </li>
             ))}
           </ul>
@@ -239,8 +241,11 @@ export function FightersDirectory() {
   );
 }
 
-function FighterCard({ f, data, weightClass, titles }: { f: any; data: FanData; weightClass: WeightClass | null; titles: string[] }) {
+/** A fighter's card (raw /fighters row + fan data); also used for the home page's featured fighters. */
+export function FighterCard({ f, data, titles }: { f: any; data: FanData; titles: string[] }) {
   const { t, lang, localName, formatDate, formatNumber, formatWeight } = useI18n();
+  const weightClass: WeightClass | null = weightClassFor(weightOf(f), data.weightClasses);
+  const form = fightHistory(data, f.id).slice(0, 5).map((h) => h.outcome);
   const khmer = f.nameKhmer || f.name_khmer || "";
   const name = localName(f.name, khmer);
   const other = khmer && khmer !== f.name ? (lang === "km" ? f.name : khmer) : null;
@@ -283,6 +288,7 @@ function FighterCard({ f, data, weightClass, titles }: { f: any; data: FanData; 
               <span className="kk-stat text-lg text-amber-600">{formatNumber(d)}</span>
             </p>
           </div>
+          {form.length > 0 && <FormGuide form={form} label={false} />}
         </div>
         {next && (
           <p className="mt-1 rounded-lg bg-[#eef3fb] px-2.5 py-1.5 text-xs font-semibold text-[var(--kk-navy)] flex items-center gap-1.5">

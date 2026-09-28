@@ -7,11 +7,12 @@
 import { Link } from "react-router";
 import { ArrowRight, Calendar, ChevronRight, Clock, Handshake, MapPin, Music, Play, Swords, Timer, Tv } from "lucide-react";
 import { useI18n } from "../../i18n/LanguageContext";
-import { getFighterSlug } from "../../data/masterData";
-import { fightHistory, latestResults, useFanData, type Broadcaster } from "../../data/fanData";
-import { CountdownChip, DemoBanner, FormGuide, ResultRow } from "../fan/FanWidgets";
+import { latestResults, useFanData, type Broadcaster } from "../../data/fanData";
+import { CountdownChip, DemoBanner, ResultRow } from "../fan/FanWidgets";
+import { FighterCard, currentTitles } from "../../pages/FightersDirectory";
+import { CATEGORY_KEYS } from "../../pages/NewsAndMedia";
 import { CONTACT_EMAIL } from "../layout/SiteFooter";
-import { textLang } from "../../utils/publicDisplay";
+import { readTimeMinutes, textLang } from "../../utils/publicDisplay";
 import { HubAskBox } from "../hub/HubAskBox";
 import kkfLogo from "../../../assets/kkf-logo-192.png";
 
@@ -22,6 +23,8 @@ export interface HomeArticle {
   image: string;
   category?: string;
   date?: string;
+  /** Article body, for the reading time. */
+  content?: string;
 }
 
 export interface HomeEvent {
@@ -270,23 +273,35 @@ function PartnerStrip({ partners, centered = false }: { partners: Partner[]; cen
 
 // ─── 3. News ────────────────────────────────────────────────────────────────
 
+/** Category (same labels as /news-events), date and reading time. */
+function NewsMeta({ a, className = "" }: { a: HomeArticle; className?: string }) {
+  const { t, formatDate } = useI18n();
+  const category = a.category ? (CATEGORY_KEYS[a.category] ? t(CATEGORY_KEYS[a.category]) : a.category) : null;
+  return (
+    <p className={`text-xs font-semibold text-gray-500 flex flex-wrap items-center gap-x-2 gap-y-1 ${className}`}>
+      {category && <span className="kk-label text-[var(--kk-red)]">{category}</span>}
+      {a.date && <span>{formatDate(a.date)}</span>}
+      {a.content && <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" aria-hidden />{t("common.minRead", { n: readTimeMinutes(a.content) })}</span>}
+    </p>
+  );
+}
+
 function NewsCard({ a }: { a: HomeArticle }) {
-  const { formatDate } = useI18n();
   return (
     <Link to={`/article/${a.id}`} className="kk-focus group flex flex-col bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
       <div className="aspect-[16/9] overflow-hidden bg-gray-200">
         <Picture src={a.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 kk-motion" />
       </div>
       <div className="p-5">
-        <p className="kk-label text-gray-500 mb-2">{[a.category, formatDate(a.date)].filter(Boolean).join(" · ")}</p>
+        <NewsMeta a={a} className="mb-2" />
         <h3 lang={textLang(a.title)} className="kk-heading text-xl md:text-2xl text-gray-900 line-clamp-3 group-hover:text-[var(--kk-blue)]">{a.title}</h3>
+        {a.excerpt && <p lang={textLang(a.excerpt)} className="mt-2 text-sm text-gray-600 line-clamp-2">{a.excerpt}</p>}
       </div>
     </Link>
   );
 }
 
 function NewsGrid({ articles }: { articles: HomeArticle[] }) {
-  const { formatDate } = useI18n();
   // Too few stories for a lead + list: show equal cards so nothing is stretched.
   if (articles.length < 3) {
     return (
@@ -303,7 +318,7 @@ function NewsGrid({ articles }: { articles: HomeArticle[] }) {
           <Picture src={lead.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 kk-motion" />
         </div>
         <div className="p-5 md:p-6">
-          <p className="kk-label text-gray-500 mb-2">{[lead.category, formatDate(lead.date)].filter(Boolean).join(" · ")}</p>
+          <NewsMeta a={lead} className="mb-2" />
           <h3 lang={textLang(lead.title)} className="kk-heading text-2xl md:text-3xl text-gray-900 group-hover:text-[var(--kk-blue)]">{lead.title}</h3>
           {lead.excerpt && <p lang={textLang(lead.excerpt)} className="mt-2 text-gray-600 line-clamp-2">{lead.excerpt}</p>}
         </div>
@@ -315,7 +330,7 @@ function NewsGrid({ articles }: { articles: HomeArticle[] }) {
               <Link to={`/article/${a.id}`} className="kk-focus group flex gap-4 items-center bg-white rounded-2xl border border-gray-200 p-3 hover:shadow-md transition-shadow">
                 <Picture src={a.image} className="w-28 h-20 md:w-32 md:h-24 rounded-xl object-cover bg-gray-200 shrink-0" />
                 <div className="min-w-0">
-                  <p className="kk-label text-gray-500">{[a.category, formatDate(a.date)].filter(Boolean).join(" · ")}</p>
+                  <NewsMeta a={a} />
                   <h3 lang={textLang(a.title)} className="font-semibold text-gray-900 line-clamp-2 group-hover:text-[var(--kk-blue)]">{a.title}</h3>
                 </div>
               </Link>
@@ -360,28 +375,6 @@ function EventRow({ event, upcoming, onOpen }: { event: HomeEvent; upcoming: boo
 }
 
 // ─── 5. Fighters ────────────────────────────────────────────────────────────
-
-function FighterCard({ f, form }: { f: HomeFighter; form: ReturnType<typeof fightHistory> }) {
-  const { t, localName, formatWeight } = useI18n();
-  return (
-    <Link to={`/fighters/${getFighterSlug(f)}`} className="kk-focus group flex flex-col bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
-      <div className="aspect-[4/5] overflow-hidden bg-gray-100">
-        <Picture src={f.image} className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105 kk-motion" />
-      </div>
-      <div className="p-4 md:p-5 flex-1 flex flex-col">
-        <h3 className="kk-heading text-2xl text-gray-900 group-hover:text-[var(--kk-blue)]">{localName(f.name, f.nameKhmer)}</h3>
-        <p className="text-sm text-gray-500 truncate">{[f.gym, formatWeight(f.weight)].filter(Boolean).join(" · ")}</p>
-        <div className="mt-auto pt-4 flex items-end justify-between gap-3">
-          <p className="kk-stat text-2xl text-gray-900">
-            {f.wins}-{f.losses}-{f.draws}
-            <span className="kk-label ml-2 text-gray-400 align-middle">{t("common.wld")}</span>
-          </p>
-          {form.length > 0 && <FormGuide form={form.slice(0, 5).map((h) => h.outcome)} label={false} />}
-        </div>
-      </div>
-    </Link>
-  );
-}
 
 // ─── 6. Videos ──────────────────────────────────────────────────────────────
 
@@ -534,9 +527,13 @@ export default function HomePage(props: HomePageProps) {
   const eventList = upcomingEvents.length > 0 ? upcomingEvents.slice(0, 3) : pastEvents.slice(0, 1);
   const results = fan ? latestResults(fan, 4) : [];
   // Fighters with a real photo first, then the most experienced; records, not popularity.
+  // Shown with the /fighters card, so they need the raw rows from the fan data.
   const featured = [...fighters]
     .sort((a, b) => Number(isRealImage(b.image)) - Number(isRealImage(a.image)) || (b.wins + b.losses + b.draws) - (a.wins + a.losses + a.draws))
+    .map((f) => fan?.fighters.find((x: any) => x.id === f.id))
+    .filter(Boolean)
     .slice(0, 4);
+  const titles = currentTitles(fan);
   const stats = [
     { label: t("home.statFighters"), value: fighters.length },
     { label: t("home.statEvents"), value: upcomingEvents.length + pastEvents.length },
@@ -587,9 +584,9 @@ export default function HomePage(props: HomePageProps) {
 
       {featured.length > 0 && (
         <Section label={t("home.featuredTitle")}>
-          <SectionHead title={t("home.featuredTitle")} action={{ label: t("common.viewAll"), onClick: () => onNavigate("fighters") }} />
+          <SectionHead title={t("home.featuredTitle")} action={{ label: t("home.allFighters"), onClick: () => onNavigate("fighters") }} />
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
-            {featured.map((f) => <FighterCard key={f.id} f={f} form={fan ? fightHistory(fan, f.id) : []} />)}
+            {fan && featured.map((f: any) => <FighterCard key={f.id} f={f} data={fan} titles={titles.get(f.id) ?? []} />)}
           </div>
         </Section>
       )}

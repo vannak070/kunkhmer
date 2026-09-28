@@ -48,7 +48,7 @@ const playable = (v: VideoItem) => Boolean(v.youtubeId);
 const thumbnailFor = (v: VideoItem) => (isRealImage(v.thumbnail) ? v.thumbnail : playable(v) ? `https://i.ytimg.com/vi/${v.youtubeId}/hqdefault.jpg` : null);
 
 /** Category names the admin offers, shown in the site language; anything else is shown as typed. */
-const CATEGORY_KEYS: Record<string, MessageKey> = {
+export const CATEGORY_KEYS: Record<string, MessageKey> = {
   News: "news.cat.news",
   Events: "news.cat.events",
   Training: "news.cat.training",
