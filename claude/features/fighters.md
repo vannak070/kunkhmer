@@ -42,6 +42,18 @@ Nested inside other responses as snake_case `fighterArray()`.
   `AddFighter.tsx` (new/edit), `FighterDetail.tsx`.
 - Public: `/fighters/:id` → `SuperAppFighterDetail.tsx` (uses slugs/names).
 
+## Club registration form (Excel)
+`docs/forms/KKF_Fighter_Registration_Form.xlsx` (rebuild with
+`python3 docs/forms/build_fighter_registration_form.py`): clubs fill it in,
+KKF staff register the fighters in the admin. English + Khmer; sheets
+Instructions, Club, Fighters (50 rows, drop-downs, date/number checks, red
+highlight for missing required values), hidden Lists. Columns follow Register
+Fighter; age, weight class (the 14 official classes, copied 2026-09-28 — update
+the script if System Settings change) and record W-L-D are formulas. It also
+asks for ID, phone, emergency contact and medical details, which the system
+doesn't store yet (KKF keeps them). No photos. A "Registered in system" column
+is for KKF staff.
+
 ## Tests
 `api-tests/tests/fighters.test.ts`
 

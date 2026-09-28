@@ -24,6 +24,8 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
     logger: opts.logger === false ? false : { level: config.logLevel },
     // JSON bodies can be large (base64 images are sent inline by the admin UI).
     bodyLimit: 20 * 1024 * 1024,
+    // Real client IP behind our own proxies, so per-IP rate limits don't share one bucket.
+    trustProxy: config.trustProxy,
   });
 
   // Accept empty JSON bodies (the admin UI POSTs with no body, e.g. verify).

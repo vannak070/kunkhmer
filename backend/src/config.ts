@@ -1,3 +1,6 @@
+import type { FastifyServerOptions } from "fastify";
+import { trustOwnProxy } from "./lib/clientIp.ts";
+
 try {
   process.loadEnvFile();
 } catch {}
@@ -13,6 +16,13 @@ export const config = {
   port: Number(process.env.PORT ?? 3001),
   host: process.env.HOST ?? "0.0.0.0",
   logLevel: process.env.LOG_LEVEL ?? "info",
+  /**
+   * TRUST_PROXY: proxies trusted for request.ip (comma-separated addresses/CIDRs or a hop count).
+   * Unset = one hop from localhost / a private network (lib/clientIp.ts).
+   */
+  trustProxy: (/^\d+$/.test(process.env.TRUST_PROXY ?? "")
+    ? Number(process.env.TRUST_PROXY)
+    : process.env.TRUST_PROXY || trustOwnProxy) as FastifyServerOptions["trustProxy"],
   /** Fan sign-in / sign-up attempts allowed per 15 minutes (per IP, and per IP + email for sign-in). */
   fanRateLimit: Number(process.env.FAN_RATE_LIMIT ?? 10),
   /** "Ask Kun Khmer" AI chat. Off unless a key is set; AI_ENABLED=false forces it off (tests). */

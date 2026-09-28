@@ -41,6 +41,8 @@ export default defineConfig({
         target: process.env.VITE_PROXY_TARGET || 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
+        // Send the browser's IP (X-Forwarded-For) so the API's per-IP rate limits work.
+        xfwd: true,
       },
     },
   },
