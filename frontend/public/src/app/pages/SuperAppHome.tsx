@@ -20,6 +20,7 @@ import { api } from "../utils/api";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useI18n } from "../i18n/LanguageContext";
 import { partnerPath } from "../data/partners";
+import { articleTextFrom, articleVersion } from "../data/news";
 import { formatVideoDuration, formatViews } from "../utils/publicDisplay";
 
 const SECTIONS = ["home", "news-events", "fighters", "matches", "strategic-partners"] as const;
@@ -34,7 +35,7 @@ function youtubeIdOf(url?: string | null): string {
 const byDateDesc = (a: { date?: string }, b: { date?: string }) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime();
 
 export function SuperAppHome() {
-  const { t, formatDate } = useI18n();
+  const { t, lang, formatDate } = useI18n();
   const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -73,6 +74,7 @@ export function SuperAppHome() {
               date: a.publish_date || a.publishDate || "",
               featured: Boolean(a.featured),
               content: a.content || "",
+              ...articleTextFrom(a),
             }))
             .sort(byDateDesc),
         ),
@@ -150,6 +152,11 @@ export function SuperAppHome() {
   });
 
   const byId = (rows: any[], id: string) => rows.find((r) => r.id === id) ?? { id };
+  // English site: the English version of an article when there is one.
+  const localNews: NewsItem[] = news.map((a) => {
+    const v = articleVersion(a as any, lang);
+    return { ...a, title: v.title, excerpt: v.excerpt, content: v.content };
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -157,7 +164,7 @@ export function SuperAppHome() {
 
       {section === "home" && (
         <HomePage
-          articles={news.map((a) => ({ ...a, image: a.image || "" }))}
+          articles={localNews.map((a) => ({ ...a, image: a.image || "" }))}
           upcomingEvents={upcomingEvents}
           pastEvents={pastEvents}
           fighters={homeFighters}
@@ -172,7 +179,7 @@ export function SuperAppHome() {
 
       {section !== "home" && (
         <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
-          {section === "news-events" && <NewsAndMedia articles={news} videos={videos} fighters={fighters} loading={loadingNews} />}
+          {section === "news-events" && <NewsAndMedia articles={localNews} videos={videos} fighters={fighters} loading={loadingNews} />}
           {section === "fighters" && <FightersDirectory />}
           {section === "matches" && <MatchesAndEvents />}
           {section === "strategic-partners" && (

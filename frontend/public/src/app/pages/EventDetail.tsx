@@ -6,15 +6,15 @@
  * See claude/updates/event-compare-articles.md.
  */
 import { LoadError } from "../components/LoadError";
-import { useMemo } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
-import { ArrowLeft, Calendar, Clock, Crown, MapPin, Swords, Tv } from "lucide-react";
+import { ArrowLeft, Building2, Calendar, Clock, Crown, MapPin, Swords, Tv } from "lucide-react";
 import { SiteHeader } from "../components/layout/SiteHeader";
 import { SiteFooter } from "../components/layout/SiteFooter";
 import { HubAskAbout } from "../components/hub/HubAskAbout";
 import { CountdownChip, DemoBanner, WhereToWatch, daysUntil } from "../components/fan/FanWidgets";
 import { BoutRow, SponsorStrip, type EventSponsor } from "../components/event/EventParts";
-import { FaceOff, Stats } from "../components/detail/DetailParts";
+import { FaceOff } from "../components/detail/DetailParts";
 import { PresentedBy } from "../components/home/HomePage";
 import { PublicStatusBadge } from "../components/PublicStatusBadge";
 import { ShareButtons } from "../components/ShareButtons";
@@ -128,9 +128,11 @@ export function EventDetail() {
                   {t("event.allEvents")}
                 </Link>
 
-                <div className={`grid gap-8 md:gap-10 items-center ${event.image || main ? "lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]" : ""}`}>
+                <div className={`grid gap-8 lg:gap-12 items-start ${event.image || main ? "lg:grid-cols-[minmax(0,6fr)_minmax(0,6fr)]" : ""}`}>
                   {event.image ? (
-                    <img src={event.image} alt={event.name} className="w-full h-auto max-h-[560px] object-contain rounded-3xl border border-[#d5e0f3] bg-white shadow-[0_10px_40px_rgba(26,71,151,0.1)]" />
+                    <div className="lg:sticky lg:top-24">
+                      <img src={event.image} alt={event.name} className="w-full h-auto max-h-[640px] object-contain rounded-3xl border border-[#d5e0f3] bg-white shadow-[0_10px_40px_rgba(26,71,151,0.12)]" />
+                    </div>
                   ) : main ? (
                     <div className="rounded-3xl border border-[#d5e0f3] bg-gradient-to-br from-white to-[#fdf1f3] p-6 md:p-8 shadow-sm">
                       <p className="kk-label text-center text-[#7A5B00] mb-4 flex items-center justify-center gap-1.5">
@@ -140,8 +142,8 @@ export function EventDetail() {
                     </div>
                   ) : null}
 
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <div className="min-w-0 space-y-5">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="kk-label text-[var(--kk-red)] mr-1">{t("event.fightNight")}</span>
                       <PublicStatusBadge status={event.status} />
                       {upcoming && <CountdownChip date={event.date} />}
@@ -149,54 +151,53 @@ export function EventDetail() {
                         <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">{t("event.resultsIn")}</span>
                       )}
                       {!upcoming && completed.length === 0 && bouts.length > 0 && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-700"><Clock className="w-3.5 h-3.5" aria-hidden />{t("fights.pendingTitle")}</span>
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-gray-200 text-gray-700"><Clock className="w-3.5 h-3.5" aria-hidden />{t("fights.pendingTitle")}</span>
                       )}
                     </div>
-                    <h1 lang={textLang(event.name)} className="kk-heading text-4xl md:text-6xl text-[var(--kk-navy)] mb-5 break-words">{event.name}</h1>
-                    <ul className="space-y-2 text-gray-700 mb-6">
-                      <li className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-[var(--kk-blue)] shrink-0" aria-hidden />
+
+                    <h1 lang={textLang(event.name)} className="kk-heading text-4xl md:text-5xl xl:text-6xl text-[var(--kk-navy)] break-words leading-[1.05]">{event.name}</h1>
+
+                    {/* Key facts */}
+                    <dl className="rounded-2xl bg-white border border-[#d5e0f3] divide-y divide-gray-100 shadow-sm">
+                      <FactRow icon={<Calendar className="w-4 h-4" />} label={t("matches.date")}>
                         {event.end_date && event.end_date !== event.date
                           ? `${formatDate(event.date, "long")} – ${formatDate(event.end_date, "long")}`
                           : formatDate(event.date, "long")}
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <MapPin className="w-4 h-4 mt-0.5 text-[var(--kk-red)] shrink-0" aria-hidden />
-                        <span>
-                          <span lang={textLang(event.location)}>{event.location || t("matches.venueTba")}</span>
-                          {event.location && (
-                            <>
-                              {" "}
-                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`} target="_blank" rel="noopener noreferrer" className="kk-focus text-sm font-semibold text-[var(--kk-blue)] hover:underline underline-offset-4 whitespace-nowrap">{t("club.map")}</a>
-                            </>
-                          )}
-                        </span>
-                      </li>
+                      </FactRow>
+                      <FactRow icon={<MapPin className="w-4 h-4" />} label={t("matches.venue")} tone="red">
+                        <span lang={textLang(event.location)}>{event.location || t("matches.venueTba")}</span>
+                        {event.location && (
+                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`} target="_blank" rel="noopener noreferrer" className="kk-focus ml-2 text-sm font-semibold text-[var(--kk-blue)] hover:underline underline-offset-4 whitespace-nowrap">{t("club.map")}</a>
+                        )}
+                      </FactRow>
                       {stationName && (
-                        <li className="flex items-center gap-2">
-                          <Tv className="w-4 h-4 text-[var(--kk-blue)] shrink-0" aria-hidden />
+                        <FactRow icon={<Tv className="w-4 h-4" />} label={t("matches.broadcast")}>
                           {broadcaster ? (
                             <Link to={`/partners/broadcasters/${partnerSlug(broadcaster)}`} className="kk-focus hover:underline underline-offset-4">{t("home.broadcastOn", { name: stationName })}</Link>
                           ) : t("home.broadcastOn", { name: stationName })}
-                        </li>
+                        </FactRow>
                       )}
-                    </ul>
+                      {organizer && (
+                        <FactRow icon={<Building2 className="w-4 h-4" />} label={t("matches.organizer")}>
+                          <span lang={textLang(organizer)}>{organizer}</span>
+                        </FactRow>
+                      )}
+                      {bouts.length > 0 && (
+                        <FactRow icon={<Swords className="w-4 h-4" />} label={t("event.tabCard")}>
+                          {[
+                            tn("common.bouts", bouts.length),
+                            cards.length > 1 ? `${cards.length} ${tn("event.cards", cards.length).toLowerCase()}` : null,
+                            bouts.some((b) => b.isTitle) ? `${bouts.filter((b) => b.isTitle).length} ${tn("event.titleBouts", bouts.filter((b) => b.isTitle).length).toLowerCase()}` : null,
+                          ].filter(Boolean).join(" · ")}
+                        </FactRow>
+                      )}
+                    </dl>
 
-                    {bouts.length > 0 && (
-                      <div className="mb-6">
-                        <Stats
-                          compact
-                          items={[
-                            { icon: <Swords className="w-5 h-5" />, value: bouts.length, label: tn("common.bout", bouts.length) },
-                            { icon: <Calendar className="w-5 h-5" />, value: cards.length > 1 ? cards.length : 0, label: tn("event.cards", cards.length) },
-                            { icon: <Crown className="w-5 h-5" />, value: bouts.filter((b) => b.isTitle).length, label: tn("event.titleBouts", bouts.filter((b) => b.isTitle).length) },
-                          ]}
-                        />
-                      </div>
-                    )}
+                    {/* About this event */}
+                    {event.description && <AboutText text={event.description} />}
 
                     {mainSponsor && (
-                      <div className="mb-6">
+                      <div className="flex items-center gap-3 rounded-2xl bg-white/70 border border-[#d5e0f3] px-4 py-3">
                         <PresentedBy sponsor={{ ...mainSponsor, logo: mainSponsor.logo ?? null, url: mainSponsor.url ?? null }} />
                       </div>
                     )}
@@ -219,7 +220,17 @@ export function EventDetail() {
                           {t("common.addToCalendar")}
                         </button>
                       )}
-                      <ShareButtons variant="compact" title={`${event.name} — Kun Khmer`} label={t("common.shareEvent")} />
+                      {completed.length > 0 && (
+                        <button type="button" onClick={() => setParams({ view: "results" })} className="kk-focus inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-[var(--kk-blue)] hover:bg-[var(--kk-navy)] text-white text-sm font-semibold">
+                          <Crown className="w-4 h-4" aria-hidden />{t("fights.seeResults")}
+                        </button>
+                      )}
+                      <ShareButtons
+                        variant="compact"
+                        title={`${event.name} — Kun Khmer`}
+                        label={t("common.shareEvent")}
+                        className="kk-focus h-11 px-4 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-800 hover:border-gray-300"
+                      />
                     </div>
                   </div>
                 </div>
@@ -288,19 +299,9 @@ export function EventDetail() {
                 }
               />
 
-              {/* About */}
-              {(event.description || organizer || sponsors.length > 0) && (
-                <section className="grid gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] pt-10 border-t border-gray-200">
-                  <div>
-                    <h2 className="kk-heading text-3xl text-gray-900 mb-4">{t("event.about")}</h2>
-                    {event.description && <p lang={textLang(event.description)} className="text-gray-700 leading-relaxed whitespace-pre-line">{event.description}</p>}
-                    {organizer && (
-                      <p className="mt-4 text-sm text-gray-600">
-                        <span className="kk-label text-gray-500 mr-2">{t("matches.organizer")}</span>
-                        {organizer}
-                      </p>
-                    )}
-                  </div>
+              {/* Other sponsors (the main sponsor and the description are in the header) */}
+              {sponsors.length > (mainSponsor ? 1 : 0) && (
+                <section className="pt-10 border-t border-gray-200">
                   <SponsorStrip sponsors={sponsors} />
                 </section>
               )}
@@ -343,4 +344,35 @@ function CardList({ cards, numbers, result = false, awaiting = false }: { cards:
 function NoResults() {
   const { t } = useI18n();
   return <p className="bg-white rounded-2xl border border-gray-200 p-10 text-center text-gray-600">{t("event.noResults")}</p>;
+}
+
+/** One line of the header's key facts: icon, small label, value. */
+function FactRow({ icon, label, children, tone = "blue" }: { icon: ReactNode; label: string; children: ReactNode; tone?: "blue" | "red" }) {
+  return (
+    <div className="flex items-start gap-3 px-4 py-3">
+      <span className={`mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${tone === "red" ? "bg-[#fdf1f3] text-[var(--kk-red)]" : "bg-[#eef3fb] text-[var(--kk-blue)]"}`} aria-hidden>{icon}</span>
+      <div className="min-w-0">
+        <dt className="text-xs font-semibold text-gray-500">{label}</dt>
+        <dd className="text-gray-900 font-medium break-words">{children}</dd>
+      </div>
+    </div>
+  );
+}
+
+/** "About this event" in the header; long descriptions fold with Read more. */
+function AboutText({ text }: { text: string }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const long = text.length > 280;
+  return (
+    <section aria-label={t("event.about")}>
+      <h2 className="kk-label text-gray-500 mb-1.5">{t("event.about")}</h2>
+      <p lang={textLang(text)} className={`text-gray-700 leading-relaxed whitespace-pre-line ${long && !open ? "line-clamp-4" : ""}`}>{text}</p>
+      {long && (
+        <button type="button" onClick={() => setOpen((o) => !o)} className="kk-focus mt-1 text-sm font-semibold text-[var(--kk-blue)] hover:underline underline-offset-4">
+          {open ? t("event.readLess") : t("event.readMore")}
+        </button>
+      )}
+    </section>
+  );
 }

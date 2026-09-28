@@ -78,12 +78,14 @@ function loadIndex(): Promise<SearchItem[]> {
             items.push({
               kind: "article",
               id: a.id,
-              title: a.title,
+              // English site: the English title when there is one; the Khmer site shows the main title.
+              title: a.title_en || a.title,
+              titleKm: a.title,
               detail: a.category,
               date: a.publish_date || a.publishDate,
               image: a.featured_image || a.featuredImage,
               href: `/article/${a.id}`,
-              haystack: [a.title, a.subtitle, a.category].filter(Boolean).join(" ").toLowerCase(),
+              haystack: [a.title, a.subtitle, a.title_en, a.subtitle_en, a.category].filter(Boolean).join(" ").toLowerCase(),
             });
           }
         }

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router";
-import { Plus, Search, Newspaper, Calendar, Eye, Edit2, Trash2, Image as ImageIcon, FileText, CheckCircle, Clock, XCircle, Upload, X, ArrowLeft, Save, ChevronDown, Heading, Bold, Italic, List, Quote, Link2 } from "lucide-react";
+import { Plus, Search, Newspaper, Calendar, Eye, Edit2, Trash2, Image as ImageIcon, FileText, CheckCircle, Clock, XCircle, Upload, X, ArrowLeft, Save, ChevronDown, Heading, Bold, Italic, List, Quote, Link2, Globe } from "lucide-react";
 import { usePermissions } from "../hooks/usePermissions";
 import { api } from "../utils/api";
 
@@ -9,6 +9,9 @@ interface NewsArticle {
   title: string;
   subtitle: string;
   content: string;
+  titleEn: string;
+  subtitleEn: string;
+  contentEn: string;
   author: string;
   publishDate: string;
   status: "Draft" | "Published" | "Archived";
@@ -49,6 +52,9 @@ export function News() {
     title: "",
     subtitle: "",
     content: "",
+    titleEn: "",
+    subtitleEn: "",
+    contentEn: "",
     category: "News",
     status: "Draft" as "Draft" | "Published" | "Archived",
     author: "",
@@ -65,6 +71,9 @@ export function News() {
         title: art.title,
         subtitle: art.subtitle || "",
         content: art.content || "",
+        titleEn: art.title_en || "",
+        subtitleEn: art.subtitle_en || "",
+        contentEn: art.content_en || "",
         author: art.author || "Admin",
         publishDate: art.publish_date || art.publishDate || "",
         status: art.status || "Draft",
@@ -127,6 +136,9 @@ export function News() {
       title: "",
       subtitle: "",
       content: "",
+      titleEn: "",
+      subtitleEn: "",
+      contentEn: "",
       category: "News",
       status: "Draft",
       author: currentUser ? currentUser.full_name : "KKF Official",
@@ -144,6 +156,9 @@ export function News() {
       title: article.title,
       subtitle: article.subtitle,
       content: article.content,
+      titleEn: article.titleEn,
+      subtitleEn: article.subtitleEn,
+      contentEn: article.contentEn,
       category: article.category,
       status: article.status,
       author: article.author,
@@ -250,6 +265,9 @@ export function News() {
           title: formData.title,
           subtitle: formData.subtitle,
           content: formData.content,
+          titleEn: formData.titleEn,
+          subtitleEn: formData.subtitleEn,
+          contentEn: formData.contentEn,
           category: formData.category,
           status: formData.status,
           author: formData.author,
@@ -264,6 +282,9 @@ export function News() {
           title: formData.title,
           subtitle: formData.subtitle,
           content: formData.content,
+          titleEn: formData.titleEn,
+          subtitleEn: formData.subtitleEn,
+          contentEn: formData.contentEn,
           category: formData.category,
           status: formData.status,
           author: formData.author,
@@ -464,6 +485,52 @@ export function News() {
                     dangerouslySetInnerHTML={{ __html: renderPreviewHTML(formData.content) }}
                   />
                 )}
+              </div>
+            </div>
+            {/* English version for international fans (optional) */}
+            <div className="card-premium">
+              <h2 className="text-base font-bold text-foreground mb-1 flex items-center gap-2">
+                <Globe className="w-5 h-5 text-primary" />
+                <span>English version (optional)</span>
+              </h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                If the article above is in Khmer, add an English translation for international fans. The English website shows it
+                instead of the Khmer text; without it, English visitors see the Khmer article with an "Article in Khmer" label.
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="news-title-en" className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">English title</label>
+                  <input
+                    id="news-title-en"
+                    type="text"
+                    value={formData.titleEn}
+                    onChange={(e) => setFormData({ ...formData, titleEn: e.target.value })}
+                    placeholder="e.g., Fighters and team return safely to Cambodia"
+                    className="input-premium font-semibold text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="news-subtitle-en" className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">English summary</label>
+                  <input
+                    id="news-subtitle-en"
+                    type="text"
+                    value={formData.subtitleEn}
+                    onChange={(e) => setFormData({ ...formData, subtitleEn: e.target.value })}
+                    placeholder="One sentence for news cards and link previews"
+                    className="input-premium font-medium text-slate-700"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="news-content-en" className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">English article text</label>
+                  <textarea
+                    id="news-content-en"
+                    rows={10}
+                    value={formData.contentEn}
+                    onChange={(e) => setFormData({ ...formData, contentEn: e.target.value })}
+                    placeholder="The full article in English (same formatting as above)."
+                    className="w-full bg-white border border-border/80 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all resize-y min-h-[200px] leading-relaxed"
+                  />
+                </div>
               </div>
             </div>
           </div>

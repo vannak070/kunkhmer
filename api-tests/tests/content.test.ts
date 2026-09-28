@@ -39,6 +39,17 @@ describe("news", () => {
     expect(res.body.data.publish_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
+  it("stores an optional English version and clears it with an empty value", async () => {
+    const { body } = await post("/news", { ...fullArticle(), titleEn: "Title in English", subtitleEn: "Summary", contentEn: "<p>English body</p>" }, a.officer.token);
+    expect(body.data).toMatchObject({ title_en: "Title in English", subtitle_en: "Summary", content_en: "<p>English body</p>" });
+    const shown = await get(`/news/${body.data.id}`);
+    expect(shown.body.data.title_en).toBe("Title in English");
+    const cleared = await put(`/news/${body.data.id}`, { titleEn: "", subtitleEn: "", contentEn: "" }, a.officer.token);
+    expect(cleared.body.data).toMatchObject({ title_en: null, subtitle_en: null, content_en: null });
+    const plain = await post("/news", fullArticle(), a.officer.token);
+    expect(plain.body.data).toMatchObject({ title_en: null, subtitle_en: null, content_en: null });
+  });
+
   it("hides draft articles from the public but not from KKF staff", async () => {
     const { body } = await post("/news", { ...fullArticle(), status: "Draft" }, a.officer.token);
     const id = body.data.id;

@@ -9,10 +9,15 @@ import { HubAskAbout } from "../components/hub/HubAskAbout";
 import { usePageMeta } from "../hooks/usePageTitle";
 import { useI18n } from "../i18n/LanguageContext";
 import { publicName, readTimeMinutes } from "../utils/publicDisplay";
+import { articleTextFrom, articleVersion, hasEnglish } from "../data/news";
+import { Languages } from "lucide-react";
 
 interface NewsArticle {
   id: string;
   title: string;
+  titleEn?: string | null;
+  excerptEn?: string | null;
+  contentEn?: string | null;
   excerpt: string;
   image: string;
   category: string;
@@ -29,10 +34,12 @@ export function ArticleDetail() {
   const [relatedArticles, setRelatedArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const { t, formatDate, formatNumber } = useI18n();
+  const { t, lang, formatDate, formatNumber } = useI18n();
+  const [showOriginal, setShowOriginal] = useState(false);
+  const shown = article ? articleVersion(article, lang, showOriginal) : null;
   usePageMeta({
-    title: article?.title ?? (loading ? null : t("news.notFound")),
-    description: article?.excerpt || article?.content,
+    title: shown?.title ?? (loading ? null : t("news.notFound")),
+    description: shown?.excerpt || shown?.content,
     image: article?.image,
     type: "article",
   });
@@ -58,7 +65,8 @@ export function ArticleDetail() {
             author: publicName(specificArticle.author) || "",
             date: specificArticle.publish_date || specificArticle.publishDate || "",
             featured: Boolean(specificArticle.featured),
-            content: specificArticle.content || ""
+            content: specificArticle.content || "",
+            ...articleTextFrom(specificArticle),
           };
           setArticle(mappedSpecific);
         }
@@ -75,7 +83,8 @@ export function ArticleDetail() {
               author: publicName(art.author) || "",
               date: art.publish_date || art.publishDate || "",
               featured: Boolean(art.featured),
-              content: art.content || ""
+              content: art.content || "",
+              ...articleTextFrom(art),
             }));
           setRelatedArticles(mappedAll.slice(0, 3)); // show top 3 related
         }
@@ -163,14 +172,28 @@ export function ArticleDetail() {
           {/* Article Content */}
           <div className="p-6 md:p-12">
             {/* Title */}
-            <h1 className="text-3xl md:text-5xl font-black text-gray-900 mb-6 leading-tight">
-              {article.title}
+            {(shown!.textLang === "km" && lang === "en") || (lang === "en" && hasEnglish(article)) ? (
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                {shown!.textLang === "km" && lang === "en" && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#eef3fb] text-[var(--kk-navy)] text-xs font-bold">
+                    <Languages className="w-3.5 h-3.5" aria-hidden />{t("news.inKhmer")}
+                  </span>
+                )}
+                {lang === "en" && hasEnglish(article) && (
+                  <button type="button" onClick={() => setShowOriginal((v) => !v)} className="kk-focus text-sm font-semibold text-[var(--kk-blue)] hover:underline underline-offset-4">
+                    {showOriginal ? t("news.readEnglish") : t("news.readOriginal")}
+                  </button>
+                )}
+              </div>
+            ) : null}
+            <h1 lang={shown!.textLang} className="text-3xl md:text-5xl font-black text-gray-900 mb-6 leading-tight">
+              {shown!.title}
             </h1>
 
             {/* Excerpt Summary */}
-            {article.excerpt && (
-              <p className="text-lg text-gray-600 font-medium border-l-4 border-slate-300 pl-4 py-1.5 mb-8 italic">
-                {article.excerpt}
+            {shown!.excerpt && (
+              <p lang={shown!.textLang} className="text-lg text-gray-600 font-medium border-l-4 border-slate-300 pl-4 py-1.5 mb-8 italic">
+                {shown!.excerpt}
               </p>
             )}
 
@@ -190,13 +213,13 @@ export function ArticleDetail() {
               )}
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-gray-400" />
-                <span>{t("common.minRead", { n: formatNumber(readTimeMinutes(article.content)) })}</span>
+                <span>{t("common.minRead", { n: formatNumber(readTimeMinutes(shown!.content)) })}</span>
               </div>
             </div>
 
             {/* Content Body */}
-            <div className="prose max-w-none text-gray-700 leading-relaxed text-base space-y-6">
-              {article.content.split('\n').map((para, i) => (
+            <div lang={shown!.textLang} className="prose max-w-none text-gray-700 leading-relaxed text-base space-y-6">
+              {shown!.content.split('\n').map((para, i) => (
                 para.trim() && <p key={i}>{para.trim()}</p>
               ))}
             </div>
@@ -207,14 +230,14 @@ export function ArticleDetail() {
                 <p className="text-base font-black text-gray-900">{t("common.shareArticle")}</p>
                 <p className="text-sm text-gray-500">{t("common.shareArticleText")}</p>
               </div>
-              <ShareButtons title={article.title} />
+              <ShareButtons title={shown!.title} />
             </div>
           </div>
         </article>
 
         <HubAskAbout
           className="mb-12"
-          questions={[t("hub.askArticleSummary", { title: article.title }), t("hub.askLatestNews")]}
+          questions={[t("hub.askArticleSummary", { title: shown!.title }), t("hub.askLatestNews")]}
         />
 
         {/* Related Articles Section */}
@@ -248,11 +271,11 @@ export function ArticleDetail() {
                   </div>
                   <div className="p-5 flex-1 flex flex-col justify-between">
                     <div>
-                      <h3 className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors leading-snug line-clamp-2 mb-2">
-                        {rel.title}
+                      <h3 lang={articleVersion(rel, lang).textLang} className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors leading-snug line-clamp-2 mb-2">
+                        {articleVersion(rel, lang).title}
                       </h3>
-                      <p className="text-xs text-gray-500 line-clamp-2">
-                        {rel.excerpt}
+                      <p lang={articleVersion(rel, lang).textLang} className="text-xs text-gray-500 line-clamp-2">
+                        {articleVersion(rel, lang).excerpt}
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 mt-4 pt-3 border-t border-gray-100">
