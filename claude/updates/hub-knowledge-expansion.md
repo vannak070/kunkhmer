@@ -60,3 +60,8 @@ New categories: `organisations`, `people` (legends).
   president's name from a news article ("Khou Chhay") and gave a longer generic foul list; Opus
   more concise. Model unchanged (owner decides via `AI_MODEL`).
 - Typecheck, contract suite 214/214 (`CI=true`), admin build pass.
+- Owner approved all ("please approve all"): the remaining 63 drafts published through the admin API as
+  Super Admin (4 were already published by the owner) → 67 Published, 0 Draft; "Khmer reviewed" left
+  off. Live check ($0.07 — the first question after publishing writes the new prompt cache): "Who is
+  Eh Phouthong, and what instruments play during a fight?" → `search_knowledge` ×2, answered from
+  the Eh Phouthong and music articles.

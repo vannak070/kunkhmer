@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built and committed 2026-09-28; draft articles await Super Admin review |
+| **Status** | Built; all 67 starter articles **published by the owner 2026-09-28** (Khmer not yet marked reviewed, so the Hub answers Khmer questions from the English text) |
 | **Jira** | n/a |
 | **Figma** | n/a |
 | **Owner** | vannak070 |
