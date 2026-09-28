@@ -1,5 +1,6 @@
 import { useState, useEffect, Fragment } from "react";
 import { MatchesAndEvents } from "./MatchesAndEvents";
+import { NewsAndMedia } from "./NewsAndMedia";
 import { Link, useParams, useNavigate, useLocation } from "react-router";
 import { api } from "../utils/api";
 import { Search, Bell, ShoppingCart, User, Heart, Star, Flame, Zap, Crown, ChevronRight, Package, Plus, Minus, X, CreditCard, Play, Calendar, MapPin, Clock, Award, Users, BookOpen, Video, Menu, Home as HomeIcon, Trophy, TrendingUp, Sparkles, ArrowRight, ArrowLeft, Check, ChevronDown, ChevronUp, Filter, Grid3x3, Eye, ShoppingBag, Building2, Tv, Handshake, Weight, Share2, Mail, Swords } from "lucide-react";
@@ -45,7 +46,6 @@ import { MatchFilters } from "../components/MatchFilters";
 
 type Section = "home" | "news-events" | "fighters" | "matches" | "match-detail" | "media" | "shop" | "strategic-partners" | "club-detail" | "sponsor-detail" | "broadcast-detail" | "cart" | "checkout" | "orders" | "profile" | "subscription";
 type Category = "all" | "gloves" | "shorts" | "equipment" | "apparel";
-type NewsEventsTab = "news" | "media";
 type StrategicPartnersTab = "clubs" | "broadcasts" | "sponsors";
 type MatchesEventsTab = "matches" | "events" | "previous";
 type FighterTypeFilter = "all" | "Professional" | "Amateur";
@@ -224,7 +224,6 @@ export function SuperAppHome() {
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [fighterSearchQuery, setFighterSearchQuery] = useState("");
   const [cartDropdownOpen, setCartDropdownOpen] = useState(false);
-  const [newsEventsTab, setNewsEventsTab] = useState<NewsEventsTab>("news");
   const [strategicPartnersTab, setStrategicPartnersTab] = useState<StrategicPartnersTab>("clubs");
   const [matchesEventsTab, setMatchesEventsTab] = useState<MatchesEventsTab>("matches");
   const [fighterTypeFilter, setFighterTypeFilter] = useState<FighterTypeFilter>("all");
@@ -239,8 +238,6 @@ export function SuperAppHome() {
   const [showMatchFilters, setShowMatchFilters] = useState<boolean>(false);
   const [showProductFilters, setShowProductFilters] = useState<boolean>(false);
   const [selectedVideo, setSelectedVideo] = useState<MediaContent | null>(null);
-  const [newsCurrentPage, setNewsCurrentPage] = useState(1);
-  const [mediaCurrentPage, setMediaCurrentPage] = useState(1);
   const [previousMatchesPage, setPreviousMatchesPage] = useState(1);
   const [matchFilter, setMatchFilter] = useState<MatchFilter>("all");
   const [selectedWeightClass, setSelectedWeightClass] = useState<string>("all");
@@ -250,8 +247,6 @@ export function SuperAppHome() {
   const [selectedClubId, setSelectedClubId] = useState<string | null>(null);
   const [selectedSponsor, setSelectedSponsor] = useState<any | null>(null);
   const [selectedBroadcastId, setSelectedBroadcastId] = useState<string | null>(null);
-  const newsPerPage = 6;
-  const mediaPerPage = 6;
   const previousMatchesPerPage = 5;
   const [shippingInfo, setShippingInfo] = useState({
     fullName: "",
@@ -408,7 +403,8 @@ export function SuperAppHome() {
         const data = await api.videos.list();
         if (data && data.length > 0) {
           const mapped = data.map((vid: any) => {
-            let youtubeId = "dQw4w9WgXcQ";
+            // Empty when the link can't be read: the player then says so instead of playing another video.
+            let youtubeId = "";
             if (vid.youtube_url || vid.youtubeUrl) {
               const url = vid.youtube_url || vid.youtubeUrl;
               const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -445,11 +441,6 @@ export function SuperAppHome() {
     };
     fetchMedia();
   }, []);
-  const [newsCategoryFilter, setNewsCategoryFilter] = useState("All");
-  const [newsSearchQuery, setNewsSearchQuery] = useState("");
-  const [mediaCategoryFilter, setMediaCategoryFilter] = useState("All");
-  const [mediaFighterFilter, setMediaFighterFilter] = useState("All");
-  const [mediaSearchQuery, setMediaSearchQuery] = useState("");
 
   const [clubsList, setClubsList] = useState<any[]>([]);
   const [broadcastersList, setBroadcastersList] = useState<any[]>([]);
@@ -490,19 +481,6 @@ export function SuperAppHome() {
       setCurrentSection("home");
     }
   }, [params.section]);
-
-  // Sync news & events sub-tab with query parameter (e.g. ?tab=media)
-  useEffect(() => {
-    if (currentSection === "news-events") {
-      const queryParams = new URLSearchParams(window.location.search);
-      const tabParam = queryParams.get("tab");
-      if (tabParam === "media") {
-        setNewsEventsTab("media");
-      } else if (tabParam === "news") {
-        setNewsEventsTab("news");
-      }
-    }
-  }, [currentSection]);
 
   // Sync matches sub-tab with query parameter (e.g. ?tab=events or ?tab=previous)
   useEffect(() => {
@@ -1072,435 +1050,6 @@ export function SuperAppHome() {
       />
     );
   };
-  const renderNewsEvents = () => {
-    const filteredNews = newsArticles.filter(article => {
-      const matchesCategory = newsCategoryFilter === "All" || article.category === newsCategoryFilter;
-      const matchesSearch = newsSearchQuery.trim() === "" || 
-        article.title.toLowerCase().includes(newsSearchQuery.toLowerCase()) ||
-        (article.excerpt && article.excerpt.toLowerCase().includes(newsSearchQuery.toLowerCase()));
-      return matchesCategory && matchesSearch;
-    });
-
-    const filteredMedia = mediaContent.filter(media => {
-      const matchesCategory = mediaCategoryFilter === "All" || media.category === mediaCategoryFilter;
-      const matchesFighter = mediaFighterFilter === "All" || media.fighterId === mediaFighterFilter;
-      const matchesSearch = mediaSearchQuery.trim() === "" || 
-        media.title.toLowerCase().includes(mediaSearchQuery.toLowerCase());
-      return matchesCategory && matchesFighter && matchesSearch;
-    });
-
-    return (
-      <div className="space-y-8">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-14 h-14 bg-gradient-to-br from-[#0A3D91] to-blue-700 rounded-xl flex items-center justify-center shadow-md">
-              <BookOpen className="w-7 h-7 text-white" />
-            </div>
-            <div>
-              <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">{t("news.title")}</h2>
-              <p className="text-base text-gray-600 font-semibold mt-1">{t("news.subtitle")}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Premium Segmented Control Tabs */}
-      <div className="flex justify-center md:justify-start mb-6">
-        <div className="flex bg-slate-100/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/50 shadow-md">
-          {/* News Tab */}
-          <button
-            onClick={() => setNewsEventsTab("news")}
-            className={`px-6 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all duration-300 flex items-center gap-2.5 ${
-              newsEventsTab === "news"
-                ? "bg-white text-gray-900 shadow-sm border border-slate-200/40"
-                : "text-gray-500 hover:text-gray-700 hover:bg-white/30"
-            }`}
-          >
-            <BookOpen className={`w-4 h-4 ${newsEventsTab === "news" ? "text-[#0A3D91]" : "text-gray-400"}`} />
-            <span>{t("news.tabNews")}</span>
-            {newsArticles.length > 0 && (
-              <span className={`px-2 py-0.5 text-[10px] font-black rounded-full ${
-                newsEventsTab === "news" ? "bg-blue-100 text-[#0A3D91]" : "bg-slate-200 text-slate-500"
-              }`}>
-                {newsArticles.length}
-              </span>
-            )}
-          </button>
-
-          {/* Media Tab */}
-          <button
-            onClick={() => setNewsEventsTab("media")}
-            className={`px-6 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all duration-300 flex items-center gap-2.5 ${
-              newsEventsTab === "media"
-                ? "bg-white text-gray-900 shadow-sm border border-slate-200/40"
-                : "text-gray-500 hover:text-gray-700 hover:bg-white/30"
-            }`}
-          >
-            <Video className={`w-4 h-4 ${newsEventsTab === "media" ? "text-yellow-600" : "text-gray-400"}`} />
-            <span>{t("news.tabMedia")}</span>
-            {mediaContent.length > 0 && (
-              <span className={`px-2 py-0.5 text-[10px] font-black rounded-full ${
-                newsEventsTab === "media" ? "bg-yellow-100 text-yellow-800" : "bg-slate-200 text-slate-500"
-              }`}>
-                {mediaContent.length}
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Tab Content */}
-      {newsEventsTab === "news" && (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] p-6 md:p-8">
-          {/* Filters Bar */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-100">
-            {/* Search Input */}
-            <div className="relative flex-1 max-w-lg">
-              <Search className="absolute left-4 top-3.5 w-4.5 h-4.5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search latest stories, announcements or events..."
-                value={newsSearchQuery}
-                onChange={(e) => {
-                  setNewsSearchQuery(e.target.value);
-                  setNewsCurrentPage(1);
-                }}
-                className="w-full pl-11 pr-4 py-3 bg-slate-50/50 border border-slate-200 focus:border-[#0A3D91] rounded-xl text-sm font-semibold focus:outline-none transition-all placeholder:text-gray-400"
-              />
-            </div>
-            
-            {/* Category Select Dropdown */}
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Category:</span>
-              <div className="relative">
-                <select
-                  value={newsCategoryFilter}
-                  onChange={(e) => {
-                    setNewsCategoryFilter(e.target.value);
-                    setNewsCurrentPage(1);
-                  }}
-                  className="appearance-none pl-3 pr-8 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-lg text-xs font-bold focus:outline-none focus:border-[#0A3D91] transition-all text-gray-700 cursor-pointer min-w-[180px]"
-                >
-                  <option value="All">All News Categories</option>
-                  {["News", "Events", "Training", "Fighter Spotlight", "Official Announcement"].map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute right-2.5 top-2 pointer-events-none text-gray-400">
-                  <ChevronDown className="w-3.5 h-3.5" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {filteredNews.length === 0 ? (
-            <div className="text-center py-12">
-              <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-slate-500 font-semibold text-sm">{t("news.noArticles")}</p>
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                {filteredNews.slice((newsCurrentPage - 1) * newsPerPage, newsCurrentPage * newsPerPage).map((article, index) => {
-                  return (
-                    <Link
-                      key={article.id}
-                      to={`/article/${article.id}`}
-                      className="group bg-white rounded-2xl border border-slate-100 hover:border-blue-100 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col"
-                    >
-                      {/* Article Image */}
-                      <div className="relative aspect-[16/10] overflow-hidden bg-slate-100 shrink-0">
-                        <img
-                          src={article.image}
-                          alt={article.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
-                        
-                        {/* Category overlay */}
-                        <div className="absolute top-4 left-4">
-                          <span className="px-2.5 py-1 bg-white/95 backdrop-blur-sm border border-white/20 text-gray-900 rounded-lg text-[10px] font-black uppercase shadow-sm tracking-wider">
-                            {article.category}
-                          </span>
-                        </div>
-
-                        {article.featured && (
-                          <div className="absolute top-4 right-4">
-                            <span className="flex items-center gap-1 px-2.5 py-1 bg-[#C8102E] text-white text-[10px] font-black uppercase rounded-lg shadow-sm">
-                              <Star className="w-3 h-3 fill-white" />
-                              Featured
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Article Content */}
-                      <div className="p-5 flex-1 flex flex-col justify-between">
-                        <div>
-                          {/* Header info */}
-                          <div className="flex items-center gap-2.5 text-[11px] text-gray-400 font-semibold mb-2.5">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-3.5 h-3.5" />
-                              {formatDate(article.date)}
-                            </span>
-                            <span>•</span>
-                            <span className="flex items-center gap-1">
-                              <User className="w-3.5 h-3.5" />
-                              {article.author}
-                            </span>
-                          </div>
-
-                          <h3 className="text-base font-black text-gray-900 leading-snug mb-2 group-hover:text-[#0A3D91] transition-colors line-clamp-2">
-                            {article.title}
-                          </h3>
-                          <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
-                            {article.excerpt}
-                          </p>
-                        </div>
-
-                        <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between text-[11px]">
-                          <span className="font-bold text-[#0A3D91] uppercase tracking-wider group-hover:underline flex items-center gap-1">
-                            <span>{t("common.readArticle")}</span>
-                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                          </span>
-                          <span className="text-gray-400 font-semibold">{t("common.minRead", { n: readTimeMinutes(article.content) })}</span>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-
-              {/* Pagination Controls */}
-              {filteredNews.length > newsPerPage && (
-                <div className="flex items-center justify-center gap-2 pt-6 border-t border-gray-100">
-                  <button
-                    onClick={() => setNewsCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={newsCurrentPage === 1}
-                    className="px-4 py-2 rounded-xl font-bold text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  >
-                    Previous
-                  </button>
-
-                  <div className="flex items-center gap-2">
-                    {Array.from({ length: Math.ceil(filteredNews.length / newsPerPage) }, (_, i) => i + 1).map(page => (
-                      <button
-                        key={page}
-                        onClick={() => setNewsCurrentPage(page)}
-                        className={`w-10 h-10 rounded-xl font-bold text-sm transition-all ${
-                          newsCurrentPage === page
-                            ? 'bg-[#0A3D91] text-white shadow-md'
-                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={() => setNewsCurrentPage(prev => Math.min(Math.ceil(filteredNews.length / newsPerPage), prev + 1))}
-                    disabled={newsCurrentPage === Math.ceil(filteredNews.length / newsPerPage)}
-                    className="px-4 py-2 rounded-xl font-bold text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Article Detail View - Inline */}
-
-      {newsEventsTab === "media" && (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] p-6 md:p-8">
-          {/* Filters Bar */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-100">
-            {/* Search Input */}
-            <div className="relative flex-1 max-w-lg">
-              <Search className="absolute left-4 top-3.5 w-4.5 h-4.5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search videos, highlights or interviews..."
-                value={mediaSearchQuery}
-                onChange={(e) => {
-                  setMediaSearchQuery(e.target.value);
-                  setMediaCurrentPage(1);
-                }}
-                className="w-full pl-11 pr-4 py-3 bg-slate-50/50 border border-slate-200 focus:border-yellow-600 rounded-xl text-sm font-semibold focus:outline-none transition-all placeholder:text-gray-400"
-              />
-            </div>
-            
-            {/* Category Select & Fighter Select */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 shrink-0">
-              {/* Category Dropdown */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Category:</span>
-                <div className="relative">
-                  <select
-                    value={mediaCategoryFilter}
-                    onChange={(e) => {
-                      setMediaCategoryFilter(e.target.value);
-                      setMediaCurrentPage(1);
-                    }}
-                    className="appearance-none pl-3 pr-8 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-lg text-xs font-bold focus:outline-none focus:border-yellow-600 transition-all text-gray-700 cursor-pointer min-w-[180px]"
-                  >
-                    <option value="All">All Video Categories</option>
-                    {["Highlights", "Full Fights", "Interviews", "Behind the Scenes", "Training & Workouts", "Documentary"].map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute right-2.5 top-2 pointer-events-none text-gray-400">
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Fighter Dropdown */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Fighter:</span>
-                <div className="relative">
-                  <select
-                    value={mediaFighterFilter}
-                    onChange={(e) => {
-                      setMediaFighterFilter(e.target.value);
-                      setMediaCurrentPage(1);
-                    }}
-                    className="appearance-none pl-3 pr-8 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-lg text-xs font-bold focus:outline-none focus:border-yellow-600 transition-all text-gray-700 cursor-pointer min-w-[160px]"
-                  >
-                    <option value="All">All Fighters</option>
-                    {fightersList.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute right-2.5 top-2 pointer-events-none text-gray-400">
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {filteredMedia.length === 0 ? (
-            <div className="text-center py-12">
-              <Video className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-slate-500 font-semibold text-sm">{t("news.noVideos")}</p>
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                {filteredMedia.slice((mediaCurrentPage - 1) * mediaPerPage, mediaCurrentPage * mediaPerPage).map((media) => {
-                  return (
-                    <div
-                      key={media.id}
-                      onClick={() => setSelectedVideo(media)}
-                      className="group bg-white rounded-2xl border border-slate-100 hover:border-blue-100 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col"
-                    >
-                      {/* Video Thumbnail */}
-                      <div className="relative aspect-video bg-slate-900 overflow-hidden">
-                        <img
-                          src={media.thumbnail}
-                          alt={media.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-550 ease-out"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
-                        
-                        {/* Play Overlay */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-14 h-14 bg-white/95 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                            <Play className="w-5 h-5 text-[#C8102E] ml-0.5 fill-[#C8102E]" />
-                          </div>
-                        </div>
-
-                        {/* Duration overlay badge */}
-                        {media.duration && (
-                          <div className="absolute bottom-3 right-3 px-2 py-0.5 bg-black/75 text-white text-[10px] font-bold rounded">
-                            {media.duration}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Content */}
-                      <div className="p-5 flex-1 flex flex-col justify-between">
-                        <div>
-                          <h4 className="text-base font-black text-gray-900 leading-snug line-clamp-2 group-hover:text-[#0A3D91] transition-colors mb-4">
-                            {media.title}
-                          </h4>
-                        </div>
-
-                        <div className="flex items-center justify-between pt-3 border-t border-slate-50 text-[11px] text-gray-400 font-semibold">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5" />
-                            {formatDate(media.date)}
-                          </span>
-                          {media.views && (
-                            <span className="flex items-center gap-1 text-[#0A3D91]">
-                              <Eye className="w-3.5 h-3.5" />
-                              {media.views}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Pagination Controls */}
-              {filteredMedia.length > mediaPerPage && (
-                <div className="flex items-center justify-center gap-2 pt-6 border-t border-gray-100">
-                  <button
-                    onClick={() => setMediaCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={mediaCurrentPage === 1}
-                    className="px-4 py-2 rounded-xl font-bold text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  >
-                    Previous
-                  </button>
-
-                  <div className="flex items-center gap-2">
-                    {Array.from({ length: Math.ceil(filteredMedia.length / mediaPerPage) }, (_, i) => i + 1).map(page => (
-                      <button
-                        key={page}
-                        onClick={() => setMediaCurrentPage(page)}
-                        className={`w-10 h-10 rounded-xl font-bold text-sm transition-all ${
-                          mediaCurrentPage === page
-                            ? 'bg-[#0A3D91] text-white shadow-md'
-                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={() => setMediaCurrentPage(prev => Math.min(Math.ceil(filteredMedia.length / mediaPerPage), prev + 1))}
-                    disabled={mediaCurrentPage === Math.ceil(filteredMedia.length / mediaPerPage)}
-                    className="px-4 py-2 rounded-xl font-bold text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-    </div>
-  );
-};
-
   const renderClubs = () => (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -3051,7 +2600,7 @@ export function SuperAppHome() {
 
       {currentSection !== "home" && (
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
-        {currentSection === "news-events" && renderNewsEvents()}
+        {currentSection === "news-events" && <NewsAndMedia articles={newsArticles} videos={mediaContent} fighters={fightersList} loading={loadingNews || loadingMedia} />}
         {currentSection === "fighters" && renderFighters()}
         {currentSection === "matches" && <MatchesAndEvents />}
         {currentSection === "match-detail" && renderMatchDetail()}
@@ -3098,16 +2647,20 @@ export function SuperAppHome() {
 
             {/* YouTube Video */}
             <div className="relative aspect-video bg-black">
-              <iframe
-                width="100%"
-                height="100%"
-                src={`https://www.youtube.com/embed/${selectedVideo.youtubeId}?autoplay=1`}
-                title={selectedVideo.title}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="absolute inset-0 w-full h-full"
-              />
+              {selectedVideo.youtubeId ? (
+                <iframe
+                  width="100%"
+                  height="100%"
+                  src={`https://www.youtube.com/embed/${selectedVideo.youtubeId}?autoplay=1`}
+                  title={selectedVideo.title}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="absolute inset-0 w-full h-full"
+                />
+              ) : (
+                <p className="absolute inset-0 flex items-center justify-center text-white/80 text-sm px-6 text-center">{t("news.videoUnavailable")}</p>
+              )}
             </div>
           </div>
         </div>

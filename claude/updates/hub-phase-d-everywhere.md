@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | D1 done (not committed) — waiting for owner review in the browser; D2 / D3 not started |
+| **Status** | D1 done — committed 7691de40 (2026-09-28); D2 / D3 not started |
 | **Jira** | n/a |
 | **Feature** | claude/features/ai-assistant.md |
 | **Requested by** | vannak070 (2026-09-28: "Start Hub Phase D") |

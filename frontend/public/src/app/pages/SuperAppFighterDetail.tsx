@@ -65,7 +65,8 @@ export function SuperAppFighterDetail() {
         const vids = await api.videos.list();
         if (vids && vids.length > 0) {
           const mappedVids = vids.map((vid: any) => {
-            let youtubeId = "dQw4w9WgXcQ";
+            // Empty when the link can't be read: the player then says so instead of playing another video.
+            let youtubeId = "";
             if (vid.youtube_url || vid.youtubeUrl) {
               const url = vid.youtube_url || vid.youtubeUrl;
               const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -654,13 +655,17 @@ export function SuperAppFighterDetail() {
               <X className="w-4 h-4 group-hover:rotate-90 transition-transform" />
             </button>
             <div className="aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10">
-              <iframe
-                className="w-full h-full"
-                src={`https://www.youtube.com/embed/${selectedVideo.youtubeId}?autoplay=1`}
-                title={selectedVideo.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
+              {selectedVideo.youtubeId ? (
+                <iframe
+                  className="w-full h-full"
+                  src={`https://www.youtube.com/embed/${selectedVideo.youtubeId}?autoplay=1`}
+                  title={selectedVideo.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <p className="w-full h-full flex items-center justify-center text-white/80 text-sm px-6 text-center">{t("news.videoUnavailable")}</p>
+              )}
             </div>
             <div className="mt-4 px-1">
               <h3 className="text-lg font-black text-white">{selectedVideo.title}</h3>
