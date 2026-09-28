@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) |
+| **Status** | Done — committed 75a56f16, 8aa94773, c04e90e9 (2026-09-28) |
 | **Jira** | n/a |
 | **Feature** | claude/features/knowledge-base.md, claude/features/ai-assistant.md |
 | **Requested by** | vannak070 (2026-09-28: "get all data about Kun Khmer from the internet … to save cost and make the AI smarter") |

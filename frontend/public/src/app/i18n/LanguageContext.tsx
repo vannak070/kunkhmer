@@ -9,7 +9,7 @@ type Vars = Record<string, string | number>;
 
 // Khmer dates are formatted by hand: many browsers (older Android WebViews, Electron) ship without
 // Khmer locale data and would silently fall back to English.
-const KM_MONTHS = ["មករា", "កុម្ភៈ", "មីនា", "មេសា", "ឧសភា", "មិថុនា", "កក្កដា", "សីហា", "កញ្ញា", "តុលា", "វិច្ឆិកា", "ធ្នូ"];
+export const KM_MONTHS = ["មករា", "កុម្ភៈ", "មីនា", "មេសា", "ឧសភា", "មិថុនា", "កក្កដា", "សីហា", "កញ្ញា", "តុលា", "វិច្ឆិកា", "ធ្នូ"];
 const KM_WEEKDAYS = ["អាទិត្យ", "ច័ន្ទ", "អង្គារ", "ពុធ", "ព្រហស្បតិ៍", "សុក្រ", "សៅរ៍"];
 const KM_DIGITS = "០១២៣៤៥៦៧៨៩";
 const toKhmerDigits = (n: number | string) => String(n).replace(/\d/g, (d) => KM_DIGITS[Number(d)]);
