@@ -39,6 +39,25 @@ describe("news", () => {
     expect(res.body.data.publish_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
+  it("hides draft articles from the public but not from KKF staff", async () => {
+    const { body } = await post("/news", { ...fullArticle(), status: "Draft" }, a.officer.token);
+    const id = body.data.id;
+    const listed = async (token?: string) => (await get("/news", token)).body.data.some((x: any) => x.id === id);
+    // Visitors and non-staff logins: not listed, 404 on the detail page.
+    for (const token of [undefined, a.organizer.token, a.club.token]) {
+      expect(await listed(token)).toBe(false);
+      expect((await get(`/news/${id}`, token)).status).toBe(404);
+    }
+    // Staff (who write news) still see it.
+    for (const token of [a.officer.token, a.admin.token]) {
+      expect(await listed(token)).toBe(true);
+      expect((await get(`/news/${id}`, token)).status).toBe(200);
+    }
+    // Published → public.
+    await put(`/news/${id}`, { status: "Published" }, a.officer.token);
+    expect(await listed()).toBe(true);
+  });
+
   it("lists and shows articles publicly", async () => {
     const { body } = await post("/news", fullArticle(), a.officer.token);
     const list = await get("/news");
@@ -109,6 +128,22 @@ describe("videos", () => {
   it("applies defaults", async () => {
     const res = await post("/videos", { title: `Video ${uniq()}`, tags: "" }, a.officer.token);
     expect(res.body.data).toMatchObject({ category: "General", status: "Draft", tags: [], fighter: null, club: null });
+  });
+
+  it("hides draft videos from the public but not from KKF staff", async () => {
+    const { body } = await post("/videos", { ...fullVideo(), status: "Draft" }, a.officer.token);
+    const id = body.data.id;
+    const listed = async (token?: string) => (await get("/videos", token)).body.data.some((x: any) => x.id === id);
+    for (const token of [undefined, a.organizer.token, a.club.token]) {
+      expect(await listed(token)).toBe(false);
+      expect((await get(`/videos/${id}`, token)).status).toBe(404);
+    }
+    for (const token of [a.officer.token, a.admin.token]) {
+      expect(await listed(token)).toBe(true);
+      expect((await get(`/videos/${id}`, token)).status).toBe(200);
+    }
+    await put(`/videos/${id}`, { status: "Published" }, a.officer.token);
+    expect(await listed()).toBe(true);
   });
 
   it("lists and shows videos publicly", async () => {

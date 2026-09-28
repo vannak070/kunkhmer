@@ -1,9 +1,9 @@
 /**
- * Building blocks of the public event page (pages/EventDetail.tsx): the main-event face-off,
- * bout rows for the fight card and results, and the sponsor strip. Red corner left, blue right.
+ * Building blocks of the public event page (pages/EventDetail.tsx): fighter avatars, bout rows for
+ * the fight card and results, and the sponsor strip. (The face-off lives in components/detail.) Red corner left, blue right.
  */
 import { Link } from "react-router";
-import { Crown, Swords } from "lucide-react";
+import { Clock, Crown, Swords } from "lucide-react";
 import { useI18n } from "../../i18n/LanguageContext";
 import { getFighterSlug } from "../../data/masterData";
 import type { Bout, FighterRef } from "../../data/fanData";
@@ -57,54 +57,11 @@ function compareUrl(b: Bout) {
   return `/compare?red=${getFighterSlug(b.fighterA)}&blue=${getFighterSlug(b.fighterB)}`;
 }
 
-/** Big poster-style face-off for the headline bout, on a Fight Night surface. */
-export function MainEventFaceoff({ bout }: { bout: Bout }) {
-  const { t, formatWeight, tn } = useI18n();
-  const name = useFighterName();
-  const side = (f: FighterRef, corner: Corner) => (
-    <div className="flex flex-col items-center text-center min-w-0 gap-3">
-      <FighterAvatar f={f} corner={corner} size="lg" className="bg-[var(--kk-night-raised)]" />
-      <div className="min-w-0">
-        <p className={`kk-label ${corner === "red" ? "text-[var(--kk-night-red-text)]" : "text-[var(--kk-night-accent)]"}`}>
-          {t(corner === "red" ? "matchup.red" : "matchup.blue")}
-        </p>
-        <p lang={textLang(name(f))} className="kk-heading text-2xl md:text-4xl text-white break-words">{name(f)}</p>
-        {f.record && <p className="kk-stat text-lg text-[var(--kk-night-muted)]">{f.record}</p>}
-      </div>
-    </div>
-  );
-  const facts = [bout.weightKg ? formatWeight(bout.weightKg) : null, bout.rounds ? tn("common.rounds", bout.rounds) : null].filter(Boolean);
-  return (
-    <div className="rounded-2xl bg-[var(--kk-night-raised)] border border-[var(--kk-night-border)] p-6 md:p-8">
-      <p className="kk-label text-center text-[var(--kk-gold)] mb-6 flex items-center justify-center gap-2">
-        {bout.isTitle && <Crown className="w-4 h-4" aria-hidden />}
-        {t(bout.isTitle ? "matches.titleBout" : "matches.mainEvent")}
-      </p>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3 md:gap-6">
-        {side(bout.fighterA, "red")}
-        <span className="kk-display text-4xl md:text-6xl text-[var(--kk-night-muted)] self-center pb-10" aria-hidden>VS</span>
-        {side(bout.fighterB, "blue")}
-      </div>
-      {(facts.length > 0 || (hasFighter(bout.fighterA) && hasFighter(bout.fighterB) && !bout.completed)) && (
-        <div className="mt-6 pt-5 border-t border-[var(--kk-night-border)] flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
-          {facts.length > 0 && <p className="text-sm font-semibold text-[var(--kk-night-muted)]">{facts.join(" · ")}</p>}
-          {hasFighter(bout.fighterA) && hasFighter(bout.fighterB) && !bout.completed && (
-            <Link to={compareUrl(bout)} className="kk-focus inline-flex items-center gap-2 text-sm font-semibold text-[var(--kk-night-accent)] hover:underline underline-offset-4">
-              <Swords className="w-4 h-4" aria-hidden />
-              {t("matchup.preview")}
-            </Link>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /**
  * One bout on the fight card or results list. With `result`, the centre shows how it ended
  * and each side gets a W/L badge; otherwise weight, rounds and status.
  */
-export function BoutRow({ bout, number, result = false }: { bout: Bout; number: number; result?: boolean }) {
+export function BoutRow({ bout, number, result = false, awaiting = false }: { bout: Bout; number: number; result?: boolean; awaiting?: boolean }) {
   const { t, tn, formatWeight } = useI18n();
   const resultText = useResultText();
   const decided = bout.completed;
@@ -139,7 +96,11 @@ export function BoutRow({ bout, number, result = false }: { bout: Bout; number: 
             </span>
           )}
         </p>
-        {!result && !decided && <PublicStatusBadge status={bout.status} />}
+        {!result && !decided && (awaiting ? (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide bg-gray-100 text-gray-700">
+            <Clock className="w-3.5 h-3.5" aria-hidden />{t("fights.pendingResult")}
+          </span>
+        ) : <PublicStatusBadge status={bout.status} />)}
       </div>
       <div className="grid grid-cols-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 md:gap-4">
         {side(bout.fighterA, "red")}
@@ -153,7 +114,7 @@ export function BoutRow({ bout, number, result = false }: { bout: Bout; number: 
         </div>
         {side(bout.fighterB, "blue")}
       </div>
-      {!decided && hasFighter(bout.fighterA) && hasFighter(bout.fighterB) && (
+      {!decided && !awaiting && hasFighter(bout.fighterA) && hasFighter(bout.fighterB) && (
         <div className="mt-3 pt-3 border-t border-gray-100 text-center">
           <Link to={compareUrl(bout)} className="kk-focus inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--kk-blue)] hover:underline underline-offset-4">
             <Swords className="w-4 h-4" aria-hidden />

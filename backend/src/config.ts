@@ -16,6 +16,8 @@ export const config = {
   port: Number(process.env.PORT ?? 3001),
   host: process.env.HOST ?? "0.0.0.0",
   logLevel: process.env.LOG_LEVEL ?? "info",
+  /** Where uploaded pictures are stored (served at /api/files/:name). Must persist between deploys. */
+  uploadDir: process.env.UPLOAD_DIR || new URL("../storage/uploads", import.meta.url).pathname,
   /**
    * TRUST_PROXY: proxies trusted for request.ip (comma-separated addresses/CIDRs or a hop count).
    * Unset = one hop from localhost / a private network (lib/clientIp.ts).

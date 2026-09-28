@@ -540,7 +540,9 @@ async function headToHead({ fighter_a, fighter_b }: ToolInput) {
 
 // ─── Clubs, news, videos, settings ──────────────────────────────────────────
 
-const CLUBS_URL = "/strategic-partners";
+const CLUBS_URL = "/strategic-partners?tab=clubs";
+/** Same slug as the fan site's partnerSlug(), so /clubs/<slug> links resolve. */
+const clubUrl = (c: { id: string; name?: string | null }) => `/clubs/${fighterSlug(c)}`;
 const MEDIA_URL = "/news-events?tab=media";
 const clip = (text: string | null | undefined, max: number) => {
   if (!text) return null;
@@ -567,7 +569,7 @@ async function searchClubs({ query }: ToolInput) {
   });
   return {
     count: rows.length,
-    clubs: rows.map((c) => ({ name: c.name, name_khmer: c.name_khmer, location: c.location, fighters: c._count.fighters })),
+    clubs: rows.map((c) => ({ name: c.name, name_khmer: c.name_khmer, location: c.location, fighters: c._count.fighters, url: clubUrl(c) })),
     url: CLUBS_URL,
   };
 }
@@ -597,7 +599,7 @@ async function getClub({ club }: ToolInput) {
     phone: c.phone,
     email: c.email,
     fighters: fighters.map(fighterSummary),
-    url: CLUBS_URL,
+    url: clubUrl(c),
   };
 }
 
@@ -609,7 +611,15 @@ async function listNews({ query, limit }: ToolInput) {
     where: {
       ...PUBLISHED_NEWS,
       ...(q
-        ? { OR: [{ title: { contains: q, mode: "insensitive" } }, { subtitle: { contains: q, mode: "insensitive" } }, { content: { contains: q, mode: "insensitive" } }] }
+        ? {
+            OR: [
+              { title: { contains: q, mode: "insensitive" } },
+              { subtitle: { contains: q, mode: "insensitive" } },
+              { content: { contains: q, mode: "insensitive" } },
+              { title_en: { contains: q, mode: "insensitive" } },
+              { content_en: { contains: q, mode: "insensitive" } },
+            ],
+          }
         : {}),
     },
     orderBy: [{ publish_date: { sort: "desc", nulls: "last" } }, { created_at: { sort: "desc", nulls: "last" } }],
@@ -618,6 +628,7 @@ async function listNews({ query, limit }: ToolInput) {
   return {
     articles: rows.map((a) => ({
       title: a.title,
+      title_en: a.title_en,
       subtitle: a.subtitle,
       category: a.category,
       date: day(a.publish_date),
@@ -631,7 +642,10 @@ async function getNews({ article }: ToolInput) {
   const key = String(article ?? "").trim();
   if (!key) return { error: "article is required" };
   const a = await prisma.newsArticle.findFirst({
-    where: { ...PUBLISHED_NEWS, ...(UUID_RE.test(key) ? { id: key } : { title: { contains: key, mode: "insensitive" } }) },
+    where: {
+      ...PUBLISHED_NEWS,
+      ...(UUID_RE.test(key) ? { id: key } : { OR: [{ title: { contains: key, mode: "insensitive" } }, { title_en: { contains: key, mode: "insensitive" } }] }),
+    },
     orderBy: { publish_date: { sort: "desc", nulls: "last" } },
   });
   if (!a) return { error: "No published article matches that." };
@@ -641,6 +655,7 @@ async function getNews({ article }: ToolInput) {
     category: a.category,
     date: day(a.publish_date),
     text: clip(a.content, 4000),
+    english_version: a.title_en || a.content_en ? { title: a.title_en, subtitle: a.subtitle_en, text: clip(a.content_en, 4000) } : null,
     url: `/article/${a.id}`,
   };
 }

@@ -56,6 +56,8 @@ services:
       FAN_RATE_LIMIT: "1000"
       # Never call the real AI API from tests, even if backend/.env has a key.
       AI_ENABLED: "false"
+      # Pictures uploaded by tests stay out of the dev folder (backend/storage/uploads).
+      UPLOAD_DIR: /tmp/kunkhmer-test-uploads
     depends_on:
       postgres:
         condition: service_healthy

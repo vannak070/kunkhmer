@@ -8,6 +8,8 @@ import { Compare } from "./pages/Compare";
 import { Account } from "./pages/Account";
 import { EventDetail } from "./pages/EventDetail";
 import { KunKhmerHub } from "./pages/KunKhmerHub";
+import { BroadcasterPage, ClubPage, SponsorPage } from "./pages/PartnerPages";
+import { NotFound } from "./pages/NotFound";
 
 function LegacySuperAppRedirect() {
   const { section } = useParams();
@@ -68,6 +70,23 @@ export const router = createBrowserRouter(
     element: <KunKhmerHub />,
   },
   {
+    path: "/clubs/:slug",
+    element: <ClubPage />,
+  },
+  {
+    path: "/partners/sponsors/:slug",
+    element: <SponsorPage />,
+  },
+  {
+    path: "/partners/broadcasters/:slug",
+    element: <BroadcasterPage />,
+  },
+  // Partner pages used to live at these addresses (the partner was only in memory).
+  { path: "/club-detail", element: <Navigate to="/strategic-partners?tab=clubs" replace /> },
+  { path: "/sponsor-detail", element: <Navigate to="/strategic-partners?tab=sponsors" replace /> },
+  { path: "/broadcast-detail", element: <Navigate to="/strategic-partners?tab=broadcasters" replace /> },
+  { path: "/match-detail", element: <Navigate to="/matches" replace /> },
+  {
     path: "/:section",
     element: <SuperAppHome />,
   },
@@ -89,7 +108,7 @@ export const router = createBrowserRouter(
   },
   {
     path: "*",
-    element: <Navigate to="/" replace />,
+    element: <NotFound />,
   },
 ],
   { basename: getRouterBasename() }

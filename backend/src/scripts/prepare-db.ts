@@ -8,12 +8,14 @@
  *      applied, not run
  *   4. applies pending Prisma migrations
  *   5. seeds the default Super Admin when there are no users
+ *   6. moves pictures still stored as base64 text into files (scripts/images-to-files.ts)
  */
 import { execFileSync } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 import pg from "pg";
 import { config } from "../config.ts";
 import { seedDefaultAdmin } from "./seed.ts";
+import { convertInlineImages } from "./images-to-files.ts";
 
 const BASELINE = "0_init";
 
@@ -73,3 +75,6 @@ try {
 
 prisma("migrate", "deploy");
 await seedDefaultAdmin();
+// Pictures used to be stored as base64 text; move any that are left into files (idempotent).
+const moved = await convertInlineImages(() => {});
+if (moved > 0) console.log(`Moved ${moved} inline picture(s) into files (UPLOAD_DIR)`);

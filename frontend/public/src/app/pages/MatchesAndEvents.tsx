@@ -5,13 +5,14 @@
  * (old ?tab=matches / previous links still work). See claude/updates/public-matches-page.md and
  * public-matches-page-2.md (latest-night spotlight, tab icons, months + year filter, Hub questions).
  */
+import { LoadError } from "../components/LoadError";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ArrowRight, CalendarDays, CalendarPlus, Clock, Crown, MapPin, Search, Sparkles, Trophy, Tv, X } from "lucide-react";
 import { BoutRow, FighterAvatar } from "../components/event/EventParts";
 import { HubAskAbout } from "../components/hub/HubAskAbout";
 import { CountdownChip, DemoBanner, daysUntil } from "../components/fan/FanWidgets";
-import { broadcasterForEvent, mainEventBout, useFanData, type Bout, type FanData } from "../data/fanData";
+import { broadcasterForEvent, mainEventBout, useFanData, type Bout, type FanData, retryFanData } from "../data/fanData";
 import { weightClassFor } from "../data/weightClasses";
 import { downloadCalendarEvent } from "../utils/calendar";
 import { textLang } from "../utils/publicDisplay";
@@ -157,6 +158,7 @@ export function MatchesAndEvents() {
       </section>
 
       <DemoBanner show={data.demo} />
+      {data.failed && <LoadError onRetry={retryFanData} />}
 
       {/* Tabs + filters */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">

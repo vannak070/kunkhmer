@@ -116,19 +116,25 @@ function CornerHeader({ p, corner, rating }: { p: FighterProfile; corner: Corner
         corner === "blue" ? "md:flex-row-reverse md:text-right" : "md:text-left"
       }`}
     >
-      <img src={p.image} alt="" className="w-16 h-16 md:w-24 md:h-24 rounded-2xl object-cover shrink-0 border-4" style={{ borderColor: color }} />
+      {p.image && !p.image.includes("images.unsplash.com") ? (
+        <img src={p.image} alt="" className="w-16 h-16 md:w-24 md:h-24 rounded-2xl object-cover object-top shrink-0 border-4 bg-white" style={{ borderColor: color }} />
+      ) : (
+        <span aria-hidden className="w-16 h-16 md:w-24 md:h-24 rounded-2xl shrink-0 border-4 bg-white flex items-center justify-center kk-heading text-2xl text-gray-500" style={{ borderColor: color }}>
+          {p.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}
+        </span>
+      )}
       <div className="min-w-0">
         <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color }}>
           {t(corner === "red" ? "matchup.red" : "matchup.blue")}
         </p>
-        <p className="text-base md:text-2xl font-black text-white leading-tight line-clamp-2 md:truncate break-words group-hover:underline underline-offset-4">
+        <p className="text-base md:text-2xl kk-heading text-gray-900 leading-tight line-clamp-2 md:truncate break-words group-hover:underline underline-offset-4">
           {localName(p.name, p.nameKhmer)}
         </p>
-        {alt && <p className="text-xs md:text-sm text-white/60 truncate">{lang === "km" ? p.name : p.nameKhmer}</p>}
+        {alt && <p className="text-xs md:text-sm text-gray-500 truncate">{lang === "km" ? p.name : p.nameKhmer}</p>}
         {rating != null && (
           <p className={`mt-1 flex flex-col md:flex-row items-center md:items-baseline gap-0 md:gap-1.5 ${corner === "blue" ? "md:justify-end" : ""}`}>
-            <span className="text-3xl md:text-4xl font-black text-white tabular-nums">{rating}</span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-white/50 whitespace-nowrap">{t("matchup.rating")}</span>
+            <span className="kk-stat text-3xl md:text-4xl text-[var(--kk-navy)]">{rating}</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">{t("matchup.rating")}</span>
           </p>
         )}
       </div>
@@ -155,12 +161,12 @@ export function MatchupView({ data, redId, blueId }: { data: FanData; redId: str
   return (
     <div className="space-y-6">
       {/* Header */}
-      <section className="rounded-3xl overflow-hidden shadow-xl" style={{ background: "linear-gradient(100deg, #7F1D1D 0%, #051C42 40%, #051C42 60%, #1E3A8A 100%)" }}>
+      <section className="rounded-3xl overflow-hidden border border-[#d5e0f3] bg-gradient-to-r from-[#fdf1f3] via-white to-[#eef3fb] shadow-[0_10px_40px_rgba(26,71,151,0.06)]">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 md:gap-6 px-4 md:px-10 py-6 md:py-8">
           <CornerHeader p={red} corner="red" rating={redRating} />
           <div className="flex flex-col items-center gap-1">
-            <Swords className="w-7 h-7 md:w-9 md:h-9 text-[#F2C94C]" aria-hidden />
-            <span className="text-xs font-black text-white/70">VS</span>
+            <Swords className="w-7 h-7 md:w-9 md:h-9 text-[#b58a00]" aria-hidden />
+            <span className="kk-display text-xl text-gray-300">VS</span>
           </div>
           <CornerHeader p={blue} corner="blue" rating={blueRating} />
         </div>

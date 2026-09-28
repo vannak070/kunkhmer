@@ -4,11 +4,12 @@
  * Real data only: no stock photos, no "verified" badge (every public fighter is verified), a
  * champion badge only for a current title holder. See claude/updates/public-fighters-page.md.
  */
+import { LoadError } from "../components/LoadError";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Building2, CalendarDays, Crown, Search, Sparkles, Users, X } from "lucide-react";
 import { DemoBanner, FormGuide } from "../components/fan/FanWidgets";
-import { fightHistory, nextBout, useFanData, type FanData } from "../data/fanData";
+import { fightHistory, nextBout, useFanData, type FanData, retryFanData } from "../data/fanData";
 import { getFighterSlug } from "../data/masterData";
 import { weightClassFor, type WeightClass } from "../data/weightClasses";
 import { textLang } from "../utils/publicDisplay";
@@ -141,6 +142,7 @@ export function FightersDirectory() {
       </section>
 
       <DemoBanner show={data.demo} />
+      {data.failed && <LoadError onRetry={retryFanData} />}
 
       {/* Tabs + filters */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">

@@ -5,6 +5,7 @@ import { resolveUser } from "./lib/auth.ts";
 import { BadInput } from "./lib/dates.ts";
 import { HttpError } from "./lib/http.ts";
 import { normalizeBody } from "./lib/input.ts";
+import { replaceInlineImages } from "./lib/files.ts";
 import aiRoutes from "./modules/ai/routes.ts";
 import authRoutes from "./modules/auth/routes.ts";
 import championRoutes from "./modules/champions/routes.ts";
@@ -12,6 +13,7 @@ import clubRoutes from "./modules/clubs/routes.ts";
 import eventRoutes from "./modules/events/routes.ts";
 import fanRoutes from "./modules/fans/routes.ts";
 import fighterRoutes from "./modules/fighters/routes.ts";
+import fileRoutes from "./modules/files/routes.ts";
 import matchRoutes from "./modules/matches/routes.ts";
 import newsRoutes from "./modules/news/routes.ts";
 import knowledgeRoutes from "./modules/knowledge/routes.ts";
@@ -23,7 +25,7 @@ import videoRoutes from "./modules/videos/routes.ts";
 export async function buildApp(opts: { logger?: boolean } = {}): Promise<FastifyInstance> {
   const app = Fastify({
     logger: opts.logger === false ? false : { level: config.logLevel },
-    // JSON bodies can be large (base64 images are sent inline by the admin UI).
+    // JSON bodies can be large: the admin UI sends pictures inline as base64 (stored as files, lib/files.ts).
     bodyLimit: 20 * 1024 * 1024,
     // Real client IP behind our own proxies, so per-IP rate limits don't share one bucket.
     trustProxy: config.trustProxy,
@@ -44,6 +46,10 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
   app.addHook("onRequest", resolveUser);
   app.addHook("preHandler", async (request) => {
     request.body = normalizeBody(request.body ?? {});
+    // Pictures arrive as base64 data URIs; keep them as files, not as text in the database.
+    if (request.method === "POST" || request.method === "PUT" || request.method === "PATCH") {
+      request.body = await replaceInlineImages(request.body);
+    }
   });
 
   app.setErrorHandler((error: any, request, reply) => {
@@ -85,6 +91,7 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
       await api.register(authRoutes);
       await api.register(clubRoutes);
       await api.register(fighterRoutes);
+      await api.register(fileRoutes);
       await api.register(settingsRoutes);
       await api.register(settingsListRoutes);
       await api.register(eventRoutes);

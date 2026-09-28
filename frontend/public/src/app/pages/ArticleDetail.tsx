@@ -53,7 +53,7 @@ export function ArticleDetail() {
             id: specificArticle.id,
             title: specificArticle.title,
             excerpt: specificArticle.subtitle || "",
-            image: specificArticle.featured_image || specificArticle.featuredImage || "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?ixlib=rb-4.0.3&w=800&q=80",
+            image: specificArticle.featured_image || specificArticle.featuredImage || "",
             category: specificArticle.category || "General",
             author: publicName(specificArticle.author) || "",
             date: specificArticle.publish_date || specificArticle.publishDate || "",
@@ -70,7 +70,7 @@ export function ArticleDetail() {
               id: art.id,
               title: art.title,
               excerpt: art.subtitle || "",
-              image: art.featured_image || art.featuredImage || "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?ixlib=rb-4.0.3&w=800&q=80",
+              image: art.featured_image || art.featuredImage || "",
               category: art.category || "General",
               author: publicName(art.author) || "",
               date: art.publish_date || art.publishDate || "",
@@ -135,12 +135,15 @@ export function ArticleDetail() {
       <main className="flex-1 max-w-5xl mx-auto px-4 md:px-6 py-8 md:py-12 w-full">
         <article className="bg-white rounded-2xl overflow-hidden shadow-lg border border-gray-200 mb-12">
           {/* Article Header Image */}
-          <div className="relative h-64 md:h-96 bg-gray-900 overflow-hidden">
-            <img
-              src={article.image}
-              alt={article.title}
-              className="w-full h-full object-cover"
-            />
+          {/* No article photo → brand colours, never a stock photo. */}
+          <div className={`relative overflow-hidden ${article.image ? "h-64 md:h-96 bg-gray-900" : "h-40 md:h-56 bg-gradient-to-br from-[#1a4797] to-[#24336f]"}`}>
+            {article.image && (
+              <img
+                src={article.image}
+                alt={article.title}
+                className="w-full h-full object-cover"
+              />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
 
             {/* Category Badge */}
@@ -229,12 +232,14 @@ export function ArticleDetail() {
                   to={`/article/${rel.id}`}
                   className="bg-white rounded-2xl overflow-hidden border border-gray-200 hover:border-primary/20 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col group"
                 >
-                  <div className="h-44 relative bg-gray-900 overflow-hidden">
-                    <img
-                      src={rel.image}
-                      alt={rel.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-550"
-                    />
+                  <div className={`h-44 relative overflow-hidden ${rel.image ? "bg-gray-900" : "bg-gradient-to-br from-[#1a4797] to-[#24336f]"}`}>
+                    {rel.image && (
+                      <img
+                        src={rel.image}
+                        alt={rel.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-550"
+                      />
+                    )}
                     <div className="absolute top-4 left-4">
                       <span className="px-2.5 py-1 bg-white/90 border border-white text-gray-900 rounded-md text-[10px] font-bold uppercase shadow-sm">
                         {rel.category}

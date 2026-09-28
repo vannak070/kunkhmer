@@ -69,6 +69,8 @@ export interface FanData {
   /** Official weight classes (System Settings). */
   weightClasses: WeightClass[];
   demo: boolean;
+  /** Part of the data couldn't be loaded (API down / network); pages offer "Try again". */
+  failed: boolean;
 }
 
 // ─── Demo mode ──────────────────────────────────────────────────────────────
@@ -217,7 +219,8 @@ export function loadFanData(): Promise<FanData> {
       loadWeightClasses(),
     ]).then(([f, m, e, b, c, w]) => {
       // Don't keep a partial result around: the next page load retries.
-      if ([f, m, e, b, c].some((r) => r.status === "rejected")) cache = null;
+      const failed = [f, m, e, b, c].some((r) => r.status === "rejected");
+      if (failed) cache = null;
       const val = <T,>(r: PromiseSettledResult<T>, fallback: T) => (r.status === "fulfilled" && r.value ? r.value : fallback);
       const fighters: any[] = val(f, []);
       const fightersById = new Map(fighters.map((x) => [x.id, x]));
@@ -257,19 +260,35 @@ export function loadFanData(): Promise<FanData> {
         champions,
         weightClasses: val(w, [] as WeightClass[]),
         demo,
+        failed,
       };
+    }).catch((): FanData => {
+      // Never leave pages spinning: an unexpected error becomes an empty, "failed" result.
+      cache = null;
+      return { fighters: [], bouts: [], events: [], broadcasters: [], champions: [], weightClasses: [], demo, failed: true };
     });
   }
   return cache;
+}
+
+const listeners = new Set<(d: FanData) => void>();
+
+/** "Try again" after a failed load: fetch everything again and update every page using the data. */
+export function retryFanData() {
+  cache = null;
+  loadFanData().then((d) => listeners.forEach((fn) => fn(d)));
 }
 
 export function useFanData(): FanData | null {
   const [data, setData] = useState<FanData | null>(null);
   useEffect(() => {
     let alive = true;
-    loadFanData().then((d) => alive && setData(d)).catch(() => alive && setData(null));
+    const update = (d: FanData) => alive && setData(d);
+    listeners.add(update);
+    loadFanData().then(update);
     return () => {
       alive = false;
+      listeners.delete(update);
     };
   }, []);
   return data;

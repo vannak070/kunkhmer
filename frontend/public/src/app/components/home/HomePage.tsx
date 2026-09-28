@@ -4,11 +4,12 @@
  * light sections — news, fight nights and results, fighters, videos, a "become a partner"
  * call to action and a newcomer guide (social links live in the footer). Only real data is shown; a section without data is hidden.
  */
+import { LoadError } from "../LoadError";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { ArrowRight, Calendar, ChevronLeft, ChevronRight, Clock, Plus, Handshake, MapPin, Music, Play, Swords, Timer, Tv } from "lucide-react";
 import { useI18n } from "../../i18n/LanguageContext";
-import { latestResults, useFanData, type Broadcaster } from "../../data/fanData";
+import { latestResults, useFanData, type Broadcaster, retryFanData } from "../../data/fanData";
 import { CountdownChip, DemoBanner, ResultRow } from "../fan/FanWidgets";
 import { FighterCard, currentTitles } from "../../pages/FightersDirectory";
 import { CATEGORY_KEYS } from "../../pages/NewsAndMedia";
@@ -688,6 +689,7 @@ export default function HomePage(props: HomePageProps) {
                   <div>
                     <SectionHead title={t("results.latest")} action={{ label: t("results.viewAll"), onClick: () => onNavigate("matches") }} />
                     <DemoBanner show={Boolean(fan?.demo)} />
+                    {fan?.failed && <LoadError onRetry={retryFanData} />}
                     <div className="bg-white rounded-2xl border border-gray-200 px-4 md:px-5 divide-y divide-gray-100">
                       {results.map((b) => <ResultRow key={b.id} bout={b} />)}
                     </div>

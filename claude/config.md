@@ -91,6 +91,10 @@ optional `TRUST_PROXY`; see `updates/rate-limit-real-client-ip.md`).
 - **Dates** (`lib/dates.ts`): use `now()` (whole seconds, UTC) and set
   `created_at`/`updated_at` yourself on create/update. Serialize with
   `micro` / `iso` / `sql` / `dateOnly` to match the existing field.
+- **Pictures**: the admin sends base64 data URIs; a request hook stores them as files
+  (`lib/files.ts`, `UPLOAD_DIR`, default `backend/storage/uploads` — must persist on a server) and saves
+  the link `/api/files/<hash>.<ext>` instead. Never store base64 in the database
+  (`updates/images-as-files.md`).
 - **Soft deletes**: fighters and videos have `deleted_at`. Always filter with
   `NOT_DELETED` and wrap related fighters with `visibleFighter()`.
 - **Multi-table writes** go in `prisma.$transaction` (see `matches/results.ts`).

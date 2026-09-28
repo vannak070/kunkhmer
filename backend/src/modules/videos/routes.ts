@@ -1,7 +1,7 @@
 /**
  * Videos  →  /api/videos/*
  *
- *   GET    /videos, /videos/:id   public, with related fighter, club and match
+ *   GET    /videos, /videos/:id   public (Published only; KKF staff also see drafts), with related fighter, club and match
  *   POST   /videos                Super Admin, KKF Officer
  *   PUT    /videos/:id            Super Admin, KKF Officer
  *   DELETE /videos/:id            Super Admin, KKF Officer (soft delete)
@@ -9,10 +9,10 @@
  * Sending fighterId, clubId or matchId as "" or null removes that link.
  */
 import { randomUUID } from "node:crypto";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { prisma } from "../../db.ts";
 import type { Prisma, Video } from "../../generated/prisma/client.ts";
-import { STAFF, requireAuth, requireRole } from "../../lib/auth.ts";
+import { STAFF, hasRole, requireAuth, requireRole } from "../../lib/auth.ts";
 import { micro, now } from "../../lib/dates.ts";
 import { deleted, idParam, notFound, ok } from "../../lib/http.ts";
 import { inputOf, parseTags } from "../../lib/input.ts";
@@ -67,17 +67,25 @@ async function findVideo(id: string) {
   return video;
 }
 
+/** Visitors see published videos only; staff (who manage videos) see drafts too. */
+const visibleTo = (request: FastifyRequest): Prisma.VideoWhereInput =>
+  hasRole(request.user, STAFF) ? NOT_DELETED : { ...NOT_DELETED, status: "Published" };
+
 export default async function videoRoutes(app: FastifyInstance) {
-  app.get("/videos", async (_request, reply) => {
+  app.get("/videos", async (request, reply) => {
     const videos = await prisma.video.findMany({
-      where: NOT_DELETED,
+      where: visibleTo(request),
       include: relations,
       orderBy: { created_at: { sort: "desc", nulls: "last" } },
     });
     return ok(reply, videos.map(formatVideo));
   });
 
-  app.get("/videos/:id", async (request, reply) => ok(reply, formatVideo(await findVideo(idParam(request.params, "Video")))));
+  app.get("/videos/:id", async (request, reply) => {
+    const video = await prisma.video.findFirst({ where: { id: idParam(request.params, "Video"), ...visibleTo(request) }, include: relations });
+    if (!video) throw notFound("Video");
+    return ok(reply, formatVideo(video));
+  });
 
   app.register(async (protectedRoutes) => {
     protectedRoutes.addHook("preHandler", requireAuth);

@@ -396,6 +396,10 @@ model NewsArticle {
   title          String    @db.VarChar(255)
   subtitle       String?   @db.VarChar(255)
   content        String?
+  /// Optional English version for international fans (the fields above may be in Khmer).
+  title_en       String?   @db.VarChar(255)
+  subtitle_en    String?   @db.VarChar(255)
+  content_en     String?
   author         String?   @db.VarChar(255)
   publish_date   DateTime? @db.Date
   status         String    @default("Draft") @db.VarChar(255)

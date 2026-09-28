@@ -7,3 +7,6 @@ dist
 
 # Hub eval output (contains model answers)
 src/scripts/hub-eval/last-run.json
+
+# Uploaded pictures (UPLOAD_DIR default)
+storage/
