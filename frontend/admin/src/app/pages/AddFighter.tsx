@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
-import { WEIGHT_RANGES, getWeightRangeCategory } from "../data/masterData";
+import { useWeightClasses } from "../hooks/useSettingsLists";
 import { toast } from "sonner";
 
 const NATIONALITIES = [
@@ -30,6 +30,8 @@ export function AddFighter() {
   const location = useLocation();
   const { id } = useParams();
   const permissions = usePermissions();
+  // Weight classes from System Settings (Phase 5).
+  const { names: WEIGHT_RANGES, classFor: getWeightRangeCategory } = useWeightClasses();
   const currentUser = permissions.currentUser;
   const photoInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -169,6 +171,13 @@ export function AddFighter() {
     setFighter((p) => ({ ...p, idDocumentUrl: "" }));
     if (docInputRef.current) docInputRef.current.value = "";
   };
+
+  // Weight classes load from the API; fill in the class once they arrive.
+  useEffect(() => {
+    if (WEIGHT_RANGES.length && !fighter.weightClass && fighter.weight) {
+      setFighter((p) => ({ ...p, weightClass: getWeightRangeCategory(p.weight) }));
+    }
+  }, [WEIGHT_RANGES.length, fighter.weight]);
 
   const updateField = (field: string, value: any) => {
     setFighter((p) => {

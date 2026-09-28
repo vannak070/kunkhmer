@@ -33,7 +33,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'partners.manage', // Broadcasters and sponsors
     'clubs.manage', // Add / edit clubs (API: KKF staff only)
     'settings.view', // System Settings
-    'process.view', // Process Flow
+    'settings.manage', // Edit settings lists (API: Super Admin only)
     // Users
     'users.view',
     'users.create',
@@ -136,7 +136,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'partners.manage', // Broadcasters and sponsors
     'clubs.manage', // Add / edit clubs (API: KKF staff only)
     'settings.view', // System Settings
-    'process.view', // Process Flow
     // Users (View only)
       
     // Events (Full CRUD, no approval)
@@ -252,7 +251,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   // 📝 3. Organizer - Creates matches and events, requests approval
   organizer: [
     'dashboard.view',
-    'process.view',
     'events.view',
     'events.create',
     'events.edit',

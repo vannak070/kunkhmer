@@ -8,7 +8,7 @@
  */
 import { useEffect, useState } from "react";
 import { api } from "../utils/api";
-import { getWeightRangeCategory } from "./masterData";
+import { type WeightClass, loadWeightClasses, weightClassFor } from "./weightClasses";
 
 export type BoutOutcome = "win" | "loss" | "draw" | "nc";
 
@@ -61,6 +61,7 @@ export interface Standing {
 
 export interface Division {
   name: string;
+  nameKhmer?: string | null;
   champion?: FighterRef | null;
   titleName?: string;
   standings: Standing[];
@@ -82,6 +83,8 @@ export interface FanData {
   events: any[];
   broadcasters: Broadcaster[];
   champions: any[];
+  /** Official weight classes (System Settings). */
+  weightClasses: WeightClass[];
   demo: boolean;
 }
 
@@ -157,13 +160,13 @@ function demoBouts(fighters: any[]): Bout[] {
   return out;
 }
 
-function demoChampions(fighters: any[]): any[] {
+function demoChampions(fighters: any[], classes: WeightClass[]): any[] {
   const f = fighters[0];
   if (!f) return [];
   return [{
     id: "demo-champion",
     title_name: "KKF National Championship",
-    weight_class: getWeightRangeCategory(parseFloat(f.currentWeight) || 0),
+    weight_class: weightClassFor(f.currentWeight, classes)?.name ?? "",
     current_holder_id: f.id,
     current_holder_name: f.name,
     status: "Active",
@@ -228,7 +231,8 @@ export function loadFanData(): Promise<FanData> {
       api.events.list(),
       api.settings.listBroadcastStations(),
       api.champions.list(),
-    ]).then(([f, m, e, b, c]) => {
+      loadWeightClasses(),
+    ]).then(([f, m, e, b, c, w]) => {
       // Don't keep a partial result around: the next page load retries.
       if ([f, m, e, b, c].some((r) => r.status === "rejected")) cache = null;
       const val = <T,>(r: PromiseSettledResult<T>, fallback: T) => (r.status === "fulfilled" && r.value ? r.value : fallback);
@@ -249,7 +253,7 @@ export function loadFanData(): Promise<FanData> {
           }
           bouts = [...bouts, ...extra];
         }
-        if (champions.length === 0) champions = demoChampions(fighters);
+        if (champions.length === 0) champions = demoChampions(fighters, val(w, [] as WeightClass[]));
       }
       const broadcasters: Broadcaster[] = val(b, [] as any[])
         .filter((s: any) => s.active !== false)
@@ -268,6 +272,7 @@ export function loadFanData(): Promise<FanData> {
         events,
         broadcasters,
         champions,
+        weightClasses: val(w, [] as WeightClass[]),
         demo,
       };
     });
@@ -339,8 +344,10 @@ export function divisions(data: FanData): Division[] {
   for (const f of data.fighters) {
     const weightKg = parseFloat(f.currentWeight || f.current_weight || "0");
     if (!weightKg) continue;
-    const name = getWeightRangeCategory(weightKg);
-    if (!groups.has(name)) groups.set(name, { name, standings: [] });
+    const wc = weightClassFor(weightKg, data.weightClasses);
+    if (!wc) continue;
+    const name = wc.name;
+    if (!groups.has(name)) groups.set(name, { name, nameKhmer: wc.name_khmer, standings: [] });
     const rec = parseRecord(f.record);
     const total = rec.wins + rec.losses + rec.draws;
     groups.get(name)!.standings.push({
@@ -376,8 +383,9 @@ export function divisions(data: FanData): Division[] {
     );
     div.standings.forEach((s, i) => (s.rank = i + 1));
   }
-  // Lightest division first, like a fight programme.
-  return ordered.sort((a, b) => a.standings[0].fighter.weightKg - b.standings[0].fighter.weightKg);
+  // In the official order of the weight classes (lightest first).
+  const position = (name: string) => data.weightClasses.findIndex((c) => c.name === name);
+  return ordered.sort((a, b) => position(a.name) - position(b.name));
 }
 
 export function broadcasterForEvent(data: FanData, event: any): Broadcaster | null {

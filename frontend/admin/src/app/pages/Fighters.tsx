@@ -6,7 +6,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import { FighterStatusBadge } from "../components/FighterStatusBadge";
 import type { FighterStatus } from "../data/fighterStatuses";
 import unknownFighterImg from "figma:asset/b9f2c3f9c8bd58ed74f9c92de40fb83809a138b3.png";
-import { WEIGHT_RANGES, getWeightRangeCategory } from "../data/masterData";
+import { useWeightClasses } from "../hooks/useSettingsLists";
 import { toast } from "sonner";
 import { FighterReviewActions, canReviewFighters, isWaiting } from "../components/FighterReview";
 
@@ -52,6 +52,8 @@ export function Fighters() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const permissions = usePermissions();
+  // Weight classes from System Settings (Phase 5).
+  const { names: WEIGHT_RANGES, classFor: getWeightRangeCategory } = useWeightClasses();
   
   // Determine fighter type from URL
   const isKunKhmer = location.pathname.includes('/kunkhmer');

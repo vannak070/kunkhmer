@@ -1,4 +1,4 @@
-import { Home, CalendarDays, Dumbbell, ChevronDown, Shield, LogOut, User as UserIcon, ClipboardCheck, Settings, Building2, Users, FileText, Newspaper, Bell, Handshake, Menu, X, Gavel, Lock } from "lucide-react";
+import { Home, CalendarDays, Dumbbell, ChevronDown, Shield, LogOut, User as UserIcon, ClipboardCheck, Settings, Building2, Users, Newspaper, Bell, Handshake, Menu, X, Gavel, Lock, HelpCircle } from "lucide-react";
 import { Outlet, NavLink, Navigate, useLocation, useNavigate, Link } from "react-router";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -92,8 +92,12 @@ const navGroups: { title: string | null; items: NavItem[] }[] = [
       { icon: Users, label: "Users", path: "/home/user-management", permission: "users.view" },
       { icon: Shield, label: "Officials", path: "/home/officials", permission: "officials.manage" },
       { icon: Settings, label: "System Settings", path: "/home/settings", permission: "settings.view" },
-      { icon: FileText, label: "Process Flow", path: "/home/process-flow", permission: "process.view" },
     ],
+  },
+  {
+    // Every signed-in role, including referees and judges.
+    title: null,
+    items: [{ icon: HelpCircle, label: "Help", path: "/home/help", permission: null }],
   },
 ];
 
@@ -172,11 +176,11 @@ export function Layout() {
       </div>
 
       <nav aria-label="Main" className="flex-1 px-3 py-4 overflow-y-auto no-scrollbar space-y-5">
-        {navGroups.map((group) => {
+        {navGroups.map((group, gi) => {
           const items = group.items.filter((item) => allowed(item.permission));
           if (items.length === 0) return null;
           return (
-            <div key={group.title ?? "top"}>
+            <div key={group.title ?? `untitled-${gi}`}>
               {group.title && <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{group.title}</p>}
               <div className="space-y-0.5">
                 {items.map((item) => {
@@ -302,6 +306,10 @@ export function Layout() {
                   <Link to="/home/profile" onClick={() => setShowProfileMenu(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors">
                     <UserIcon className="w-4 h-4 text-muted-foreground" />
                     <span>My profile</span>
+                  </Link>
+                  <Link to="/home/help" onClick={() => setShowProfileMenu(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors">
+                    <HelpCircle className="w-4 h-4 text-muted-foreground" />
+                    <span>Help</span>
                   </Link>
                   <Link to="/home/settings" onClick={() => setShowProfileMenu(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors">
                     <Settings className="w-4 h-4 text-muted-foreground" />

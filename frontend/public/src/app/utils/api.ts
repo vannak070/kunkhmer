@@ -309,6 +309,11 @@ export const api = {
 
   // --- SETTINGS (SPONSORS / BROADCAST STATIONS) ---
   settings: {
+    /** Official weight classes (System Settings, Phase 5). */
+    async listWeightClasses() {
+      const res = await request("/settings/weight-classes");
+      return res.data;
+    },
     async listSponsors() {
       const res = await request("/settings/sponsors");
       return res.data;

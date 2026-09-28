@@ -1,0 +1,139 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`settings list: bout-rules > comes with the starting entries, readable by anyone 1`] = `
+{
+  "active": "boolean",
+  "created_at": "datetime(.000000Z)",
+  "glove_size": "string",
+  "id": "uuid",
+  "knockdown_limit": "number",
+  "name": "string",
+  "name_khmer": "string",
+  "round_time": "number",
+  "rounds": "number",
+  "sort_order": "number",
+  "updated_at": "datetime(.000000Z)",
+}
+`;
+
+exports[`settings list: bout-rules > lets the Super Admin add, edit, deactivate and delete an entry 1`] = `
+{
+  "body": {
+    "data": {
+      "active": "boolean",
+      "created_at": "datetime(.000000Z)",
+      "glove_size": "string",
+      "id": "uuid",
+      "knockdown_limit": "number",
+      "name": "string",
+      "name_khmer": "string",
+      "round_time": "number",
+      "rounds": "number",
+      "sort_order": "number",
+      "updated_at": "datetime(.000000Z)",
+    },
+    "success": "boolean",
+  },
+  "status": 201,
+}
+`;
+
+exports[`settings list: glove-brands > comes with the starting entries, readable by anyone 1`] = `
+{
+  "active": "boolean",
+  "brand": "string",
+  "created_at": "datetime(.000000Z)",
+  "id": "uuid",
+  "model": "string",
+  "sort_order": "number",
+  "updated_at": "datetime(.000000Z)",
+}
+`;
+
+exports[`settings list: glove-brands > lets the Super Admin add, edit, deactivate and delete an entry 1`] = `
+{
+  "body": {
+    "data": {
+      "active": "boolean",
+      "brand": "string",
+      "created_at": "datetime(.000000Z)",
+      "id": "uuid",
+      "model": "string",
+      "sort_order": "number",
+      "updated_at": "datetime(.000000Z)",
+    },
+    "success": "boolean",
+  },
+  "status": 201,
+}
+`;
+
+exports[`settings list: venues > comes with the starting entries, readable by anyone 1`] = `
+{
+  "active": "boolean",
+  "created_at": "datetime(.000000Z)",
+  "description": "string",
+  "id": "uuid",
+  "latitude": "number",
+  "longitude": "number",
+  "name": "string",
+  "region": "string",
+  "sort_order": "number",
+  "updated_at": "datetime(.000000Z)",
+}
+`;
+
+exports[`settings list: venues > lets the Super Admin add, edit, deactivate and delete an entry 1`] = `
+{
+  "body": {
+    "data": {
+      "active": "boolean",
+      "created_at": "datetime(.000000Z)",
+      "description": "string",
+      "id": "uuid",
+      "latitude": "number",
+      "longitude": "number",
+      "name": "string",
+      "region": "string",
+      "sort_order": "number",
+      "updated_at": "datetime(.000000Z)",
+    },
+    "success": "boolean",
+  },
+  "status": 201,
+}
+`;
+
+exports[`settings list: weight-classes > comes with the starting entries, readable by anyone 1`] = `
+{
+  "active": "boolean",
+  "created_at": "datetime(.000000Z)",
+  "id": "uuid",
+  "max_kg": "number",
+  "min_kg": "null",
+  "name": "string",
+  "name_khmer": "null",
+  "sort_order": "number",
+  "updated_at": "datetime(.000000Z)",
+}
+`;
+
+exports[`settings list: weight-classes > lets the Super Admin add, edit, deactivate and delete an entry 1`] = `
+{
+  "body": {
+    "data": {
+      "active": "boolean",
+      "created_at": "datetime(.000000Z)",
+      "id": "uuid",
+      "max_kg": "number",
+      "min_kg": "number",
+      "name": "string",
+      "name_khmer": "string",
+      "sort_order": "number",
+      "updated_at": "datetime(.000000Z)",
+    },
+    "success": "boolean",
+  },
+  "status": 201,
+}
+`;

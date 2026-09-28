@@ -127,9 +127,9 @@ and phone width in both languages.
 
 ## Known gaps and tech debt
 
-- System Settings master data (rules, venues, weights, gloves…) is still local
-  (`data/masterData.ts`, localStorage) — Phase 5. Officials, Users and Profile
-  are on the API (see `features/officials.md`). UI says "Fight card"; code/API
+- Settings lists (weight classes, venues, bout rules, gloves) are on the API
+  since Phase 5 (`features/settings.md`). Create Match / titles keep a
+  separate agreed-weight list (51, 54, 57 … kg) by decision. UI says "Fight card"; code/API
   still say batch / sub_event.
 - No login rate limiting. (Fighter edits are now STAFF + own-club only.)
 - Correcting a title match result to a different winner doesn't reverse the

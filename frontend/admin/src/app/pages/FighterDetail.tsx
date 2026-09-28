@@ -8,7 +8,7 @@ import { ArrowLeft, User, HeartPulse, Activity, History, Edit, MapPin, Zap, Chec
 import { clsx } from "clsx";
 import unknownFighterImg from "figma:asset/b9f2c3f9c8bd58ed74f9c92de40fb83809a138b3.png";
 import { usePermissions } from "../hooks/usePermissions";
-import { getWeightRangeCategory } from "../data/masterData";
+import { useWeightClasses } from "../hooks/useSettingsLists";
 import { toast } from "sonner";
 import { FighterReviewActions, canReviewFighters, isWaiting } from "../components/FighterReview";
 
@@ -21,10 +21,6 @@ const tabs = [
   { id: "medical", label: "Medical", icon: HeartPulse },
 ];
 
-const getWeightRangeBilingual = (weight: number) => {
-  return getWeightRangeCategory(weight);
-};
-
 export function FighterDetail() {
   const { id } = useParams();
   const [fighter, setFighter] = useState<any>(null);
@@ -33,6 +29,8 @@ export function FighterDetail() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const permissions = usePermissions();
+  // Weight classes from System Settings (Phase 5).
+  const { classFor: getWeightRangeCategory } = useWeightClasses();
 
   useEffect(() => {
     if (id) {
@@ -263,7 +261,7 @@ export function FighterDetail() {
 
             {/* Stats Subgrid */}
             <div className="flex flex-wrap justify-center md:justify-start items-center gap-3 text-white text-xs md:text-sm">
-              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/10 font-medium shadow-sm" title={getWeightRangeBilingual(fighter.weight)}>
+              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/10 font-medium shadow-sm" title={getWeightRangeCategory(fighter.weight)}>
                 <span>⚖️</span>
                 <span className="font-semibold">{getWeightRangeCategory(fighter.weight)} ({fighter.weight} kg)</span>
               </div>

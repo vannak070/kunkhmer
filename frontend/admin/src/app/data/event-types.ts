@@ -165,23 +165,6 @@ export const TOURNAMENT_FORMAT_CONFIG: Record<TournamentFormat, {
   }
 };
 
-// Weight Class Categories for Tournaments
-export const TOURNAMENT_WEIGHT_CLASSES = [
-  { value: "51", label: "51kg - Minimumweight" },
-  { value: "54", label: "54kg - Light Flyweight" },
-  { value: "57", label: "57kg - Flyweight" },
-  { value: "60", label: "60kg - Bantamweight" },
-  { value: "63.5", label: "63.5kg - Featherweight" },
-  { value: "67", label: "67kg - Lightweight" },
-  { value: "71", label: "71kg - Light Welterweight" },
-  { value: "75", label: "75kg - Welterweight" },
-  { value: "81", label: "81kg - Light Middleweight" },
-  { value: "86", label: "86kg - Middleweight" },
-  { value: "91", label: "91kg - Light Heavyweight" },
-  { value: "95", label: "95kg - Cruiserweight" },
-  { value: "100+", label: "100+kg - Heavyweight" }
-];
-
 // Match Type Configuration
 export const MATCH_TYPE_CONFIG: Record<MatchType, {
   label: string;

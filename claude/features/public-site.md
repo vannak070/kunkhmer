@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress — phases 1–4 done; step 2 (event page) and the light home redesign with partner promotion built, not yet committed; step 3 (menu consolidation) next |
+| **Status** | In progress — phases 1–4 done; step 2 (event page, `d4fe0ab2`) and the light home with partner promotion (`23d6a1ce`) committed; queued: statistics page (`statistics.md`), then step 3 (menu consolidation) |
 | **Jira** | TBD |
 | **Figma** | TBD — brand guideline: design system artifact "Kun Khmer Brand" (https://claude.ai/artifact/5dHcDztT7toqRYCFrcKFLT, owner-private) |
 

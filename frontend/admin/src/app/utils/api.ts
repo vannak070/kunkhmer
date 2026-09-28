@@ -371,6 +371,26 @@ export const api = {
     }
   },
 
+  // --- SETTINGS LISTS (weight classes, venues, bout rules, glove brands; Phase 5) ---
+  settingsLists: {
+    /** Active entries in order; `all` (KKF staff) includes inactive ones. */
+    async list(list: string, all = false) {
+      const res = await request(`/settings/${list}${all ? "?all=1" : ""}`);
+      return res.data;
+    },
+    async create(list: string, input: any) {
+      const res = await request(`/settings/${list}`, { method: "POST", body: JSON.stringify(input) });
+      return res.data;
+    },
+    async update(list: string, id: string, input: any) {
+      const res = await request(`/settings/${list}/${id}`, { method: "PUT", body: JSON.stringify(input) });
+      return res.data;
+    },
+    async delete(list: string, id: string) {
+      return request(`/settings/${list}/${id}`, { method: "DELETE" });
+    }
+  },
+
   // --- SETTINGS (SPONSORS / BROADCAST STATIONS) ---
   settings: {
     async listSponsors() {

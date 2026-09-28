@@ -82,7 +82,7 @@ export function Rankings() {
                       active ? "bg-[#0A3D91] border-[#0A3D91] text-white" : "bg-white border-gray-200 text-gray-700 hover:border-[#0A3D91]"
                     }`}
                   >
-                    {d.name}
+                    {localName(d.name, d.nameKhmer)}
                     <span className={`ml-2 text-xs font-semibold ${active ? "text-white/70" : "text-gray-400"}`}>{d.standings.length}</span>
                   </button>
                 );
@@ -93,7 +93,7 @@ export function Rankings() {
               <section className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
                 <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-5 md:px-8 py-5 bg-gradient-to-r from-[#051C42] to-[#0A3D91] text-white">
                   <div>
-                    <h2 className="text-2xl font-black">{selected.name}</h2>
+                    <h2 className="text-2xl font-black">{localName(selected.name, selected.nameKhmer)}</h2>
                     <p className="text-sm text-white/70">{tn("rankings.fightersCount", selected.standings.length)}</p>
                   </div>
                   {selected.champion ? (

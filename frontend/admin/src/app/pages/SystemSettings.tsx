@@ -1,670 +1,365 @@
-import { useState, useEffect } from "react";
-import { 
-  Swords, Calendar, GitFork, Crown, Settings, 
-  Plus, Trash2, X, Check, ChevronRight
-} from "lucide-react";
-import { usePermissions } from "../hooks/usePermissions";
+/**
+ * System Settings (Phase 5): the shared lists every form uses — weight classes, venues,
+ * bout rule presets and glove brands — stored in the database (`/api/settings/<list>`).
+ * The Super Admin adds, edits, reorders, deactivates and deletes; KKF Officers can look.
+ * Events and bouts copy the value when saved, so edits never change past records.
+ */
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
+import { ArrowDown, ArrowUp, Box, Gavel, Loader2, MapPin, Pencil, Plus, Scale, Settings, Trash2 } from "lucide-react";
 import { api } from "../utils/api";
-import { GLOVE_TYPES, WEIGHT_RANGES, ORGANIZERS, VENUES, FIGHTING_RULES, SYSTEM_CONFIGS, type Venue } from "../data/masterData";
+import { usePermissions } from "../hooks/usePermissions";
+import { GLOVE_SIZES } from "../data/masterData";
+import { type SettingsListName, refreshSettingsList } from "../hooks/useSettingsLists";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 
-// Traditional Cambodian line-art watermarks for branding UI
-const AngkorWatWatermark = () => (
-  <div className="absolute bottom-0 right-0 w-[260px] h-[200px] pointer-events-none opacity-[0.04] text-[#b89755] select-none z-0">
-    <svg width="100%" height="100%" viewBox="0 0 260 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M 10 190 L 250 190 
-           M 25 190 L 25 160 L 45 160 L 45 190 
-           M 235 190 L 235 160 L 215 160 L 215 190 
-           M 55 190 L 55 130 L 80 130 L 80 190 
-           M 205 190 L 205 130 L 180 130 L 180 190 
-           M 90 190 L 90 90 L 105 90 C 105 80, 110 70, 115 50 L 120 90 L 130 90 L 135 50 C 140 70, 145 80, 145 90 L 170 90 L 170 190
-           M 110 190 L 110 80 C 110 70, 120 60, 125 30 C 130 60, 140 70, 140 80 L 140 190
-           M 60 130 L 67 110 L 75 130
-           M 190 130 L 197 110 L 185 130
-           M 30 160 L 35 145 L 40 160"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  </div>
-);
+type Row = Record<string, any>;
 
-const KbachWatermark = () => (
-  <div className="absolute top-0 right-0 w-[180px] h-[180px] pointer-events-none opacity-[0.04] text-[#b89755] select-none z-0">
-    <svg width="100%" height="100%" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M 90 10 C 70 10, 60 20, 60 40 C 60 30, 50 20, 30 20 C 40 40, 50 50, 50 70 C 40 60, 20 60, 10 90 C 30 90, 40 80, 50 70 C 60 80, 70 90, 90 90 C 80 70, 70 60, 60 40 C 75 45, 90 30, 90 10 Z"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  </div>
-);
-
-const FighterWatermark = () => (
-  <div className="absolute bottom-4 left-4 w-[200px] h-[200px] pointer-events-none opacity-[0.03] text-[#b89755] select-none z-0">
-    <svg width="100%" height="100%" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M 60 170 L 80 140 L 95 100 L 90 85 L 105 70 L 100 50 L 115 45 C 120 40, 125 45, 120 50 L 115 65 L 125 70 L 135 85 L 150 90 M 95 100 L 110 130 L 130 170 M 110 130 L 85 160 M 125 70 L 155 60 C 160 58, 165 65, 160 70 L 140 85 M 90 85 L 70 80 C 65 78, 60 85, 65 90 L 85 98"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  </div>
-);
-
-// Referees and judges moved to the Officials page (real accounts, Phase 4).
-export type ActiveTab = "fighting" | "event" | "match" | "champion" | "system";
-
-export interface SettingsCategoryConfig {
-  id: ActiveTab;
+interface Field {
+  key: string;
+  column: string;
   label: string;
-  icon: any;
-  title: string;
-  desc: string;
+  type?: "text" | "number" | "textarea" | "glove";
+  required?: boolean;
+  placeholder?: string;
 }
 
-export const CATEGORIES_CONFIG: SettingsCategoryConfig[] = [
-  {
-    id: "fighting",
-    label: "Fighting Settings",
-    icon: Swords,
-    title: "Manage Fighting Settings",
-    desc: "Configure global rules of engagement, round durations, and scoring criteria for bouts."
-  },
-  {
-    id: "event",
-    label: "Event Configurations",
-    icon: Calendar,
-    title: "Manage Event Configurations",
-    desc: "Define standardized venues and organizer profiles sanctioned by the federation."
-  },
-  {
-    id: "match",
-    label: "Match Settings",
-    icon: GitFork,
-    title: "Matchmaking & Bout Parameters",
-    desc: "Configure match weight ranges and approved boxing glove brands."
-  },
-  {
-    id: "champion",
-    label: "Champion Settings",
-    icon: Crown,
-    title: "Championship & Title Management",
-    desc: "Configure official sponsors and championship title templates."
-  },
+interface ListTab {
+  key: SettingsListName;
+  label: string;
+  singular: string;
+  icon: typeof Scale;
+  hint: string;
+  title: (r: Row) => string;
+  detail: (r: Row) => string;
+  fields: Field[];
+}
 
+const kg = (n: number | null) => (n == null ? null : `${n} kg`);
+
+const TABS: ListTab[] = [
   {
-    id: "system",
-    label: "System Settings",
-    icon: Settings,
-    title: "Global System Settings",
-    desc: "Configure platform variables, backup plans, and localization defaults."
-  }
+    key: "weight-classes",
+    label: "Weight classes",
+    singular: "weight class",
+    icon: Scale,
+    hint: "A fighter belongs to the class with the lowest maximum at or above their weight. Used for fighter lists, tournaments and the fan site's rankings.",
+    title: (r) => r.name,
+    detail: (r) => [r.name_khmer, r.min_kg != null && r.max_kg != null ? `${r.min_kg}–${r.max_kg} kg` : r.max_kg != null ? `up to ${kg(r.max_kg)}` : `from ${kg(r.min_kg)}`].filter(Boolean).join(" · "),
+    fields: [
+      { key: "name", column: "name", label: "Name (English)", required: true, placeholder: "e.g. 59 kg - 61 kg" },
+      { key: "nameKhmer", column: "name_khmer", label: "Name (Khmer)" },
+      { key: "minKg", column: "min_kg", label: "Minimum kg", type: "number", placeholder: "Leave empty for “Under …”" },
+      { key: "maxKg", column: "max_kg", label: "Maximum kg", type: "number", placeholder: "Leave empty for “Over …”" },
+    ],
+  },
+  {
+    key: "venues",
+    label: "Venues",
+    singular: "venue",
+    icon: MapPin,
+    hint: "Offered when creating an event or fight card (a different place can still be typed). Coordinates place the venue on the maps.",
+    title: (r) => r.name,
+    detail: (r) => [r.region, r.description].filter(Boolean).join(" · "),
+    fields: [
+      { key: "name", column: "name", label: "Name", required: true },
+      { key: "region", column: "region", label: "Region", placeholder: "e.g. Phnom Penh" },
+      { key: "description", column: "description", label: "Notes", type: "textarea" },
+      { key: "latitude", column: "latitude", label: "Latitude", type: "number", placeholder: "e.g. 11.5564" },
+      { key: "longitude", column: "longitude", label: "Longitude", type: "number", placeholder: "e.g. 104.9282" },
+    ],
+  },
+  {
+    key: "bout-rules",
+    label: "Bout rules",
+    singular: "rule preset",
+    icon: Gavel,
+    hint: "Presets for “Create match”: choosing one fills rounds, round time, knockdown limit and glove size.",
+    title: (r) => r.name,
+    detail: (r) => [r.name_khmer, `${r.rounds} × ${r.round_time} min`, `${r.knockdown_limit} knockdowns`, r.glove_size].filter(Boolean).join(" · "),
+    fields: [
+      { key: "name", column: "name", label: "Name (English)", required: true, placeholder: "e.g. Standard (5 rounds × 3 min)" },
+      { key: "nameKhmer", column: "name_khmer", label: "Name (Khmer)" },
+      { key: "rounds", column: "rounds", label: "Rounds", type: "number", required: true },
+      { key: "roundTime", column: "round_time", label: "Round time (minutes)", type: "number", required: true },
+      { key: "knockdownLimit", column: "knockdown_limit", label: "Knockdown limit", type: "number", required: true },
+      { key: "gloveSize", column: "glove_size", label: "Glove size", type: "glove" },
+    ],
+  },
+  {
+    key: "glove-brands",
+    label: "Glove brands",
+    singular: "glove brand",
+    icon: Box,
+    hint: "KKF-approved gloves offered when creating a match.",
+    title: (r) => [r.brand, r.model].filter(Boolean).join(" "),
+    detail: () => "",
+    fields: [
+      { key: "brand", column: "brand", label: "Brand", required: true },
+      { key: "model", column: "model", label: "Model" },
+    ],
+  },
 ];
+
+const inputClass = "w-full h-11 rounded-xl border border-slate-300 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none px-3 text-sm bg-white";
 
 export function SystemSettings() {
   const permissions = usePermissions();
-  const [activeTab, setActiveTab] = useState<ActiveTab>("fighting");
-  const [subTab, setSubTab] = useState("");
-  const [inputValue, setInputValue] = useState("");
-  const [trigger, setTrigger] = useState(0);
-  const [sponsors, setSponsors] = useState<any[]>([]);
+  const canManage = permissions.hasPermission("settings.manage");
+  const [params, setParams] = useSearchParams();
+  const tab = TABS.find((t) => t.key === params.get("tab")) ?? TABS[0];
+  const [rows, setRows] = useState<Row[] | null>(null);
+  const [editing, setEditing] = useState<Row | "new" | null>(null);
+  const [deleting, setDeleting] = useState<Row | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const forceUpdate = () => setTrigger(t => t + 1);
-
-  const loadSettingsData = async () => {
+  const load = async () => {
     try {
-      const spData = await api.settings.listSponsors();
-      setSponsors(spData || []);
-    } catch (err) {
-      console.error(err);
+      setRows(await api.settingsLists.list(tab.key, true));
+    } catch (e) {
+      setRows([]);
+      toast.error(e instanceof Error ? e.message : "Could not load this list.");
     }
   };
 
   useEffect(() => {
-    loadSettingsData();
-  }, []);
+    setRows(null);
+    load();
+  }, [tab.key]);
 
-  // Set default sub-tabs when changing active category
-  useEffect(() => {
-    if (activeTab === "event") setSubTab("organizers");
-    else if (activeTab === "match") setSubTab("weightRanges");
-    else if (activeTab === "champion") setSubTab("sponsors");
-    else setSubTab("");
-  }, [activeTab]);
-
-  // Admin permission mapping
-  const canManage = permissions.currentUser?.role === 'kkf_super_admin' || 
-                    permissions.hasPermission('system.manage_settings') || true;
-
-  const activeTabConfig = CATEGORIES_CONFIG.find(t => t.id === activeTab) || CATEGORIES_CONFIG[0];
-
-  // Helper to get items of active sub-category
-  const getActiveItems = () => {
-    switch (activeTab) {
-      case "fighting":
-        return FIGHTING_RULES.map(r => ({ id: r.id, title: r.en || r.kh, subtitle: "" }));
-      case "event":
-        if (subTab === "organizers") {
-          return ORGANIZERS.map((org, index) => ({ id: `org-${index}`, title: org, subtitle: "Sanctioned Organizer" }));
-        } else {
-          return VENUES.map((v, index) => ({ id: `venue-${index}`, title: v.name, subtitle: `${v.region} · ${v.description}` }));
-        }
-      case "match":
-        if (subTab === "weightRanges") {
-          return WEIGHT_RANGES.map((wr, index) => ({ id: `wr-${index}`, title: wr, subtitle: "Fighter Weight Range" }));
-        } else {
-          return GLOVE_TYPES.map(gt => ({ id: gt.id, title: gt.brand, subtitle: gt.model }));
-        }
-      case "champion":
-        if (subTab === "sponsors") {
-          return sponsors.map(sp => ({ id: sp.id, title: sp.name, subtitle: `${sp.tier} Sponsor · ${sp.industry}` }));
-        } else {
-          return [
-            { id: "t-1", title: "World Federation Champion", subtitle: "Official Title Status" },
-            { id: "t-2", title: "Grand Prix Tournament Champion", subtitle: "Official Title Status" },
-            { id: "t-3", title: "Vacant Title Status", subtitle: "Official Title Status" }
-          ];
-        }
-
-      case "system":
-        return SYSTEM_CONFIGS.map(sc => ({ id: sc.id, title: sc.en || sc.kh, subtitle: "" }));
-      default:
-        return [];
-    }
+  // After any change: this page and every form using the list.
+  const changed = async () => {
+    await load();
+    refreshSettingsList(tab.key);
   };
 
-  const getCategoryCount = (categoryId: ActiveTab) => {
-    switch (categoryId) {
-      case "fighting":
-        return FIGHTING_RULES.length;
-      case "event":
-        return ORGANIZERS.length + VENUES.length;
-      case "match":
-        return WEIGHT_RANGES.length + GLOVE_TYPES.length;
-      case "champion":
-        return sponsors.length + 3; // sponsors + titles
-      case "system":
-        return SYSTEM_CONFIGS.length;
-      default:
-        return 0;
-    }
-  };
-
-  const getActivePlaceholder = () => {
-    switch (activeTab) {
-      case "fighting":
-        return "Add rule (e.g., 5 Rounds x 3 Mins)...";
-      case "event":
-        if (subTab === "organizers") return "Add organizer (e.g., Bayon Entertainment)...";
-        return "Add venue (e.g., Siem Reap Arena / Siem Reap)...";
-      case "match":
-        if (subTab === "weightRanges") return "Add weight range (e.g., 50 kg - 52 kg)...";
-        return "Add glove brand (e.g., Twins Special / BGVL-3)...";
-      case "champion":
-        if (subTab === "sponsors") return "Add sponsor (e.g., Wing Bank / Financial Services / Gold)...";
-        return "Add title status template...";
-      case "system":
-        return "Add system variable (e.g., GMT+7 Timezone)...";
-      default:
-        return "Add new option...";
-    }
-  };
-
-  const getActiveHelpText = () => {
-    switch (activeTab) {
-      case "event":
-        if (subTab === "venues") return "Tip: Separate venue name and region using a slash '/' (e.g., PNN Arena / Phnom Penh Outskirts).";
-        break;
-      case "match":
-        if (subTab === "gloves") return "Tip: Separate glove brand and model using a slash '/' (e.g., Twins Special / BGVL-3).";
-        break;
-      case "champion":
-        if (subTab === "sponsors") return "Tip: Format as 'Sponsor Name / Industry / Tier' (e.g., Wing Bank / Financial Services / Gold). Tiers: Platinum, Gold, Silver, Bronze.";
-        break;
-    }
-    return "Tip: Enter the configuration value (e.g. Lightweight (60kg)).";
-  };
-
-  // CRUD actions
-  const handleAddOption = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputValue.trim()) return;
-
-    if (!canManage) {
-      toast.error("🔒 You do not have permissions to modify system settings.");
-      return;
-    }
-
-    const value = inputValue.trim();
-
+  const run = async (action: () => Promise<unknown>, done: string) => {
+    setBusy(true);
     try {
-      if (activeTab === "fighting") {
-        FIGHTING_RULES.push({
-          id: `f-${Date.now()}`,
-          kh: "",
-          en: value
-        });
-        localStorage.setItem("kkf_fighting_rules", JSON.stringify(FIGHTING_RULES));
-      } 
-      else if (activeTab === "event") {
-        if (subTab === "organizers") {
-          ORGANIZERS.push(value);
-          localStorage.setItem("kkf_event_organizers", JSON.stringify(ORGANIZERS));
-        } else {
-          const parts = value.split("/");
-          const name = parts[0]?.trim() || value;
-          const region = parts[1]?.trim() || "Phnom Penh";
-          const newVenue: Venue = {
-            name,
-            region,
-            x: 50,
-            y: 50,
-            lat: 11.5564,
-            lng: 104.9282,
-            description: `Sanctioned Arena in ${region}`
-          };
-          VENUES.push(newVenue);
-          localStorage.setItem("kkf_venues", JSON.stringify(VENUES));
-        }
-      } 
-      else if (activeTab === "match") {
-        if (subTab === "weightRanges") {
-          WEIGHT_RANGES.push(value);
-          // Sort weight ranges if they are numeric ranges (e.g. "50 kg - 52 kg")
-          localStorage.setItem("kkf_weight_ranges", JSON.stringify(WEIGHT_RANGES));
-        } else {
-          const parts = value.split("/");
-          GLOVE_TYPES.push({
-            id: `gt-${Date.now()}`,
-            brand: parts[0]?.trim() || value,
-            model: parts[1]?.trim() || "Standard Model",
-            approved: true
-          });
-          localStorage.setItem("kkf_glove_types", JSON.stringify(GLOVE_TYPES));
-        }
-      } 
-      else if (activeTab === "champion") {
-        if (subTab === "sponsors") {
-          const parts = value.split("/");
-          const name = parts[0]?.trim() || value;
-          const industry = parts[1]?.trim() || "Beverages";
-          const tier = (parts[2]?.trim() as any) || "Gold";
-          
-          await api.settings.createSponsor({
-            name,
-            industry,
-            tier,
-            active: true,
-            logoUrl: "🤝"
-          });
-          await loadSettingsData();
-        } else {
-          toast.info("Title templates are core system properties. Standard templates loaded.");
-          return;
-        }
-      } 
-      else if (activeTab === "system") {
-        SYSTEM_CONFIGS.push({
-          id: `s-${Date.now()}`,
-          kh: "",
-          en: value
-        });
-        localStorage.setItem("kkf_system_configs", JSON.stringify(SYSTEM_CONFIGS));
-      }
-
-      setInputValue("");
-      forceUpdate();
-      toast.success(`✅ Option successfully added!`);
-    } catch (err) {
-      console.error(err);
-      toast.error("❌ Failed to add option. Make sure format is correct.");
+      await action();
+      toast.success(done);
+      await changed();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save.");
+    } finally {
+      setBusy(false);
     }
   };
 
-  const handleDeleteOption = async (id: string, name?: string) => {
-    if (!canManage) {
-      toast.error("🔒 You do not have permissions to modify system settings.");
-      return;
-    }
-
-    try {
-      if (activeTab === "fighting") {
-        const idx = FIGHTING_RULES.findIndex(item => item.id === id);
-        if (idx !== -1) FIGHTING_RULES.splice(idx, 1);
-        localStorage.setItem("kkf_fighting_rules", JSON.stringify(FIGHTING_RULES));
-      } 
-      else if (activeTab === "event") {
-        if (subTab === "organizers") {
-          const idx = ORGANIZERS.indexOf(name || "");
-          if (idx !== -1) ORGANIZERS.splice(idx, 1);
-          localStorage.setItem("kkf_event_organizers", JSON.stringify(ORGANIZERS));
-        } else {
-          const idx = VENUES.findIndex(v => v.name === name);
-          if (idx !== -1) VENUES.splice(idx, 1);
-          localStorage.setItem("kkf_venues", JSON.stringify(VENUES));
-        }
-      } 
-      else if (activeTab === "match") {
-        if (subTab === "weightRanges") {
-          const idx = WEIGHT_RANGES.indexOf(name || "");
-          if (idx !== -1) WEIGHT_RANGES.splice(idx, 1);
-          localStorage.setItem("kkf_weight_ranges", JSON.stringify(WEIGHT_RANGES));
-        } else {
-          const idx = GLOVE_TYPES.findIndex(gt => gt.id === id);
-          if (idx !== -1) GLOVE_TYPES.splice(idx, 1);
-          localStorage.setItem("kkf_glove_types", JSON.stringify(GLOVE_TYPES));
-        }
-      } 
-      else if (activeTab === "champion") {
-        if (subTab === "sponsors") {
-          await api.settings.deleteSponsor(id);
-          await loadSettingsData();
-        } else {
-          toast.warning("Title templates are core system properties and cannot be deleted.");
-          return;
-        }
-      } 
-      else if (activeTab === "system") {
-        const idx = SYSTEM_CONFIGS.findIndex(item => item.id === id);
-        if (idx !== -1) SYSTEM_CONFIGS.splice(idx, 1);
-        localStorage.setItem("kkf_system_configs", JSON.stringify(SYSTEM_CONFIGS));
-      }
-
-      forceUpdate();
-      toast.success("🗑️ Option removed successfully.");
-    } catch (err) {
-      console.error(err);
-      toast.error("❌ Failed to delete option.");
-    }
+  /** Move an entry up or down; renumbers the list so the order is explicit. */
+  const move = (index: number, delta: -1 | 1) => {
+    if (!rows) return;
+    const next = [...rows];
+    const [item] = next.splice(index, 1);
+    next.splice(index + delta, 0, item);
+    const updates = next.map((r, i) => ({ r, i })).filter(({ r, i }) => r.sort_order !== i);
+    run(() => Promise.all(updates.map(({ r, i }) => api.settingsLists.update(tab.key, r.id, { sortOrder: i }))), "Order saved");
   };
 
-  const renderSubTabs = () => {
-    if (activeTab === "event") {
-      return (
-        <div className="flex gap-2 mb-5">
-          <button
-            type="button"
-            onClick={() => setSubTab("organizers")}
-            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all border ${
-              subTab === "organizers" 
-                ? "bg-primary border-primary text-white shadow-sm" 
-                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
-            }`}
-          >
-            Promoters & Organizers ({ORGANIZERS.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setSubTab("venues")}
-            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all border ${
-              subTab === "venues" 
-                ? "bg-primary border-primary text-white shadow-sm" 
-                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
-            }`}
-          >
-            Sanctioned Venues ({VENUES.length})
-          </button>
-        </div>
-      );
-    }
-    if (activeTab === "match") {
-      return (
-        <div className="flex gap-2 mb-5">
-          <button
-            type="button"
-            onClick={() => setSubTab("weightRanges")}
-            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all border ${
-              subTab === "weightRanges" 
-                ? "bg-primary border-primary text-white shadow-sm" 
-                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
-            }`}
-          >
-            Weight Ranges ({WEIGHT_RANGES.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setSubTab("gloves")}
-            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all border ${
-              subTab === "gloves" 
-                ? "bg-primary border-primary text-white shadow-sm" 
-                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
-            }`}
-          >
-            Approved Gloves ({GLOVE_TYPES.length})
-          </button>
-        </div>
-      );
-    }
-    if (activeTab === "champion") {
-      return (
-        <div className="flex gap-2 mb-5">
-          <button
-            type="button"
-            onClick={() => setSubTab("sponsors")}
-            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all border ${
-              subTab === "sponsors" 
-                ? "bg-primary border-primary text-white shadow-sm" 
-                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
-            }`}
-          >
-            Sponsors ({sponsors.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setSubTab("titles")}
-            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all border ${
-              subTab === "titles" 
-                ? "bg-primary border-primary text-white shadow-sm" 
-                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
-            }`}
-          >
-            Title Statuses (3)
-          </button>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  const activeItems = getActiveItems();
+  const activeCount = useMemo(() => (rows ?? []).filter((r) => r.active).length, [rows]);
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto items-start w-full animate-fadeIn">
-      
-      {/* Sidebar Panel */}
-      <aside className="w-full lg:w-80 bg-white border border-border rounded-2xl flex flex-col relative overflow-hidden shrink-0 shadow-sm">
-        
-        {/* Subtle Corner Watermarks inside Sidebar */}
-        <KbachWatermark />
-        
-        {/* Sidebar Navigation Header */}
-        <div className="p-5 border-b border-border relative z-10 bg-slate-50/50">
-          <p className="text-[10px] text-muted-foreground font-extrabold uppercase tracking-widest px-1 select-none">
-            Configure Categories
+    <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground flex items-center gap-2">
+            <Settings className="w-6 h-6 text-primary" aria-hidden /> System Settings
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1 font-medium">
+            Lists every form uses. Changes apply to everyone straight away; events and bouts already saved keep their values.
           </p>
         </div>
+        {canManage && (
+          <button type="button" onClick={() => setEditing("new")} className="btn-primary py-2.5 px-5 whitespace-nowrap shrink-0">
+            <Plus className="w-4 h-4" aria-hidden /> Add {tab.singular}
+          </button>
+        )}
+      </header>
 
-        {/* Navigation Menu */}
-        <nav className="flex-1 p-4 space-y-1.5 relative z-10 overflow-y-auto max-h-[400px] lg:max-h-none">
-          {CATEGORIES_CONFIG.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            const itemCount = getCategoryCount(tab.id);
-            
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  setInputValue("");
-                }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all group border ${
-                  isActive
-                    ? "bg-primary/10 border-primary/20 text-primary shadow-sm"
-                    : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-                }`}
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-                    isActive ? "bg-primary/15 text-primary" : "bg-slate-100 text-slate-500 group-hover:bg-slate-200"
-                  }`}>
-                    <Icon className="w-[18px] h-[18px] shrink-0" />
-                  </div>
-                  
-                  <div className="flex flex-col text-left min-w-0">
-                    <span className={`text-xs font-bold leading-normal font-sans tracking-wide uppercase ${
-                      isActive ? "text-primary" : "text-slate-700"
-                    }`}>
-                      {tab.label}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Count Badges */}
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold leading-none transition-all ${
-                  isActive
-                    ? "bg-primary text-white"
-                    : "bg-slate-100 text-slate-500 group-hover:bg-slate-200"
-                }`}>
-                  {itemCount}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Sidebar Footer */}
-        <div className="p-5 border-t border-border bg-slate-50/50 relative z-10">
-          <div className="p-4 bg-white rounded-xl border border-border shadow-sm">
-            <p className="text-xs font-black text-slate-800 mb-1 uppercase tracking-wide">League Rules</p>
-            <p className="text-[10px] text-muted-foreground leading-relaxed font-semibold">
-              Bilingual options configured here dynamically update across athlete entry and booking cards.
-            </p>
-          </div>
+      {!canManage && (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm text-slate-700">
+          You can view these lists. Only the Super Admin can change them.
         </div>
-      </aside>
+      )}
 
-      {/* Main Workspace */}
-      <div className="flex-1 flex flex-col relative min-w-0 w-full">
-        
-        {/* Traditional Cambodian line-art watermarks in corners of workspace */}
-        <AngkorWatWatermark />
-        <FighterWatermark />
-
-        <div className="w-full relative z-10 flex-1 flex flex-col">
-          
-          {/* Header Structure */}
-          <div className="mb-6 bg-white p-6 rounded-2xl border border-border shadow-sm relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1.5 h-full bg-primary"></div>
-            <h2 className="text-lg md:text-xl font-bold text-foreground leading-tight">
-              {activeTabConfig.title}
-            </h2>
-            <p className="text-sm text-muted-foreground mt-2 max-w-3xl leading-relaxed">
-              {activeTabConfig.desc}
-            </p>
-          </div>
-
-          {/* Render sub-tabs if present */}
-          {renderSubTabs()}
-
-          {/* Interactive Form Box */}
-          {(!activeTabConfig.id.includes("champion") || subTab === "sponsors") && (
-            <div className="mb-6 bg-white p-5 rounded-2xl border border-border shadow-sm">
-              <form onSubmit={handleAddOption} className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1 min-w-0">
-                  <input
-                    type="text"
-                    required
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    placeholder={getActivePlaceholder()}
-                    className="w-full px-4 py-3 bg-white border border-border rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all text-foreground text-sm font-medium"
-                  />
-                  <p className="text-[10px] text-muted-foreground font-semibold mt-1.5 px-1 leading-normal">
-                    {getActiveHelpText()}
-                  </p>
-                </div>
-                
-                <button
-                  type="submit"
-                  className="sm:h-[46px] px-6 bg-primary hover:bg-[#082E6E] text-white rounded-xl font-bold text-sm tracking-wide transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2"
-                >
-                  <Plus className="w-4 h-4 shrink-0" />
-                  <span>Add Option</span>
-                </button>
-              </form>
-            </div>
-          )}
-
-          {/* Dynamic Tag Grid */}
-          <div className="flex-1 flex flex-col bg-white p-6 rounded-2xl border border-border shadow-sm min-h-[300px]">
-            <div className="flex items-center justify-between pb-4 mb-4 border-b border-border">
-              <h3 className="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
-                <span className="w-1.5 h-3 bg-primary rounded-full"></span>
-                Bilingual Option Catalog
-              </h3>
-              <span className="text-xs text-muted-foreground font-bold">
-                {activeItems.length} items configured
-              </span>
-            </div>
-
-            {activeItems.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center py-16 text-center">
-                <div className="w-16 h-16 bg-muted/40 border border-border rounded-full flex items-center justify-center text-muted-foreground mb-3">
-                  <Settings className="w-6 h-6" />
-                </div>
-                <h4 className="text-foreground font-bold text-sm">No options found</h4>
-                <p className="text-muted-foreground text-xs mt-1 max-w-xs leading-normal">
-                  Add a new item using the input panel above to populate this catalog.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {activeItems.map((item) => (
-                  <div 
-                    key={item.id}
-                    className="bg-muted/15 border border-border/80 rounded-xl p-4 flex items-center justify-between hover:bg-muted/30 hover:shadow-sm hover:border-primary/30 transition-all duration-200 group animate-fadeIn"
-                  >
-                    {/* Bilingual text block with Khmer script line-height clipping prevention */}
-                    <div className="flex flex-col min-w-0 pr-2 py-0.5">
-                      <span className="text-sm font-bold text-slate-800 font-sans tracking-wide leading-relaxed truncate">
-                        {item.title}
-                      </span>
-                      {item.subtitle && (
-                        <span className="text-xs font-semibold text-slate-400 leading-normal truncate mt-0.5">
-                          {item.subtitle}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* CRUD Delete Action */}
-                    {(!activeTab.includes("champion") || subTab === "sponsors") && (
-                      <button
-                        onClick={() => handleDeleteOption(item.id, item.title)}
-                        className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all shrink-0 cursor-pointer animate-pulse"
-                        title="Delete option"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-        </div>
+      <div role="tablist" aria-label="Lists" className="flex gap-1 rounded-xl bg-slate-100 p-1 overflow-x-auto no-scrollbar">
+        {TABS.map((t) => {
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.key}
+              role="tab"
+              type="button"
+              aria-selected={tab.key === t.key}
+              onClick={() => setParams(t.key === TABS[0].key ? {} : { tab: t.key }, { replace: true })}
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 h-9 px-3 whitespace-nowrap rounded-lg text-sm font-semibold transition-colors ${tab.key === t.key ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+            >
+              <Icon className="w-4 h-4" aria-hidden /> {t.label}
+            </button>
+          );
+        })}
       </div>
 
+      <p className="text-sm text-slate-600">{tab.hint}</p>
+
+      {!rows && <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="w-4 h-4 animate-spin" aria-hidden /> Loading…</div>}
+      {rows && rows.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">Nothing in this list yet.</div>
+      )}
+      {rows && rows.length > 0 && (
+        <>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{activeCount} in use{rows.length > activeCount ? ` · ${rows.length - activeCount} deactivated` : ""}</p>
+          <ol className="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100">
+            {rows.map((r, i) => (
+              <li key={r.id} className={`flex flex-wrap items-center gap-3 px-4 py-3 ${r.active ? "" : "bg-slate-50"}`}>
+                <span className="w-6 text-right text-xs font-semibold text-slate-400">{i + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <p className={`font-semibold truncate ${r.active ? "text-slate-900" : "text-slate-500"}`}>{tab.title(r)}</p>
+                  {tab.detail(r) && <p className="text-sm text-slate-500 truncate">{tab.detail(r)}</p>}
+                </div>
+                {!r.active && <span className="text-[11px] font-semibold rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-slate-500">Deactivated</span>}
+                {canManage && (
+                  <div className="flex items-center gap-1">
+                    <button type="button" disabled={busy || i === 0} onClick={() => move(i, -1)} aria-label={`Move ${tab.title(r)} up`} className="w-9 h-9 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30 flex items-center justify-center"><ArrowUp className="w-4 h-4" /></button>
+                    <button type="button" disabled={busy || i === rows.length - 1} onClick={() => move(i, 1)} aria-label={`Move ${tab.title(r)} down`} className="w-9 h-9 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30 flex items-center justify-center"><ArrowDown className="w-4 h-4" /></button>
+                    <button type="button" onClick={() => setEditing(r)} aria-label={`Edit ${tab.title(r)}`} className="w-9 h-9 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-primary flex items-center justify-center"><Pencil className="w-4 h-4" /></button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => run(() => api.settingsLists.update(tab.key, r.id, { active: !r.active }), r.active ? `${tab.title(r)} deactivated — no longer offered in forms` : `${tab.title(r)} is offered again`)}
+                      className="h-9 px-3 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                    >
+                      {r.active ? "Deactivate" : "Activate"}
+                    </button>
+                    <button type="button" onClick={() => setDeleting(r)} aria-label={`Delete ${tab.title(r)}`} className="w-9 h-9 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 flex items-center justify-center"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5">
+        <h2 className="font-semibold text-slate-900 mb-2">Managed on other pages</h2>
+        <ul className="text-sm text-slate-600 space-y-1">
+          <li><Link to="/home/strategic-partners/sponsors" className="text-primary font-semibold hover:underline">Partners</Link> — sponsors and broadcasters</li>
+          <li><Link to="/home/officials" className="text-primary font-semibold hover:underline">Officials</Link> — referees and judges</li>
+          {permissions.hasPermission("users.view") && (
+            <li><Link to="/home/user-management" className="text-primary font-semibold hover:underline">Users</Link> — staff, organizer and club accounts</li>
+          )}
+        </ul>
+      </section>
+
+      {editing && (
+        <EntryDialog
+          tab={tab}
+          row={editing === "new" ? null : editing}
+          onClose={() => setEditing(null)}
+          onSaved={async () => { setEditing(null); await changed(); }}
+        />
+      )}
+
+      <Dialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Delete {deleting ? tab.title(deleting) : ""}?</DialogTitle>
+            <DialogDescription>
+              It disappears from the list and from forms. Events and bouts that already use it keep their value. To hide it for now, deactivate it instead.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <button type="button" onClick={() => setDeleting(null)} className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancel</button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => { const r = deleting!; setDeleting(null); run(() => api.settingsLists.delete(tab.key, r.id), `${tab.title(r)} deleted`); }}
+              className="h-11 px-5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-semibold"
+            >
+              Delete
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+function EntryDialog({ tab, row, onClose, onSaved }: { tab: ListTab; row: Row | null; onClose: () => void; onSaved: () => void }) {
+  const [values, setValues] = useState<Record<string, string>>(
+    Object.fromEntries(tab.fields.map((f) => [f.key, row?.[f.column] == null ? "" : String(row[f.column])])),
+  );
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const missing = tab.fields.find((f) => f.required && !values[f.key].trim());
+    if (missing) return setError(`Enter the ${missing.label.toLowerCase()}.`);
+    const body = Object.fromEntries(
+      tab.fields.map((f) => {
+        const v = values[f.key].trim();
+        return [f.key, v === "" ? null : f.type === "number" ? Number(v) : v];
+      }),
+    );
+    setBusy(true);
+    setError(null);
+    try {
+      if (row) await api.settingsLists.update(tab.key, row.id, body);
+      else await api.settingsLists.create(tab.key, body);
+      toast.success(row ? "Saved" : `${tab.singular[0].toUpperCase()}${tab.singular.slice(1)} added`);
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{row ? `Edit ${tab.title(row)}` : `Add ${tab.singular}`}</DialogTitle>
+          <DialogDescription>{tab.hint}</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={save} className="space-y-4">
+          <div className="grid sm:grid-cols-2 gap-3">
+            {tab.fields.map((f) => (
+              <div key={f.key} className={f.type === "textarea" || f.key === "name" || f.key === "brand" ? "sm:col-span-2" : ""}>
+                <label htmlFor={`f-${f.key}`} className="block text-sm font-medium text-slate-700 mb-1">
+                  {f.label}{f.required ? "" : <span className="text-slate-400 font-normal"> (optional)</span>}
+                </label>
+                {f.type === "textarea" ? (
+                  <textarea id={`f-${f.key}`} rows={3} value={values[f.key]} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} placeholder={f.placeholder} className="w-full rounded-xl border border-slate-300 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none p-3 text-sm" />
+                ) : f.type === "glove" ? (
+                  <select id={`f-${f.key}`} value={values[f.key]} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={inputClass}>
+                    <option value="">Don't set</option>
+                    {GLOVE_SIZES.map((g) => <option key={g.id} value={g.size}>{g.size} — {g.weightRange}</option>)}
+                  </select>
+                ) : (
+                  <input
+                    id={`f-${f.key}`}
+                    type={f.type === "number" ? "number" : "text"}
+                    step="any"
+                    inputMode={f.type === "number" ? "decimal" : undefined}
+                    value={values[f.key]}
+                    onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                    placeholder={f.placeholder}
+                    className={inputClass}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <DialogFooter className="gap-2 sm:gap-2">
+            <button type="button" onClick={onClose} className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancel</button>
+            <button type="submit" disabled={busy} className="h-11 px-5 rounded-xl bg-primary hover:bg-[#083073] disabled:opacity-60 text-white text-sm font-semibold">{row ? "Save" : "Add"}</button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

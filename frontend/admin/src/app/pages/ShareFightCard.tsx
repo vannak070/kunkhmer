@@ -8,7 +8,6 @@ import type { BatchStatus } from "../data/batches";
 import { toast } from "sonner";
 import html2canvas from "html2canvas-pro";
 import kkfLogo from "../../assets/modern_logo.png";
-import { SPONSORS } from "../data/masterData";
 import { api } from "../utils/api";
 
 const getSponsorLogoSvg = (sponsorName: string) => {
@@ -253,11 +252,13 @@ export function ShareFightCard() {
       });
 
     // Load Sponsor logo
+    // (Sponsors come from Partners; the old built-in sponsor list is gone.)
     if (batch?.mainSponsor) {
-      const sponsor = SPONSORS.find(
+      api.settings.listSponsors().then((sponsors: any[]) => {
+      const sponsor = sponsors.find(
         (s) => s.name.toLowerCase() === batch.mainSponsor?.toLowerCase()
       );
-      const logoUrl = sponsor?.image || sponsor?.logo;
+      const logoUrl = sponsor?.logo_url || sponsor?.image;
       if (logoUrl && logoUrl.startsWith("http")) {
         fetch(logoUrl)
           .then((res) => res.blob())
@@ -272,6 +273,7 @@ export function ShareFightCard() {
             console.error("Failed to load sponsor logo as base64:", err);
           });
       }
+      }).catch(() => undefined);
     }
   }, [batch]);
   

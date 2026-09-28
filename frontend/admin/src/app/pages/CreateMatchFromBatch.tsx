@@ -6,7 +6,8 @@ import {
   Weight, Swords, FileText, Star
 } from "lucide-react";
 import { api } from "../utils/api";
-import { GLOVE_SIZES, getApprovedGloveTypes } from "../data/masterData";
+import { GLOVE_SIZES } from "../data/masterData";
+import { type BoutRule, type GloveBrand, gloveLabel, useSettingsList } from "../hooks/useSettingsLists";
 import { WEIGHT_CLASSES, getWeightClassName } from "../data/champion";
 import { toast } from "sonner";
 import { clsx } from "clsx";
@@ -91,7 +92,25 @@ export function CreateMatchFromBatch() {
   }, [batchId]);
 
   // ── Derived data ──────────────────────────────────────────────────────────
-  const approvedGloves = getApprovedGloveTypes();
+  // Glove brands and rule presets from System Settings (Phase 5).
+  const { rows: approvedGloves } = useSettingsList<GloveBrand>("glove-brands");
+  const { rows: rulePresets } = useSettingsList<BoutRule>("bout-rules");
+  const [presetId, setPresetId] = useState("");
+  const applyPreset = (id: string) => {
+    setPresetId(id);
+    const rule = rulePresets.find((r) => r.id === id);
+    if (!rule) return;
+    setMatchData((p) => ({
+      ...p,
+      rounds: rule.rounds,
+      roundTime: rule.round_time,
+      knockdownLimit: rule.knockdown_limit,
+      ...(rule.glove_size ? { gloveSize: rule.glove_size } : {}),
+    }));
+  };
+  // Keep a preset-set value selectable even if it isn't one of the usual options.
+  const withCurrent = (options: (string | number)[][], current: number, unit: string) =>
+    options.some(([v]) => v === current) ? options : [...options, [current, `${current} ${unit}`]].sort((a, b) => Number(a[0]) - Number(b[0]));
 
   // Filter fighters within ±WEIGHT_TOLERANCE of the selected weight class
   const eligibleFighters = useMemo(() => {
@@ -466,10 +485,29 @@ export function CreateMatchFromBatch() {
             {/* Match Configuration */}
             <div className="bg-[#F9FAFB] rounded-xl p-6 mb-6 border border-[#E0E0E0]">
               <h3 className="text-base font-black text-[#1A1A24] uppercase mb-4 tracking-tight">MATCH CONFIGURATION</h3>
+              {rulePresets.length > 0 && (
+                <div className="mb-4">
+                  <label htmlFor="rule-preset" className="block text-xs font-bold text-[#707070] uppercase mb-2 tracking-wide">RULE PRESET</label>
+                  <select
+                    id="rule-preset"
+                    value={presetId}
+                    onChange={(e) => applyPreset(e.target.value)}
+                    className="w-full bg-white border border-[#E0E0E0] rounded-lg px-4 py-2.5 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-[#0A3D91]"
+                  >
+                    <option value="">Choose a preset to fill rounds, time, knockdowns and gloves…</option>
+                    {rulePresets.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name} — {r.rounds} × {r.round_time} min · {r.knockdown_limit} knockdowns{r.glove_size ? ` · ${r.glove_size}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1.5 text-[11px] text-[#707070]">Knockdown limit: {matchData.knockdownLimit}. You can still change the fields below.</p>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
-                  { label: "ROUNDS *", key: "rounds", options: [[3,"3 Rounds"],[5,"5 Rounds (Standard)"],[7,"7 Rounds"],[10,"10 Rounds"],[12,"12 Rounds (Championship)"]] },
-                  { label: "ROUND TIME (MIN) *", key: "roundTime", options: [[2,"2 Minutes"],[3,"3 Minutes"]] },
+                  { label: "ROUNDS *", key: "rounds", options: withCurrent([[3,"3 Rounds"],[5,"5 Rounds (Standard)"],[7,"7 Rounds"],[10,"10 Rounds"],[12,"12 Rounds (Championship)"]], matchData.rounds, "Rounds") },
+                  { label: "ROUND TIME (MIN) *", key: "roundTime", options: withCurrent([[2,"2 Minutes"],[3,"3 Minutes"]], matchData.roundTime, "Minutes") },
                   { label: "REST TIME (MIN)", key: "restTime", options: [[1,"1 Minute"],[2,"2 Minutes"]] },
                 ].map(({ label, key, options }) => (
                   <div key={key}>
@@ -505,7 +543,7 @@ export function CreateMatchFromBatch() {
                   <select value={matchData.gloveType}
                     onChange={e => setMatchData(p => ({ ...p, gloveType: e.target.value }))}
                     className="w-full bg-white border border-[#E0E0E0] rounded-lg px-4 py-2.5 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-[#F2C94C]">
-                    {approvedGloves.map(g => <option key={g.id} value={`${g.brand} ${g.model}`}>{g.brand} — {g.model}</option>)}
+                    {approvedGloves.map(g => <option key={g.id} value={gloveLabel(g)}>{[g.brand, g.model].filter(Boolean).join(" — ")}</option>)}
                   </select>
                   <p className="mt-1.5 text-[11px] text-emerald-700 font-bold flex items-center gap-1">
                     <CheckCircle className="w-3 h-3" /> KKF Approved Equipment

@@ -21,7 +21,7 @@ import { MatchProposals } from "./pages/MatchProposals";
 import { RedirectToHomeEvents } from "./pages/RedirectToHomeEvents";
 import { RedirectToFighters } from "./pages/RedirectToFighters";
 import { SystemSettings } from "./pages/SystemSettings";
-import { SystemProcessFlow } from "./pages/SystemProcessFlow";
+import { Help } from "./pages/Help";
 import { NotFound } from "./pages/NotFound";
 import { Login } from "./pages/Login";
 import { Clubs } from "./pages/Clubs";
@@ -227,7 +227,8 @@ export const router = createBrowserRouter(
       { path: "rankings", element: <RedirectToFighters /> },
       { path: "workflow-demo", element: <Navigate to="/home" replace /> },
       { path: "settings", element: <SystemSettings /> },
-      { path: "process-flow", element: <SystemProcessFlow /> },
+      { path: "help", element: <Help /> },
+      { path: "process-flow", element: <Navigate to="/home/help" replace /> },
       { path: "assign-officials", element: <Navigate to="/home/program?tab=matches" replace /> },
       { path: "product-management", element: <Navigate to="/home" replace /> },
       { path: "categories-setting", element: <Navigate to="/home" replace /> },

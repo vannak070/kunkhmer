@@ -4,7 +4,7 @@ import {
   Phone, Mail, Trophy, ShieldAlert, Activity, Calendar, 
   TrendingUp, Shield, Video, Zap, Building2, ChevronRight 
 } from "lucide-react";
-import { getWeightRangeCategory } from "../../data/masterData";
+import { useWeightClasses, weightClassFor } from "../../data/weightClasses";
 import { useI18n } from "../../i18n/LanguageContext";
 
 interface Club {
@@ -86,7 +86,9 @@ interface ClubDetailPageProps {
 type TabType = 'overview' | 'fighters' | 'champions' | 'matches';
 
 export default function ClubDetailPage({ club, fighters, matches, onBack, onFighterClick }: ClubDetailPageProps) {
-  const { formatDate } = useI18n();
+  const { formatDate, localName } = useI18n();
+  // Official weight classes (System Settings); shown in the page language.
+  const weightClasses = useWeightClasses();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
   // Availability status check for fighters
@@ -346,7 +348,8 @@ export default function ClubDetailPage({ club, fighters, matches, onBack, onFigh
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {fighters.map((fighter) => {
               const availability = getFighterStatus(fighter);
-              const weightClass = getWeightRangeCategory(parseFloat(fighter.weight || "0"));
+              const wc = weightClassFor(parseFloat(fighter.weight || "0"), weightClasses);
+              const weightClass = wc ? localName(wc.name, wc.name_khmer) : "";
               return (
                 <div
                   key={fighter.id}

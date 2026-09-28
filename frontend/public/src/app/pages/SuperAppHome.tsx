@@ -35,7 +35,8 @@ import { publicName, readTimeMinutes, formatVideoDuration, formatViews } from ".
  * reflect in both the Digital Platform and Super App.
  */
 import { MOCK_FIGHTERS, MOCK_CLUBS, MOCK_EVENTS } from "../data/mock";
-import { BROADCAST_STATIONS, SPONSORS, getWeightRangeCategory, getFighterSlug } from "../data/masterData";
+import { BROADCAST_STATIONS, SPONSORS, getFighterSlug } from "../data/masterData";
+import { useWeightClasses, weightClassFor } from "../data/weightClasses";
 import { MOCK_BATCHES } from "../data/batches";
 import { MatchBatchCard } from "../components/MatchBatchCard";
 import { FighterFilters } from "../components/FighterFilters";
@@ -203,6 +204,12 @@ interface Match {
 
 export function SuperAppHome() {
   const { t, tn, formatDate, formatWeight, localName } = useI18n();
+  // Official weight classes (System Settings); shown in the page language.
+  const weightClasses = useWeightClasses();
+  const weightClassLabel = (kg: number) => {
+    const c = weightClassFor(kg, weightClasses);
+    return c ? localName(c.name, c.name_khmer) : "";
+  };
   const fanData = useFanData();
   const { balance, deductBalance } = useWallet();
   const { orders, createOrder } = useOrders();
@@ -672,7 +679,7 @@ export function SuperAppHome() {
       image: fighter.image || fighterImages[index % fighterImages.length],
       record: fighter.record || "0-0-0",
       weight: parseFloat(fighter.currentWeight || fighter.current_weight || "0").toString(),
-      weightClass: getWeightRangeCategory(parseFloat(fighter.currentWeight || fighter.current_weight || "0")),
+      weightClass: weightClassLabel(parseFloat(fighter.currentWeight || fighter.current_weight || "0")),
       gym: fighter.clubName || fighter.club_name || "Independent",
       wins,
       losses,

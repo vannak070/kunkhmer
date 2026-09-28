@@ -6,17 +6,14 @@ import {
   Search, X, ChevronDown
 } from "lucide-react";
 import { api } from "../utils/api";
-import { ORGANIZERS, VENUES } from "../data/masterData";
+import { type Venue, useSettingsList, useWeightClasses, venuePin } from "../hooks/useSettingsLists";
 import {
   EVENT_TYPE_CONFIG, type EventType,
-  TOURNAMENT_FORMAT_CONFIG, type TournamentFormat,
-  TOURNAMENT_WEIGHT_CLASSES
+  TOURNAMENT_FORMAT_CONFIG, type TournamentFormat
 } from "../data/event-types";
 import { toast } from "sonner";
 import { clsx } from "clsx";
 import mapPickerImg from "../../assets/phnom_penh_map_picker.png";
-
-const QUICK_VENUES = VENUES;
 
 export function CreateEvent() {
   const navigate = useNavigate();
@@ -43,7 +40,9 @@ export function CreateEvent() {
 
   const [activeBroadcastStations, setActiveBroadcastStations] = useState<any[]>([]);
   const [activeSponsors, setActiveSponsors] = useState<any[]>([]);
-  const [organizerList, setOrganizerList] = useState<string[]>(ORGANIZERS);
+  // Venues and weight classes from System Settings (Phase 5).
+  const { rows: QUICK_VENUES } = useSettingsList<Venue>("venues");
+  const { names: weightClassNames } = useWeightClasses();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -53,12 +52,6 @@ export function CreateEvent() {
         
         const sp = await api.settings.listSponsors();
         setActiveSponsors(sp);
-        
-        const clubsList = await api.clubs.list();
-        setOrganizerList([
-          ...ORGANIZERS,
-          ...clubsList.map((c: any) => c.name)
-        ]);
       } catch (err: any) {
         console.error("Failed to load settings master data:", err);
       }
@@ -239,7 +232,7 @@ export function CreateEvent() {
         mapRef.current.setView([lat, lon], 14);
         markerRef.current.setLatLng([lat, lon]);
         
-        setCoords({ lat, lon });
+        setCoords({ lat, lng: lon });
         
         // Truncate search query display output
         const cleanAddress = result.display_name.split(",").slice(0, 3).join(",").trim();
@@ -287,8 +280,8 @@ export function CreateEvent() {
     }));
   };
 
-  const handleVenueSelect = (venue: typeof QUICK_VENUES[0]) => {
-    setPin({ x: venue.x, y: venue.y });
+  const handleVenueSelect = (venue: Venue) => {
+    setPin(venuePin(venue));
     
     setNewEvent(prev => ({
       ...prev,
@@ -296,10 +289,10 @@ export function CreateEvent() {
     }));
 
     // If Leaflet Map is loaded, pan and set marker
-    if (mapRef.current && markerRef.current && (window as any).L) {
-      mapRef.current.setView([venue.lat, venue.lng], 13);
-      markerRef.current.setLatLng([venue.lat, venue.lng]);
-      setCoords({ lat: venue.lat, lng: venue.lng });
+    if (venue.latitude != null && venue.longitude != null && mapRef.current && markerRef.current && (window as any).L) {
+      mapRef.current.setView([venue.latitude, venue.longitude], 13);
+      markerRef.current.setLatLng([venue.latitude, venue.longitude]);
+      setCoords({ lat: venue.latitude, lng: venue.longitude });
     }
   };
 
@@ -1046,9 +1039,9 @@ export function CreateEvent() {
                   className="w-full px-4 py-3 bg-white border border-border/80 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/5 focus:outline-none transition-all font-medium text-foreground"
                 >
                   <option value="">Select Weight Class</option>
-                  {TOURNAMENT_WEIGHT_CLASSES.map((wc) => (
-                    <option key={wc.value} value={wc.value}>
-                      {wc.label}
+                  {weightClassNames.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
                     </option>
                   ))}
                 </select>

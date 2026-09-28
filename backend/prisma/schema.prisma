@@ -489,3 +489,71 @@ model FanNotification {
   @@index([fan_id, created_at, seq])
   @@map("fan_notifications")
 }
+
+// ─── Settings lists (admin Phase 5) ─────────────────────────────────────────
+// Shared master data edited by the Super Admin on System Settings. Other rows
+// copy the value (e.g. events.location, matches.glove_brand), so deleting or
+// renaming an entry never breaks existing records.
+
+/// Official weight classes: a fighter's class is the lowest max_kg >= their
+/// weight (max_kg null = open-ended top class).
+model WeightClass {
+  id         String    @id @db.Uuid
+  name       String    @db.VarChar(100)
+  name_khmer String?   @db.VarChar(100)
+  min_kg     Decimal?  @db.Decimal(5, 2)
+  max_kg     Decimal?  @db.Decimal(5, 2)
+  sort_order Int       @default(0)
+  active     Boolean   @default(true)
+  created_at DateTime? @db.Timestamp(0)
+  updated_at DateTime? @db.Timestamp(0)
+
+  @@map("weight_classes")
+}
+
+/// Venues offered when creating events and fight cards (free text still allowed).
+model Venue {
+  id          String    @id @db.Uuid
+  name        String    @db.VarChar(255)
+  region      String?   @db.VarChar(255)
+  description String?
+  latitude    Decimal?  @db.Decimal(9, 6)
+  longitude   Decimal?  @db.Decimal(9, 6)
+  sort_order  Int       @default(0)
+  active      Boolean   @default(true)
+  created_at  DateTime? @db.Timestamp(0)
+  updated_at  DateTime? @db.Timestamp(0)
+
+  @@map("venues")
+}
+
+/// Bout rule presets: picking one on "Create match" fills rounds, round time
+/// (minutes), knockdown limit and glove size.
+model BoutRule {
+  id              String    @id @db.Uuid
+  name            String    @db.VarChar(255)
+  name_khmer      String?   @db.VarChar(255)
+  rounds          Int
+  round_time      Int
+  knockdown_limit Int
+  glove_size      String?   @db.VarChar(10)
+  sort_order      Int       @default(0)
+  active          Boolean   @default(true)
+  created_at      DateTime? @db.Timestamp(0)
+  updated_at      DateTime? @db.Timestamp(0)
+
+  @@map("bout_rules")
+}
+
+/// KKF-approved glove brands for bouts.
+model GloveBrand {
+  id         String    @id @db.Uuid
+  brand      String    @db.VarChar(255)
+  model      String?   @db.VarChar(255)
+  sort_order Int       @default(0)
+  active     Boolean   @default(true)
+  created_at DateTime? @db.Timestamp(0)
+  updated_at DateTime? @db.Timestamp(0)
+
+  @@map("glove_brands")
+}

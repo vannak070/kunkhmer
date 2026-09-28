@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { clsx } from "clsx";
 import { api } from "../utils/api";
 import mapPickerImg from "../../assets/phnom_penh_map_picker.png";
-import { VENUES } from "../data/masterData";
+import { type Venue, useSettingsList, venuePin } from "../hooks/useSettingsLists";
 
 export function CreateBatch() {
   const navigate = useNavigate();
@@ -22,6 +22,8 @@ export function CreateBatch() {
     location: "",
   });
   const [pin, setPin] = useState<{ x: number; y: number } | null>(null);
+  // Venues from System Settings (Phase 5).
+  const { rows: VENUES } = useSettingsList<Venue>("venues");
 
   // Sync map pinpoint when location changes
   useEffect(() => {
@@ -31,17 +33,17 @@ export function CreateBatch() {
         formData.location.toLowerCase().includes(v.name.toLowerCase())
       );
       if (matchedVenue) {
-        setPin({ x: matchedVenue.x, y: matchedVenue.y });
+        setPin(venuePin(matchedVenue));
       } else {
         setPin(null);
       }
     } else {
       setPin(null);
     }
-  }, [formData.location]);
+  }, [formData.location, VENUES]);
 
-  const handleVenueSelect = (venue: any) => {
-    setPin({ x: venue.x, y: venue.y });
+  const handleVenueSelect = (venue: Venue) => {
+    setPin(venuePin(venue));
     setFormData(prev => ({
       ...prev,
       location: venue.name
@@ -496,7 +498,7 @@ export function CreateBatch() {
                         formData.location.toLowerCase().includes(v.name.toLowerCase())
                       );
                       return matched ? (
-                        <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{matched.region} · {matched.description}</p>
+                        <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{[matched.region, matched.description].filter(Boolean).join(" · ")}</p>
                       ) : (
                         <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Custom pinned location</p>
                       );

@@ -449,63 +449,7 @@ export function getGloveSizeById(id: string): GloveSize | undefined {
   return GLOVE_SIZES.find(gs => gs.id === id);
 }
 
-// Dynamic Weight Ranges Configuration
-export const WEIGHT_RANGES: string[] = [
-  "Under 45 kg",
-  "45 kg - 47 kg",
-  "48 kg - 49 kg",
-  "50 kg - 52 kg",
-  "53 kg - 55 kg",
-  "56 kg - 58 kg",
-  "59 kg - 61 kg",
-  "62 kg - 64 kg",
-  "65 kg - 67 kg",
-  "68 kg - 70 kg",
-  "71 kg - 73 kg",
-  "74 kg - 76 kg",
-  "77 kg - 80 kg",
-  "Over 80 kg"
-];
-
-// Helper to determine weight range category dynamically
-export function getWeightRangeCategory(weight: number): string {
-  for (const range of WEIGHT_RANGES) {
-    const underMatch = range.match(/under\s*(\d+)/i);
-    if (underMatch) {
-      const maxVal = parseFloat(underMatch[1]);
-      if (weight <= maxVal) return range;
-    }
-
-    const overMatch = range.match(/over\s*(\d+)/i);
-    if (overMatch) {
-      const minVal = parseFloat(overMatch[1]);
-      if (weight >= minVal) return range;
-    }
-
-    const rangeMatch = range.match(/(\d+(?:\.\d+)?)\s*(?:kg)?\s*-\s*(\d+(?:\.\d+)?)/i);
-    if (rangeMatch) {
-      const minVal = parseFloat(rangeMatch[1]);
-      const maxVal = parseFloat(rangeMatch[2]);
-      if (weight >= minVal && weight <= maxVal) return range;
-    }
-  }
-
-  // Fallback defaults
-  if (weight <= 45) return "Under 45 kg";
-  if (weight <= 47) return "45 kg - 47 kg";
-  if (weight <= 49) return "48 kg - 49 kg";
-  if (weight <= 52) return "50 kg - 52 kg";
-  if (weight <= 55) return "53 kg - 55 kg";
-  if (weight <= 58) return "56 kg - 58 kg";
-  if (weight <= 61) return "59 kg - 61 kg";
-  if (weight <= 64) return "62 kg - 64 kg";
-  if (weight <= 67) return "65 kg - 67 kg";
-  if (weight <= 70) return "68 kg - 70 kg";
-  if (weight <= 73) return "71 kg - 73 kg";
-  if (weight <= 76) return "74 kg - 76 kg";
-  if (weight <= 80) return "77 kg - 80 kg";
-  return "Over 80 kg";
-}
+// Weight classes come from the API since Phase 5 — see data/weightClasses.ts.
 
 export function getFighterSlug(fighter: { id: string; name?: string }): string {
   if (!fighter.name) return fighter.id;
