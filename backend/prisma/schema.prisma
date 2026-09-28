@@ -39,6 +39,7 @@ model User {
   clubAResponses   Match[]    @relation("MatchClubAResponder")
   clubBResponses   Match[]    @relation("MatchClubBResponder")
   createdSubEvents SubEvent[] @relation("SubEventCreator")
+  hubLogs          HubLog[]   @relation("HubLogUser")
 
   @@map("users")
 }
@@ -581,6 +582,12 @@ model HubLog {
   /// 1 = helpful, -1 = not helpful, null = no feedback
   feedback           Int?      @db.SmallInt
   feedback_at        DateTime? @db.Timestamp(0)
+  /// public (fan site, anonymous) | staff (admin staff assistant)
+  source             String    @default("public") @db.VarChar(10)
+  /// Staff answers only: which staff account asked. Always null for public answers.
+  user_id            String?   @db.Uuid
+
+  user User? @relation("HubLogUser", fields: [user_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "hub_logs_user_id_foreign")
 
   @@index([created_at])
   @@map("hub_logs")

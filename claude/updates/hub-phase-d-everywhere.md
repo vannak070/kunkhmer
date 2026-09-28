@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | D1 done — committed 7691de40 (2026-09-28); D2 / D3 not started |
+| **Status** | D1 done — committed 7691de40 (2026-09-28); D2 built (`hub-phase-d2-staff-assistant.md`); D3 not started |
 | **Jira** | n/a |
 | **Feature** | claude/features/ai-assistant.md |
 | **Requested by** | vannak070 (2026-09-28: "Start Hub Phase D") |

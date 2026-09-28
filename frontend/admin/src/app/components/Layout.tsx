@@ -1,4 +1,4 @@
-import { Home, CalendarDays, Dumbbell, ChevronDown, Shield, LogOut, User as UserIcon, ClipboardCheck, Settings, Building2, Users, Newspaper, Bell, Handshake, Menu, X, Gavel, Lock, HelpCircle, Sparkles, BookOpen } from "lucide-react";
+import { Home, CalendarDays, Dumbbell, ChevronDown, Shield, LogOut, User as UserIcon, ClipboardCheck, Settings, Building2, Users, Newspaper, Bell, Handshake, Menu, X, Gavel, Lock, HelpCircle, Sparkles, BookOpen, Bot } from "lucide-react";
 import { Outlet, NavLink, Navigate, useLocation, useNavigate, Link } from "react-router";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -28,6 +28,7 @@ const navGroups: { title: string | null; items: NavItem[] }[] = [
     title: null,
     items: [
       { icon: Home, label: "Dashboard", path: "/home", permission: "dashboard.view" },
+      { icon: Bot, label: "Staff assistant", path: "/home/assistant", permission: "hub.assistant" },
       // Referees and judges: their assigned bouts.
       { icon: Gavel, label: "My bouts", path: "/home/my-bouts", permission: "bouts.view_own" },
     ],

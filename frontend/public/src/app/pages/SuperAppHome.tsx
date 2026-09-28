@@ -1,6 +1,8 @@
 import { useState, useEffect, Fragment } from "react";
 import { MatchesAndEvents } from "./MatchesAndEvents";
 import { NewsAndMedia } from "./NewsAndMedia";
+import { Partners } from "./Partners";
+import { FightersDirectory } from "./FightersDirectory";
 import { Link, useParams, useNavigate, useLocation } from "react-router";
 import { api } from "../utils/api";
 import { Search, Bell, ShoppingCart, User, Heart, Star, Flame, Zap, Crown, ChevronRight, Package, Plus, Minus, X, CreditCard, Play, Calendar, MapPin, Clock, Award, Users, BookOpen, Video, Menu, Home as HomeIcon, Trophy, TrendingUp, Sparkles, ArrowRight, ArrowLeft, Check, ChevronDown, ChevronUp, Filter, Grid3x3, Eye, ShoppingBag, Building2, Tv, Handshake, Weight, Share2, Mail, Swords } from "lucide-react";
@@ -41,14 +43,11 @@ import { BROADCAST_STATIONS, SPONSORS, getFighterSlug } from "../data/masterData
 import { useWeightClasses, weightClassFor } from "../data/weightClasses";
 import { MOCK_BATCHES } from "../data/batches";
 import { MatchBatchCard } from "../components/MatchBatchCard";
-import { FighterFilters } from "../components/FighterFilters";
 import { MatchFilters } from "../components/MatchFilters";
 
 type Section = "home" | "news-events" | "fighters" | "matches" | "match-detail" | "media" | "shop" | "strategic-partners" | "club-detail" | "sponsor-detail" | "broadcast-detail" | "cart" | "checkout" | "orders" | "profile" | "subscription";
 type Category = "all" | "gloves" | "shorts" | "equipment" | "apparel";
-type StrategicPartnersTab = "clubs" | "broadcasts" | "sponsors";
 type MatchesEventsTab = "matches" | "events" | "previous";
-type FighterTypeFilter = "all" | "Professional" | "Amateur";
 type MatchFilter = "all" | "weight-class" | "location" | "match-type";
 
 interface Product {
@@ -222,19 +221,11 @@ export function SuperAppHome() {
   const [selectedCategory, setSelectedCategory] = useState<Category>("all");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
-  const [fighterSearchQuery, setFighterSearchQuery] = useState("");
   const [cartDropdownOpen, setCartDropdownOpen] = useState(false);
-  const [strategicPartnersTab, setStrategicPartnersTab] = useState<StrategicPartnersTab>("clubs");
   const [matchesEventsTab, setMatchesEventsTab] = useState<MatchesEventsTab>("matches");
-  const [fighterTypeFilter, setFighterTypeFilter] = useState<FighterTypeFilter>("all");
   const [expandedBatches, setExpandedBatches] = useState<Set<string>>(new Set()); // All batches collapsed by default
 
   // Fighter filters
-  const [fighterFilter, setFighterFilter] = useState<"all" | "weight" | "club" | "grade">("all");
-  const [selectedFighterWeightClass, setSelectedFighterWeightClass] = useState<string>("all");
-  const [selectedFighterClub, setSelectedFighterClub] = useState<string>("all");
-  const [selectedFighterGrade, setSelectedFighterGrade] = useState<string>("all");
-  const [showFighterFilters, setShowFighterFilters] = useState<boolean>(false);
   const [showMatchFilters, setShowMatchFilters] = useState<boolean>(false);
   const [showProductFilters, setShowProductFilters] = useState<boolean>(false);
   const [selectedVideo, setSelectedVideo] = useState<MediaContent | null>(null);
@@ -987,8 +978,7 @@ export function SuperAppHome() {
         matches={clubMatches}
         onBack={() => {
           setCurrentSection("strategic-partners");
-          setStrategicPartnersTab("clubs");
-          navigate("/strategic-partners");
+          navigate("/strategic-partners?tab=clubs");
         }}
         onFighterClick={(fighterId) => {
           const f = fighters.find(x => x.id === fighterId);
@@ -1013,7 +1003,6 @@ export function SuperAppHome() {
         events={sponsorEvents}
         onBack={() => {
           setCurrentSection("strategic-partners");
-          setStrategicPartnersTab("sponsors");
           navigate("/strategic-partners");
         }}
         onEventClick={(eventId) => {
@@ -1041,8 +1030,7 @@ export function SuperAppHome() {
         events={stationEvents}
         onBack={() => {
           setCurrentSection("strategic-partners");
-          setStrategicPartnersTab("broadcasts");
-          navigate("/strategic-partners");
+          navigate("/strategic-partners?tab=broadcasters");
         }}
         onEventClick={(eventId) => {
           openEvent(eventId);
@@ -1050,845 +1038,6 @@ export function SuperAppHome() {
       />
     );
   };
-  const renderClubs = () => (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">Partner Clubs</h2>
-          <p className="text-gray-500">Explore official Kun Khmer training clubs and gyms</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {clubs.map((club) => (
-          <div
-            key={club.id}
-            className="group bg-white rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-200"
-          >
-            <div className="relative h-48 overflow-hidden bg-gray-200">
-              <img
-                src={club.image}
-                alt={club.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-              <div className="absolute top-3 right-3">
-                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                  club.status === 'active' ? 'bg-green-500 text-white' : 'bg-gray-400 text-white'
-                }`}>
-                  {club.status.toUpperCase()}
-                </span>
-              </div>
-            </div>
-            <div className="p-5">
-              <h3 className="text-lg font-bold text-gray-900 mb-2">{club.name}</h3>
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <MapPin className="w-4 h-4 text-[#C8102E]" />
-                  <span className="line-clamp-1">{club.location}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Users className="w-4 h-4 text-[#0A3D91]" />
-                  <span>{club.activeFighters} Active Fighters</span>
-                </div>
-              </div>
-              <Link to={`/clubs/${club.id}`} className="block w-full">
-                <button className="w-full py-2.5 bg-gradient-to-r from-[#0A3D91] to-blue-600 text-white rounded-lg font-bold text-sm hover:shadow-lg transition-all">
-                  View Club Details
-                </button>
-              </Link>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  const renderBroadcasts = () => (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">Broadcast Partners</h2>
-          <p className="text-gray-500">Official TV & streaming networks broadcasting Kun Khmer</p>
-        </div>
-      </div>
-
-      {/* Broadcast Partners Section */}
-      <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl p-8 md:p-10">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <Tv className="w-5 h-5 text-white" />
-              </div>
-              <h2 className="text-3xl md:text-4xl font-black text-gray-900">Broadcast Partners</h2>
-            </div>
-            <p className="text-base text-gray-500 ml-13">Official TV & streaming networks</p>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {broadcastStations.map((station) => (
-            <div
-              key={station.id}
-              className="group bg-white rounded-2xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-200"
-            >
-              <div className="flex items-start gap-4">
-                <div className="w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  <img src={station.logo} alt={station.name} className="w-full h-full object-cover rounded-full" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-black text-gray-900 mb-1 group-hover:text-[#0A3D91] transition-colors">{station.name}</h3>
-                  <p className="text-sm text-gray-500 mb-3 line-clamp-2">{station.description}</p>
-                  <div className="flex items-center gap-2">
-                    <Video className="w-4 h-4 text-[#0A3D91]" />
-                    <span className="text-sm font-bold text-gray-700">{station.eventsCount} Events Broadcast</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Video Highlights Section */}
-      <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl p-8 md:p-10">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <Video className="w-5 h-5 text-white" />
-              </div>
-              <h2 className="text-3xl md:text-4xl font-black text-gray-900">Fight Highlights</h2>
-            </div>
-            <p className="text-base text-gray-500 ml-13">Watch the best moments</p>
-          </div>
-          <button
-            onClick={() => handleSectionChange("media")}
-            className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl font-bold text-sm text-gray-700 transition-all"
-          >
-            {t("common.viewAll")} <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="group bg-gradient-to-b from-gray-50 to-white rounded-2xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-200 cursor-pointer"
-            >
-              <div className="relative aspect-video bg-gray-200 overflow-hidden">
-                <img
-                  src={`https://images.unsplash.com/photo-1504309092620-4d0ec726efa4?w=600&sig=${i}`}
-                  alt="Video"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 transition-all flex items-center justify-center">
-                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center group-hover:scale-125 transition-transform duration-300 shadow-2xl">
-                    <Play className="w-7 h-7 text-[#C8102E] ml-1 fill-[#C8102E]" />
-                  </div>
-                </div>
-                <span className="absolute top-3 right-3 px-3 py-1 bg-black/70 backdrop-blur-sm text-white text-xs font-bold rounded-lg">
-                  12:34
-                </span>
-              </div>
-              <div className="p-5">
-                <h4 className="text-base font-bold text-gray-900 mb-2 line-clamp-2">
-                  Championship Fight Highlights - Round {i}
-                </h4>
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>2.4M views</span>
-                  <span>2 days ago</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderFighters = () => {
-    if (loadingFighters) {
-      return (
-        <div className="flex items-center justify-center min-h-[400px] py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A3D91]"></div>
-        </div>
-      );
-    }
-
-    // Filter fighters based on selected type and search query
-    const filteredFighters = fighters.filter(fighter => {
-      // Type filter
-      const matchesType = fighterTypeFilter === "all" || fighter.type === fighterTypeFilter;
-
-      // Weight class filter
-      const matchesWeight = selectedFighterWeightClass === "all" ||
-        fighter.weight === selectedFighterWeightClass;
-
-      // Club/Gym filter
-      const matchesClub = selectedFighterClub === "all" ||
-        fighter.gym === selectedFighterClub;
-
-      // Grade filter
-      const matchesGrade = selectedFighterGrade === "all" ||
-        (selectedFighterGrade === "A" && fighter.verified) ||
-        (selectedFighterGrade === "B" && !fighter.verified);
-
-      // Search filter
-      if (fighterSearchQuery.trim() !== "") {
-        const searchLower = fighterSearchQuery.trim().toLowerCase();
-        const matchesSearch =
-          (fighter.name?.toLowerCase().includes(searchLower) || false) ||
-          (fighter.nameKhmer?.toLowerCase().includes(searchLower) || false) ||
-          (fighter.gym?.toLowerCase().includes(searchLower) || false);
-
-        return matchesType && matchesWeight && matchesClub && matchesGrade && matchesSearch;
-      }
-
-      return matchesType && matchesWeight && matchesClub && matchesGrade;
-    });
-
-    return (
-    <div className="space-y-8">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-[#0A3D91] to-blue-700 rounded-xl flex items-center justify-center shadow-md">
-              <Users className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">{t("fighters.title")}</h2>
-              <p className="text-sm text-gray-600 font-medium">{t("fighters.subtitle")}</p>
-            </div>
-          </div>
-        </div>
-        <div className="relative w-full md:w-80">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" aria-hidden />
-          <input
-            type="search"
-            value={fighterSearchQuery}
-            onChange={(e) => setFighterSearchQuery(e.target.value)}
-            placeholder={t("fighters.searchPlaceholder")}
-            aria-label={t("fighters.searchLabel")}
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0A3D91]/30 focus:border-[#0A3D91]/50"
-          />
-        </div>
-      </div>
-
-      {/* Fighters List */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
-        <FighterFilters
-          fighters={fighters}
-          fighterFilter={fighterFilter}
-          setFighterFilter={setFighterFilter}
-          selectedFighterWeightClass={selectedFighterWeightClass}
-          setSelectedFighterWeightClass={setSelectedFighterWeightClass}
-          selectedFighterClub={selectedFighterClub}
-          setSelectedFighterClub={setSelectedFighterClub}
-          selectedFighterGrade={selectedFighterGrade}
-          setSelectedFighterGrade={setSelectedFighterGrade}
-          isVisible={showFighterFilters}
-          onToggleVisibility={() => setShowFighterFilters(!showFighterFilters)}
-        />
-
-        {/* Fighters Content */}
-        <div className="p-6 md:p-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <p className="text-sm font-semibold text-gray-500">
-              {filteredFighters.length === fighters.length
-                ? tn("common.fighters", fighters.length)
-                : t("common.showingFighters", { shown: filteredFighters.length, total: tn("common.fighters", fighters.length) })}
-            </p>
-          </div>
-        </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredFighters.length === 0 ? (
-          <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <Users className="w-10 h-10 text-gray-400" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">{t("fighters.none")}</h3>
-            <p className="text-gray-600 mb-6">{t("fighters.noneText")}</p>
-            <button
-              onClick={() => {
-                setFighterSearchQuery("");
-                setFighterTypeFilter("all");
-                setFighterFilter("all");
-                setSelectedFighterWeightClass("all");
-                setSelectedFighterClub("all");
-                setSelectedFighterGrade("all");
-              }}
-              className="px-6 py-2.5 bg-[#0A3D91] text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
-            >
-              {t("common.clearFilters")}
-            </button>
-          </div>
-        ) : (
-          filteredFighters.map((fighter) => (
-          <Link
-            to={`/fighters/${getFighterSlug(fighter)}`}
-            key={fighter.id}
-            className="group relative bg-white rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-200 hover:border-[#0A3D91]/50 cursor-pointer"
-          >
-            {/* Card Layout */}
-            <div className="flex h-full">
-              {/* Fighter Image - Left Side (45%) */}
-              <div className="relative w-[45%] flex-shrink-0 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
-                <img
-                  src={fighter.image}
-                  alt={fighter.name}
-                  className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/5 via-transparent to-white/10" />
-
-                {/* Badges Overlay */}
-                <div className="absolute top-3 left-3 right-3 flex flex-col gap-2">
-                  {fighter.verified && (
-                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-[#0A3D91] to-blue-700 rounded-lg shadow-lg w-fit">
-                      <Zap className="w-3.5 h-3.5 text-white fill-white" />
-                      <span className="text-xs font-black text-white uppercase">{t("common.verified")}</span>
-                    </div>
-                  )}
-                  {fighter.championships > 0 && (
-                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-[#F2C94C] to-yellow-500 rounded-lg shadow-lg w-fit">
-                      <Trophy className="w-3.5 h-3.5 text-gray-900" />
-                      <span className="text-xs font-black text-gray-900">{fighter.championships}x Champion</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Weight Badge - Bottom */}
-                <div className="absolute bottom-3 left-3 right-3">
-                  <div className="flex items-center gap-2 px-3 py-2 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg">
-                    <Weight className="w-4 h-4 text-[#0A3D91]" />
-                    <span className="text-sm font-black text-gray-900">{fighter.weightClass} ({fighter.weight} kg)</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Fighter Info - Right Side (55%) */}
-              <div className="relative w-[55%] p-6 flex flex-col justify-between">
-                {/* Top Section */}
-                <div>
-                  {/* Fighter Name */}
-                  <h3 className="text-2xl font-black text-gray-900 mb-2 leading-tight group-hover:text-[#0A3D91] transition-colors">
-                    {localName(fighter.name, fighter.nameKhmer)}
-                  </h3>
-
-                  {/* Details */}
-                  <div className="flex flex-col gap-1.5 mb-4">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Building2 className="w-4 h-4 text-gray-400" />
-                      <span className="font-semibold truncate">{fighter.gym}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <User className="w-4 h-4 text-gray-400" />
-                      <span className="font-semibold">{fighter.age != null ? t("common.years", { n: fighter.age }) : fighter.weightClass}</span>
-                    </div>
-                  </div>
-
-                  {/* Stats Grid - Horizontal */}
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="flex-1 bg-gradient-to-br from-green-50 to-green-100/50 rounded-xl p-3 border border-green-200/50 text-center">
-                      <p className="text-2xl font-black text-green-600 mb-0.5">{fighter.wins}</p>
-                      <p className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">{t("common.wins")}</p>
-                    </div>
-                    <div className="flex-1 bg-gradient-to-br from-red-50 to-red-100/50 rounded-xl p-3 border border-red-200/50 text-center">
-                      <p className="text-2xl font-black text-red-600 mb-0.5">{fighter.losses}</p>
-                      <p className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">{t("common.losses")}</p>
-                    </div>
-                    <div className="flex-1 bg-gradient-to-br from-yellow-50 to-yellow-100/50 rounded-xl p-3 border border-yellow-200/50 text-center">
-                      <p className="text-2xl font-black text-yellow-600 mb-0.5">{fighter.draws}</p>
-                      <p className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">{t("common.draws")}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bottom Section */}
-                <div className="space-y-3">
-
-                  {/* View Profile Button */}
-                  <button className="w-full px-5 py-3 bg-gradient-to-r from-[#0A3D91] to-blue-700 hover:from-blue-800 hover:to-blue-900 text-white rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 group/btn">
-                    <span>{t("common.viewProfile")}</span>
-                    <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Hover Accent */}
-            <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-[#0A3D91] via-[#C8102E] to-[#F2C94C] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          </Link>
-          ))
-        )}
-      </div>
-        </div>
-      </div>
-    </div>
-    );
-  };
-
-
-  const renderStrategicPartners = () => {
-    if (loadingPartners) {
-      return (
-        <div className="flex items-center justify-center min-h-[400px] py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A3D91]"></div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-14 h-14 bg-gradient-to-br from-[#0A3D91] to-blue-700 rounded-xl flex items-center justify-center shadow-md">
-                <Handshake className="w-7 h-7 text-white" />
-              </div>
-              <div>
-                <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">{t("partners.title")}</h2>
-                <p className="text-base text-gray-600 font-semibold mt-1">Official partners supporting Kun Khmer federation and fighters</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      {/* Premium Segmented Control Tabs */}
-      <div className="flex justify-center md:justify-start mb-6">
-        <div className="flex bg-slate-100/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/50 shadow-md">
-          {/* Clubs Tab */}
-          <button
-            onClick={() => setStrategicPartnersTab("clubs")}
-            className={`px-6 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all duration-300 flex items-center gap-2.5 ${
-              strategicPartnersTab === "clubs"
-                ? "bg-white text-gray-900 shadow-sm border border-slate-200/40"
-                : "text-gray-500 hover:text-gray-700 hover:bg-white/30"
-            }`}
-          >
-            <Building2 className={`w-4 h-4 ${strategicPartnersTab === "clubs" ? "text-[#0A3D91]" : "text-gray-400"}`} />
-            <span>{t("partners.clubs")}</span>
-          </button>
-
-          {/* Broadcasts Tab */}
-          <button
-            onClick={() => setStrategicPartnersTab("broadcasts")}
-            className={`px-6 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all duration-300 flex items-center gap-2.5 ${
-              strategicPartnersTab === "broadcasts"
-                ? "bg-white text-gray-900 shadow-sm border border-slate-200/40"
-                : "text-gray-500 hover:text-gray-700 hover:bg-white/30"
-            }`}
-          >
-            <Tv className={`w-4 h-4 ${strategicPartnersTab === "broadcasts" ? "text-purple-600" : "text-gray-400"}`} />
-            <span>{t("partners.broadcasters")}</span>
-          </button>
-
-          {/* Sponsors Tab */}
-          <button
-            onClick={() => setStrategicPartnersTab("sponsors")}
-            className={`px-6 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all duration-300 flex items-center gap-2.5 ${
-              strategicPartnersTab === "sponsors"
-                ? "bg-white text-gray-900 shadow-sm border border-slate-200/40"
-                : "text-gray-500 hover:text-gray-700 hover:bg-white/30"
-            }`}
-          >
-            <Handshake className={`w-4 h-4 ${strategicPartnersTab === "sponsors" ? "text-yellow-600" : "text-gray-400"}`} />
-            <span>{t("partners.sponsors")}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Tab Content */}
-      {strategicPartnersTab === "clubs" && (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] p-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {clubs.map((club) => (
-              <div
-                key={club.id}
-                onClick={() => {
-                  setSelectedClubId(club.id);
-                  setCurrentSection("club-detail");
-                  navigate(`/club-detail`);
-                }}
-                className="group relative bg-white rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500 border border-gray-200 hover:-translate-y-1 hover:border-[#0A3D91]/30 cursor-pointer flex flex-col"
-              >
-                {/* Banner — full width, respects uploaded image proportions */}
-                <div className="relative w-full aspect-[16/9] bg-gray-100 overflow-hidden flex-shrink-0">
-                  <img
-                    src={club.image}
-                    alt={club.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-
-                  {/* Status Badge — top left */}
-                  <div className="absolute top-3 left-3">
-                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase backdrop-blur-sm border shadow ${
-                      club.status === "active"
-                        ? "bg-green-500/90 text-white border-white/30"
-                        : "bg-gray-500/90 text-white border-white/30"
-                    }`}>
-                      {club.status}
-                    </span>
-                  </div>
-
-                  {/* Rating — bottom right over banner */}
-                  <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2.5 py-1 rounded-full border border-white/20">
-                    <Star className="w-3.5 h-3.5 text-[#F2C94C] fill-[#F2C94C]" />
-                    <span className="text-sm font-bold text-white">{club.rating}</span>
-                  </div>
-                </div>
-
-                {/* Card Body */}
-                <div className="flex flex-col gap-3 p-5 flex-1">
-                  {/* Name & Location */}
-                  <div>
-                    <h3 className="text-base font-black text-gray-900 group-hover:text-[#0A3D91] transition-colors leading-tight line-clamp-2 mb-1">
-                      {club.name}
-                    </h3>
-                    <div className="flex items-center gap-1.5 text-gray-400">
-                      <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span className="text-xs font-semibold truncate">{club.location}</span>
-                    </div>
-                  </div>
-
-                  {/* Head Coach (left) + Active Fighters (right) — one row */}
-                  <div className="flex items-stretch gap-2">
-                    {/* Head Coach */}
-                    <div className="flex items-center gap-2 flex-1 min-w-0 px-3 py-2 bg-slate-50 rounded-xl border border-slate-100">
-                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#0A3D91]/10 flex items-center justify-center">
-                        <Users className="w-3.5 h-3.5 text-[#0A3D91]" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-0.5">{t("partners.headCoach")}</p>
-                        <p className="text-xs font-black text-gray-900 truncate">
-                          {club.headCoach || <span className="text-gray-300 font-medium italic">—</span>}
-                        </p>
-                      </div>
-                    </div>
-                    {/* Active Fighters */}
-                    <div className="flex flex-col items-center justify-center px-3 py-2 bg-gradient-to-b from-[#0A3D91]/5 to-blue-50 rounded-xl border border-[#0A3D91]/10 flex-shrink-0 min-w-[64px]">
-                      <span className="text-xl font-black text-[#0A3D91] leading-none">{club.activeFighters}</span>
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5 whitespace-nowrap">Fighters</span>
-                    </div>
-                  </div>
-
-                  {/* View Details CTA */}
-                  <div className="mt-auto pt-1">
-                    <div className="w-full py-2.5 bg-gradient-to-r from-[#0A3D91] to-blue-600 text-white rounded-xl font-black text-xs uppercase tracking-wider text-center group-hover:shadow-lg group-hover:shadow-[#0A3D91]/30 transition-all relative overflow-hidden">
-                      <span className="relative z-10">{t("common.viewDetails")}</span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-
-      {strategicPartnersTab === "broadcasts" && (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] p-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {broadcastStations.map((station) => (
-              <div
-                key={station.id}
-                onClick={() => {
-                  setSelectedBroadcastId(station.id);
-                  setCurrentSection("broadcast-detail");
-                  navigate(`/broadcast-detail`);
-                }}
-                className="group relative bg-white rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500 border border-purple-100 hover:-translate-y-1 hover:border-purple-300/50 cursor-pointer flex flex-col"
-              >
-                {/* Banner */}
-                <div className="relative w-full aspect-[16/9] bg-purple-900 overflow-hidden flex-shrink-0">
-                  <img
-                    src={station.image}
-                    alt={station.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-85"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                  {/* Live Badge */}
-                  <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 bg-red-600 rounded-full shadow">
-                    <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                    <span className="text-[11px] font-black text-white uppercase">Live</span>
-                  </div>
-                  {/* Logo — bottom right */}
-                  <div className="absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center overflow-hidden">
-                    <img src={station.logo} alt={station.name} className="w-full h-full object-cover rounded-full" />
-                  </div>
-                </div>
-
-                {/* Card Body */}
-                <div className="flex flex-col gap-3 p-5 flex-1">
-                  <div>
-                    <h3 className="text-base font-black text-gray-900 group-hover:text-purple-600 transition-colors leading-tight line-clamp-1 mb-1">
-                      {station.name}
-                    </h3>
-                    <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">{station.description}</p>
-                  </div>
-
-                  <div className="flex items-center justify-between px-3 py-2 bg-purple-50 rounded-xl border border-purple-100">
-                    <span className="text-xs font-bold text-gray-600">Events Broadcast</span>
-                    <span className="text-base font-black text-purple-600">{station.eventsCount}</span>
-                  </div>
-
-                  <div className="mt-auto pt-1">
-                    <div className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl font-black text-xs uppercase tracking-wider text-center group-hover:shadow-lg group-hover:shadow-purple-600/30 transition-all relative overflow-hidden">
-                      <span className="relative z-10">{t("common.viewDetails")}</span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {strategicPartnersTab === "sponsors" && (
-        <div className="bg-white rounded-2xl rounded-tr-none p-8 border border-gray-100">
-          <div className="space-y-8">
-            {/* Tier helper */}
-            {(['platinum', 'gold', 'silver', 'bronze'] as const).map((tier) => {
-              const tierSponsors = sponsors.filter(s => s.tier === tier);
-              if (tierSponsors.length === 0) return null;
-              const tierMeta: Record<string, { label: string; badge: string; btn: string; stat: string; border: string }> = {
-                platinum: { label: 'Platinum', badge: 'from-slate-400 to-slate-500', btn: 'from-slate-600 to-slate-700', stat: 'bg-slate-50 border-slate-200 text-slate-700', border: 'border-slate-200 hover:border-slate-400/60' },
-                gold:     { label: 'Gold',     badge: 'from-amber-400 to-yellow-500', btn: 'from-amber-500 to-yellow-600', stat: 'bg-amber-50 border-amber-100 text-amber-700', border: 'border-amber-200 hover:border-amber-400/60' },
-                silver:   { label: 'Silver',   badge: 'from-gray-300 to-gray-400',   btn: 'from-gray-500 to-gray-600',   stat: 'bg-gray-50 border-gray-200 text-gray-600',   border: 'border-gray-200 hover:border-gray-400/50'  },
-                bronze:   { label: 'Bronze',   badge: 'from-orange-400 to-amber-600', btn: 'from-orange-500 to-amber-700', stat: 'bg-orange-50 border-orange-100 text-orange-700', border: 'border-orange-200 hover:border-orange-400/60' },
-              };
-              const m = tierMeta[tier];
-              return (
-                <div key={tier}>
-                  {/* Tier heading */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className={`flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r ${m.badge} rounded-full shadow`}>
-                      <Crown className="w-4 h-4 text-white" />
-                      <span className="text-xs font-black text-white uppercase tracking-wider">{m.label} Sponsors</span>
-                    </div>
-                    <div className="flex-1 h-px bg-gray-100" />
-                  </div>
-                  {/* Cards grid — same portrait pattern as Clubs & Gyms */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {tierSponsors.map((sponsor) => (
-                      <div
-                        key={sponsor.id}
-                        onClick={() => {
-                          setSelectedSponsor(sponsor);
-                          setCurrentSection("sponsor-detail");
-                          navigate(`/sponsor-detail`);
-                        }}
-                        className={`group relative bg-white rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500 border hover:-translate-y-1 cursor-pointer flex flex-col ${m.border}`}
-                      >
-                        {/* Banner */}
-                        <div className="relative w-full aspect-[16/9] bg-gray-100 overflow-hidden flex-shrink-0">
-                          <img
-                            src={sponsor.image}
-                            alt={sponsor.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                          {/* Tier badge */}
-                          <div className={`absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r ${m.badge} shadow`}>
-                            <Crown className="w-3 h-3 text-white" />
-                            <span className="text-[11px] font-black text-white uppercase">{m.label}</span>
-                          </div>
-                          {/* Logo — bottom right */}
-                          <div className="absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center overflow-hidden">
-                            <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-cover rounded-full" />
-                          </div>
-                        </div>
-
-                        {/* Card Body */}
-                        <div className="flex flex-col gap-3 p-5 flex-1">
-                          <div>
-                            <h3 className="text-base font-black text-gray-900 group-hover:text-[#0A3D91] transition-colors leading-tight line-clamp-1 mb-1">
-                              {sponsor.name}
-                            </h3>
-                            <p className="text-xs text-gray-400 truncate">{sponsor.industry}</p>
-                          </div>
-
-                          <div className={`flex items-center justify-between px-3 py-2 rounded-xl border ${m.stat}`}>
-                            <span className="text-xs font-bold">Events Sponsored</span>
-                            <span className="text-base font-black">{sponsor.eventsSponsored}</span>
-                          </div>
-
-                          <div className="mt-auto pt-1">
-                            <div className={`w-full py-2.5 bg-gradient-to-r ${m.btn} text-white rounded-xl font-black text-xs uppercase tracking-wider text-center group-hover:shadow-lg transition-all relative overflow-hidden`}>
-                              <span className="relative z-10">{t("common.viewDetails")}</span>
-                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-  };
-
-  const renderSponsors = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">Official Sponsors</h2>
-          <p className="text-gray-500">Leading brands supporting Kun Khmer</p>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-gray-300 to-gray-400 rounded-2xl p-6 text-white">
-          <Crown className="w-8 h-8 mb-3 opacity-90" />
-          <p className="text-3xl font-black mb-1">{sponsors.filter(s => s.tier === 'platinum').length}</p>
-          <p className="text-sm opacity-90">Platinum</p>
-        </div>
-        <div className="bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-2xl p-6 text-white">
-          <Crown className="w-8 h-8 mb-3 opacity-90" />
-          <p className="text-3xl font-black mb-1">{sponsors.filter(s => s.tier === 'gold').length}</p>
-          <p className="text-sm opacity-90">Gold</p>
-        </div>
-        <div className="bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl p-6 text-gray-700">
-          <Star className="w-8 h-8 mb-3 opacity-90" />
-          <p className="text-3xl font-black mb-1">{sponsors.filter(s => s.tier === 'silver').length}</p>
-          <p className="text-sm opacity-90">Silver</p>
-        </div>
-        <div className="bg-gradient-to-br from-[#0A3D91] to-blue-600 rounded-2xl p-6 text-white">
-          <Handshake className="w-8 h-8 mb-3 opacity-80" />
-          <p className="text-3xl font-black mb-1">{sponsors.reduce((sum, s) => sum + s.eventsSponsored, 0)}</p>
-          <p className="text-sm opacity-90">Total Events</p>
-        </div>
-      </div>
-
-      {/* Sponsors by Tier */}
-      <div className="space-y-8">
-        {/* Platinum Sponsors */}
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-300 to-gray-400 rounded-full">
-              <Crown className="w-5 h-5 text-white" />
-              <span className="text-sm font-black text-white uppercase">Platinum Sponsors</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {sponsors.filter(s => s.tier === 'platinum').map((sponsor) => (
-              <div
-                key={sponsor.id}
-                onClick={() => setSelectedSponsor(sponsor)}
-                className="group bg-white rounded-2xl p-8 hover:shadow-2xl transition-all duration-300 border-2 border-gray-300 hover:border-gray-400 cursor-pointer active:scale-98 flex flex-col justify-between"
-              >
-                <div>
-                  <div className="w-24 h-24 rounded-full flex items-center justify-center mb-4 mx-auto group-hover:scale-110 group-hover:shadow-xl transition-all overflow-hidden">
-                    <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-cover rounded-full" />
-                  </div>
-                  <h3 className="text-lg font-black text-gray-900 text-center mb-3">{sponsor.name}</h3>
-                  <div className="text-center mb-4">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full">
-                      <Trophy className="w-4 h-4 text-gray-600" />
-                      <span className="text-sm font-bold text-gray-700">{sponsor.eventsSponsored} Events</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-center mt-2">
-                  <span className="text-xs font-black text-[#0A3D91] group-hover:underline flex items-center justify-center gap-1">
-                    {t("common.viewDetails")} <ChevronRight className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Gold Sponsors */}
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full">
-              <Crown className="w-5 h-5 text-white" />
-              <span className="text-sm font-black text-white uppercase">Gold Sponsors</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {sponsors.filter(s => s.tier === 'gold').map((sponsor) => (
-              <div
-                key={sponsor.id}
-                onClick={() => setSelectedSponsor(sponsor)}
-                className="group bg-white rounded-2xl p-8 hover:shadow-2xl transition-all duration-300 border-2 border-yellow-200 hover:border-yellow-300 cursor-pointer active:scale-98 flex flex-col justify-between"
-              >
-                <div>
-                  <div className="w-24 h-24 rounded-full flex items-center justify-center mb-4 mx-auto group-hover:scale-110 group-hover:shadow-xl transition-all overflow-hidden">
-                    <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-cover rounded-full" />
-                  </div>
-                  <h3 className="text-lg font-black text-gray-900 text-center mb-3">{sponsor.name}</h3>
-                  <div className="text-center mb-4">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-50 rounded-full">
-                      <Trophy className="w-4 h-4 text-yellow-600" />
-                      <span className="text-sm font-bold text-yellow-700">{sponsor.eventsSponsored} Events</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-center mt-2">
-                  <span className="text-xs font-black text-[#0A3D91] group-hover:underline flex items-center justify-center gap-1">
-                    {t("common.viewDetails")} <ChevronRight className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Silver Sponsors */}
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full">
-              <Star className="w-5 h-5 text-gray-600" />
-              <span className="text-sm font-black text-gray-700 uppercase">Silver Sponsors</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {sponsors.filter(s => s.tier === 'silver').map((sponsor) => (
-              <div
-                key={sponsor.id}
-                onClick={() => setSelectedSponsor(sponsor)}
-                className="group bg-white rounded-2xl p-8 hover:shadow-2xl transition-all duration-300 border-2 border-gray-200 hover:border-gray-300 cursor-pointer active:scale-98 flex flex-col justify-between"
-              >
-                <div>
-                  <div className="w-24 h-24 rounded-full flex items-center justify-center mb-4 mx-auto group-hover:scale-110 group-hover:shadow-xl transition-all overflow-hidden">
-                    <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-cover rounded-full" />
-                  </div>
-                  <h3 className="text-lg font-black text-gray-900 text-center mb-3">{sponsor.name}</h3>
-                  <div className="text-center mb-4">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full">
-                      <Trophy className="w-4 h-4 text-gray-600" />
-                      <span className="text-sm font-bold text-gray-700">{sponsor.eventsSponsored} Events</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-center mt-2">
-                  <span className="text-xs font-black text-[#0A3D91] group-hover:underline flex items-center justify-center gap-1">
-                    {t("common.viewDetails")} <ChevronRight className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
   const renderMatchDetail = () => {
     const match = matches.find(m => m.id === selectedMatchId);
     if (!match) return null;
@@ -2601,10 +1750,35 @@ export function SuperAppHome() {
       {currentSection !== "home" && (
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
         {currentSection === "news-events" && <NewsAndMedia articles={newsArticles} videos={mediaContent} fighters={fightersList} loading={loadingNews || loadingMedia} />}
-        {currentSection === "fighters" && renderFighters()}
+        {currentSection === "fighters" && <FightersDirectory />}
         {currentSection === "matches" && <MatchesAndEvents />}
         {currentSection === "match-detail" && renderMatchDetail()}
-        {currentSection === "strategic-partners" && renderStrategicPartners()}
+        {currentSection === "strategic-partners" && (
+          <Partners
+            clubs={clubsList}
+            broadcasters={broadcastersList}
+            sponsors={sponsorsList}
+            events={dbEvents}
+            loading={loadingPartners}
+            onOpenClub={(id) => {
+              setSelectedClubId(id);
+              setCurrentSection("club-detail");
+              navigate("/club-detail");
+            }}
+            onOpenBroadcaster={(id) => {
+              setSelectedBroadcastId(id);
+              setCurrentSection("broadcast-detail");
+              navigate("/broadcast-detail");
+            }}
+            onOpenSponsor={(id) => {
+              const sponsor = sponsors.find((x) => x.id === id);
+              if (!sponsor) return;
+              setSelectedSponsor(sponsor);
+              setCurrentSection("sponsor-detail");
+              navigate("/sponsor-detail");
+            }}
+          />
+        )}
         {currentSection === "club-detail" && renderClubDetail()}
         {currentSection === "sponsor-detail" && renderSponsorDetail()}
         {currentSection === "broadcast-detail" && renderBroadcastDetail()}

@@ -38,6 +38,7 @@ import { Video } from "./pages/Video";
 import { StrategicPartners } from "./pages/StrategicPartners";
 import { ProgramDashboard } from "./pages/ProgramDashboard";
 import { HubAnswers } from "./pages/HubAnswers";
+import { StaffAssistant } from "./pages/StaffAssistant";
 import { KnowledgeBase } from "./pages/KnowledgeBase";
 
 /** Old or removed admin URLs → the page that does that job now (Phase 2). */
@@ -223,6 +224,7 @@ export const router = createBrowserRouter(
       { path: "kkf-officers", element: <Navigate to="/home/officials" replace /> },
       { path: "my-bouts", element: <MyBouts /> },
       { path: "hub-answers", element: <HubAnswers /> },
+      { path: "assistant", element: <StaffAssistant /> },
       { path: "knowledge", element: <KnowledgeBase /> },
       { path: "user-management", element: <UserManagement /> },
       { path: "user-management/new", element: <UserManagement /> },

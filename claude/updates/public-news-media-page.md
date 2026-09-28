@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) — waiting for owner review in the browser |
+| **Status** | Done — committed 740c7f2b (2026-09-28) |
 | **Jira** | n/a |
 | **Feature** | claude/features/public-site.md |
 | **Requested by** | vannak070 (2026-09-28: "http://localhost:5176/news-events => please improve this page also. especially about tab" → "follow match and event page") |

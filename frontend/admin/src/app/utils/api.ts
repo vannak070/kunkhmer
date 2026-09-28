@@ -46,8 +46,64 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}): Pr
 }
 
 export const api = {
-  // --- KUNKHMER HUB review (KKF staff) ---
+  // --- KUNKHMER HUB: staff assistant and answer review (KKF staff) ---
   ai: {
+    async status(): Promise<{ enabled: boolean }> {
+      const res = await request("/ai/status");
+      return res.data;
+    },
+    /**
+     * Staff assistant (KKF staff): streams the answer as Server-Sent Events — delta / reset / done / error.
+     * Errors before the stream starts (off, cap, rate limit, role) arrive as normal JSON errors.
+     */
+    async staffChatStream(
+      messages: { role: "user" | "assistant"; content: string }[],
+      conversationId: string,
+      on: { onDelta: (text: string) => void; onReset: () => void },
+    ): Promise<{ reply: string; logId: string | null }> {
+      const response = await fetch(`${API_BASE_URL}/ai/staff/chat/stream`, {
+        method: "POST",
+        headers: getHeaders({ Accept: "text/event-stream" }),
+        body: JSON.stringify({ messages, lang: "en", conversationId }),
+      });
+      if (!response.ok || !response.body) {
+        const data = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          window.location.href = appPath("/login");
+        }
+        throw new Error(data.error || data.message || `HTTP ${response.status}`);
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let result: { reply: string; logId: string | null } | null = null;
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let cut: number;
+        while ((cut = buffer.indexOf("\n\n")) >= 0) {
+          const chunk = buffer.slice(0, cut);
+          buffer = buffer.slice(cut + 2);
+          const event = /^event: (.+)$/m.exec(chunk)?.[1];
+          const raw = /^data: (.*)$/m.exec(chunk)?.[1];
+          const data = raw ? JSON.parse(raw) : {};
+          if (event === "delta") on.onDelta(data.text ?? "");
+          else if (event === "reset") on.onReset();
+          else if (event === "done") result = { reply: data.reply, logId: data.logId ?? null };
+          else if (event === "error") throw new Error(data.message || "Something went wrong.");
+        }
+      }
+      if (!result) throw new Error("The answer was interrupted. Please try again.");
+      return result;
+    },
+    /** 👍 (1) or 👎 (-1) on an answer. */
+    async feedback(logId: string, rating: 1 | -1) {
+      const res = await request("/ai/feedback", { method: "POST", body: JSON.stringify({ logId, rating }) });
+      return res.data;
+    },
     async usage() {
       const res = await request("/ai/usage");
       return res.data;

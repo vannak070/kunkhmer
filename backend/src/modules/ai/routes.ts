@@ -1,18 +1,20 @@
 /**
- * KUNKHMER HUB (formerly "Ask Kun Khmer") — public AI chat that answers from federation records through read-only tools.
+ * KUNKHMER HUB (formerly "Ask Kun Khmer") — public AI chat that answers from federation records through read-only tools,
+ * plus the admin staff assistant (Phase D2, KKF staff only) with extra read-only staff tools.
  * Stateless: the browser sends the recent conversation (text only) with every request.
- * See claude/features/ai-assistant.md.
+ * See claude/features/ai-assistant.md and claude/updates/hub-phase-d2-staff-assistant.md.
  */
 import Anthropic from "@anthropic-ai/sdk";
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { config } from "../../config.ts";
 import { prisma } from "../../db.ts";
 import { STAFF, requireAuth, requireRole } from "../../lib/auth.ts";
 import { iso, now } from "../../lib/dates.ts";
 import { HttpError, isUuid, notFound, ok } from "../../lib/http.ts";
 import { knowledge } from "../knowledge/hub.ts";
+import { ALL_STAFF_TOOLS, runStaffTool } from "./staffTools.ts";
 import { runTool, TOOLS } from "./tools.ts";
-import { type Tokens, capReached, logAnswer, monthSpend, noTokens, rateLimit } from "./usage.ts";
+import { type Tokens, STAFF_RATE_LIMIT, capReached, logAnswer, monthSpend, noTokens, rateLimit } from "./usage.ts";
 
 const MAX_MESSAGES = 12;
 const MAX_CHARS = 1500;
@@ -48,6 +50,20 @@ Articles approved by the Kun Khmer Federation. Use them for questions about the 
 
 const KNOWLEDGE_INDEX_INTRO = `# Federation knowledge base (index)
 Articles approved by the Kun Khmer Federation, listed by slug and title. For a question about the sport, call search_knowledge with the user's topic (or with a slug from this list) and answer from the articles it returns, in your own words. Fighter, event, result and champion facts still come only from your other tools.`;
+
+const STAFF_SYSTEM = `You are the KUNKHMER HUB staff assistant inside the admin system of the Kun Khmer Federation (KKF), Cambodia.
+You help KKF staff (Super Admins and KKF Officers) find work and data problems: fighters to verify, events to approve, match proposals, past fight cards without results, missing fighter details, likely duplicate fighters, bouts without officials, drafts, and facts about fighters, events, clubs and results.
+
+Rules:
+- You are read-only. You can't verify, approve, edit, publish or delete anything. When something needs doing, say what and link to the admin page where staff do it.
+- Every fact must come from your tools. Never guess or invent names, counts, dates or results. If the tools return nothing, say so.
+- Link with the "admin_url" (or "record_result_url" / "assign_officials_url") field as a relative Markdown link with a readable label, e.g. [Sok Dara](/home/fighters/…). Never show a bare path as the link text, and never write links to other paths.
+- The public tools (search_fighters, get_fighter, fighter_stats, get_event, …) only see verified fighters and published events. For unverified fighters or draft events use find_records, pending_approvals or drafts.
+- You don't have fighters' contact details, dates of birth, addresses, medical or disciplinary information. If asked, say staff can see them on the fighter's admin page.
+- Likely duplicates are only possibilities: tell staff to compare the profiles before merging or deleting.
+- Reply in Khmer (ខ្មែរ) when the user's latest message is in Khmer, otherwise in English.
+- Be brief and practical: counts first, then a short list (at most about 10 items; say how many more there are). Don't narrate your lookups.
+- For questions unrelated to the federation's work or Kun Khmer, say you can only help with KKF records.`;
 
 const REFUSED = {
   en: "Sorry, I can't help with that. Ask me about Kun Khmer fighters, fight nights, results or the rules.",
@@ -92,6 +108,38 @@ const CAPPED = {
   km: "KUNKHMER HUB កំពុងសម្រាកដល់ខែក្រោយ ព្រោះបានឆ្លើយសំណួរអស់ចំនួនសម្រាប់ខែនេះហើយ។ សូមមើលទំព័រកីឡាករ និងព្រឹត្តិការណ៍ជាបណ្ដោះអាសន្ន។",
 };
 
+/** Who the model loop is answering: fans on the public site or KKF staff in the admin. */
+interface Profile {
+  source: "public" | "staff";
+  tools: Anthropic.Beta.BetaTool[];
+  run: (name: string, input: unknown) => Promise<{ content: string; isError: boolean }>;
+  system: () => Promise<string>;
+}
+
+const PUBLIC: Profile = {
+  source: "public",
+  tools: TOOLS,
+  run: runTool,
+  system: async () => {
+    const kb = await knowledge();
+    const knowledgeBlock =
+      kb.mode === "inline" ? `\n\n${KNOWLEDGE_INTRO}\n\n${kb.prompt}` : kb.mode === "index" ? `\n\n${KNOWLEDGE_INDEX_INTRO}\n\n${kb.prompt}` : "";
+    return `${SYSTEM}${knowledgeBlock}`;
+  },
+};
+
+const STAFF_PROFILE: Profile = {
+  source: "staff",
+  tools: ALL_STAFF_TOOLS,
+  run: runStaffTool,
+  system: async () => STAFF_SYSTEM,
+};
+
+const STAFF_CAPPED = {
+  en: "KUNKHMER HUB has reached this month's spending cap, so the staff assistant is paused until next month. A Super Admin can raise AI_MONTHLY_CAP_USD.",
+  km: "KUNKHMER HUB បានដល់ដែនកំណត់ចំណាយប្រចាំខែហើយ ដូច្នេះជំនួយការបុគ្គលិកត្រូវផ្អាកដល់ខែក្រោយ។ Super Admin អាចបង្កើន AI_MONTHLY_CAP_USD បាន។",
+};
+
 interface Answer {
   text: string;
   outcome: "answered" | "refused" | "too_long";
@@ -105,18 +153,16 @@ interface Answer {
  * round turns out to be a tool call, so the client drops text that wasn't the final answer.
  */
 async function answer(
+  profile: Profile,
   history: Anthropic.Beta.BetaMessageParam[],
   lang: "en" | "km",
   stream?: { onDelta: (text: string) => void; onReset: () => void },
 ): Promise<Answer> {
   const messages = [...history];
-  const kb = await knowledge();
-  const knowledgeBlock =
-    kb.mode === "inline" ? `\n\n${KNOWLEDGE_INTRO}\n\n${kb.prompt}` : kb.mode === "index" ? `\n\n${KNOWLEDGE_INDEX_INTRO}\n\n${kb.prompt}` : "";
   const system: Anthropic.Beta.BetaTextBlockParam[] = [
     // Stable prefix (tools + this block) is cached; the date and language hint come after it.
-    // The knowledge text only changes when a Super Admin publishes or edits an article.
-    { type: "text", text: `${SYSTEM}${knowledgeBlock}`, cache_control: { type: "ephemeral" } },
+    // The public knowledge text only changes when a Super Admin publishes or edits an article.
+    { type: "text", text: await profile.system(), cache_control: { type: "ephemeral" } },
     { type: "text", text: `Today's date: ${new Date().toISOString().slice(0, 10)}. Site language: ${lang === "km" ? "Khmer" : "English"}.` },
   ];
   const tools: string[] = [];
@@ -129,7 +175,7 @@ async function answer(
       model: config.ai.model,
       max_tokens: 8000,
       system,
-      tools: TOOLS,
+      tools: profile.tools,
       messages,
       output_config: { effort: "low" as const },
       betas: ["server-side-fallback-2026-07-01"],
@@ -179,7 +225,7 @@ async function answer(
     messages.push({ role: "assistant", content: response.content });
     const results = await Promise.all(
       toolUses.map(async (t): Promise<Anthropic.Beta.BetaToolResultBlockParam> => {
-        const r = await runTool(t.name, t.input);
+        const r = await profile.run(t.name, t.input);
         return { type: "tool_result", tool_use_id: t.id, content: r.content, is_error: r.isError };
       }),
     );
@@ -195,10 +241,15 @@ interface Prepared {
   lang: "en" | "km";
   question: string;
   conversationId: string | null;
+  source: "public" | "staff";
+  userId: string | null;
 }
 
-/** Validation, rate limit and spend cap — everything that happens before a model call. */
-async function prepare(request: FastifyRequest): Promise<Prepared> {
+/**
+ * Validation, rate limit and spend cap — everything that happens before a model call.
+ * Fans are limited per IP; staff per account (30 / 10 min). Both share the monthly cap.
+ */
+async function prepare(request: FastifyRequest, profile: Profile): Promise<Prepared> {
   if (!config.ai.enabled) throw new HttpError(503, "The AI assistant is not configured.");
   const body = request.body as any;
   const history = parseHistory(body);
@@ -206,12 +257,16 @@ async function prepare(request: FastifyRequest): Promise<Prepared> {
   const rawConversation = typeof body?.conversationId === "string" ? body.conversationId : null;
   const conversationId = rawConversation && /^[A-Za-z0-9-]{8,64}$/.test(rawConversation) ? rawConversation : null;
   const question = String(history[history.length - 1].content);
-  await rateLimit(request.ip);
+  const source = profile.source;
+  const userId = source === "staff" ? (request.user?.id ?? null) : null;
+  if (source === "staff") await rateLimit(`staff:${userId}`, STAFF_RATE_LIMIT);
+  else await rateLimit(request.ip);
   if (await capReached()) {
-    await logAnswer({ conversationId, lang, question, answer: CAPPED[lang], outcome: "capped", tools: [], model: config.ai.model, tokens: noTokens(), durationMs: 0 });
-    throw new HttpError(503, CAPPED[lang]);
+    const message = source === "staff" ? STAFF_CAPPED[lang] : CAPPED[lang];
+    await logAnswer({ conversationId, lang, question, answer: message, outcome: "capped", tools: [], model: config.ai.model, tokens: noTokens(), durationMs: 0, source, userId });
+    throw new HttpError(503, message);
   }
-  return { history, lang, question, conversationId };
+  return { history, lang, question, conversationId, source, userId };
 }
 
 function apiErrorMessage(error: unknown, request: FastifyRequest): HttpError | null {
@@ -228,11 +283,11 @@ const LOG_PAGE = 50;
 export default async function aiRoutes(app: FastifyInstance) {
   app.get("/ai/status", async (_request, reply) => ok(reply, { enabled: config.ai.enabled }));
 
-  app.post("/ai/chat", async (request, reply) => {
-    const p = await prepare(request);
+  const chat = (profile: Profile) => async (request: FastifyRequest, reply: FastifyReply) => {
+    const p = await prepare(request, profile);
     const started = Date.now();
     try {
-      const a = await answer(p.history, p.lang);
+      const a = await answer(profile, p.history, p.lang);
       const logId = await logAnswer({ ...p, answer: a.text, outcome: a.outcome, tools: a.tools, model: a.model, tokens: a.tokens, durationMs: Date.now() - started });
       return ok(reply, { reply: a.text, logId });
     } catch (error) {
@@ -241,15 +296,15 @@ export default async function aiRoutes(app: FastifyInstance) {
       await logAnswer({ ...p, answer: http.message, outcome: "error", tools: [], model: config.ai.model, tokens: noTokens(), durationMs: Date.now() - started });
       throw http;
     }
-  });
+  };
 
   /**
-   * Same as /ai/chat, streamed as Server-Sent Events:
+   * Same as chat, streamed as Server-Sent Events:
    *   delta {text}  — more of the answer; reset — discard text so far; done {reply, logId}; error {message}.
    * Errors before the first byte (validation, rate limit, cap) are normal JSON errors.
    */
-  app.post("/ai/chat/stream", async (request, reply) => {
-    const p = await prepare(request);
+  const chatStream = (profile: Profile) => async (request: FastifyRequest, reply: FastifyReply) => {
+    const p = await prepare(request, profile);
     const started = Date.now();
     reply.hijack();
     reply.raw.writeHead(200, {
@@ -260,7 +315,7 @@ export default async function aiRoutes(app: FastifyInstance) {
     });
     const send = (event: string, data: unknown) => reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     try {
-      const a = await answer(p.history, p.lang, { onDelta: (text) => send("delta", { text }), onReset: () => send("reset", {}) });
+      const a = await answer(profile, p.history, p.lang, { onDelta: (text) => send("delta", { text }), onReset: () => send("reset", {}) });
       const logId = await logAnswer({ ...p, answer: a.text, outcome: a.outcome, tools: a.tools, model: a.model, tokens: a.tokens, durationMs: Date.now() - started });
       send("done", { reply: a.text, logId });
     } catch (error) {
@@ -271,7 +326,10 @@ export default async function aiRoutes(app: FastifyInstance) {
     } finally {
       reply.raw.end();
     }
-  });
+  };
+
+  app.post("/ai/chat", chat(PUBLIC));
+  app.post("/ai/chat/stream", chatStream(PUBLIC));
 
   /** 👍 / 👎 on an answer. Anyone who got the answer's id can rate it; the latest rating wins. */
   app.post("/ai/feedback", async (request, reply) => {
@@ -288,14 +346,23 @@ export default async function aiRoutes(app: FastifyInstance) {
   app.register(async (staffRoutes) => {
     staffRoutes.addHook("preHandler", requireAuth);
 
+    /** Staff assistant (Phase D2): KKF staff only, read-only staff tools, logged with who asked. */
+    const staffOnly = async (request: FastifyRequest) => {
+      requireRole(request, STAFF);
+    };
+    staffRoutes.post("/ai/staff/chat", { preHandler: staffOnly }, chat(STAFF_PROFILE));
+    staffRoutes.post("/ai/staff/chat/stream", { preHandler: staffOnly }, chatStream(STAFF_PROFILE));
+
     /** This month's usage for the admin review page. */
     staffRoutes.get("/ai/usage", async (request, reply) => {
       requireRole(request, STAFF);
       const d = new Date();
       const since = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
       const where = { created_at: { gte: since } };
-      const [spend, total, byOutcome, helpful, notHelpful] = await Promise.all([
+      const [spend, publicSpend, staffSpend, total, byOutcome, helpful, notHelpful] = await Promise.all([
         monthSpend(),
+        monthSpend("public"),
+        monthSpend("staff"),
         prisma.hubLog.count({ where }),
         prisma.hubLog.groupBy({ by: ["outcome"], where, _count: { _all: true } }),
         prisma.hubLog.count({ where: { ...where, feedback: 1 } }),
@@ -304,6 +371,8 @@ export default async function aiRoutes(app: FastifyInstance) {
       return ok(reply, {
         month: since.toISOString().slice(0, 7),
         spendUsd: Number(spend.toFixed(4)),
+        publicSpendUsd: Number(publicSpend.toFixed(4)),
+        staffSpendUsd: Number(staffSpend.toFixed(4)),
         capUsd: config.ai.monthlyCapUsd,
         capped: spend >= config.ai.monthlyCapUsd,
         questions: total,
@@ -314,17 +383,24 @@ export default async function aiRoutes(app: FastifyInstance) {
       });
     });
 
-    /** Logged answers, newest first. ?feedback=down|up, ?outcome=answered|refused|too_long|error|capped, ?page=1. */
+    /** Logged answers, newest first. ?feedback=down|up, ?outcome=answered|refused|too_long|error|capped, ?source=public|staff, ?page=1. */
     staffRoutes.get("/ai/logs", async (request, reply) => {
       requireRole(request, STAFF);
-      const q = request.query as { feedback?: string; outcome?: string; page?: string };
+      const q = request.query as { feedback?: string; outcome?: string; source?: string; page?: string };
       const where: Record<string, unknown> = {};
       if (q.feedback === "down") where.feedback = -1;
       if (q.feedback === "up") where.feedback = 1;
       if (q.outcome) where.outcome = q.outcome;
+      if (q.source === "public" || q.source === "staff") where.source = q.source;
       const page = Math.max(1, Number(q.page) || 1);
       const [rows, total] = await Promise.all([
-        prisma.hubLog.findMany({ where, orderBy: { created_at: "desc" }, skip: (page - 1) * LOG_PAGE, take: LOG_PAGE }),
+        prisma.hubLog.findMany({
+          where,
+          include: { user: { select: { id: true, full_name: true } } },
+          orderBy: { created_at: "desc" },
+          skip: (page - 1) * LOG_PAGE,
+          take: LOG_PAGE,
+        }),
         prisma.hubLog.count({ where }),
       ]);
       return ok(reply, {
@@ -345,6 +421,8 @@ export default async function aiRoutes(app: FastifyInstance) {
           costUsd: Number(r.cost_usd),
           durationMs: r.duration_ms,
           feedback: r.feedback,
+          source: r.source,
+          askedBy: r.user ? { id: r.user.id, name: r.user.full_name } : null,
         })),
       });
     });

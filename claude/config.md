@@ -35,7 +35,8 @@ the untracked `docker-compose.override.yml`. Default login: `admin` / `admin123`
 Optional AI chat: `ANTHROPIC_API_KEY` in `backend/.env` turns on KUNKHMER HUB,
 the public site's `/hub` page (see `features/ai-assistant.md`); the test API forces `AI_ENABLED=false`.
 `AI_MONTHLY_CAP_USD` (default 50) pauses it for the month; answers are logged anonymously
-(`hub_logs`) and reviewed in the admin under "Hub answers". Sport knowledge comes from
+(`hub_logs`) and reviewed in the admin under "Hub answers". KKF staff also get a read-only
+"Staff assistant" in the admin (`updates/hub-phase-d2-staff-assistant.md`; staff answers record who asked). Sport knowledge comes from
 published articles in the admin "Knowledge base" (`features/knowledge-base.md`; starter drafts:
 `docker exec kunkhmer_backend npm run db:seed:knowledge`, adds Drafts only).
 Per-IP rate limits use the visitor's real IP from our own proxy (`lib/clientIp.ts`,

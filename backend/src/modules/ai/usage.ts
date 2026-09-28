@@ -46,14 +46,18 @@ const monthStart = () => {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
 };
 
-export async function monthSpend(): Promise<number> {
-  const agg = await prisma.hubLog.aggregate({ _sum: { cost_usd: true }, where: { created_at: { gte: monthStart() } } });
+/** This month's estimated spend; public and staff answers share one cap, `source` narrows it for the admin split. */
+export async function monthSpend(source?: "public" | "staff"): Promise<number> {
+  const agg = await prisma.hubLog.aggregate({
+    _sum: { cost_usd: true },
+    where: { created_at: { gte: monthStart() }, ...(source ? { source } : {}) },
+  });
   return Number(agg._sum.cost_usd ?? 0);
 }
 
 export const capReached = async () => (await monthSpend()) >= config.ai.monthlyCapUsd;
 
-// ─── Answer log (no personal data) ──────────────────────────────────────────
+// ─── Answer log (public answers carry no personal data) ─────────────────────
 
 export interface LogEntry {
   conversationId: string | null;
@@ -65,6 +69,9 @@ export interface LogEntry {
   model: string;
   tokens: Tokens;
   durationMs: number;
+  /** Staff assistant answers record who asked; public answers stay anonymous. */
+  source?: "public" | "staff";
+  userId?: string | null;
 }
 
 export async function logAnswer(e: LogEntry): Promise<string> {
@@ -86,6 +93,8 @@ export async function logAnswer(e: LogEntry): Promise<string> {
       cache_write_tokens: e.tokens.cacheWrite,
       cost_usd: costUsd(e.model, e.tokens).toFixed(6),
       duration_ms: e.durationMs,
+      source: e.source ?? "public",
+      user_id: e.source === "staff" ? (e.userId ?? null) : null,
     },
   });
   return id;
@@ -93,23 +102,29 @@ export async function logAnswer(e: LogEntry): Promise<string> {
 
 // ─── Rate limit (Postgres) ──────────────────────────────────────────────────
 
+/** Questions per staff member per 10 minutes (owner decision 2026-09-28). */
+export const STAFF_RATE_LIMIT = 30;
+
 const WINDOW_MS = 10 * 60_000;
 // The IP is keyed with a server-side secret so the stored hash can't be reversed by trying every IPv4 address.
 const salt = process.env.AI_RATE_SALT || createHash("sha256").update(`hub:${config.databaseUrl}`).digest("hex");
-const ipKey = (ip: string) => createHmac("sha256", salt).update(ip).digest("hex");
+const hashKey = (key: string) => createHmac("sha256", salt).update(key).digest("hex");
 
-/** Throws 429 once this visitor has asked more than AI_RATE_LIMIT questions in the current 10-minute window. */
-export async function rateLimit(ip: string) {
+/**
+ * Throws 429 once `key` has asked more than `limit` questions in the current 10-minute window.
+ * The key is a visitor's IP (limit AI_RATE_LIMIT) or `staff:<user id>` (limit STAFF_RATE_LIMIT).
+ */
+export async function rateLimit(key: string, limit = config.ai.rateLimit) {
   const windowStart = new Date(Math.floor(Date.now() / WINDOW_MS) * WINDOW_MS);
   const rows = await prisma.$queryRaw<{ count: number }[]>`
-    INSERT INTO hub_rate_limits (key, window_start, count) VALUES (${ipKey(ip)}, ${windowStart}, 1)
+    INSERT INTO hub_rate_limits (key, window_start, count) VALUES (${hashKey(key)}, ${windowStart}, 1)
     ON CONFLICT (key, window_start) DO UPDATE SET count = hub_rate_limits.count + 1
     RETURNING count`;
   // Old windows are useless; tidy up now and then.
   if (Math.random() < 0.02) {
     await prisma.hubRateLimit.deleteMany({ where: { window_start: { lt: new Date(Date.now() - 2 * WINDOW_MS) } } });
   }
-  if ((rows[0]?.count ?? 0) > config.ai.rateLimit) {
+  if ((rows[0]?.count ?? 0) > limit) {
     throw new HttpError(429, "Too many questions. Please wait a few minutes and try again.");
   }
 }

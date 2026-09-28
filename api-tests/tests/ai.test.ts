@@ -64,3 +64,44 @@ describe("AI assistant — streaming, feedback and staff review (Phase C)", () =
     }
   });
 });
+
+describe("AI assistant — staff assistant (Phase D2)", () => {
+  let a: Actors;
+  beforeAll(async () => {
+    a = await setupActors();
+  });
+
+  it("is for KKF staff only", async () => {
+    const body = { messages: [{ role: "user", content: "Which fighters wait for verification?" }], lang: "en" };
+    for (const path of ["/ai/staff/chat", "/ai/staff/chat/stream"]) {
+      const anon = await post(path, body);
+      expect(anon.status).toBe(401);
+      expect(anon.body).toEqual({ message: "Unauthenticated." });
+      for (const who of ["organizer", "club", "referee"] as const) {
+        expect((await post(path, body, a[who].token)).status).toBe(403);
+      }
+    }
+  });
+
+  it("refuses with 503 when not configured", async () => {
+    const body = { messages: [{ role: "user", content: "Anything to approve?" }], lang: "en" };
+    for (const path of ["/ai/staff/chat", "/ai/staff/chat/stream"]) {
+      for (const who of ["admin", "officer"] as const) {
+        const res = await post(path, body, a[who].token);
+        expect(res.status).toBe(503);
+        expect(res.body).toEqual({ success: false, error: "The AI assistant is not configured." });
+      }
+    }
+  });
+
+  it("splits spend by source and filters the log by source", async () => {
+    const usage = await get("/ai/usage", a.admin.token);
+    expect(usage.body.data).toMatchObject({ publicSpendUsd: expect.any(Number), staffSpendUsd: expect.any(Number) });
+
+    for (const source of ["public", "staff"]) {
+      const logs = await get(`/ai/logs?source=${source}`, a.officer.token);
+      expect(logs.status).toBe(200);
+      for (const item of logs.body.data.items) expect(item.source).toBe(source);
+    }
+  });
+});

@@ -1,6 +1,7 @@
 /**
  * "Hub answers" (KKF staff): what fans ask KUNKHMER HUB and how it answered, this month's spend
- * against the cap, and 👍/👎 feedback. The log is anonymous — no IP address or fan account.
+ * against the cap (fans vs staff assistant), and 👍/👎 feedback. Fan answers are anonymous — no IP
+ * address or fan account; staff assistant answers show which staff member asked.
  * API: GET /api/ai/usage, GET /api/ai/logs.
  */
 import { useEffect, useState } from "react";
@@ -11,6 +12,8 @@ import { api } from "../utils/api";
 interface Usage {
   month: string;
   spendUsd: number;
+  publicSpendUsd: number;
+  staffSpendUsd: number;
   capUsd: number;
   capped: boolean;
   questions: number;
@@ -33,6 +36,8 @@ interface LogItem {
   costUsd: number;
   durationMs: number;
   feedback: 1 | -1 | null;
+  source: "public" | "staff";
+  askedBy: { id: string; name: string } | null;
 }
 
 const OUTCOME: Record<string, { label: string; tone: string }> = {
@@ -59,12 +64,17 @@ const TOOL_LABEL: Record<string, string> = {
   list_videos: "Videos",
   federation_settings: "Weights & rules",
   search_knowledge: "Knowledge base",
+  pending_approvals: "Pending approvals",
+  data_quality: "Data checks",
+  drafts: "Drafts",
+  find_records: "Found records",
 };
 
 const usd = (n: number) => (n < 0.01 && n > 0 ? `$${n.toFixed(4)}` : `$${n.toFixed(2)}`);
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 
 type Filter = "all" | "down" | "up" | "problems";
+type Source = "all" | "public" | "staff";
 
 export function HubAnswers() {
   const [usage, setUsage] = useState<Usage | null>(null);
@@ -72,6 +82,7 @@ export function HubAnswers() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<Filter>("all");
+  const [source, setSource] = useState<Source>("all");
   const [open, setOpen] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -86,6 +97,7 @@ export function HubAnswers() {
     if (filter === "down") params.feedback = "down";
     if (filter === "up") params.feedback = "up";
     if (filter === "problems") params.outcome = "error";
+    if (source !== "all") params.source = source;
     api.ai
       .logs(params)
       .then((d: any) => {
@@ -93,7 +105,7 @@ export function HubAnswers() {
         setTotal(d.total);
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Could not load answers."));
-  }, [page, filter]);
+  }, [page, filter, source]);
 
   const pages = Math.max(1, Math.ceil(total / 50));
   const pct = usage ? Math.min(100, (usage.spendUsd / Math.max(usage.capUsd, 0.01)) * 100) : 0;
@@ -115,7 +127,7 @@ export function HubAnswers() {
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
           <Sparkles className="w-7 h-7 text-primary" aria-hidden /> Hub answers
         </h1>
-        <p className="text-slate-600 mt-1">What fans ask KUNKHMER HUB and how it answered. Questions are stored without names, accounts or IP addresses.</p>
+        <p className="text-slate-600 mt-1">What fans and staff ask KUNKHMER HUB and how it answered. Fan questions are stored without names, accounts or IP addresses; staff assistant questions show who asked.</p>
       </header>
 
       {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
@@ -131,6 +143,7 @@ export function HubAnswers() {
             <div className="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
               <div className={`h-full ${pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
             </div>
+            <p className="mt-2 text-sm text-slate-600 tabular-nums">Fans {usd(usage.publicSpendUsd ?? 0)} · Staff assistant {usd(usage.staffSpendUsd ?? 0)}</p>
             <p className="mt-2 text-xs text-slate-500">Estimated from token usage; the Anthropic console bill is the final figure. The Hub pauses when the monthly cap is reached (AI_MONTHLY_CAP_USD).</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -148,7 +161,18 @@ export function HubAnswers() {
         </section>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor="hub-source" className="sr-only">Asked by</label>
+        <select
+          id="hub-source"
+          value={source}
+          onChange={(e) => { setSource(e.target.value as Source); setPage(1); }}
+          className="h-10 px-3 rounded-xl text-sm font-medium border border-slate-200 bg-white text-slate-700"
+        >
+          <option value="all">Fans and staff</option>
+          <option value="public">Fans (public site)</option>
+          <option value="staff">Staff assistant</option>
+        </select>
         {tab("all", "All answers")}
         {tab("down", "👎 Not helpful", usage?.notHelpful)}
         {tab("up", "👍 Helpful", usage?.helpful)}
@@ -172,6 +196,9 @@ export function HubAnswers() {
                     <p className="mt-1 text-xs text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span>{when(it.createdAt)}</span>
                       <span>· {it.lang === "km" ? "Khmer" : "English"}</span>
+                      {it.source === "staff" && (
+                        <span className="px-1.5 py-0.5 rounded font-semibold bg-[#eef3fb] text-primary">Staff{it.askedBy ? ` · ${it.askedBy.name}` : ""}</span>
+                      )}
                       <span className={`px-1.5 py-0.5 rounded font-semibold ${o.tone}`}>{o.label}</span>
                       {it.feedback === 1 && <span className="text-emerald-700">👍 helpful</span>}
                       {it.feedback === -1 && <span className="text-red-700">👎 not helpful</span>}
