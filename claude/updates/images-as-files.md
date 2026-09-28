@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) — waiting for owner review |
+| **Status** | Done — committed b1ebc132 (2026-09-28) |
 | **Jira** | n/a |
 | **Feature** | claude/features/public-site.md (detail-pages plan step 2); affects every module with pictures |
 | **Requested by** | vannak070 (2026-09-28) |

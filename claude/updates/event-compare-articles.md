@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) — waiting for owner review |
+| **Status** | Done — committed e53b4431 (2026-09-28); event-header follow-up not committed yet |
 | **Jira** | n/a |
 | **Feature** | claude/features/public-site.md (detail-pages plan step 4) |
 | **Requested by** | vannak070 (2026-09-28, "go ahead with step 4"; light event header as recommended — ask again if the owner wants the dark poster back) |
@@ -49,3 +49,10 @@
   English version → English title / summary / text + "Read the original (Khmer)" → Khmer + "Article in Khmer" +
   "Read in English"; a Khmer-only article → label; News & Media list shows the English title). Admin form's
   English box viewed (Add Article, cancelled — nothing saved).
+- Owner follow-up (screenshot of the event header, "improve this section; About us should be displayed here"):
+  header rebuilt — key facts in a white card (date, venue + Open map, broadcaster, organiser, fight card
+  count), **About this event** moved into the header (Read more for long text), Presented by in its own row,
+  Add to calendar / See results / Share buttons; the lone "1 Bout" tile removed. Wide (banner) posters run
+  full width above the details (two columns below); tall posters stay beside them (detected on image load).
+  The lower About section now only lists additional sponsors (no duplicate description). Event-page
+  wording for a past night without results ("This fight night has taken place…"). Desktop + 375 px checked.

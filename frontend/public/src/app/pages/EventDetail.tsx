@@ -50,6 +50,7 @@ export function EventDetail() {
   const { t, tn, formatDate } = useI18n();
   const data = useFanData();
   const [params, setParams] = useSearchParams();
+  const [widePoster, setWidePoster] = useState(false);
 
   const event = data?.events.find((e: any) => e.id === id);
   const bouts = useMemo(() => (data && id ? eventBouts(data, id) : []), [data, id]);
@@ -128,10 +129,16 @@ export function EventDetail() {
                   {t("event.allEvents")}
                 </Link>
 
-                <div className={`grid gap-8 lg:gap-12 items-start ${event.image || main ? "lg:grid-cols-[minmax(0,6fr)_minmax(0,6fr)]" : ""}`}>
+                <div className={`grid gap-8 lg:gap-12 items-start ${(event.image && !widePoster) || (!event.image && main) ? "lg:grid-cols-[minmax(0,6fr)_minmax(0,6fr)]" : ""}`}>
                   {event.image ? (
-                    <div className="lg:sticky lg:top-24">
-                      <img src={event.image} alt={event.name} className="w-full h-auto max-h-[640px] object-contain rounded-3xl border border-[#d5e0f3] bg-white shadow-[0_10px_40px_rgba(26,71,151,0.12)]" />
+                    // A wide (banner) poster runs across the top; a tall one sits beside the details.
+                    <div className={widePoster ? "" : "lg:sticky lg:top-24"}>
+                      <img
+                        src={event.image}
+                        alt={event.name}
+                        onLoad={(e) => setWidePoster(e.currentTarget.naturalWidth > e.currentTarget.naturalHeight * 1.3)}
+                        className={`w-full h-auto object-contain rounded-3xl border border-[#d5e0f3] bg-white shadow-[0_10px_40px_rgba(26,71,151,0.12)] ${widePoster ? "max-h-[440px]" : "max-h-[640px]"}`}
+                      />
                     </div>
                   ) : main ? (
                     <div className="rounded-3xl border border-[#d5e0f3] bg-gradient-to-br from-white to-[#fdf1f3] p-6 md:p-8 shadow-sm">
@@ -142,7 +149,8 @@ export function EventDetail() {
                     </div>
                   ) : null}
 
-                  <div className="min-w-0 space-y-5">
+                  <div className={`min-w-0 ${widePoster ? "grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-x-10 gap-y-5 items-start" : "space-y-5"}`}>
+                    <div className={`space-y-5 ${widePoster ? "lg:row-span-2" : ""}`}>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="kk-label text-[var(--kk-red)] mr-1">{t("event.fightNight")}</span>
                       <PublicStatusBadge status={event.status} />
@@ -192,7 +200,9 @@ export function EventDetail() {
                         </FactRow>
                       )}
                     </dl>
+                    </div>
 
+                    <div className="space-y-5">
                     {/* About this event */}
                     {event.description && <AboutText text={event.description} />}
 
@@ -232,6 +242,7 @@ export function EventDetail() {
                         className="kk-focus h-11 px-4 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-800 hover:border-gray-300"
                       />
                     </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -269,7 +280,7 @@ export function EventDetail() {
                   <>
                     {!upcoming && completed.length === 0 && (
                       <p className="rounded-2xl border border-gray-200 bg-white p-5 text-sm text-gray-700 flex items-start gap-2">
-                        <Clock className="w-4 h-4 mt-0.5 text-gray-500 shrink-0" aria-hidden />{t("fights.pendingText")}
+                        <Clock className="w-4 h-4 mt-0.5 text-gray-500 shrink-0" aria-hidden />{t("event.pendingText")}
                       </p>
                     )}
                     {event.image && main && !main.completed && upcoming && (

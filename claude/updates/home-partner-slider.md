@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) — waiting for owner review in the browser |
+| **Status** | Done — committed f10153f0 (2026-09-28) |
 | **Jira** | n/a |
 | **Feature** | claude/features/public-site.md |
 | **Requested by** | vannak070 (2026-09-28: screenshot of the hero partner cards, "Please make arrow icon for homepage - hero section" → chose "Slider with ‹ › arrows") |

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) — waiting for owner review |
+| **Status** | Done — committed b1ebc132 (2026-09-28) |
 | **Jira** | n/a |
 | **Feature** | claude/features/public-site.md |
 | **Requested by** | vannak070 (2026-09-28, "go ahead with step 3"; light style as recommended in the plan) |
