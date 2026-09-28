@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) — waiting for owner review in the browser |
+| **Status** | Done — committed f4b4010f (2026-09-28) |
 | **Jira** | n/a |
 | **Feature** | claude/features/ai-assistant.md |
 | **Requested by** | vannak070 (2026-09-28: "Start Hub Phase D2") |

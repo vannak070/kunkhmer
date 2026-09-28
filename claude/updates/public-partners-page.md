@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done — committed f4b4010f (2026-09-28); follow-up below not committed |
+| **Status** | Done — committed f4b4010f; follow-up (club-style cards, International Partners tab) committed b8a1a204 (2026-09-28) |
 | **Jira** | n/a |
 | **Feature** | claude/features/public-site.md |
 | **Requested by** | vannak070 (2026-09-28: "http://localhost:5176/strategic-partners improve as well", after the News & Media redesign "follow match and event page") |

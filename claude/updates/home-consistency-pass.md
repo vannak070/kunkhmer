@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) — waiting for owner review in the browser |
+| **Status** | Done — committed 83c53b10 (2026-09-28) |
 | **Jira** | n/a |
 | **Feature** | claude/features/public-site.md |
 | **Requested by** | vannak070 (2026-09-28: "how about homepage" → chose "Consistency pass": keep the layout and the approved hero / partner parts, align the sections with the redesigned pages) |

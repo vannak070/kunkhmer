@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built 2026-09-28 (not committed) — waiting for owner review; K-1, WKN, Kombat added to dev data (no logos yet) |
+| **Status** | Done — committed b8a1a204 + d7e76c6b (2026-09-28); K-1, WKN, Kombat with logos and banners in dev data only |
 | **Jira** | n/a |
 | **Figma** | n/a |
 | **Owner** | vannak070 |

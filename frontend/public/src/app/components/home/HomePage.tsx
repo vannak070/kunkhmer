@@ -4,8 +4,9 @@
  * light sections — news, fight nights and results, fighters, videos, a "become a partner"
  * call to action and a newcomer guide (social links live in the footer). Only real data is shown; a section without data is hidden.
  */
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
-import { ArrowRight, Calendar, ChevronRight, Clock, Handshake, MapPin, Music, Play, Swords, Timer, Tv } from "lucide-react";
+import { ArrowRight, Calendar, ChevronLeft, ChevronRight, Clock, Plus, Handshake, MapPin, Music, Play, Swords, Timer, Tv } from "lucide-react";
 import { useI18n } from "../../i18n/LanguageContext";
 import { latestResults, useFanData, type Broadcaster } from "../../data/fanData";
 import { CountdownChip, DemoBanner, ResultRow } from "../fan/FanWidgets";
@@ -241,11 +242,61 @@ function Hero({ feature, partners }: { feature: React.ReactNode; partners: Partn
 
 // ─── 2. Official partners (inside the hero) ─────────────────────────────────
 
-/** One card per partner: large logo, name, and the role for a broadcaster. No heading — the logos speak for themselves. */
+/**
+ * One card per partner: large logo, name, and the role for a broadcaster / international partner.
+ * No heading — the logos speak for themselves. One row that slides: ‹ › buttons appear only when the
+ * partners don't all fit (swipe works too); when they fit, the row is centred (or left-aligned
+ * next to the fight-night card).
+ */
 function PartnerStrip({ partners, centered = false }: { partners: Partner[]; centered?: boolean }) {
   const { t } = useI18n();
+  const rowRef = useRef<HTMLUListElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+
+  useEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+    const update = () =>
+      setEdges({ left: row.scrollLeft > 4, right: row.scrollLeft + row.clientWidth < row.scrollWidth - 4 });
+    // Partners arrive in two loads; always start at the first one (browsers keep the old offset).
+    row.scrollTo({ left: 0, behavior: "instant" as ScrollBehavior });
+    update();
+    row.addEventListener("scroll", update, { passive: true });
+    const resize = new ResizeObserver(update);
+    resize.observe(row);
+    return () => {
+      row.removeEventListener("scroll", update);
+      resize.disconnect();
+    };
+  }, [partners.length]);
+
+  const slide = (dir: -1 | 1) => {
+    const row = rowRef.current;
+    if (row) row.scrollBy({ left: dir * Math.max(row.clientWidth * 0.8, 200), behavior: "smooth" });
+  };
+  const overflow = edges.left || edges.right;
+  const arrow = (dir: -1 | 1, enabled: boolean) => (
+    <button
+      type="button"
+      onClick={() => slide(dir)}
+      disabled={!enabled}
+      aria-label={t(dir < 0 ? "home.partnersPrev" : "home.partnersNext")}
+      className="kk-focus shrink-0 w-10 h-10 md:w-11 md:h-11 rounded-full bg-white border border-gray-200 shadow-sm text-[var(--kk-navy)] flex items-center justify-center transition hover:border-[var(--kk-blue)] hover:text-[var(--kk-blue)] disabled:opacity-35 disabled:hover:border-gray-200 disabled:hover:text-[var(--kk-navy)]"
+    >
+      {dir < 0 ? <ChevronLeft className="w-5 h-5" aria-hidden /> : <ChevronRight className="w-5 h-5" aria-hidden />}
+    </button>
+  );
+
   return (
-    <ul aria-label={t("home.officialPartners")} className={`mt-10 md:mt-14 flex flex-wrap justify-center gap-3 sm:gap-4 ${centered ? "" : "sm:justify-start"}`}>
+    <div className="mt-10 md:mt-14 flex items-center gap-2 md:gap-3">
+      {overflow && arrow(-1, edges.left)}
+    <ul
+      ref={rowRef}
+      aria-label={t("home.officialPartners")}
+      className={`min-w-0 flex-1 flex gap-3 sm:gap-4 overflow-x-auto [overflow-anchor:none] snap-x snap-mandatory scroll-smooth py-2 -my-2 px-1 -mx-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+        centered ? "[&>li:first-child]:ms-auto [&>li:last-child]:me-auto" : "[&>li:last-child]:me-auto"
+      }`}
+    >
       {partners.map((p) => {
         const body = (
           <>
@@ -258,7 +309,7 @@ function PartnerStrip({ partners, centered = false }: { partners: Partner[]; cen
         );
         const cls = "h-full flex flex-col sm:flex-row items-center gap-3 sm:gap-4 rounded-2xl bg-white border border-gray-200 shadow-sm px-4 py-4 sm:pr-6 sm:min-w-[220px]";
         return (
-          <li key={p.id} className="min-w-0 w-[calc(50%-0.375rem)] sm:w-auto">
+          <li key={p.id} className="shrink-0 snap-start w-40 sm:w-auto">
             {p.url ? (
               <a
                 href={p.url}
@@ -275,6 +326,8 @@ function PartnerStrip({ partners, centered = false }: { partners: Partner[]; cen
         );
       })}
     </ul>
+      {overflow && arrow(1, edges.right)}
+    </div>
   );
 }
 
@@ -411,6 +464,78 @@ function VideoCard({ v, onPlay }: { v: HomeVideo; onPlay: () => void }) {
 
 // ─── 7. Become a partner ────────────────────────────────────────────────────
 
+/**
+ * "Join our official partners": logo tiles grouped by role (sponsors, international partners,
+ * broadcaster), each linking to the partner's website, ending with a dashed "Your brand here" tile
+ * that opens the partnership email.
+ */
+function PartnerWall({ partners, mailto }: { partners: Partner[]; mailto: string }) {
+  const { t } = useI18n();
+  const groups = [
+    { key: "sponsors", label: t("partners.sponsors"), list: partners.filter((p) => !p.broadcaster && !p.international) },
+    { key: "international", label: t("partners.international"), list: partners.filter((p) => p.international) },
+    { key: "broadcast", label: t("partners.broadcasters"), list: partners.filter((p) => p.broadcaster) },
+  ].filter((g) => g.list.length > 0);
+  // Light card per partner: logo, name underneath; the whole tile links to the partner's website.
+  const tile = "group h-full flex flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 text-center transition";
+  const logo = "h-11 w-11 md:h-12 md:w-12 rounded-lg ring-1 ring-black/5 shadow-sm";
+  return (
+    <div className="space-y-3">
+      <p className="kk-label text-gray-500">{t("home.joinPartners")}</p>
+      {groups.map((g, i) => (
+        <section key={g.key} aria-label={g.label}>
+          <h3 className="text-xs font-semibold text-gray-500 mb-1.5 flex items-center gap-2">
+            {g.label}
+            <span className="h-px flex-1 bg-gray-200/70" aria-hidden />
+          </h3>
+          <ul className="grid grid-cols-3 gap-2">
+            {g.list.map((p) => {
+              const body = (
+                <>
+                  {p.logo ? (
+                    <img src={p.logo} alt="" className={`${logo} object-contain bg-white`} />
+                  ) : (
+                    <span aria-hidden className={`${logo} bg-gray-100 text-gray-500 kk-heading flex items-center justify-center`}>{p.name.slice(0, 1).toUpperCase()}</span>
+                  )}
+                  <span lang={textLang(p.name)} className="w-full text-[11px] md:text-xs font-semibold text-[var(--kk-navy)] leading-tight line-clamp-2 break-words group-hover:text-[var(--kk-blue)]">{p.name}</span>
+                </>
+              );
+              return (
+                <li key={p.id} className="min-w-0">
+                  {p.url ? (
+                    <a
+                      href={p.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={p.name}
+                      className={`kk-focus ${tile} bg-white/80 border-gray-100 hover:bg-white hover:border-[#d5e0f3] hover:shadow-md hover:-translate-y-0.5`}
+                    >
+                      {body}
+                    </a>
+                  ) : (
+                    <div className={`${tile} bg-white/80 border-gray-100`}>{body}</div>
+                  )}
+                </li>
+              );
+            })}
+            {/* The invitation sits at the end of the first group (sponsors when there are any). */}
+            {i === 0 && (
+              <li className="min-w-0">
+                <a href={mailto} className={`kk-focus ${tile} border-dashed border-[var(--kk-red)]/40 text-[var(--kk-red)] hover:bg-[#fdf1f3] hover:border-[var(--kk-red)]`}>
+                  <span className={`${logo.replace(" ring-1 ring-black/5 shadow-sm", "")} border-2 border-dashed border-[var(--kk-red)]/40 flex items-center justify-center`} aria-hidden>
+                    <Plus className="w-5 h-5" />
+                  </span>
+                  <span className="w-full text-[11px] md:text-xs font-semibold leading-tight line-clamp-2">{t("home.yourBrand")}</span>
+                </a>
+              </li>
+            )}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 function BecomePartner({ partners, stats, onViewPartners }: { partners: Partner[]; stats: { label: string; value: number }[]; onViewPartners: () => void }) {
   const { t } = useI18n();
   const mailto = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(t("home.partnerEmailSubject"))}`;
@@ -438,23 +563,8 @@ function BecomePartner({ partners, stats, onViewPartners }: { partners: Partner[
         </div>
 
         {aside && (
-          <div className="rounded-2xl bg-white border border-gray-200 shadow-[0_20px_50px_-24px_rgba(36,51,111,0.35)] p-5 md:p-6">
-            {partners.length > 0 && (
-              <>
-                <p className="kk-label text-gray-500 mb-4">{t("home.joinPartners")}</p>
-                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {partners.map((p) => (
-                    <li key={p.id} className="flex items-center gap-3 rounded-xl bg-gray-50 border border-gray-100 p-3 min-w-0">
-                      <PartnerLogo p={p} />
-                      <span className="min-w-0">
-                        <span lang={textLang(p.name)} className="block font-semibold text-gray-900 leading-tight line-clamp-2 break-words">{p.name}</span>
-                        {(p.broadcaster || p.international) && <span className="block text-xs text-gray-500">{t(p.broadcaster ? "home.officialBroadcaster" : "partners.internationalBadge")}</span>}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
+          <div className="w-full max-w-md lg:justify-self-end rounded-2xl bg-white/60 border border-[#d5e0f3]/70 p-4">
+            {partners.length > 0 && <PartnerWall partners={partners} mailto={mailto} />}
             {stats.length > 0 && (
               <dl className={`grid gap-3 ${partners.length ? "mt-5 pt-5 border-t border-gray-100" : ""} ${stats.length === 3 ? "grid-cols-3" : stats.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
                 {stats.map((s) => (
