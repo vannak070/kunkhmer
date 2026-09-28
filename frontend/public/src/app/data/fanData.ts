@@ -50,23 +50,6 @@ export interface HistoryEntry {
   opponent: FighterRef;
 }
 
-export interface Standing {
-  fighter: FighterRef & { weightKg: number; wins: number; losses: number; draws: number };
-  rank: number;
-  winPct: number;
-  isChampion: boolean;
-  /** Last results, newest first (from recorded bouts). */
-  form: BoutOutcome[];
-}
-
-export interface Division {
-  name: string;
-  nameKhmer?: string | null;
-  champion?: FighterRef | null;
-  titleName?: string;
-  standings: Standing[];
-}
-
 export interface Broadcaster {
   id: string;
   name: string;
@@ -333,59 +316,6 @@ export function latestResults(data: FanData, limit = 6): Bout[] {
 function parseRecord(record?: string) {
   const [w, l, d] = (record || "0-0-0").split("-").map((n) => parseInt(n) || 0);
   return { wins: w || 0, losses: l || 0, draws: d || 0 };
-}
-
-/**
- * Division standings ordered by record (wins, then win %, then fewest losses).
- * These are not official federation rankings — the UI says so.
- */
-export function divisions(data: FanData): Division[] {
-  const groups = new Map<string, Division>();
-  for (const f of data.fighters) {
-    const weightKg = parseFloat(f.currentWeight || f.current_weight || "0");
-    if (!weightKg) continue;
-    const wc = weightClassFor(weightKg, data.weightClasses);
-    if (!wc) continue;
-    const name = wc.name;
-    if (!groups.has(name)) groups.set(name, { name, nameKhmer: wc.name_khmer, standings: [] });
-    const rec = parseRecord(f.record);
-    const total = rec.wins + rec.losses + rec.draws;
-    groups.get(name)!.standings.push({
-      fighter: { ...toRef(f), weightKg, ...rec },
-      rank: 0,
-      winPct: total ? Math.round((rec.wins / total) * 100) : 0,
-      isChampion: false,
-      form: fightHistory(data, f.id).slice(0, 5).map((h) => h.outcome),
-    });
-  }
-
-  // A title holder is shown in the division of their current weight, whatever the belt's class.
-  for (const c of data.champions) {
-    const holderId = c.current_holder_id;
-    if (!holderId || c.status === "Vacant") continue;
-    for (const div of groups.values()) {
-      const s = div.standings.find((x) => x.fighter.id === holderId);
-      if (s) {
-        s.isChampion = true;
-        div.champion = s.fighter;
-        div.titleName = c.title_name;
-      }
-    }
-  }
-
-  const ordered = [...groups.values()];
-  for (const div of ordered) {
-    div.standings.sort((a, b) =>
-      Number(b.isChampion) - Number(a.isChampion) ||
-      b.fighter.wins - a.fighter.wins ||
-      b.winPct - a.winPct ||
-      a.fighter.losses - b.fighter.losses
-    );
-    div.standings.forEach((s, i) => (s.rank = i + 1));
-  }
-  // In the official order of the weight classes (lightest first).
-  const position = (name: string) => data.weightClasses.findIndex((c) => c.name === name);
-  return ordered.sort((a, b) => position(a.name) - position(b.name));
 }
 
 export function broadcasterForEvent(data: FanData, event: any): Broadcaster | null {

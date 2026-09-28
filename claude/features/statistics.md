@@ -23,8 +23,9 @@ Only what the data supports today (see Data):
 - **How fights end**: share of wins by method (KO, TKO, decision, referee stop,
   draw, no contest) from recorded results; average finishing round.
 - **Leaders**: most wins, best win % (minimum bouts), most title fights,
-  longest current win streak — from recorded bouts, labelled unofficial like
-  the rankings.
+  longest current win streak — from recorded bouts, labelled unofficial.
+  (Note: the Rankings page was removed on 2026-09-28 because unofficial
+  standings could confuse fans — ask whether leaders are wanted at all.)
 - **Divisions**: fighters per weight division, champion per division.
 - **Clubs / provinces**: fighters per club and per province (if province is filled).
 - **Trends**: events and bouts per month/year.
@@ -47,8 +48,9 @@ linked from the header/footer and a teaser block on the home page (TBD).
 Charts follow the brand tokens; light style (see memory/visual taste).
 
 ## Base code
-`data/fanData.ts` (`useFanData`, `divisions()`, `latestResults()`),
-`pages/Rankings.tsx` (unofficial-label pattern), `i18n/messages.ts`.
+`data/fanData.ts` (`useFanData`, `latestResults()`), `i18n/messages.ts`.
+(`divisions()` and `pages/Rankings.tsx` were deleted on 2026-09-28; see git
+history if division grouping is needed again.)
 
 ## Business rules
 - Real data only; hide a block when there isn't enough data (e.g. < 10 results).
@@ -68,6 +70,6 @@ If a `/api/stats` endpoint is added: contract tests + shape snapshot in
   divisions, clubs/provinces, trends)?
 - Should fighter records come from the hand-entered `record` field or be
   recalculated from recorded bouts (they can disagree)?
-- Own page (`/stats`), a section on Rankings, or both? Home page teaser?
+- Own page (`/stats`)? Home page teaser?
 - Compute in the browser now, or build `GET /api/stats` straight away?
 - Any official federation numbers (history totals before the platform) to include?

@@ -49,8 +49,9 @@ as numbers; `sortOrder` and `active` on PUT.
   CreateEvent (venues, tournament weight class), CreateBatch (venues),
   CreateMatchFromBatch (glove brands, rule presets). `data/masterData.ts`
   keeps only the fixed glove sizes.
-- Public `data/weightClasses.ts`: division standings (Rankings, in the list's
-  order, Khmer name when set), fighter cards on home and club pages.
+- Public `data/weightClasses.ts`: weight class on fighter cards (home and
+  club pages), Khmer name when set. (The Rankings page that also used it was
+  removed on 2026-09-28.)
 - Admin `pages/Help.tsx` (`/home/help`, menu for every role and in the profile
   menu; `/home/process-flow` redirects): your role's tasks with links, the
   event-to-result steps, fighter verification, common questions; English /

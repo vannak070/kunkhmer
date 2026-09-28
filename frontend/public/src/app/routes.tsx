@@ -4,7 +4,6 @@ import { SuperAppHome } from "./pages/SuperAppHome";
 import { SuperAppFighterDetail } from "./pages/SuperAppFighterDetail";
 import { ArticleDetail } from "./pages/ArticleDetail";
 import { AboutKunKhmer } from "./pages/AboutKunKhmer";
-import { Rankings } from "./pages/Rankings";
 import { Compare } from "./pages/Compare";
 import { Account } from "./pages/Account";
 import { EventDetail } from "./pages/EventDetail";
@@ -39,8 +38,9 @@ export const router = createBrowserRouter(
     element: <ArticleDetail />,
   },
   {
+    // Rankings was removed (2026-09-28) until KKF can manage official rankings.
     path: "/rankings",
-    element: <Rankings />,
+    element: <Navigate to="/fighters" replace />,
   },
   {
     path: "/compare",

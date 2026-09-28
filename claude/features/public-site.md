@@ -32,7 +32,7 @@ federation's records.
    site and vice versa); fonts and line height follow it.
 4. **Real URLs** for everything shareable: `/fighters/:slug`, `/article/:id`,
    `/events/:id?view=card|results|watch` (old `/matches?tab=events&event=<id>` links redirect), `/compare?red=<slug>&blue=<slug>`,
-   `/rankings?division=<slug>`, `/about`, `/account`. Back/Forward must work.
+   `/about`, `/account` (`/rankings` was removed and redirects to `/fighters`). Back/Forward must work.
 5. **Brand**: tokens in `src/styles/brand.css` mirror the brand guideline
    (colours measured from the KKF emblem). Red corner left, blue right, always.
 
@@ -45,7 +45,7 @@ federation's records.
 | Sections | `pages/SuperAppHome.tsx` | Still one large file for matches, news, fighters, partners, shop. Section comes from `/:section`; `?event=` only redirects to `/events/:id`. |
 | Fighter | `pages/SuperAppFighterDetail.tsx`, `components/fan/FighterHistory.tsx`, `FollowButton.tsx` | Fight history, next fight, teammates from the API. |
 | Article | `pages/ArticleDetail.tsx`, `components/ShareButtons.tsx` | Share: Facebook, X, Telegram, copy link (execCommand fallback). |
-| Rankings | `pages/Rankings.tsx` | Division standings by record; champion from `/champions`. |
+| ~~Rankings~~ | removed 2026-09-28 | Division standings page deleted (KKF has no way to manage official rankings yet, and the unofficial standings could confuse fans); `/rankings` redirects to `/fighters`. |
 | Compare | `pages/Compare.tsx`, `components/fan/Matchup.tsx`, `data/matchup.ts` | Tale of the tape, overlaid radar, KK Rating (hidden below 3 shared metrics). |
 | About | `pages/AboutKunKhmer.tsx` | Newcomer guide: history, rules, glossary. |
 | Account | `pages/Account.tsx` | See fan-accounts. |

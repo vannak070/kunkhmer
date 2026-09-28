@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) — 2026-09-28 |
+| **Status** | Done — 2026-09-28 (committed f58b0f82) |
 | **Jira** | n/a |
 | **Feature** | `features/settings.md` (new); fighters, events, matches, public site |
 | **Requested by** | vannak070 |
