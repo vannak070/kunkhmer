@@ -62,7 +62,9 @@ real records, never from made-up facts.
 then `docker restart kunkhmer_backend`. Without a key `GET /api/ai/status` says
 `enabled: false` and `POST /api/ai/chat` returns 503; production builds hide the chat button, development builds show it with a "not set up yet" notice (input disabled).
 `AI_ENABLED=false` forces it off (the test API sets this); `AI_MODEL`
-(default `claude-opus-5`) and `AI_RATE_LIMIT` (default 20 per IP per 10 min).
+(default `claude-opus-5`) and `AI_RATE_LIMIT` (default 20 per IP per 10 min). The IP is the visitor's real one
+through our proxy (`lib/clientIp.ts`, `TRUST_PROXY`; see `updates/rate-limit-real-client-ip.md`);
+the counter is in memory, so it resets on restart and isn't shared between API instances.
 
 | Part | Where |
 |---|---|

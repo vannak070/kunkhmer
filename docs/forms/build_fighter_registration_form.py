@@ -207,9 +207,11 @@ def build_club(wb):
     ws["C4"], ws["D4"] = "Your club / ក្លឹបរបស់អ្នក", "Example / ឧទាហរណ៍"
     ws["C4"].font = ws["D4"].font = font(bold=True, size=10, color=NAVY)
     ws["B3"].font = font(italic=True, size=10, color="555555")
-    province_dv = DataValidation(type="list", formula1="=Lists!$C$2:$C$26", allow_blank=True)
+    # Note: data-validation formulas must not start with "=" (Excel rejects the file).
+    province_dv = DataValidation(type="list", formula1="Lists!$C$2:$C$26", allow_blank=True, showErrorMessage=True,
+                                 error="Please choose from the list.", errorTitle="Choose from the list")
     date_dv = DataValidation(type="date", operator="between", formula1="DATE(2020,1,1)", formula2="DATE(2100,12,31)",
-                             allow_blank=True, error="Please enter a date, e.g. 14/05/2026.", errorTitle="Date")
+                             allow_blank=True, showErrorMessage=True, error="Please enter a date, e.g. 14/05/2026.", errorTitle="Date")
     ws.add_data_validation(province_dv)
     ws.add_data_validation(date_dv)
     for i, (label, example) in enumerate(fields):
@@ -251,21 +253,21 @@ def build_fighters(wb, ranges):
             return validations[kind]
         if kind.startswith("list:"):
             name = kind.split(":")[1]
-            dv = DataValidation(type="list", formula1=f"={ranges[name]}", allow_blank=True,
+            dv = DataValidation(type="list", formula1=ranges[name], allow_blank=True, showErrorMessage=True,
                                 error="Please choose from the list.", errorTitle="Choose from the list")
             if name == "Nationality":
                 dv.showErrorMessage = False  # other nationalities may be typed
         elif kind == "date":
             dv = DataValidation(type="date", operator="between", formula1="DATE(1950,1,1)", formula2="DATE(2100,12,31)",
-                                allow_blank=True, error="Please enter a date as DD/MM/YYYY, e.g. 14/05/2003.",
+                                allow_blank=True, showErrorMessage=True, error="Please enter a date as DD/MM/YYYY, e.g. 14/05/2003.",
                                 errorTitle="Date")
         elif kind.startswith("number:") or kind.startswith("int:"):
             t, lo, hi = kind.split(":")
             dv = DataValidation(type="decimal" if t == "number" else "whole", operator="between",
-                                formula1=lo, formula2=hi, allow_blank=True,
+                                formula1=lo, formula2=hi, allow_blank=True, showErrorMessage=True,
                                 error=f"Please enter a number from {lo} to {hi}.", errorTitle="Number")
         elif kind == "kkf":
-            dv = DataValidation(type="list", formula1=f"={ranges['YesNo']}", allow_blank=True)
+            dv = DataValidation(type="list", formula1=ranges["YesNo"], allow_blank=True, showErrorMessage=True)
         else:
             return None
         ws.add_data_validation(dv)
