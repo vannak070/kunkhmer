@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) |
+| **Status** | Done — committed 783d02e8 (2026-09-28) |
 | **Jira** | n/a |
 | **Feature** | claude/features/ai-assistant.md |
 | **Requested by** | vannak070 |
