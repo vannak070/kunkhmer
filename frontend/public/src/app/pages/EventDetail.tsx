@@ -8,6 +8,7 @@ import { Link, useParams, useSearchParams } from "react-router";
 import { ArrowLeft, Calendar, MapPin, Tv } from "lucide-react";
 import { SiteHeader } from "../components/layout/SiteHeader";
 import { SiteFooter } from "../components/layout/SiteFooter";
+import { HubAskAbout } from "../components/hub/HubAskAbout";
 import { CountdownChip, DemoBanner, WhereToWatch, daysUntil } from "../components/fan/FanWidgets";
 import { BoutRow, MainEventFaceoff, SponsorStrip, type EventSponsor } from "../components/event/EventParts";
 import { PresentedBy } from "../components/home/HomePage";
@@ -257,6 +258,16 @@ export function EventDetail() {
               {view === "results" && <CardList cards={groupByCard(completed)} numbers={boutNumber} result />}
 
               {view === "watch" && <WhereToWatch broadcaster={broadcaster} stationName={stationName} />}
+
+              <HubAskAbout
+                questions={
+                  completed.length > 0
+                    ? [t("hub.askEventResults", { event: event.name }), ...(main?.completed ? [t("hub.askEventMain", { event: event.name })] : [])]
+                    : upcoming
+                      ? [...(bouts.length > 0 ? [t("hub.askEventCard", { event: event.name })] : []), t("hub.askEventWatch", { event: event.name })]
+                      : [t("hub.askEventAbout", { event: event.name })]
+                }
+              />
 
               {/* About */}
               {(event.description || organizer || sponsors.length > 0) && (

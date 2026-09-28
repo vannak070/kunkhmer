@@ -5,6 +5,7 @@ import { api } from "../utils/api";
 import { SiteHeader } from "../components/layout/SiteHeader";
 import { SiteFooter } from "../components/layout/SiteFooter";
 import { ShareButtons } from "../components/ShareButtons";
+import { HubAskAbout } from "../components/hub/HubAskAbout";
 import { usePageMeta } from "../hooks/usePageTitle";
 import { useI18n } from "../i18n/LanguageContext";
 import { publicName, readTimeMinutes } from "../utils/publicDisplay";
@@ -207,6 +208,11 @@ export function ArticleDetail() {
             </div>
           </div>
         </article>
+
+        <HubAskAbout
+          className="mb-12"
+          questions={[t("hub.askArticleSummary", { title: article.title }), t("hub.askLatestNews")]}
+        />
 
         {/* Related Articles Section */}
         {relatedArticles.length > 0 && (

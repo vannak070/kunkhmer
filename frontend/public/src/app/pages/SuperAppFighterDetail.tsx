@@ -15,6 +15,7 @@ import { useFanData } from "../data/fanData";
 import { FightHistory, NextFightCard } from "../components/fan/FighterHistory";
 import { DemoBanner } from "../components/fan/FanWidgets";
 import { FollowButton } from "../components/fan/FollowButton";
+import { HubAskAbout } from "../components/hub/HubAskAbout";
 
 export function SuperAppFighterDetail() {
   const { id } = useParams();
@@ -344,6 +345,14 @@ export function SuperAppFighterDetail() {
         </section>
 
         {fanData && <NextFightCard data={fanData} fighterId={fighter.id} />}
+
+        <HubAskAbout
+          questions={[
+            t("hub.askFighterRecent", { name: localName(fighter.name, fighter.nameKhmer) }),
+            t("hub.askFighterNext", { name: localName(fighter.name, fighter.nameKhmer) }),
+            ...((fighter.clubName || fighter.club_name) ? [t("hub.askFighterClub", { club: fighter.clubName || fighter.club_name })] : []),
+          ]}
+        />
 
         {/* ════════════════════════════════════════════
             2. FIGHT RECORD & CAREER STATISTICS

@@ -49,7 +49,7 @@ federation's records.
 | ~~Rankings~~ | removed 2026-09-28 | Division standings page deleted (KKF has no way to manage official rankings yet, and the unofficial standings could confuse fans); `/rankings` redirects to `/fighters`. |
 | Compare | `pages/Compare.tsx`, `components/fan/Matchup.tsx`, `data/matchup.ts` | Tale of the tape, overlaid radar, KK Rating (hidden below 3 shared metrics). |
 | About | `pages/AboutKunKhmer.tsx` | Newcomer guide: history, rules, glossary. |
-| KUNKHMER HUB | `pages/KunKhmerHub.tsx`, `components/hub/*` | The site's main function: AI "ask anything about Kun Khmer" page at `/hub`, in the menu inside the "About Kun Khmer" dropdown (`NavDropdown`; indented under About in the phone menu, after About in the footer), with an ask box in the home hero (`HubAskBox`). See `features/ai-assistant.md`. |
+| KUNKHMER HUB | `pages/KunKhmerHub.tsx`, `components/hub/*` | The site's main function: AI "ask anything about Kun Khmer" page at `/hub`, in the menu inside the "About Kun Khmer" dropdown (`NavDropdown`; indented under About in the phone menu, after About in the footer), with an ask box in the home hero (`HubAskBox`) and an "Ask about this" card (`HubAskAbout`, questions open `/hub?q=`) on fighter, event, compare and article pages. See `features/ai-assistant.md`. |
 | Account | `pages/Account.tsx` | See fan-accounts. |
 | Data | `data/fanData.ts` (`useFanData()`) | One cached load of fighters, matches, events, broadcasters, champions; derives history, next bout, standings, latest results. Retries after a failed request. |
 | i18n | `i18n/LanguageContext.tsx`, `i18n/messages.ts` | Khmer dates formatted by hand (many browsers lack Khmer locale data); event dates rendered in UTC so the calendar day never shifts. |

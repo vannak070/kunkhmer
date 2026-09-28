@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) — waiting for owner review in the browser |
+| **Status** | Done — committed 17bfdac5 (2026-09-28) |
 | **Jira** | n/a |
 | **Feature** | claude/features/public-site.md |
 | **Requested by** | vannak070 (2026-09-28: "improve this page for more user friendly and professional for global fan") |

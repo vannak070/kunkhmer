@@ -4,6 +4,7 @@ import { SiteHeader } from "../components/layout/SiteHeader";
 import { SiteFooter } from "../components/layout/SiteFooter";
 import { MatchupView } from "../components/fan/Matchup";
 import { DemoBanner } from "../components/fan/FanWidgets";
+import { HubAskAbout } from "../components/hub/HubAskAbout";
 import { useFanData } from "../data/fanData";
 import { getFighterSlug } from "../data/masterData";
 import { usePageMeta } from "../hooks/usePageTitle";
@@ -109,7 +110,15 @@ export function Compare() {
         ) : red && blue && red.id === blue.id ? (
           <p className="py-12 text-center text-gray-500">{t("matchup.sameFighter")}</p>
         ) : red && blue ? (
-          <MatchupView data={data} redId={red.id} blueId={blue.id} />
+          <>
+            <MatchupView data={data} redId={red.id} blueId={blue.id} />
+            <HubAskAbout
+              questions={[
+                t("hub.askCompareH2H", { red: localName(red.name, red.nameKhmer), blue: localName(blue.name, blue.nameKhmer) }),
+                t("hub.askCompareRecords", { red: localName(red.name, red.nameKhmer), blue: localName(blue.name, blue.nameKhmer) }),
+              ]}
+            />
+          </>
         ) : (
           <p className="py-12 text-center text-gray-500">{t("matchup.pickTwo")}</p>
         )}
