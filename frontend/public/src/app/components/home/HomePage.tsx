@@ -1,5 +1,6 @@
 /**
- * Public home page: a light hero (welcome + next fight night, official partners strip), then
+ * Public home page: a light hero (welcome + ask KUNKHMER HUB, the next fight night when there
+ * is one — otherwise the hero is centred — and the official partners strip), then
  * light sections — news, fight nights and results, fighters, videos, a "become a partner"
  * call to action and a newcomer guide (social links live in the footer). Only real data is shown; a section without data is hidden.
  */
@@ -200,22 +201,6 @@ export function PresentedBy({ sponsor, tone = "light" }: { sponsor: Partner; ton
   );
 }
 
-function HeroStoryCard({ a }: { a: HomeArticle }) {
-  const { t, formatDate } = useI18n();
-  return (
-    <Link to={`/article/${a.id}`} className="kk-focus group block rounded-3xl bg-white text-gray-900 border border-gray-100 shadow-[0_24px_60px_-24px_rgba(36,51,111,0.35)] overflow-hidden">
-      <div className="aspect-[2/1] overflow-hidden bg-gray-200">
-        <Picture src={a.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 kk-motion" />
-      </div>
-      <div className="p-5 md:p-6">
-        <p className="kk-label text-[var(--kk-red)] mb-2">{[t("home.latestStory"), formatDate(a.date)].filter(Boolean).join(" · ")}</p>
-        <h2 lang={textLang(a.title)} className="kk-heading text-2xl md:text-3xl line-clamp-3 group-hover:text-[var(--kk-blue)]">{a.title}</h2>
-        {a.excerpt && <p lang={textLang(a.excerpt)} className="mt-2 text-gray-600 line-clamp-2">{a.excerpt}</p>}
-      </div>
-    </Link>
-  );
-}
-
 function Hero({ feature, partners }: { feature: React.ReactNode; partners: Partner[] }) {
   const { t } = useI18n();
   return (
@@ -226,19 +211,19 @@ function Hero({ feature, partners }: { feature: React.ReactNode; partners: Partn
 
       <div className="relative max-w-7xl mx-auto px-4 md:px-6 pt-10 md:pt-16 pb-10 md:pb-14">
         <div className={`grid grid-cols-1 gap-10 lg:gap-16 items-center ${feature ? "lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)]" : ""}`}>
-          <div>
+          <div className={feature ? "" : "max-w-3xl mx-auto text-center"}>
             <p className="inline-flex items-center gap-2 rounded-full bg-white border border-[#d5e0f3] shadow-sm pl-1 pr-4 py-1 mb-6">
               <img src={kkfLogo} alt="" className="w-7 h-7 rounded-full" />
               <span className="text-xs sm:text-sm font-semibold text-[var(--kk-blue)]">{t("home.heroKicker")}</span>
             </p>
             <h1 className="kk-display text-5xl sm:text-6xl md:text-7xl text-[var(--kk-navy)]">{t("home.heroTitle")}</h1>
-            <p className="mt-5 text-lg text-gray-600 max-w-xl leading-relaxed">{t("home.tagline")}</p>
-            <HubAskBox />
+            <p className={`mt-5 text-lg text-gray-600 max-w-xl leading-relaxed ${feature ? "" : "mx-auto"}`}>{t("home.tagline")}</p>
+            <HubAskBox centered={!feature} />
           </div>
           {feature}
         </div>
 
-        {partners.length > 0 && <PartnerStrip partners={partners} />}
+        {partners.length > 0 && <PartnerStrip partners={partners} centered={!feature} />}
       </div>
     </section>
   );
@@ -246,12 +231,12 @@ function Hero({ feature, partners }: { feature: React.ReactNode; partners: Partn
 
 // ─── 2. Official partners strip (inside the hero) ───────────────────────────
 
-function PartnerStrip({ partners }: { partners: Partner[] }) {
+function PartnerStrip({ partners, centered = false }: { partners: Partner[]; centered?: boolean }) {
   const { t } = useI18n();
   return (
-    <div role="region" aria-label={t("home.officialPartners")} className="mt-10 md:mt-14 rounded-2xl bg-white border border-gray-200 shadow-sm px-5 py-4 md:px-6 flex flex-col md:flex-row md:items-center gap-3 md:gap-8">
+    <div role="region" aria-label={t("home.officialPartners")} className={`mt-10 md:mt-14 rounded-2xl bg-white border border-gray-200 shadow-sm px-5 py-4 md:px-6 flex flex-col md:flex-row md:items-center gap-3 md:gap-8 ${centered ? "items-center md:justify-center" : ""}`}>
       <p className="kk-label text-gray-500 shrink-0">{t("home.officialPartners")}</p>
-      <ul className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-x-2 gap-y-1 md:divide-x md:divide-gray-200">
+      <ul className={`grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-x-2 gap-y-1 md:divide-x md:divide-gray-200 ${centered ? "sm:justify-center" : ""}`}>
         {partners.map((p) => {
           const body = (
             <>
@@ -529,21 +514,18 @@ export default function HomePage(props: HomePageProps) {
   const partners = toPartners(sponsors, fan?.broadcasters ?? []);
   const rawEvent = (id?: string) => (id ? fan?.events.find((e: any) => e.id === id) : undefined);
 
-  // Hero: the next fight night, otherwise the latest story (which then leaves the news grid).
+  // Hero: the next fight night when there is one; news stays in the news section.
   const next = upcomingEvents[0];
   const nextRaw = rawEvent(next?.id);
   const mainSponsorId = nextRaw?.main_sponsor_id;
   const nextSponsor = next && nextRaw?.main_sponsor_name
     ? partners.find((p) => p.id === mainSponsorId) ?? { id: mainSponsorId || "main", name: nextRaw.main_sponsor_name, logo: nextRaw.main_sponsor_logo_url || null, url: null }
     : null;
-  const heroStory = !next ? articles[0] : undefined;
   const feature = next ? (
     <HeroEventCard event={next} poster={nextRaw?.image || null} sponsor={nextSponsor} onOpen={() => onOpenEvent(next.id)} />
-  ) : heroStory ? (
-    <HeroStoryCard a={heroStory} />
   ) : null;
 
-  const news = articles.slice(heroStory ? 1 : 0, (heroStory ? 1 : 0) + 3);
+  const news = articles.slice(0, 3);
   const eventList = upcomingEvents.length > 0 ? upcomingEvents.slice(0, 3) : pastEvents.slice(0, 1);
   const results = fan ? latestResults(fan, 4) : [];
   // Fighters with a real photo first, then the most experienced; records, not popularity.

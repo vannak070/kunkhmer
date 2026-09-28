@@ -8,7 +8,8 @@ import { MAX_QUESTION, useHubVisible } from "./useHubChat";
 
 const CHIPS: MessageKey[] = ["ai.q1", "ai.q2", "ai.q4"];
 
-export function HubAskBox() {
+/** `centered`: the hero has no side card, so the box sits in the middle. */
+export function HubAskBox({ centered = false }: { centered?: boolean }) {
   const { t } = useI18n();
   const navigate = useNavigate();
   const visible = useHubVisible();
@@ -21,7 +22,7 @@ export function HubAskBox() {
   };
 
   return (
-    <div className="mt-7 max-w-xl rounded-2xl bg-white border border-[#d5e0f3] shadow-lg shadow-[var(--kk-blue)]/10 p-4 sm:p-5">
+    <div className={`mt-7 max-w-xl text-left ${centered ? "mx-auto" : ""} rounded-2xl bg-white border border-[#d5e0f3] shadow-lg shadow-[var(--kk-blue)]/10 p-4 sm:p-5`}>
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
         <span className="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 rounded-full bg-[var(--kk-blue)] text-white px-2.5 py-1 text-xs font-bold tracking-wide">
           <Sparkles className="w-3.5 h-3.5" aria-hidden />

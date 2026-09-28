@@ -25,7 +25,9 @@ and the home page already has a "What is Kun Khmer" section with a link to About
 In scope:
 - Remove the two hero buttons and the "New to Kun Khmer?" link (and their unused strings).
 - Ask box shows two example questions on phones (three from `sm` up).
-Out of scope: the feature card, the partners strip, the sections below the hero, the colours.
+- No news in the hero: the "latest story" card is removed; it only shows the next fight night.
+  With no upcoming event the hero is one centred column (pill, headline, tagline, ask box).
+Out of scope: the fight night card itself, the partners strip, the sections below the hero, the colours.
 
 ## Impact
 - API response shape changes? No.
@@ -41,3 +43,6 @@ Out of scope: the feature card, the partners strip, the sections below the hero,
 - 2026-09-28: removed the hero buttons and About link (`home.ctaEvents`, `home.ctaFighters`,
   `home.newToKunKhmer` deleted from `messages.ts`); `HubAskBox` hides the third example
   question below `sm`. `Hero` no longer takes `onNavigate`.
+- 2026-09-28: removed the news card from the hero (`HeroStoryCard`, `home.latestStory`); the
+  latest story now stays first in the news grid. Without an upcoming event the hero is centred
+  (`HubAskBox centered`). Checked at 1280×800 and 375×812; `vite build` passes.
