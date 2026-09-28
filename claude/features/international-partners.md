@@ -30,15 +30,23 @@ broadcast partners and clubs.
   Broadcast Partners · Clubs & Gyms) **and the home page partner strip** (after sponsors, before the
   broadcaster).
 - Data: **KKF staff add them in the admin** with official logos and text — nothing seeded. Then the
-  owner asked me to add the three in dev (2026-09-28), done through the API as `admin`:
-  - **K-1** — Promotion, Japan, https://www.k-1.co.jp (checked), order 1; text: runs K-1 World GP,
-    Krush and K-1 Amateur (from the official site).
-  - **World Kickboxing Network (WKN)** — Sanctioning body, order 2; country and website left empty
-    (site could not be opened to confirm).
-  - **Kombat Corporation Professional Taekwondo Federation (Kombat)** — Federation, order 3; text from
-    the site's own news article (Ganzberg Kombat Grand Prix Kun Khmer & Taekwondo, Phnom Penh,
-    27 June 2026); country and website unknown.
-  No logos, banners or "partner since" years; Khmer descriptions are a first draft for KKF review.
+  owner asked me to add the three in dev (2026-09-28), then their logos and banners ("search from
+  internet"). Current dev entries (order 1–3):
+  - **K-1** — Promotion, Japan, https://www.k-1.co.jp; runs K-1 World GP, Krush and K-1 Amateur.
+    Logo from the site's share image `k-1.co.jp/meta/open_graph.png`.
+  - **World Kickboxing Network (WKN)** — Sanctioning body, Hong Kong, https://worldkickboxingnetwork.net;
+    founded in Hong Kong in October 1994 (Wikipedia). Logo: the crest on its site
+    (`wp-content/uploads/2023/01/GRFFGBFGB.jpg`); banner from its wordmark (`…/2022/12/wkn.png`).
+  - **Kombat Global (Kombat)** — Promotion, Singapore, https://www.kombatglobal.com; started in the US
+    in 2023 as Kombat Taekwondo, renamed Kombat Global in Dec 2025 (HQ Singapore), runs a Kombat Kun
+    Khmer league; partner in the Ganzberg Kombat Grand Prix Kun Khmer & Taekwondo (Phnom Penh,
+    27 June 2026 — KKF news article). Logo / banner from `kombatglobal.com/Kombat Logo Square.png`
+    and `… Horizontal.png`. (Was entered first as "Kombat Corporation Professional Taekwondo
+    Federation", the name in KKF's article.)
+  Banners are 1600×900 images made only from each official logo on a dark background (no photos
+  copied); stored as data URLs like sponsor uploads. No "partner since" years (not known). Khmer
+  descriptions are a first draft for KKF review. Logos are the organisations' trademarks — KKF should
+  confirm it may show them (normally part of the partnership).
   Dev data only — production needs the same entries added in its admin.
 
 ## Data (migration `20260928000005_partner_organizations`)
