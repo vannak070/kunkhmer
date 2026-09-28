@@ -10,7 +10,7 @@ import { prisma } from "../../db.ts";
 import { STAFF, requireAuth, requireRole } from "../../lib/auth.ts";
 import { iso, now } from "../../lib/dates.ts";
 import { HttpError, isUuid, notFound, ok } from "../../lib/http.ts";
-import { knowledgeText } from "../knowledge/hub.ts";
+import { knowledge } from "../knowledge/hub.ts";
 import { runTool, TOOLS } from "./tools.ts";
 import { type Tokens, capReached, logAnswer, monthSpend, noTokens, rateLimit } from "./usage.ts";
 
@@ -33,7 +33,7 @@ Rules:
 - If a tool says several fighters or clubs match, list them briefly and ask which one the user means; never pick one yourself.
 - For topics unrelated to Kun Khmer, politely say you can only help with Kun Khmer.
 - Don't narrate your lookups (no "let me check"); write only the answer.
-- Questions about the sport itself (history, rules, techniques, Kun Kru, music, terms) are answered from the federation knowledge base at the end of these instructions when it covers them. If it doesn't, give a brief general answer from the background below and say the federation hasn't published more detail on it. Never invent dates, names or numbers.
+- Questions about the sport itself (history, organisations, famous fighters of the past, rules, techniques, Kun Kru, music, terms, watching and visiting) are answered from the federation knowledge base at the end of these instructions (when only an index of titles is shown there, read the articles you need with search_knowledge first). If it doesn't, give a brief general answer from the background below and say the federation hasn't published more detail on it. Never invent dates, names or numbers.
 - The origins of Kun Khmer compared with Muay Thai or other regional styles, and the SEA Games naming question: answer only from a knowledge base article on that topic. Without one, give a short, neutral, respectful answer (Kun Khmer is Cambodia's traditional martial art with roots in the Angkor era) and point to the [beginner's guide](/about); don't take sides or criticise any country.
 
 Background on the sport (general knowledge from the site's beginner guide, not federation records):
@@ -45,6 +45,9 @@ Background on the sport (general knowledge from the site's beginner guide, not f
 
 const KNOWLEDGE_INTRO = `# Federation knowledge base
 Articles approved by the Kun Khmer Federation. Use them for questions about the sport; summarise in your own words and keep answers short. Fighter, event, result and champion facts still come only from your tools.`;
+
+const KNOWLEDGE_INDEX_INTRO = `# Federation knowledge base (index)
+Articles approved by the Kun Khmer Federation, listed by slug and title. For a question about the sport, call search_knowledge with the user's topic (or with a slug from this list) and answer from the articles it returns, in your own words. Fighter, event, result and champion facts still come only from your other tools.`;
 
 const REFUSED = {
   en: "Sorry, I can't help with that. Ask me about Kun Khmer fighters, fight nights, results or the rules.",
@@ -107,11 +110,13 @@ async function answer(
   stream?: { onDelta: (text: string) => void; onReset: () => void },
 ): Promise<Answer> {
   const messages = [...history];
-  const knowledge = await knowledgeText();
+  const kb = await knowledge();
+  const knowledgeBlock =
+    kb.mode === "inline" ? `\n\n${KNOWLEDGE_INTRO}\n\n${kb.prompt}` : kb.mode === "index" ? `\n\n${KNOWLEDGE_INDEX_INTRO}\n\n${kb.prompt}` : "";
   const system: Anthropic.Beta.BetaTextBlockParam[] = [
     // Stable prefix (tools + this block) is cached; the date and language hint come after it.
     // The knowledge text only changes when a Super Admin publishes or edits an article.
-    { type: "text", text: knowledge ? `${SYSTEM}\n\n${KNOWLEDGE_INTRO}\n\n${knowledge}` : SYSTEM, cache_control: { type: "ephemeral" } },
+    { type: "text", text: `${SYSTEM}${knowledgeBlock}`, cache_control: { type: "ephemeral" } },
     { type: "text", text: `Today's date: ${new Date().toISOString().slice(0, 10)}. Site language: ${lang === "km" ? "Khmer" : "English"}.` },
   ];
   const tools: string[] = [];

@@ -4,7 +4,8 @@
  * API: GET /api/ai/usage, GET /api/ai/logs.
  */
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, MessageSquareText, Sparkles, ThumbsDown, ThumbsUp, Wallet } from "lucide-react";
+import { useNavigate } from "react-router";
+import { BookOpen, ChevronDown, ChevronLeft, ChevronRight, MessageSquareText, Sparkles, ThumbsDown, ThumbsUp, Wallet } from "lucide-react";
 import { api } from "../utils/api";
 
 interface Usage {
@@ -57,6 +58,7 @@ const TOOL_LABEL: Record<string, string> = {
   get_news: "News article",
   list_videos: "Videos",
   federation_settings: "Weights & rules",
+  search_knowledge: "Knowledge base",
 };
 
 const usd = (n: number) => (n < 0.01 && n > 0 ? `$${n.toFixed(4)}` : `$${n.toFixed(2)}`);
@@ -72,6 +74,7 @@ export function HubAnswers() {
   const [filter, setFilter] = useState<Filter>("all");
   const [open, setOpen] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     api.ai.usage().then(setUsage).catch((e) => setError(e instanceof Error ? e.message : "Could not load usage."));
@@ -190,7 +193,17 @@ export function HubAnswers() {
                         it.tools.map((t, i) => <span key={i} className="text-xs px-2 py-1 rounded-lg bg-[#eef3fb] text-primary">{TOOL_LABEL[t] ?? t}</span>)
                       )}
                     </div>
-                    <p className="text-xs text-slate-400">Model {it.model}{it.conversationId ? ` · conversation ${it.conversationId.slice(0, 8)}` : ""}</p>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs text-slate-400">Model {it.model}{it.conversationId ? ` · conversation ${it.conversationId.slice(0, 8)}` : ""}</p>
+                      <button
+                        type="button"
+                        onClick={() => navigate("/home/knowledge", { state: { faq: { question: it.question, answer: it.outcome === "answered" ? it.answer : "" } } })}
+                        className="h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 inline-flex items-center gap-2 hover:border-slate-300"
+                        title="Write an approved answer for this question in the knowledge base"
+                      >
+                        <BookOpen className="w-4 h-4" aria-hidden /> Save as FAQ
+                      </button>
+                    </div>
                   </div>
                 )}
               </li>

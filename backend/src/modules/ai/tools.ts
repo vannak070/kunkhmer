@@ -10,6 +10,7 @@ import type { Prisma } from "../../generated/prisma/client.ts";
 import { NOT_DELETED, PUBLIC_FIGHTER, UNVERIFIED } from "../fighters/routes.ts";
 import { PUBLIC_EVENT as PUBLISHED_EVENT } from "../events/routes.ts";
 import { PUBLIC_BOUT } from "../matches/proposals.ts";
+import { searchKnowledge } from "../knowledge/hub.ts";
 
 type ToolInput = Record<string, unknown>;
 
@@ -248,6 +249,17 @@ export const TOOLS: Anthropic.Beta.BetaTool[] = [
         query: { type: "string", description: "Words in the title, description or category (optional)" },
         fighter: { type: "string", description: "Only videos about this fighter (optional)" },
         limit: { type: "integer", minimum: 1, maximum: 10 },
+      },
+    },
+  },
+  {
+    name: "search_knowledge",
+    description: "Search the federation's approved knowledge articles about the sport (history, organisations, famous fighters of the past, rules, techniques, culture, glossary, fan FAQ). Returns the best 1–3 articles in full. Pass a slug to read one article from the knowledge index.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "The topic or question, in English or Khmer" },
+        slug: { type: "string", description: "Exact article slug from the knowledge index (optional)" },
       },
     },
   },
@@ -709,6 +721,8 @@ const HANDLERS: Record<string, (input: ToolInput) => Promise<unknown>> = {
   get_news: getNews,
   list_videos: listVideos,
   federation_settings: federationSettings,
+  search_knowledge: ({ query, slug }) =>
+    searchKnowledge(String(query ?? ""), { slug: typeof slug === "string" && slug.trim() ? slug.trim() : undefined }),
 };
 
 /** Runs a tool and returns its JSON result; failures come back as { error } for the model. */

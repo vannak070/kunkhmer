@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { BookOpen, Handshake, Home as HomeIcon, Info, Languages, Menu, Sparkles, Trophy, Users, X } from "lucide-react";
+import { BookOpen, ChevronDown, Handshake, Home as HomeIcon, Info, Languages, Menu, Sparkles, Trophy, Users, X } from "lucide-react";
 import kkfLogo from "../../../assets/kkf-logo-192.png";
 import { GlobalSearch } from "./GlobalSearch";
 import { useHubVisible } from "../hub/useHubChat";
@@ -12,14 +12,17 @@ import type { MessageKey } from "../../i18n/messages";
 /** SuperAppHome sections plus standalone pages that appear in the main navigation. */
 export type NavSection = "hub" | "home" | "matches" | "news-events" | "fighters" | "strategic-partners" | "about";
 
-export const NAV_ITEMS: { id: NavSection; labelKey: MessageKey; icon: typeof HomeIcon }[] = [
-  { id: "hub", labelKey: "nav.hub", icon: Sparkles },
+type NavItem = { id: NavSection; labelKey: MessageKey; icon: typeof HomeIcon; /** Shown inside this item's dropdown in the header. */ parent?: NavSection };
+
+/** Flat order (the footer lists them like this); items with a `parent` sit in that item's dropdown in the header. */
+export const NAV_ITEMS: NavItem[] = [
   { id: "home", labelKey: "nav.home", icon: HomeIcon },
   { id: "matches", labelKey: "nav.matches", icon: Trophy },
   { id: "news-events", labelKey: "nav.news", icon: BookOpen },
   { id: "fighters", labelKey: "nav.fighters", icon: Users },
   { id: "strategic-partners", labelKey: "nav.partners", icon: Handshake },
   { id: "about", labelKey: "nav.about", icon: Info },
+  { id: "hub", labelKey: "nav.hub", icon: Sparkles, parent: "about" },
 ];
 
 /** Sections that live outside SuperAppHome and are always reached by routing. */
@@ -67,10 +70,82 @@ function LanguageToggle({ className = "" }: { className?: string }) {
   );
 }
 
+const DESKTOP_LINK = "flex items-center gap-2 px-3 lg:px-4 py-2.5 rounded-xl whitespace-nowrap text-sm font-bold transition-colors";
+const DESKTOP_ACTIVE = "bg-[#0A3D91] text-white shadow-md";
+const DESKTOP_IDLE = "text-gray-600 hover:bg-gray-100 hover:text-gray-900";
+
+/** A menu item with sub-pages (About Kun Khmer → About, KUNKHMER HUB). Opens on click; Escape or a click outside closes it. */
+function NavDropdown({ item, subItems, activeSection, onGo }: { item: NavItem; subItems: NavItem[]; activeSection?: string | null; onGo: (s: NavSection) => void }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const entries = [item, ...subItems];
+  const active = entries.some((e) => e.id === activeSection);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="true"
+        className={`${DESKTOP_LINK} ${active ? DESKTOP_ACTIVE : DESKTOP_IDLE}`}
+      >
+        <item.icon className="w-4 h-4" aria-hidden />
+        {t(item.labelKey)}
+        <ChevronDown className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
+      </button>
+      {open && (
+        <ul className="absolute right-0 top-full mt-2 z-50 w-64 rounded-2xl bg-white border border-gray-200 shadow-xl p-2">
+          {entries.map(({ id, labelKey, icon: Icon }) => {
+            const current = activeSection === id;
+            return (
+              <li key={id}>
+                <a
+                  href={appPath(sectionPath(id))}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setOpen(false);
+                    onGo(id);
+                  }}
+                  aria-current={current ? "page" : undefined}
+                  className={`kk-focus flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-colors ${
+                    current ? "bg-[#eef3fb] text-[var(--kk-blue)]" : id === "hub" ? "text-[var(--kk-blue)] hover:bg-[#eef3fb]" : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <Icon className="w-4 h-4 shrink-0" aria-hidden />
+                  {t(labelKey)}
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function SiteHeader({ activeSection, onSectionChange }: SiteHeaderProps) {
   const { t } = useI18n();
   const goSection = useNavigateSection(onSectionChange);
   const navItems = useNavItems();
+  const topItems = navItems.filter((item) => !item.parent);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const lastY = useRef(0);
@@ -127,28 +202,24 @@ export function SiteHeader({ activeSection, onSectionChange }: SiteHeaderProps) 
           </div>
         </div>
 
-        <nav aria-label={t("nav.main")} className="hidden md:flex items-center gap-1 pb-3 overflow-x-auto">
-          {navItems.map(({ id, labelKey, icon: Icon }) => {
-            const active = activeSection === id;
-            return (
+        <nav aria-label={t("nav.main")} className="hidden md:flex flex-wrap items-center gap-1 pb-3">
+          {topItems.map((item) => {
+            const subItems = navItems.filter((c) => c.parent === item.id);
+            return subItems.length > 0 ? (
+              <NavDropdown key={item.id} item={item} subItems={subItems} activeSection={activeSection} onGo={go} />
+            ) : (
               <a
-                key={id}
-                href={appPath(sectionPath(id))}
+                key={item.id}
+                href={appPath(sectionPath(item.id))}
                 onClick={(e) => {
                   e.preventDefault();
-                  go(id);
+                  go(item.id);
                 }}
-                aria-current={active ? "page" : undefined}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl whitespace-nowrap text-sm font-bold transition-colors ${
-                  active
-                    ? "bg-[#0A3D91] text-white shadow-md"
-                    : id === "hub"
-                      ? "bg-[#eef3fb] text-[var(--kk-blue)] ring-1 ring-[#d5e0f3] hover:bg-[#dfe8f7]"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                }`}
+                aria-current={activeSection === item.id ? "page" : undefined}
+                className={`${DESKTOP_LINK} ${activeSection === item.id ? DESKTOP_ACTIVE : DESKTOP_IDLE}`}
               >
-                <Icon className="w-4 h-4" aria-hidden />
-                {t(labelKey)}
+                <item.icon className="w-4 h-4" aria-hidden />
+                {t(item.labelKey)}
               </a>
             );
           })}
@@ -160,7 +231,7 @@ export function SiteHeader({ activeSection, onSectionChange }: SiteHeaderProps) 
 
         {mobileMenuOpen && (
           <nav id="mobile-nav" aria-label={t("nav.main")} className="md:hidden pb-4 space-y-1">
-            {navItems.map(({ id, labelKey, icon: Icon }) => {
+            {navItems.map(({ id, labelKey, icon: Icon, parent }) => {
               const active = activeSection === id;
               return (
                 <a
@@ -171,8 +242,8 @@ export function SiteHeader({ activeSection, onSectionChange }: SiteHeaderProps) 
                     go(id);
                   }}
                   aria-current={active ? "page" : undefined}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-bold transition-colors ${
-                    active ? "bg-[#0A3D91] text-white" : id === "hub" ? "bg-[#eef3fb] text-[var(--kk-blue)]" : "text-gray-700 hover:bg-gray-100"
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-bold transition-colors ${parent ? "pl-12" : ""} ${
+                    active ? "bg-[#0A3D91] text-white" : id === "hub" ? "text-[var(--kk-blue)] hover:bg-[#eef3fb]" : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
                   <Icon className="w-5 h-5" aria-hidden />

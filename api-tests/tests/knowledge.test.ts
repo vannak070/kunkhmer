@@ -30,6 +30,9 @@ describe("Knowledge base", () => {
     expect((await post("/knowledge", draft({ titleEn: "" }), a.admin.token)).status).toBe(422);
     expect((await post("/knowledge", draft({ bodyEn: null }), a.admin.token)).status).toBe(422);
     expect((await post("/knowledge", draft({ category: "gossip" }), a.admin.token)).status).toBe(422);
+    for (const category of ["people", "organisations", "faq"]) {
+      expect((await post("/knowledge", draft({ category }), a.officer.token)).status).toBe(201);
+    }
     expect((await post("/knowledge", draft({ sortOrder: "first" }), a.admin.token)).status).toBe(422);
     const slug = `dup-${uniq()}`;
     expect((await post("/knowledge", draft({ slug }), a.admin.token)).status).toBe(201);

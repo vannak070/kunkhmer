@@ -5,6 +5,7 @@
  * API: /api/knowledge (see claude/features/knowledge-base.md).
  */
 import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { ArrowLeft, BookOpen, CheckCircle2, Eye, EyeOff, Languages, Plus, Save, Trash2 } from "lucide-react";
 import { api } from "../utils/api";
@@ -30,6 +31,8 @@ interface Article {
 
 const CATEGORIES: { key: string; label: string }[] = [
   { key: "history", label: "History" },
+  { key: "organisations", label: "Organisations & events" },
+  { key: "people", label: "Legends & famous fighters" },
   { key: "rules", label: "Rules & scoring" },
   { key: "techniques", label: "Techniques" },
   { key: "culture", label: "Kun Kru & music" },
@@ -65,6 +68,18 @@ export function KnowledgeBase() {
   useEffect(() => {
     load();
   }, []);
+
+  // "Save as FAQ" on the Hub answers page opens a new FAQ draft with the fan's question.
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    const faq = (location.state as { faq?: { question: string; answer: string } } | null)?.faq;
+    if (!faq) return;
+    setEditing("new");
+    setLang("en");
+    setForm({ ...EMPTY, category: "faq", titleEn: faq.question, bodyEn: faq.answer, source: "From a KUNKHMER HUB question — check and correct the answer before publishing." });
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state]);
 
   const shown = useMemo(() => (items ?? []).filter((a) => status === "all" || a.status === status), [items, status]);
   const counts = useMemo(

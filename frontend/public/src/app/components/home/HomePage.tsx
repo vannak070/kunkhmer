@@ -136,12 +136,12 @@ function SectionHead({ title, kicker, action }: { title: string; kicker?: string
   );
 }
 
-function PartnerLogo({ p, size = "md" }: { p: Partner; size?: "sm" | "md" }) {
-  const box = size === "sm" ? "h-8 w-8" : "h-10 w-10 md:h-12 md:w-12";
+function PartnerLogo({ p, size = "md" }: { p: Partner; size?: "sm" | "md" | "lg" }) {
+  const box = size === "sm" ? "h-8 w-8 rounded-lg" : size === "lg" ? "h-14 w-14 md:h-16 md:w-16 rounded-xl ring-1 ring-black/5 shadow-sm" : "h-10 w-10 md:h-12 md:w-12 rounded-lg";
   return p.logo ? (
-    <img src={p.logo} alt="" className={`${box} rounded-lg object-contain bg-white shrink-0`} />
+    <img src={p.logo} alt="" className={`${box} object-contain bg-white shrink-0`} />
   ) : (
-    <span aria-hidden className={`${box} rounded-lg bg-gray-100 text-gray-500 kk-heading inline-flex items-center justify-center shrink-0`}>
+    <span aria-hidden className={`${box} bg-gray-100 text-gray-500 kk-heading inline-flex items-center justify-center shrink-0`}>
       {p.name.slice(0, 1).toUpperCase()}
     </span>
   );
@@ -229,37 +229,42 @@ function Hero({ feature, partners }: { feature: React.ReactNode; partners: Partn
   );
 }
 
-// ─── 2. Official partners strip (inside the hero) ───────────────────────────
+// ─── 2. Official partners (inside the hero) ─────────────────────────────────
 
+/** One card per partner: large logo, name, and the role for a broadcaster. No heading — the logos speak for themselves. */
 function PartnerStrip({ partners, centered = false }: { partners: Partner[]; centered?: boolean }) {
   const { t } = useI18n();
   return (
-    <div role="region" aria-label={t("home.officialPartners")} className={`mt-10 md:mt-14 rounded-2xl bg-white border border-gray-200 shadow-sm px-5 py-4 md:px-6 flex flex-col md:flex-row md:items-center gap-3 md:gap-8 ${centered ? "items-center md:justify-center" : ""}`}>
-      <p className="kk-label text-gray-500 shrink-0">{t("home.officialPartners")}</p>
-      <ul className={`grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-x-2 gap-y-1 md:divide-x md:divide-gray-200 ${centered ? "sm:justify-center" : ""}`}>
-        {partners.map((p) => {
-          const body = (
-            <>
-              <PartnerLogo p={p} />
-              <span className="min-w-0 text-left">
-                <span lang={textLang(p.name)} className="block font-semibold text-gray-900 leading-tight line-clamp-2 break-words">{p.name}</span>
-                {p.broadcaster && <span className="block text-xs text-gray-500 truncate">{t("home.officialBroadcaster")}</span>}
-              </span>
-            </>
-          );
-          const cls = "flex items-center gap-2.5 md:gap-3 px-1.5 md:px-5 py-2 rounded-xl min-w-0";
-          return (
-            <li key={p.id} className="min-w-0 md:first:pl-0">
-              {p.url ? (
-                <a href={p.url} target="_blank" rel="noopener noreferrer" className={`kk-focus ${cls} hover:bg-gray-50 transition-colors`}>{body}</a>
-              ) : (
-                <div className={cls}>{body}</div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+    <ul aria-label={t("home.officialPartners")} className={`mt-10 md:mt-14 flex flex-wrap justify-center gap-3 sm:gap-4 ${centered ? "" : "sm:justify-start"}`}>
+      {partners.map((p) => {
+        const body = (
+          <>
+            <PartnerLogo p={p} size="lg" />
+            <span className="min-w-0 text-center sm:text-left">
+              <span lang={textLang(p.name)} className="block font-semibold text-[var(--kk-navy)] leading-tight line-clamp-2 break-words">{p.name}</span>
+              {p.broadcaster && <span className="mt-0.5 block text-xs text-gray-500">{t("home.officialBroadcaster")}</span>}
+            </span>
+          </>
+        );
+        const cls = "h-full flex flex-col sm:flex-row items-center gap-3 sm:gap-4 rounded-2xl bg-white border border-gray-200 shadow-sm px-4 py-4 sm:pr-6 sm:min-w-[220px]";
+        return (
+          <li key={p.id} className="min-w-0 w-[calc(50%-0.375rem)] sm:w-auto">
+            {p.url ? (
+              <a
+                href={p.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`kk-focus kk-motion ${cls} transition-all duration-200 hover:-translate-y-0.5 hover:border-[#d5e0f3] hover:shadow-lg hover:shadow-[var(--kk-blue)]/10`}
+              >
+                {body}
+              </a>
+            ) : (
+              <div className={cls}>{body}</div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

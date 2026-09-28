@@ -46,3 +46,7 @@ Out of scope: the fight night card itself, the partners strip, the sections belo
 - 2026-09-28: removed the news card from the hero (`HeroStoryCard`, `home.latestStory`); the
   latest story now stays first in the news grid. Without an upcoming event the hero is centred
   (`HubAskBox centered`). Checked at 1280×800 and 375×812; `vite build` passes.
+- 2026-09-28: the partners strip is centred too when the hero is centred (`PartnerStrip centered`).
+- 2026-09-28: partners redesigned: the "Official partners" heading is gone (kept only as the
+  list's `aria-label`); each partner is its own white card with a larger logo (`PartnerLogo size="lg"`,
+  56–64px), name and broadcaster role, lifting on hover. Phones: two per row, an odd last card centred.
