@@ -49,6 +49,14 @@ const TOOL_LABEL: Record<string, string> = {
   get_event: "Event & fight card",
   latest_results: "Latest results",
   list_champions: "Champions",
+  fighter_stats: "Fighter stats",
+  head_to_head: "Head-to-head",
+  search_clubs: "Searched clubs",
+  get_club: "Club profile",
+  list_news: "News list",
+  get_news: "News article",
+  list_videos: "Videos",
+  federation_settings: "Weights & rules",
 };
 
 const usd = (n: number) => (n < 0.01 && n > 0 ? `$${n.toFixed(4)}` : `$${n.toFixed(2)}`);

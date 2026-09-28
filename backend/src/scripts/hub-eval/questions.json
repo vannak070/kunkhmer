@@ -58,5 +58,16 @@
   {"id": "kb-elbows-en", "lang": "en", "q": "What is Kun Khmer best known for technically?", "mustInclude": ["elbow"], "check": ["english"]},
   {"id": "kb-reamker-en", "lang": "en", "q": "Where do the Kun Kru dances come from?", "mustInclude": ["Reamker|Ramayana|teacher"], "check": ["english"]},
   {"id": "kb-khmer-rouge-en", "lang": "en", "q": "What happened to Kun Khmer under the Khmer Rouge?", "mustInclude": ["ban"], "check": ["english"]},
-  {"id": "kb-seagames-en", "lang": "en", "q": "Why was the SEA Games 2023 event called Kun Khmer?", "check": ["english", "noInternalWords"]}
+  {"id": "kb-seagames-en", "lang": "en", "q": "Why was the SEA Games 2023 event called Kun Khmer?", "check": ["english", "noInternalWords"]},
+  {"id": "b-leaders-en", "lang": "en", "q": "Who has the most wins in Kun Khmer?", "check": ["english", "noFighterLink"]},
+  {"id": "b-leaders-km", "lang": "km", "q": "តើកីឡាករណាឈ្នះច្រើនជាងគេ?", "check": ["khmer", "noFighterLink"]},
+  {"id": "b-ambiguous-en", "lang": "en", "q": "Tell me about Pich", "mustInclude": ["which"], "check": ["english"]},
+  {"id": "b-stats-en", "lang": "en", "q": "How does Pich Sambath usually win his fights?", "mustInclude": ["150-25-79|record"], "check": ["english", "fighterLink"]},
+  {"id": "b-h2h-en", "lang": "en", "q": "Have Pich Sambath and Penkak Yasin fought each other?", "check": ["english"]},
+  {"id": "b-clubs-en", "lang": "en", "q": "Which clubs are registered with the federation?", "mustInclude": ["Pich Sophann"], "check": ["english"]},
+  {"id": "b-club-contact-en", "lang": "en", "q": "How can I contact the Pich Sophann club?", "mustInclude": ["\\+?855|phone"], "check": ["english"]},
+  {"id": "b-news-en", "lang": "en", "q": "What's the latest federation news?", "mustInclude": ["/article/"], "check": ["english", "noSystemAccount"]},
+  {"id": "b-videos-en", "lang": "en", "q": "Are there any highlight videos?", "mustInclude": ["youtube|video"], "check": ["english"]},
+  {"id": "b-weights-en", "lang": "en", "q": "What weight classes does the federation use?", "mustInclude": ["kg"], "check": ["english"]},
+  {"id": "b-weights-km", "lang": "km", "q": "តើសហព័ន្ធមានប្រភេទទម្ងន់អ្វីខ្លះ?", "check": ["khmer"]}
 ]

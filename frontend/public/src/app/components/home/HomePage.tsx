@@ -216,7 +216,7 @@ function HeroStoryCard({ a }: { a: HomeArticle }) {
   );
 }
 
-function Hero({ feature, partners, onNavigate }: { feature: React.ReactNode; partners: Partner[]; onNavigate: HomePageProps["onNavigate"] }) {
+function Hero({ feature, partners }: { feature: React.ReactNode; partners: Partner[] }) {
   const { t } = useI18n();
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-[#eef3fb] to-white">
@@ -234,27 +234,6 @@ function Hero({ feature, partners, onNavigate }: { feature: React.ReactNode; par
             <h1 className="kk-display text-5xl sm:text-6xl md:text-7xl text-[var(--kk-navy)]">{t("home.heroTitle")}</h1>
             <p className="mt-5 text-lg text-gray-600 max-w-xl leading-relaxed">{t("home.tagline")}</p>
             <HubAskBox />
-            <div className="mt-7 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => onNavigate("matches")}
-                className="kk-focus inline-flex items-center gap-2 min-h-12 px-6 rounded-xl bg-[var(--kk-red)] hover:bg-[#9e1a2c] text-white font-semibold shadow-md shadow-[var(--kk-red)]/20 transition-colors"
-              >
-                {t("home.ctaEvents")}
-                <ArrowRight className="w-4 h-4" aria-hidden />
-              </button>
-              <button
-                type="button"
-                onClick={() => onNavigate("fighters")}
-                className="kk-focus inline-flex items-center min-h-12 px-6 rounded-xl bg-white border border-gray-300 hover:border-[var(--kk-blue)] text-[var(--kk-navy)] font-semibold transition-colors"
-              >
-                {t("home.ctaFighters")}
-              </button>
-            </div>
-            <Link to="/about" className="kk-focus mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[var(--kk-blue)] hover:underline underline-offset-4">
-              {t("home.newToKunKhmer")} {t("home.aboutCta")}
-              <ArrowRight className="w-4 h-4" aria-hidden />
-            </Link>
           </div>
           {feature}
         </div>
@@ -579,7 +558,7 @@ export default function HomePage(props: HomePageProps) {
 
   return (
     <div>
-      <Hero feature={feature} partners={partners} onNavigate={onNavigate} />
+      <Hero feature={feature} partners={partners} />
 
       {(news.length > 0 || eventList.length > 0 || results.length > 0) && (
         <Section tone="gray" label={t("home.resultsAndNews")}>

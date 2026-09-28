@@ -56,12 +56,12 @@ export function HubAskBox() {
         </button>
       </form>
       <div className="mt-3 flex flex-wrap gap-2">
-        {CHIPS.map((k) => (
+        {CHIPS.map((k, i) => (
           <button
             key={k}
             type="button"
             onClick={() => ask(t(k))}
-            className="kk-focus text-left text-sm px-3 py-1.5 rounded-full bg-[#eef3fb] hover:bg-[#dfe8f7] text-[var(--kk-navy)] transition-colors"
+            className={`kk-focus text-left text-sm px-3 py-1.5 rounded-full bg-[#eef3fb] hover:bg-[#dfe8f7] text-[var(--kk-navy)] transition-colors ${i > 1 ? "hidden sm:inline-block" : ""}`}
           >
             {t(k)}
           </button>
