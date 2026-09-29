@@ -142,11 +142,12 @@ and phone width in both languages.
   since Phase 5 (`features/settings.md`). Create Match / titles keep a
   separate agreed-weight list (51, 54, 57 … kg) by decision. UI says "Fight card"; code/API
   still say batch / sub_event.
-- No login rate limiting. (Fighter edits are now STAFF + own-club only.)
+- Staff login is rate-limited in memory (`lib/loginThrottle.ts`, failed attempts only; one API instance).
+  (Fighter edits are now STAFF + own-club only.)
 - Correcting a title match result to a different winner doesn't reverse the
   title change (the championship updates on the first result only).
 - `utils/api.ts` and parts of `data/` are duplicated between the two
   frontends; no frontend tests.
 - The default admin password `admin123` must be changed on any real server.
 - Deployment: README demo URLs still point at the old host; the user will set
-  up new hosting.
+  up new hosting — follow the go-live checklist in `features/public-site.md`.

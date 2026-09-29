@@ -5,23 +5,27 @@
  * "Page not found". (The old shop, cart, match-detail and partner-detail views were removed in
  * step 1 — see claude/updates/public-step1-links-honesty-cleanup.md.)
  */
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { Calendar, X } from "lucide-react";
-import { MatchesAndEvents } from "./MatchesAndEvents";
-import { NewsAndMedia, type NewsItem, type VideoItem } from "./NewsAndMedia";
-import { Partners } from "./Partners";
+import type { NewsItem, VideoItem } from "./NewsAndMedia";
+import { Loading } from "../components/LoadError";
 import { FightersDirectory } from "./FightersDirectory";
 import { NotFoundContent } from "./NotFound";
 import HomePage, { type HomeEvent, type HomeFighter } from "../components/home/HomePage";
 import { SiteHeader } from "../components/layout/SiteHeader";
 import { SiteFooter } from "../components/layout/SiteFooter";
 import { api } from "../utils/api";
-import { usePageTitle } from "../hooks/usePageTitle";
+import { usePageMeta } from "../hooks/usePageTitle";
 import { useI18n } from "../i18n/LanguageContext";
 import { partnerPath } from "../data/partners";
 import { articleTextFrom, articleVersion } from "../data/news";
 import { formatVideoDuration, formatViews } from "../utils/publicDisplay";
+
+// Sections other than Home and Fighters (the home page reuses the fighter card) load on demand.
+const MatchesAndEvents = lazy(() => import("./MatchesAndEvents").then((m) => ({ default: m.MatchesAndEvents })));
+const NewsAndMedia = lazy(() => import("./NewsAndMedia").then((m) => ({ default: m.NewsAndMedia })));
+const Partners = lazy(() => import("./Partners").then((m) => ({ default: m.Partners })));
 
 const SECTIONS = ["home", "news-events", "fighters", "matches", "strategic-partners"] as const;
 type Section = (typeof SECTIONS)[number];
@@ -123,13 +127,15 @@ export function SuperAppHome() {
     window.scrollTo(0, 0);
   }, [section]);
 
-  const TITLES: Partial<Record<Section, string>> = {
-    matches: t("nav.matches"),
-    "news-events": t("nav.news"),
-    fighters: t("nav.fighters"),
-    "strategic-partners": t("nav.partners"),
+  // Title + description per section, for search results and shared links.
+  const META: Partial<Record<Section, { title: string; description: string }>> = {
+    matches: { title: t("nav.matches"), description: t("meta.matches") },
+    "news-events": { title: t("nav.news"), description: t("meta.news") },
+    fighters: { title: t("nav.fighters"), description: t("meta.fighters") },
+    "strategic-partners": { title: t("nav.partners"), description: t("meta.partners") },
   };
-  usePageTitle(known ? TITLES[section] : t("notFound.title"));
+  const meta = known ? META[section] : { title: t("notFound.title"), description: t("notFound.text") };
+  usePageMeta({ title: meta?.title ?? null, description: meta?.description ?? null });
 
   const go = (s: string) => navigate(s === "home" ? "/" : `/${s}`);
 
@@ -179,6 +185,7 @@ export function SuperAppHome() {
 
       {section !== "home" && (
         <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
+          <Suspense fallback={<Loading />}>
           {section === "news-events" && <NewsAndMedia articles={localNews} videos={videos} fighters={fighters} loading={loadingNews} />}
           {section === "fighters" && <FightersDirectory />}
           {section === "matches" && <MatchesAndEvents />}
@@ -196,6 +203,7 @@ export function SuperAppHome() {
             />
           )}
           {!known && <NotFoundContent />}
+          </Suspense>
         </main>
       )}
 

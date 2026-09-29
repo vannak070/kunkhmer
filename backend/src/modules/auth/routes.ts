@@ -1,7 +1,7 @@
 /**
  * Auth / user management  →  /api/users/*
  *
- *   POST   /users/login    public   → { token, user }
+ *   POST   /users/login    public   → { token, user }; 429 after repeated failures (lib/loginThrottle.ts)
  *   POST   /users/logout   auth     → revoke the current token
  *   GET    /users/me       auth     → current user
  *   PUT    /users/me       auth     → edit own fullName / email
@@ -13,6 +13,7 @@
  *                          password change signs that user out everywhere)
  *   DELETE /users/:id      Super Admin (not their own account)
  */
+import { assertLoginAllowed, clearLoginFailures, recordLoginFailure } from "../../lib/loginThrottle.ts";
 import { randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import type { FastifyInstance } from "fastify";
@@ -80,10 +81,21 @@ export default async function authRoutes(app: FastifyInstance) {
     const password = input.get<string>("password");
     if (!username || !password) throw new HttpError(422, "Username and password are required");
 
+    // Brute-force protection: too many failed attempts for this IP / username → 429.
+    try {
+      assertLoginAllowed(request.ip, username);
+    } catch (err) {
+      const wait = (err as { retryAfter?: number }).retryAfter;
+      if (wait) reply.header("Retry-After", String(wait));
+      throw err;
+    }
+
     const user = await prisma.user.findFirst({ where: { username, status: "Active" } });
     if (!user || !(await bcrypt.compare(String(password), user.password_hash))) {
+      recordLoginFailure(request.ip, username);
       throw new HttpError(401, "Invalid username or password");
     }
+    clearLoginFailures(request.ip, username);
 
     const at = now();
     const updated = await prisma.user.update({ where: { id: user.id }, data: { last_login: at, updated_at: at } });

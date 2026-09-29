@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done — committed e53b4431 (2026-09-28); event-header follow-up not committed yet |
+| **Status** | Done — committed e53b4431 + 1e13e7f6 (event-header follow-up), 2026-09-28 |
 | **Jira** | n/a |
 | **Feature** | claude/features/public-site.md (detail-pages plan step 4) |
 | **Requested by** | vannak070 (2026-09-28, "go ahead with step 4"; light event header as recommended — ask again if the owner wants the dark poster back) |

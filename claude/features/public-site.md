@@ -77,6 +77,22 @@ No frontend tests. Verify in the browser at 1280×800 and 375×812, in English
 and Khmer (`claude/tests/test-admin-ui.md` pattern), and run `vite build` in the
 `kunkhmer_frontend_public` container.
 
+## Go-live checklist (hosting)
+Before the site is public (see `updates/step5a-seo-speed-login.md`):
+- **Admin password**: change `admin` / `admin123` (and any test accounts) on the live server.
+- **Backend env**: `DATABASE_URL`, `PUBLIC_SITE_URL=https://<site>` (sitemap links), `UPLOAD_DIR` on a
+  **persistent** volume (pictures), `ANTHROPIC_API_KEY` + `AI_MONTHLY_CAP_USD` if the Hub is on,
+  `TRUST_PROXY` for the host's proxy, `AI_RATE_SALT`; never commit `.env`.
+- **Fan site build env**: `SITE_URL=https://<site>` (share previews, robots) and `SITE_INDEXING=true` only when
+  ready to be found by search engines (removes `noindex`, robots.txt allows + points to the sitemap).
+- **Host routing**: `/api/*` → backend; `/sitemap.xml` → backend `/api/sitemap.xml`; every other path →
+  `index.html` (single-page app fallback, so `/fighters/...` links work on refresh). Serve the built `dist/`,
+  not the Vite dev server.
+- **Data**: add the International Partners (K-1, WKN, Kombat) on the live admin; KKF review of the knowledge
+  base Khmer text and flagged facts; English versions of Khmer news where possible.
+- **Later**: share previews with the fighter photo / event poster need a small server-side step on the host
+  (chat apps don't run JavaScript).
+
 ## Open questions / next steps
 - **Next**: public statistics (`features/statistics.md`) and the KUNKHMER HUB
   plan (knowledge base etc., `features/ai-assistant.md`) — both wait on open questions.

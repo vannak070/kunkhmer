@@ -1,15 +1,15 @@
+import type { ComponentType } from "react";
 import { createBrowserRouter, Navigate, useParams } from "react-router";
 import { getRouterBasename } from "./utils/basePath";
 import { SuperAppHome } from "./pages/SuperAppHome";
-import { SuperAppFighterDetail } from "./pages/SuperAppFighterDetail";
-import { ArticleDetail } from "./pages/ArticleDetail";
-import { AboutKunKhmer } from "./pages/AboutKunKhmer";
-import { Compare } from "./pages/Compare";
-import { Account } from "./pages/Account";
-import { EventDetail } from "./pages/EventDetail";
-import { KunKhmerHub } from "./pages/KunKhmerHub";
-import { BroadcasterPage, ClubPage, SponsorPage } from "./pages/PartnerPages";
-import { NotFound } from "./pages/NotFound";
+
+/**
+ * Every page except the home shell loads on demand, so a visitor downloads only the code for the
+ * pages they open (claude/updates/step5a-seo-speed-login.md).
+ */
+const page = <K extends string>(load: () => Promise<Record<K, ComponentType>>, name: K) => ({
+  lazy: async () => ({ Component: (await load())[name] }),
+});
 
 function LegacySuperAppRedirect() {
   const { section } = useParams();
@@ -34,11 +34,11 @@ export const router = createBrowserRouter(
   },
   {
     path: "/fighters/:id",
-    element: <SuperAppFighterDetail />,
+    ...page(() => import("./pages/SuperAppFighterDetail"), "SuperAppFighterDetail"),
   },
   {
     path: "/article/:id",
-    element: <ArticleDetail />,
+    ...page(() => import("./pages/ArticleDetail"), "ArticleDetail"),
   },
   {
     // Rankings was removed (2026-09-28) until KKF can manage official rankings.
@@ -47,11 +47,11 @@ export const router = createBrowserRouter(
   },
   {
     path: "/compare",
-    element: <Compare />,
+    ...page(() => import("./pages/Compare"), "Compare"),
   },
   {
     path: "/account",
-    element: <Account />,
+    ...page(() => import("./pages/Account"), "Account"),
   },
   {
     path: "/events",
@@ -59,27 +59,27 @@ export const router = createBrowserRouter(
   },
   {
     path: "/events/:id",
-    element: <EventDetail />,
+    ...page(() => import("./pages/EventDetail"), "EventDetail"),
   },
   {
     path: "/about",
-    element: <AboutKunKhmer />,
+    ...page(() => import("./pages/AboutKunKhmer"), "AboutKunKhmer"),
   },
   {
     path: "/hub",
-    element: <KunKhmerHub />,
+    ...page(() => import("./pages/KunKhmerHub"), "KunKhmerHub"),
   },
   {
     path: "/clubs/:slug",
-    element: <ClubPage />,
+    ...page(() => import("./pages/PartnerPages"), "ClubPage"),
   },
   {
     path: "/partners/sponsors/:slug",
-    element: <SponsorPage />,
+    ...page(() => import("./pages/PartnerPages"), "SponsorPage"),
   },
   {
     path: "/partners/broadcasters/:slug",
-    element: <BroadcasterPage />,
+    ...page(() => import("./pages/PartnerPages"), "BroadcasterPage"),
   },
   // Partner pages used to live at these addresses (the partner was only in memory).
   { path: "/club-detail", element: <Navigate to="/strategic-partners?tab=clubs" replace /> },
@@ -108,7 +108,7 @@ export const router = createBrowserRouter(
   },
   {
     path: "*",
-    element: <NotFound />,
+    ...page(() => import("./pages/NotFound"), "NotFound"),
   },
 ],
   { basename: getRouterBasename() }

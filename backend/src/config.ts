@@ -27,6 +27,12 @@ export const config = {
     : process.env.TRUST_PROXY || trustOwnProxy) as FastifyServerOptions["trustProxy"],
   /** Fan sign-in / sign-up attempts allowed per 15 minutes (per IP, and per IP + email for sign-in). */
   fanRateLimit: Number(process.env.FAN_RATE_LIMIT ?? 10),
+  /** Failed staff logins allowed per IP + username per 15 minutes. */
+  loginRateLimit: Number(process.env.LOGIN_RATE_LIMIT ?? 10),
+  /** Failed staff logins allowed per IP (any username) per 15 minutes. */
+  loginIpRateLimit: Number(process.env.LOGIN_IP_RATE_LIMIT ?? 50),
+  /** The fan site's public address, for absolute links in sitemap.xml (e.g. https://kunkhmer.com). */
+  publicSiteUrl: (process.env.PUBLIC_SITE_URL || "http://localhost:5176").replace(/\/$/, ""),
   /** "Ask Kun Khmer" AI chat. Off unless a key is set; AI_ENABLED=false forces it off (tests). */
   ai: {
     apiKey: process.env.ANTHROPIC_API_KEY ?? "",
