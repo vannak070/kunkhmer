@@ -6,5 +6,6 @@
 backend
 api-tests
 deploy/backups
+deploy/transfer
 deploy/.env
 .git

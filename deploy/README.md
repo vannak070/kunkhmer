@@ -47,10 +47,10 @@ the HTTPS certificates are issued.
 1. **Change the admin password.** Sign in at the admin with `admin` / `admin123`, then change it under
    *My profile*. Do this before anything else.
 2. Create the real staff accounts (Users) and remove any you don't need.
-3. Add the data that exists only on your computer today: International Partners (K-1, WKN, Kombat),
-   sponsors, broadcasters, clubs, fighters, fight nights, news. (Or move your local database — ask the
-   developer for a one-time copy.)
-4. Knowledge base for KUNKHMER HUB: `docker compose -f docker-compose.prod.yml exec backend node dist/scripts/seed-knowledge.js`
+3. Add your data: either copy everything from your computer in one go (see
+   [Moving your data to the server](#moving-your-data-to-the-server)), or type it in the admin.
+4. Knowledge base for KUNKHMER HUB: copied with your data. Only when starting empty:
+   `docker compose -f docker-compose.prod.yml exec backend node dist/scripts/seed-knowledge.js`
    loads the 67 starter articles as **Drafts**; publish them in the admin after KKF review.
 5. When the site is ready to be found by Google: set `SITE_INDEXING=true` in `.env` and rebuild (step 4).
 
@@ -78,14 +78,27 @@ Database changes (migrations) are applied automatically when the backend starts.
 
 ```bash
 cd kunkhmer/deploy
-docker compose -f docker-compose.prod.yml stop backend web
-# Database (replace the file name):
-docker compose -f docker-compose.prod.yml exec -T postgres \
-  pg_restore -U kunkhmer -d kunkhmer_db --clean --if-exists < backups/db_2026-10-01_0200.dump
-# Pictures (the volume is named kunkhmer-prod_uploads; files belong to the app user, id 1000):
-docker run --rm -v kunkhmer-prod_uploads:/uploads -v "$PWD/backups:/backups" alpine \
-  sh -c 'tar -xzf /backups/uploads_2026-10-01_0200.tar.gz -C /uploads && chown -R 1000:1000 /uploads'
-docker compose -f docker-compose.prod.yml start backend web
+sh restore.sh backups/db_2026-10-01_0200.dump backups/uploads_2026-10-01_0200.tar.gz
+```
+
+It asks for `yes`, takes the site offline for about a minute, replaces the database in one step (nothing
+changes if it fails) and adds the pictures. The pictures file is optional.
+
+### Moving your data to the server
+
+A one-time copy of everything you entered on your computer (clubs, fighters, fight nights, news, partners,
+knowledge base, staff accounts and all pictures). Staff and fan login sessions and the KUNKHMER HUB test
+logs stay behind. Your staff accounts keep their passwords, so change `admin` / `admin123` right after.
+
+```bash
+# On your computer, in the kunkhmer folder, with the local system running (docker compose up -d):
+sh deploy/export-local.sh
+scp -r deploy/transfer root@SERVER_IP:kunkhmer/deploy/
+
+# On the server, after the first start (step 2):
+cd kunkhmer/deploy
+sh restore.sh transfer/db_<date>.dump transfer/uploads_<date>.tar.gz
+rm -r transfer
 ```
 
 ## 6. Useful commands

@@ -18,6 +18,10 @@ image target but nothing runs the built sites, handles HTTPS, routes `/api` / `/
 - `web.Dockerfile`: builds the fan site (with `SITE_URL`, `SITE_INDEXING`) and the admin, serves them from Caddy.
 - `Caddyfile`: `SITE_DOMAIN` → fan site + `/api` + `/sitemap.xml`; `ADMIN_DOMAIN` → admin + `/api` (noindex
   header); single-page fallback; year-long cache for hashed assets, no-cache for pages; HSTS, nosniff, gzip/zstd.
+- `export-local.sh` (on the owner's computer): dev database without login sessions (staff + fans) and
+  Hub logs / rate counters, plus the pictures → `deploy/transfer/` (git-ignored, not in the image).
+- `restore.sh` (on the server): asks for `yes`, stops backend + web, `pg_restore --clean --single-transaction`,
+  adds pictures to the volume (app user), always starts the site again. Used for backups and the data copy.
 - `backup.sh`: first backup 10 min after start, then every 24 h; `sh /backup.sh now` for a one-off.
 - `.env.example` (all settings explained), `deploy/.gitignore` (`.env`, `backups/`), root `.dockerignore`,
   `backend/.dockerignore` now excludes `storage/` (pictures / DB backups never enter an image).
@@ -32,6 +36,7 @@ image target but nothing runs the built sites, handles HTTPS, routes `/api` / `/
 - [x] Admin login, picture upload stored on the volume (app user), served via the fan site, survives a backend restart;
       backend sees the visitor's IP (not Caddy's).
 - [x] Backup + test restore (28 tables; users, clubs, 14 migrations back); pictures archive contains the upload.
+- [x] One-time copy of the local data (`export-local.sh` → `restore.sh`) tested into a fresh production stack.
 - [ ] Real deployment on the owner's server (needs a VPS + domain).
 
 ## Log
@@ -40,3 +45,7 @@ image target but nothing runs the built sites, handles HTTPS, routes `/api` / `/
   (empty dump) → 10-minute first delay + `backup.sh now`; knowledge seed command for the production image
   (`node dist/scripts/seed-knowledge.js`); picture restore made one command. Test stack, volumes and images
   removed afterwards; dev environment untouched.
+- Data copy: exported the dev data (154 KB database, 4.5 MB / 21 pictures) and restored it into a fresh test
+  production stack: all rows present (1 user, 2 clubs, 5 fighters with 4 visible, 1 event, 67 articles, 3
+  international partners, 14 migrations), sessions and Hub logs empty, pictures served with the right owner,
+  admin login works; "no" cancels without stopping anything. Test stack, files and images removed.
