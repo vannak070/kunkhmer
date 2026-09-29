@@ -27,6 +27,7 @@ npm run test:api                                       # contract tests against 
 docker exec kunkhmer_backend npm run db:seed:demo -- --reset   # demo data (WIPES all data)
 cd backend && npm run typecheck                        # TypeScript check
 cd backend && npm run db:migrate                       # create a migration after editing schema.prisma
+cd deploy && docker compose -f docker-compose.prod.yml up -d --build   # production (see deploy/README.md)
 ```
 
 Postgres is on host port **5436** (5432 is taken by another project), set in
@@ -150,4 +151,4 @@ and phone width in both languages.
   frontends; no frontend tests.
 - The default admin password `admin123` must be changed on any real server.
 - Deployment: README demo URLs still point at the old host; the user will set
-  up new hosting — follow the go-live checklist in `features/public-site.md`.
+  up new hosting — `deploy/README.md` + the go-live checklist in `features/public-site.md`.

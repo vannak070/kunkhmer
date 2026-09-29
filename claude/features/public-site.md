@@ -78,7 +78,9 @@ and Khmer (`claude/tests/test-admin-ui.md` pattern), and run `vite build` in the
 `kunkhmer_frontend_public` container.
 
 ## Go-live checklist (hosting)
-Before the site is public (see `updates/step5a-seo-speed-login.md`):
+The production bundle and step-by-step guide are in `deploy/` (`deploy/README.md`, `updates/go-live-setup.md`):
+one server, Caddy with automatic HTTPS, fan site + admin subdomain, daily backups. Before the site is public
+(see also `updates/step5a-seo-speed-login.md`):
 - **Admin password**: change `admin` / `admin123` (and any test accounts) on the live server.
 - **Backend env**: `DATABASE_URL`, `PUBLIC_SITE_URL=https://<site>` (sitemap links), `UPLOAD_DIR` on a
   **persistent** volume (pictures), `ANTHROPIC_API_KEY` + `AI_MONTHLY_CAP_USD` if the Hub is on,
