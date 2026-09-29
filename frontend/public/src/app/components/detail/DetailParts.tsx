@@ -140,12 +140,13 @@ export function FaceOff({ bout }: { bout: Bout }) {
 }
 
 /** The next fight (night) as a highlighted card: date, countdown, event, face-off, link. */
-export function Spotlight({ label, date, title, subtitle, eventId, bout, extra }: {
+export function Spotlight({ label, date, title, subtitle, eventHref, bout, extra }: {
   label: string;
   date?: string;
   title: string;
   subtitle?: ReactNode;
-  eventId?: string;
+  /** Link to the event page (eventPath / eventPathById). */
+  eventHref?: string;
   bout?: Bout | null;
   extra?: ReactNode;
 }) {
@@ -164,8 +165,8 @@ export function Spotlight({ label, date, title, subtitle, eventId, bout, extra }
           </div>
           {subtitle && <div className="text-sm text-gray-700 space-y-1.5">{subtitle}</div>}
           {extra}
-          {eventId && (
-            <Link to={`/events/${eventId}`} className="kk-focus mt-auto self-start inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-[var(--kk-blue)] text-white text-sm font-semibold hover:bg-[var(--kk-navy)]">
+          {eventHref && (
+            <Link to={eventHref} className="kk-focus mt-auto self-start inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-[var(--kk-blue)] text-white text-sm font-semibold hover:bg-[var(--kk-navy)]">
               {t("fights.viewCard")} <ArrowRight className="w-4 h-4" aria-hidden />
             </Link>
           )}

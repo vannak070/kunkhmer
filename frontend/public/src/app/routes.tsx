@@ -23,7 +23,13 @@ function LegacySuperAppFighterRedirect() {
 
 function LegacySuperAppArticleRedirect() {
   const { id } = useParams();
-  return <Navigate to={`/article/${id}`} replace />;
+  return <Navigate to={`/news/${id}`} replace />;
+}
+
+// News pages were /article/<id> until 2026-09-29; the article page then switches to its readable link.
+function LegacyArticleRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/news/${id}`} replace />;
 }
 
 export const router = createBrowserRouter(
@@ -37,8 +43,12 @@ export const router = createBrowserRouter(
     ...page(() => import("./pages/SuperAppFighterDetail"), "SuperAppFighterDetail"),
   },
   {
-    path: "/article/:id",
+    path: "/news/:id",
     ...page(() => import("./pages/ArticleDetail"), "ArticleDetail"),
+  },
+  {
+    path: "/article/:id",
+    element: <LegacyArticleRedirect />,
   },
   {
     // Rankings was removed (2026-09-28) until KKF can manage official rankings.
@@ -60,6 +70,14 @@ export const router = createBrowserRouter(
   {
     path: "/events/:id",
     ...page(() => import("./pages/EventDetail"), "EventDetail"),
+  },
+  {
+    path: "/champions",
+    ...page(() => import("./pages/Champions"), "ChampionsPage"),
+  },
+  {
+    path: "/champions/:id",
+    ...page(() => import("./pages/Champions"), "ChampionPage"),
   },
   {
     path: "/about",

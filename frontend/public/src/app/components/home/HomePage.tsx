@@ -17,6 +17,7 @@ import { CONTACT_EMAIL } from "../layout/SiteFooter";
 import { readTimeMinutes, textLang } from "../../utils/publicDisplay";
 import { HubAskBox } from "../hub/HubAskBox";
 import kkfLogo from "../../../assets/kkf-logo-192.png";
+import { articlePath } from "../../data/links";
 
 export interface HomeArticle {
   id: string;
@@ -349,7 +350,7 @@ function NewsMeta({ a, className = "" }: { a: HomeArticle; className?: string })
 
 function NewsCard({ a }: { a: HomeArticle }) {
   return (
-    <Link to={`/article/${a.id}`} className="kk-focus group flex flex-col bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
+    <Link to={articlePath(a)} className="kk-focus group flex flex-col bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
       <div className="aspect-[16/9] overflow-hidden bg-gray-200">
         <Picture src={a.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 kk-motion" />
       </div>
@@ -374,7 +375,7 @@ function NewsGrid({ articles }: { articles: HomeArticle[] }) {
   const [lead, ...rest] = articles;
   return (
     <div className="grid grid-cols-1 gap-4">
-      <Link to={`/article/${lead.id}`} className="kk-focus group block bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
+      <Link to={articlePath(lead)} className="kk-focus group block bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
         <div className="aspect-[16/9] overflow-hidden bg-gray-200">
           <Picture src={lead.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 kk-motion" />
         </div>
@@ -388,7 +389,7 @@ function NewsGrid({ articles }: { articles: HomeArticle[] }) {
         <ul className="grid grid-cols-1 gap-4 content-start">
           {rest.map((a) => (
             <li key={a.id}>
-              <Link to={`/article/${a.id}`} className="kk-focus group flex gap-4 items-center bg-white rounded-2xl border border-gray-200 p-3 hover:shadow-md transition-shadow">
+              <Link to={articlePath(a)} className="kk-focus group flex gap-4 items-center bg-white rounded-2xl border border-gray-200 p-3 hover:shadow-md transition-shadow">
                 <Picture src={a.image} className="w-28 h-20 md:w-32 md:h-24 rounded-xl object-cover bg-gray-200 shrink-0" />
                 <div className="min-w-0">
                   <NewsMeta a={a} />

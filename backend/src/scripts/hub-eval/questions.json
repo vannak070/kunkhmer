@@ -66,7 +66,7 @@
   {"id": "b-h2h-en", "lang": "en", "q": "Have Pich Sambath and Penkak Yasin fought each other?", "check": ["english"]},
   {"id": "b-clubs-en", "lang": "en", "q": "Which clubs are registered with the federation?", "mustInclude": ["Pich Sophann"], "check": ["english"]},
   {"id": "b-club-contact-en", "lang": "en", "q": "How can I contact the Pich Sophann club?", "mustInclude": ["\\+?855|phone"], "check": ["english"]},
-  {"id": "b-news-en", "lang": "en", "q": "What's the latest federation news?", "mustInclude": ["/article/"], "check": ["english", "noSystemAccount"]},
+  {"id": "b-news-en", "lang": "en", "q": "What's the latest federation news?", "mustInclude": ["/news/"], "check": ["english", "noSystemAccount"]},
   {"id": "b-videos-en", "lang": "en", "q": "Are there any highlight videos?", "mustInclude": ["youtube|video"], "check": ["english"]},
   {"id": "b-weights-en", "lang": "en", "q": "What weight classes does the federation use?", "mustInclude": ["kg"], "check": ["english"]},
   {"id": "b-weights-km", "lang": "km", "q": "តើសហព័ន្ធមានប្រភេទទម្ងន់អ្វីខ្លះ?", "check": ["khmer"]}

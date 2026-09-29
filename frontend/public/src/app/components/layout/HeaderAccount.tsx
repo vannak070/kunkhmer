@@ -4,6 +4,7 @@ import { Bell, CheckCheck, Trophy, Swords, UserRound } from "lucide-react";
 import { useFan } from "../../contexts/FanContext";
 import { useI18n } from "../../i18n/LanguageContext";
 import type { FanNotification } from "../../utils/fanApi";
+import { eventPath } from "../../data/links";
 
 /** Turns a notification's stored facts into a localized title, body and link. */
 export function useNotificationText() {
@@ -12,7 +13,7 @@ export function useNotificationText() {
     const d = n.data;
     const fighter = localName(d.fighterName, d.fighterNameKhmer);
     const opponent = localName(d.opponentName, d.opponentNameKhmer);
-    const href = d.eventId ? `/events/${d.eventId}` : `/fighters/${d.fighterId}`;
+    const href = d.eventId ? eventPath({ id: d.eventId, name: d.eventName }) : `/fighters/${d.fighterId}`;
     if (n.type === "bout_scheduled") {
       return {
         title: t("notify.scheduledTitle", { fighter }),

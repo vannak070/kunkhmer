@@ -23,15 +23,39 @@ describe("sitemap.xml", () => {
     }
   });
 
-  it("lists published articles only", async () => {
-    const draft = (await post("/news", { title: `Draft ${uniq()}`, status: "Draft" }, a.officer.token)).body.data.id;
-    const published = (await post("/news", { title: `Live ${uniq()}`, status: "Published" }, a.officer.token)).body.data.id;
+  it("lists published articles only, with readable links", async () => {
+    const tag = uniq();
+    const draft = (await post("/news", { title: `Draft ${tag}`, status: "Draft" }, a.officer.token)).body.data.id;
+    const published = (await post("/news", { title: `Live ${tag}`, status: "Published" }, a.officer.token)).body.data.id;
     let body = (await sitemap()).body;
-    expect(body).toContain(`/article/${published}</loc>`);
-    expect(body).not.toContain(`/article/${draft}`);
+    // /news/<title words>-<first 8 of the id>, the same rule as the fan site (data/links.ts).
+    expect(body).toContain(`/news/live-${tag}-${published.slice(0, 8)}</loc>`);
+    expect(body).not.toContain(draft.slice(0, 8));
     await put(`/news/${draft}`, { status: "Published" }, a.officer.token);
     body = (await sitemap()).body;
-    expect(body).toContain(`/article/${draft}</loc>`);
+    expect(body).toContain(`/news/draft-${tag}-${draft.slice(0, 8)}</loc>`);
+  });
+
+  it("uses the English title, or the date for a Khmer-only title", async () => {
+    const both = (await post("/news", { title: "កីឡាករ ត្រឡប់មកវិញ", titleEn: "Fighters Return Home!", publishDate: "2026-06-16", status: "Published" }, a.officer.token)).body.data.id;
+    const khmer = (await post("/news", { title: "កីឡាករ ត្រឡប់មកវិញ", publishDate: "2026-06-16", status: "Published" }, a.officer.token)).body.data.id;
+    const body = (await sitemap()).body;
+    expect(body).toContain(`/news/fighters-return-home-${both.slice(0, 8)}</loc>`);
+    expect(body).toContain(`/news/2026-06-16-${khmer.slice(0, 8)}</loc>`);
+  });
+
+  it("lists the champions page and each approved title", async () => {
+    const tag = uniq();
+    const id = (await post("/champions", { titleName: `KKF National ${tag} 60kg`, championType: "KKF National", weightClass: 60 }, a.admin.token)).body.data.id;
+    const body = (await sitemap()).body;
+    expect(body).toContain("/champions</loc>");
+    expect(body).toContain(`/champions/kkf-national-${tag}-60kg-${id.slice(0, 8)}</loc>`);
+  });
+
+  it("lists public events with readable links", async () => {
+    const id = (await post("/events", { name: `Fight Night ${uniq()}`, date: "2026-11-06", location: "Phnom Penh", status: "Published" }, a.admin.token)).body.data.id;
+    const body = (await sitemap()).body;
+    expect(body).toMatch(new RegExp(`/events/fight-night-[0-9a-f]{8}-${id.slice(0, 8)}</loc>`));
   });
 });
 

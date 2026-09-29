@@ -24,15 +24,16 @@ Shape: snake_case row (`weight_class` number, `defense_count`,
 `approval_status`).
 
 ## Business rules
-- Titles change automatically through title match results — see
-  `claude/features/matches-results.md` (first result only).
+- Titles change automatically through title match results; a corrected result moves the title and
+  replays later title fights — see `claude/features/matches-results.md`.
 - `current_holder_name` is stored; the `*_db` fields come from the live fighter record.
 
 ## Frontend
 - Admin: list at `/home/program?tab=champions` (`Champion.tsx` embedded in
   `ProgramDashboard.tsx`), `CreateChampion.tsx`,
   `ChampionDetail.tsx` (`/home/champion/:id`), `ChampionHistory.tsx`.
-- Public: champions/rankings sections in `SuperAppHome.tsx`.
+- Public: `/champions` and `/champions/<title>-<code>` (`pages/Champions.tsx`, `features/public-champions.md`);
+  Champion badges on fighter, club and Fighters pages.
 
 ## Tests
 `api-tests/tests/champions.test.ts` (+ title logic in `matches.test.ts`)

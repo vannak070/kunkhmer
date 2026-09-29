@@ -28,6 +28,7 @@ import { weightClassFor } from "../data/weightClasses";
 import { usePageMeta } from "../hooks/usePageTitle";
 import { textLang } from "../utils/publicDisplay";
 import { KM_MONTHS, useI18n } from "../i18n/LanguageContext";
+import { eventPath, eventPathById } from "../data/links";
 
 // ─── Loading one partner ─────────────────────────────────────────────────────
 
@@ -135,7 +136,7 @@ function EventRows({ events, data, skip }: { events: any[]; data: FanData | null
     const bouts = data?.bouts.filter((b) => b.eventId === e.id).length ?? 0;
     return (
       <li key={e.id}>
-        <Link to={`/events/${e.id}`} className="kk-focus group flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 hover:border-[var(--kk-blue)]/40 hover:shadow-sm transition">
+        <Link to={eventPath(e)} className="kk-focus group flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 hover:border-[var(--kk-blue)]/40 hover:shadow-sm transition">
           <DateBadge date={e.date} />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold text-gray-500 flex flex-wrap items-center gap-2">{formatDate(e.date, "weekday")}<CountdownChip date={e.date} /></p>
@@ -268,7 +269,7 @@ function ClubView({ club }: { club: any }) {
                 label={t("club.nextFight")}
                 date={next.date}
                 title={nextEvent?.name || next.eventName || next.cardName || t("event.fightNight")}
-                eventId={next.eventId}
+                eventHref={next.eventId ? eventPathById(data?.events, next.eventId) : undefined}
                 bout={next}
                 subtitle={
                   <>
@@ -443,7 +444,7 @@ function NightSpotlight({ label, event, data }: { label: string; event: any; dat
       label={label}
       date={event.date}
       title={event.name}
-      eventId={event.id}
+      eventHref={eventPath(event)}
       bout={mainEventBout(bouts)}
       subtitle={
         <>

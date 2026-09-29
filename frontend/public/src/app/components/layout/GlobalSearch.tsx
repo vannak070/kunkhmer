@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { Calendar, FileText, Loader2, Search, User, X } from "lucide-react";
+import { Building2, Calendar, FileText, Handshake, Loader2, Search, User, X } from "lucide-react";
 import { api } from "../../utils/api";
 import { getFighterSlug } from "../../data/masterData";
 import { useI18n } from "../../i18n/LanguageContext";
 import type { MessageKey } from "../../i18n/messages";
+import { articlePath, eventPath } from "../../data/links";
+import { isRealImage, partnerPath } from "../../data/partners";
 
-type ResultKind = "fighter" | "event" | "article";
+type ResultKind = "fighter" | "event" | "article" | "club" | "partner";
 type Scope = "all" | ResultKind;
 
 interface SearchItem {
@@ -14,8 +16,12 @@ interface SearchItem {
   id: string;
   title: string;
   titleKm?: string;
-  /** Fighter record, event venue or article category. */
+  /** Fighter record, event venue, article category or club location. */
   detail?: string;
+  /** Partner type label (sponsor, broadcaster, international partner). */
+  detailKey?: MessageKey;
+  /** Logos are shown whole, photos fill the thumbnail. */
+  logo?: boolean;
   /** Fighter club. */
   club?: string;
   date?: string;
@@ -24,23 +30,34 @@ interface SearchItem {
   haystack: string;
 }
 
-const SCOPES: Scope[] = ["all", "fighter", "event", "article"];
+const SCOPES: Scope[] = ["all", "fighter", "event", "article", "club", "partner"];
 const SCOPE_LABEL: Record<Scope, MessageKey> = {
   all: "search.scope.all",
   fighter: "search.scope.fighter",
   event: "search.scope.event",
   article: "search.scope.article",
+  club: "search.scope.club",
+  partner: "search.scope.partner",
 };
-const KIND_ICON = { fighter: User, event: Calendar, article: FileText };
-const MAX_PER_KIND = 4;
+const KIND_ICON = { fighter: User, event: Calendar, article: FileText, club: Building2, partner: Handshake };
+const picture = (...urls: (string | null | undefined)[]) => urls.find((u) => isRealImage(u)) || undefined;
+const MAX_PER_KIND = 3;
 
 // Loaded once per page session and shared by every header instance.
 let indexPromise: Promise<SearchItem[]> | null = null;
 
 function loadIndex(): Promise<SearchItem[]> {
   if (!indexPromise) {
-    indexPromise = Promise.allSettled([api.fighters.list(), api.events.list(), api.news.list()]).then(
-      ([fighters, events, news]) => {
+    indexPromise = Promise.allSettled([
+      api.fighters.list(),
+      api.events.list(),
+      api.news.list(),
+      api.clubs.list(),
+      api.settings.listSponsors(),
+      api.settings.listBroadcastStations(),
+      api.settings.listPartnerOrganizations(),
+    ]).then(
+      ([fighters, events, news, clubs, sponsors, broadcasters, organizations]) => {
         const items: SearchItem[] = [];
         if (fighters.status === "fulfilled") {
           for (const f of fighters.value || []) {
@@ -67,7 +84,7 @@ function loadIndex(): Promise<SearchItem[]> {
               detail: e.location,
               date: e.date,
               image: e.image,
-              href: `/events/${e.id}`,
+              href: eventPath(e),
               haystack: [e.name, e.location, e.description].filter(Boolean).join(" ").toLowerCase(),
             });
           }
@@ -84,8 +101,44 @@ function loadIndex(): Promise<SearchItem[]> {
               detail: a.category,
               date: a.publish_date || a.publishDate,
               image: a.featured_image || a.featuredImage,
-              href: `/article/${a.id}`,
+              href: articlePath(a),
               haystack: [a.title, a.subtitle, a.title_en, a.subtitle_en, a.category].filter(Boolean).join(" ").toLowerCase(),
+            });
+          }
+        }
+        if (clubs.status === "fulfilled") {
+          for (const c of clubs.value || []) {
+            if (c.status === "inactive" || !c.name) continue;
+            items.push({
+              kind: "club",
+              id: c.id,
+              title: c.name,
+              titleKm: c.name_khmer,
+              detail: c.location || undefined,
+              image: picture(c.image),
+              href: partnerPath("club", c),
+              haystack: [c.name, c.name_khmer, c.location, c.head_coach].filter(Boolean).join(" ").toLowerCase(),
+            });
+          }
+        }
+        const partners: [PromiseSettledResult<any[]>, MessageKey, (p: any) => string][] = [
+          [sponsors, "partnerPage.officialSponsor", (p) => partnerPath("sponsor", p)],
+          [broadcasters, "partnerPage.broadcaster", (p) => partnerPath("broadcaster", p)],
+          [organizations, "partners.internationalBadge", (p) => `/strategic-partners?tab=international&org=${p.id}`],
+        ];
+        for (const [rows, detailKey, href] of partners) {
+          if (rows.status !== "fulfilled") continue;
+          for (const p of rows.value || []) {
+            if (p.active === false || !p.name) continue;
+            items.push({
+              kind: "partner",
+              id: p.id,
+              title: p.name,
+              detailKey,
+              image: picture(p.logo_url, p.image),
+              logo: true,
+              href: href(p),
+              haystack: [p.name, p.short_name, p.industry, p.country].filter(Boolean).join(" ").toLowerCase(),
             });
           }
         }
@@ -111,7 +164,11 @@ export function GlobalSearch({ onNavigate, className = "" }: GlobalSearchProps) 
       ? [item.detail && `${item.detail} ${t("search.recordSuffix")}`, item.club].filter(Boolean).join(" · ")
       : item.kind === "event"
         ? [formatDate(item.date), item.detail].filter(Boolean).join(" · ")
-        : [item.detail, formatDate(item.date)].filter(Boolean).join(" · ");
+        : item.kind === "article"
+          ? [item.detail, formatDate(item.date)].filter(Boolean).join(" · ")
+          : item.detailKey
+            ? t(item.detailKey)
+            : item.detail || "";
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<Scope>("all");
   const [open, setOpen] = useState(false);
@@ -133,8 +190,8 @@ export function GlobalSearch({ onNavigate, className = "" }: GlobalSearchProps) 
       (item) => (scope === "all" || item.kind === scope) && terms.every((t) => item.haystack.includes(t))
     );
     if (scope !== "all") return matches.slice(0, 8);
-    // Keep the grouped order fighters → events → news, capped per group.
-    return (["fighter", "event", "article"] as ResultKind[]).flatMap((k) =>
+    // Keep the grouped order fighters → clubs → events → news → partners, capped per group.
+    return (["fighter", "club", "event", "article", "partner"] as ResultKind[]).flatMap((k) =>
       matches.filter((m) => m.kind === k).slice(0, MAX_PER_KIND)
     );
   }, [index, q, scope]);
@@ -273,7 +330,7 @@ export function GlobalSearch({ onNavigate, className = "" }: GlobalSearchProps) 
                   >
                     <div className="w-10 h-10 rounded-lg bg-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0">
                       {item.image ? (
-                        <img src={item.image} alt="" className="w-full h-full object-cover" loading="lazy" />
+                        <img src={item.image} alt="" className={`w-full h-full ${item.logo ? "object-contain p-1 bg-white" : "object-cover"}`} loading="lazy" />
                       ) : (
                         <Icon className="w-4 h-4 text-gray-400" />
                       )}

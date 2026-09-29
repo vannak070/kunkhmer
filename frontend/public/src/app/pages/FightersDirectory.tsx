@@ -139,6 +139,11 @@ export function FightersDirectory() {
             ))}
           </div>
         )}
+        {data.champions.length > 0 && (
+          <Link to="/champions" className="kk-focus mt-5 inline-flex items-center gap-2 h-11 px-4 rounded-xl bg-white border border-[#ecdcae] text-sm font-semibold text-[#7A5B00] hover:border-[#f2c94c] hover:shadow-sm transition">
+            <Crown className="w-4 h-4" aria-hidden /> {t("champions.fightersLink")}
+          </Link>
+        )}
       </section>
 
       <DemoBanner show={data.demo} />

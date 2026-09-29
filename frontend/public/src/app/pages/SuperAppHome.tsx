@@ -21,6 +21,7 @@ import { useI18n } from "../i18n/LanguageContext";
 import { partnerPath } from "../data/partners";
 import { articleTextFrom, articleVersion } from "../data/news";
 import { formatVideoDuration, formatViews } from "../utils/publicDisplay";
+import { eventPathById } from "../data/links";
 
 // Sections other than Home and Fighters (the home page reuses the fighter card) load on demand.
 const MatchesAndEvents = lazy(() => import("./MatchesAndEvents").then((m) => ({ default: m.MatchesAndEvents })));
@@ -177,7 +178,7 @@ export function SuperAppHome() {
           videos={videos.map((v) => ({ ...v, thumbnail: v.thumbnail || "" }))}
           sponsors={sponsors}
           organizations={organizations}
-          onOpenEvent={(id) => navigate(`/events/${id}`)}
+          onOpenEvent={(id) => navigate(eventPathById(events, id))}
           onPlayVideo={(id) => setSelectedVideo(videos.find((v) => v.id === id) ?? null)}
           onNavigate={(s) => go(s)}
         />

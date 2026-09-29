@@ -28,6 +28,8 @@ import { api } from "../utils/api";
 import { usePageMeta } from "../hooks/usePageTitle";
 import { formatVideoDuration, textLang } from "../utils/publicDisplay";
 import { useI18n } from "../i18n/LanguageContext";
+import { championPath, eventPathById } from "../data/links";
+import { nationalityLabel, styleLabel } from "../data/fighterLabels";
 
 interface Video {
   id: string;
@@ -179,9 +181,13 @@ export function SuperAppFighterDetail() {
                       <NoPhoto name={fighter.name} />
                     )}
                     {view.titles.length > 0 && (
-                      <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f2c94c] text-[#3d2e00] text-xs font-bold shadow">
+                      <Link
+                        to={view.titles.length === 1 ? championPath(view.titles[0]) : "/champions"}
+                        title={view.titles.map((c: any) => c.title_name).join(", ")}
+                        className="kk-focus absolute top-3 left-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f2c94c] text-[#3d2e00] text-xs font-bold shadow hover:bg-[#f5d56b]"
+                      >
                         <Crown className="w-3.5 h-3.5" aria-hidden /> {t("fighterPage.champion")}
-                      </span>
+                      </Link>
                     )}
                   </div>
 
@@ -203,7 +209,7 @@ export function SuperAppFighterDetail() {
                       )}
                       {view.weightKg && <li className="inline-flex items-center gap-2"><Scale className={`${iconCls} text-[var(--kk-blue)]`} aria-hidden />{formatWeight(view.weightKg)}</li>}
                       {view.age != null && <li className="inline-flex items-center gap-2"><CalendarDays className={`${iconCls} text-[var(--kk-blue)]`} aria-hidden />{t("fighterPage.age", { n: formatNumber(view.age) })}</li>}
-                      {view.nationality && <li className="inline-flex items-center gap-2"><Flag className={`${iconCls} text-[var(--kk-blue)]`} aria-hidden />{view.nationality === "Cambodian" ? "🇰🇭 " : ""}{view.nationality}</li>}
+                      {view.nationality && <li className="inline-flex items-center gap-2"><Flag className={`${iconCls} text-[var(--kk-blue)]`} aria-hidden />{view.nationality === "Cambodian" ? "🇰🇭 " : ""}{nationalityLabel(t, view.nationality)}</li>}
                     </ul>
 
                     {view.titles.length > 0 && (
@@ -271,7 +277,7 @@ export function SuperAppFighterDetail() {
                       label={t("next.title")}
                       date={view.next.bout.date}
                       title={view.nextEvent?.name || view.next.bout.eventName || view.next.bout.cardName || t("event.fightNight")}
-                      eventId={view.next.bout.eventId}
+                      eventHref={view.next.bout.eventId ? eventPathById(data?.events, view.next.bout.eventId) : undefined}
                       bout={view.next.bout}
                       subtitle={
                         <>
@@ -351,8 +357,8 @@ export function SuperAppFighterDetail() {
                     {view.height && <DetailRow icon={<Ruler className={iconCls} />} label={t("fighters.height")}>{`${formatNumber(view.height)} cm${lang === "en" ? ` (${Math.floor(view.height / 2.54 / 12)}′${Math.round((view.height / 2.54) % 12)}″)` : ""}`}</DetailRow>}
                     {view.age != null && <DetailRow icon={<CalendarDays className={iconCls} />} label={t("fighters.age")}>{t("fighterPage.age", { n: formatNumber(view.age) })}</DetailRow>}
                     {fighter.province && <DetailRow icon={<MapPin className={iconCls} />} label={t("fighterPage.province")}><span lang={textLang(fighter.province)}>{fighter.province}</span></DetailRow>}
-                    {view.nationality && <DetailRow icon={<Flag className={iconCls} />} label={t("fighterPage.nationality")}>{view.nationality}</DetailRow>}
-                    {view.styles.length > 0 && <DetailRow icon={<Flame className={iconCls} />} label={t("fighters.style")}><span lang={textLang(fighter.style)} className="capitalize">{view.styles.join(", ")}</span></DetailRow>}
+                    {view.nationality && <DetailRow icon={<Flag className={iconCls} />} label={t("fighterPage.nationality")}>{nationalityLabel(t, view.nationality)}</DetailRow>}
+                    {view.styles.length > 0 && <DetailRow icon={<Flame className={iconCls} />} label={t("fighters.style")}><span>{view.styles.map((s: string) => styleLabel(t, s)).join(", ")}</span></DetailRow>}
                     {fighter.stance && <DetailRow icon={<User className={iconCls} />} label={t("fighters.stance")}>{fighter.stance}</DetailRow>}
                   </SideCard>
                   <HubAskAbout

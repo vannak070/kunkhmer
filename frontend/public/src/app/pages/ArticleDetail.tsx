@@ -11,6 +11,7 @@ import { useI18n } from "../i18n/LanguageContext";
 import { publicName, readTimeMinutes } from "../utils/publicDisplay";
 import { articleTextFrom, articleVersion, hasEnglish } from "../data/news";
 import { Languages } from "lucide-react";
+import { articlePath, findByLink } from "../data/links";
 
 interface NewsArticle {
   id: string;
@@ -50,10 +51,13 @@ export function ArticleDetail() {
       if (!id) return;
       setLoading(true);
       try {
-        const [specificArticle, allArticles] = await Promise.all([
-          api.news.get(id),
-          api.news.list()
-        ]);
+        // /news/<words>-<code>, or the full id from older links (then switched to the readable link).
+        const allArticles = await api.news.list();
+        const hit = findByLink(allArticles, id);
+        const specificArticle = hit ? await api.news.get(hit.id) : null;
+        if (specificArticle && window.location.pathname !== articlePath(specificArticle)) {
+          navigate(articlePath(specificArticle), { replace: true });
+        }
         
         if (specificArticle && (!specificArticle.status || specificArticle.status === "Published")) {
           const mappedSpecific: NewsArticle = {
@@ -73,7 +77,7 @@ export function ArticleDetail() {
 
         if (allArticles) {
           const mappedAll = allArticles
-            .filter((art: any) => art.id !== id && (!art.status || art.status === "Published"))
+            .filter((art: any) => art.id !== hit?.id && (!art.status || art.status === "Published"))
             .map((art: any) => ({
               id: art.id,
               title: art.title,
@@ -252,7 +256,7 @@ export function ArticleDetail() {
               {relatedArticles.map((rel) => (
                 <Link
                   key={rel.id}
-                  to={`/article/${rel.id}`}
+                  to={articlePath(rel)}
                   className="bg-white rounded-2xl overflow-hidden border border-gray-200 hover:border-primary/20 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col group"
                 >
                   <div className={`h-44 relative overflow-hidden ${rel.image ? "bg-gray-900" : "bg-gradient-to-br from-[#1a4797] to-[#24336f]"}`}>

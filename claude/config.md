@@ -145,8 +145,6 @@ and phone width in both languages.
   still say batch / sub_event.
 - Staff login is rate-limited in memory (`lib/loginThrottle.ts`, failed attempts only; one API instance).
   (Fighter edits are now STAFF + own-club only.)
-- Correcting a title match result to a different winner doesn't reverse the
-  title change (the championship updates on the first result only).
 - `utils/api.ts` and parts of `data/` are duplicated between the two
   frontends; no frontend tests.
 - The default admin password `admin123` must be changed on any real server.

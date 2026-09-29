@@ -8,6 +8,7 @@ import {
   type FighterProfile, type MetricDef,
 } from "../../data/matchup";
 import { OutcomeBadge, useResultText } from "./FanWidgets";
+import { nationalityLabel } from "../../data/fighterLabels";
 
 const RED = "#DC2626";
 const BLUE = "#2563EB";
@@ -182,7 +183,7 @@ export function MatchupView({ data, redId, blueId }: { data: FanData; redId: str
           <TaleRow label={t("matchup.age")} red={red.age != null ? String(red.age) : ""} blue={blue.age != null ? String(blue.age) : ""} />
           <TaleRow label={t("matchup.height")} red={height(red.heightCm)} blue={height(blue.heightCm)} lead={edge(red.heightCm, blue.heightCm)} />
           <TaleRow label={t("matchup.weight")} red={formatWeight(red.weightKg)} blue={formatWeight(blue.weightKg)} />
-          <TaleRow label={t("matchup.nationality")} red={red.nationality || ""} blue={blue.nationality || ""} />
+          <TaleRow label={t("matchup.nationality")} red={red.nationality ? nationalityLabel(t, red.nationality) : ""} blue={blue.nationality ? nationalityLabel(t, blue.nationality) : ""} />
           <TaleRow label={t("matchup.club")} red={red.club || ""} blue={blue.club || ""} />
         </section>
 

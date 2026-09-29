@@ -34,12 +34,15 @@ Match response: snake_case row + nested `sub_event`, `fighter_a`/`fighter_b`
 
 ## Business rules (results — `results.ts`, one transaction)
 1. Upsert the bout result, set match `Completed` + `winner_id`.
-2. Title match (`is_title_match` + `championship_id`), **first result only**:
-   vacant title → winner crowned ("Crowned New Champion"); holder wins →
-   `defense_count + 1` ("Won"); holder loses → "Lost" logged, winner crowned,
-   count reset. A draw changes nothing.
+2. Title match (`is_title_match` + `championship_id`): vacant title → winner crowned ("Crowned New
+   Champion"); holder wins → `defense_count + 1` ("Won"); holder loses → "Lost" logged, winner crowned,
+   count reset. A draw changes nothing, and so does a fight the current holder isn't in. The belt's holder
+   fields from just before are stored in `championship_changes`.
 3. Recalculate both fighters' `record` from all their completed matches.
-- Re-submitting a result updates the bout and records but never re-applies the title logic.
+- Re-submitting a title result (a correction) puts the belt back as it was before that fight, removes the
+  history of this and every later title fight for the belt and applies them again in order — a changed
+  winner moves the title; the same result changes nothing (`updates/title-result-corrections.md`).
+  Manual holder edits made in between are replaced. The admin match page asks to confirm a winner change.
 
 ## Frontend
 - Admin: `CreateBatch.tsx`, `BatchDetail.tsx`, `CreateMatchFromBatch.tsx`,
@@ -53,5 +56,4 @@ Match response: snake_case row + nested `sub_event`, `fighter_a`/`fighter_b`
 `api-tests/tests/matches.test.ts`
 
 ## Open questions / gaps
-- Correcting a title result to a different winner doesn't reverse the title
-  (needs an explicit "correct title result" flow).
+- None open.

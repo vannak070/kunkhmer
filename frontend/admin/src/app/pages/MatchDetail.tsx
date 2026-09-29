@@ -5,6 +5,7 @@ import {
   Trophy, Users, Shield, Edit2, Save, X, Video, Clock, AlertCircle
 } from "lucide-react";
 import { api } from "../utils/api";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { useOfficials } from "../hooks/useOfficials";
 import { toast } from "sonner";
 import { clsx } from "clsx";
@@ -19,6 +20,8 @@ export function MatchDetail() {
 
   // Result editing state
   const [isEditingResult, setIsEditingResult] = useState(false);
+  // Changing the winner of a completed title fight moves the belt, so staff confirm it first.
+  const [confirmTitleChange, setConfirmTitleChange] = useState(false);
   const [result, setResult] = useState({
     winner: "",
     method: "",
@@ -35,7 +38,7 @@ export function MatchDetail() {
           const mappedMatch = {
             ...data,
             matchNumber: `MATCH-${data.id.slice(-6).toUpperCase()}`,
-            matchType: data.is_championship_bout ? "🏆 Championship" : "Standard Card",
+            matchType: data.isTitleMatch ? "🏆 Title Fight" : "Standard Fight",
             rounds: data.rounds,
             agreedWeight: data.agreed_weight,
             fighterA: {
@@ -113,11 +116,11 @@ export function MatchDetail() {
     : [];
 
   const getMatchTypeBadge = () => {
-    if (match?.is_championship_bout) return "Championship";
-    return "Ranking Fight";
+    if (match?.isTitleMatch) return match.championshipTitleName ? `Title Fight · ${match.championshipTitleName}` : "Title Fight";
+    return "Standard Fight";
   };
 
-  const handleSaveResult = async () => {
+  const handleSaveResult = async (confirmed = false) => {
     if (!id || !match) return;
 
     try {
@@ -132,6 +135,12 @@ export function MatchDetail() {
         winnerId = null;
         winnerMethod = result.winner;
       }
+
+      if (!confirmed && match.isTitleMatch && match.result && (match.winner_id ?? null) !== winnerId) {
+        setConfirmTitleChange(true);
+        return;
+      }
+      setConfirmTitleChange(false);
 
       await api.matches.saveResult(id, {
         winnerId,
@@ -537,7 +546,7 @@ export function MatchDetail() {
                 {/* Action Buttons */}
                 <div className="flex items-center gap-3 pt-6 border-t border-[#E0E0E0] mt-6">
                   <button
-                    onClick={handleSaveResult}
+                    onClick={() => handleSaveResult()}
                     disabled={!result.winner}
                     className={clsx(
                       "inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow-sm",
@@ -598,6 +607,22 @@ export function MatchDetail() {
           </div>
         </div>
       </div>
+
+      <Dialog open={confirmTitleChange} onOpenChange={setConfirmTitleChange}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Change the winner of a title fight?</DialogTitle>
+            <DialogDescription>
+              This is a title fight. Changing the winner will change who holds {match.championshipTitleName || "the title"}, and
+              any later title fights for this belt are applied again with their saved results.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <button type="button" onClick={() => setConfirmTitleChange(false)} className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancel</button>
+            <button type="button" onClick={() => handleSaveResult(true)} className="h-11 px-5 rounded-xl bg-primary hover:bg-[#083073] text-white text-sm font-semibold">Change winner</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

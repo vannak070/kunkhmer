@@ -1,13 +1,14 @@
 /**
- * Public event page at /events/:id in the site's light style: poster (or the main-event face-off),
+ * Public event page at /events/<name>-<code> (data/links.ts) in the site's light style: poster (or the main-event face-off),
  * date / venue / broadcaster, countdown, key numbers, then Fight card · Results · Where to watch,
  * each with its own URL (?view=card|results|watch). A tab without data is hidden. A past night
  * without results says so. Events store a calendar day only, so the countdown is in days.
  * See claude/updates/event-compare-articles.md.
  */
 import { LoadError } from "../components/LoadError";
-import { useMemo, useState, type ReactNode } from "react";
-import { Link, useParams, useSearchParams } from "react-router";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
+import { eventPath, findByLink } from "../data/links";
 import { ArrowLeft, Building2, Calendar, Clock, Crown, MapPin, Swords, Tv } from "lucide-react";
 import { SiteHeader } from "../components/layout/SiteHeader";
 import { SiteFooter } from "../components/layout/SiteFooter";
@@ -46,13 +47,20 @@ function groupByCard(bouts: Bout[]): CardGroup[] {
 }
 
 export function EventDetail() {
-  const { id } = useParams();
+  const { id: key } = useParams();
   const { t, tn, formatDate } = useI18n();
   const data = useFanData();
   const [params, setParams] = useSearchParams();
   const [widePoster, setWidePoster] = useState(false);
 
-  const event = data?.events.find((e: any) => e.id === id);
+  // /events/<words>-<code>, or the full id from older links (then switched to the readable link).
+  const event = findByLink(data?.events, key);
+  const id = event?.id;
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (event && location.pathname !== eventPath(event)) navigate({ pathname: eventPath(event), search: location.search }, { replace: true });
+  }, [event, location.pathname]);
   const bouts = useMemo(() => (data && id ? eventBouts(data, id) : []), [data, id]);
   const completed = bouts.filter((b) => b.completed);
   const main = mainEventBout(bouts);

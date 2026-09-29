@@ -341,6 +341,81 @@ describe("title matches update the championship registry", () => {
   });
 });
 
+describe("correcting a title fight result", () => {
+  async function newTitle(holderId: string | null = null) {
+    const res = await post("/champions", { titleName: `Title ${uniq()}`, championType: "National", weightClass: 60, currentHolderId: holderId, status: holderId ? "Active" : "Vacant" }, a.admin.token);
+    return res.body.data.id as string;
+  }
+  const batchOn = async (date: string) => (await post("/matches/batches", { ...fullBatch(), date }, a.organizer.token)).body.data.id as string;
+  const result = (id: string, winnerId: string | null, method = "KO", round = 3) =>
+    post(`/matches/${id}/result`, { winnerId: winnerId ?? "", method, round }, a.officer.token);
+  const title = async (id: string) => (await get(`/champions/${id}`)).body.data;
+
+  it("moves a vacant title to the corrected winner", async () => {
+    const championshipId = await newTitle();
+    const m = await newMatch({ isTitleMatch: true, championshipId });
+    await result(m.id, m.fighter_a_id);
+    await result(m.id, m.fighter_b_id, "TKO", 2);
+
+    const c = await title(championshipId);
+    expect(c).toMatchObject({ current_holder_id: m.fighter_b_id, status: "Active", defense_count: 0, winning_match_id: m.id });
+    expect(c.defenses).toHaveLength(1);
+    expect(c.defenses[0]).toMatchObject({ result: "Crowned New Champion", opponent_id: m.fighter_a_id, method: "TKO", round: 2 });
+    expect(await recordOf(m.fighter_a_id)).toBe("0-1-0");
+    expect(await recordOf(m.fighter_b_id)).toBe("1-0-0");
+  });
+
+  it("gives the title back when the champion's loss is corrected to a win", async () => {
+    const holder = await newFighter();
+    const championshipId = await newTitle(holder);
+    const m = await newMatch({ fighterAId: holder, isTitleMatch: true, championshipId });
+    await result(m.id, m.fighter_b_id);
+    expect((await title(championshipId)).current_holder_id).toBe(m.fighter_b_id);
+
+    await result(m.id, holder, "Decision", 5);
+    const c = await title(championshipId);
+    expect(c).toMatchObject({ current_holder_id: holder, defense_count: 1, last_defense_date: expect.stringMatching(/^2026-10-08/) });
+    expect(c.defenses.map((d: any) => d.result)).toEqual(["Won"]);
+  });
+
+  it("keeps the title with the champion when a loss is corrected to a draw", async () => {
+    const holder = await newFighter();
+    const championshipId = await newTitle(holder);
+    const m = await newMatch({ fighterAId: holder, isTitleMatch: true, championshipId });
+    await result(m.id, m.fighter_b_id);
+    await result(m.id, null, "Draw", 5);
+
+    const c = await title(championshipId);
+    expect(c).toMatchObject({ current_holder_id: holder, status: "Active", defense_count: 0, last_defense_date: null });
+    expect(c.defenses).toEqual([]);
+  });
+
+  it("replays later title fights for the belt, in order", async () => {
+    const champ = await newFighter();
+    const challenger = await newFighter();
+    const championshipId = await newTitle(champ);
+    const first = await newMatch({ subEventId: await batchOn("2026-10-08"), fighterAId: champ, fighterBId: challenger, isTitleMatch: true, championshipId });
+    const second = await newMatch({ subEventId: await batchOn("2026-10-15"), fighterAId: challenger, isTitleMatch: true, championshipId });
+    await result(first.id, challenger); // challenger takes the belt
+    await result(second.id, challenger); // and defends it
+    expect(await title(championshipId)).toMatchObject({ current_holder_id: challenger, defense_count: 1 });
+
+    // Fight 1 corrected: the champion won. Fight 2 no longer involves the champion → no change.
+    await result(first.id, champ);
+    let c = await title(championshipId);
+    expect(c).toMatchObject({ current_holder_id: champ, defense_count: 1, winning_match_id: first.id, last_defense_date: expect.stringMatching(/^2026-10-08/) });
+    expect(c.defenses.map((d: any) => [d.match_id, d.result])).toEqual([[first.id, "Won"]]);
+
+    // Corrected back: the challenger's win and later defense both count again.
+    await result(first.id, challenger);
+    c = await title(championshipId);
+    expect(c).toMatchObject({ current_holder_id: challenger, defense_count: 1, winning_match_id: second.id });
+    expect(c.defenses.map((d: any) => [d.match_id, d.result])).toEqual([[first.id, "Lost"], [second.id, "Won"]]);
+    expect(await recordOf(challenger)).toBe("2-0-0");
+    expect(await recordOf(champ)).toBe("0-1-0");
+  });
+});
+
 describe("matching rules", () => {
   it("won't match a fighter KKF hasn't verified", async () => {
     const batch = await post("/matches/batches", { eventId, name: `Week ${uniq()}`, weekNumber: 9, date: "2026-10-20", location: "Arena" }, a.admin.token);

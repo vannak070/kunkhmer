@@ -9,6 +9,7 @@ import { ArrowRight, BookOpen, Clock, ExternalLink, Newspaper, Play, Search, Spa
 import { readTimeMinutes, textLang } from "../utils/publicDisplay";
 import { useI18n } from "../i18n/LanguageContext";
 import type { MessageKey } from "../i18n/messages";
+import { articlePath } from "../data/links";
 
 type Tab = "news" | "media";
 
@@ -315,7 +316,7 @@ function Spotlight({ a, catLabel }: { a: NewsItem; catLabel: (c?: string) => str
   const { t } = useI18n();
   return (
     <Link
-      to={`/article/${a.id}`}
+      to={articlePath(a)}
       className="kk-focus group grid md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] rounded-3xl border border-[#d5e0f3] bg-white overflow-hidden shadow-[0_10px_40px_rgba(26,71,151,0.06)] hover:shadow-[0_14px_44px_rgba(26,71,151,0.12)] transition-shadow"
     >
       <div className="aspect-[16/9] md:aspect-auto md:min-h-72 overflow-hidden bg-gray-100">
@@ -339,7 +340,7 @@ function Spotlight({ a, catLabel }: { a: NewsItem; catLabel: (c?: string) => str
 
 function NewsCard({ a, catLabel }: { a: NewsItem; catLabel: (c?: string) => string }) {
   return (
-    <Link to={`/article/${a.id}`} className="kk-focus group flex flex-col h-full rounded-2xl border border-gray-200 bg-white overflow-hidden hover:border-[var(--kk-blue)]/40 hover:shadow-md transition">
+    <Link to={articlePath(a)} className="kk-focus group flex flex-col h-full rounded-2xl border border-gray-200 bg-white overflow-hidden hover:border-[var(--kk-blue)]/40 hover:shadow-md transition">
       <div className="aspect-[16/9] overflow-hidden bg-gray-100">
         <Picture src={a.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 kk-motion" />
       </div>

@@ -17,6 +17,7 @@ import { weightClassFor } from "../data/weightClasses";
 import { downloadCalendarEvent } from "../utils/calendar";
 import { textLang } from "../utils/publicDisplay";
 import { KM_MONTHS, useI18n } from "../i18n/LanguageContext";
+import { eventPath, eventPathById } from "../data/links";
 
 type Tab = "upcoming" | "results" | "events";
 
@@ -33,6 +34,8 @@ interface CardGroup {
   key: string;
   eventId?: string;
   eventName?: string;
+  /** Link to the event page, added by withQuestions(). */
+  eventHref?: string;
   cardName?: string;
   date?: string;
   bouts: Bout[];
@@ -79,7 +82,7 @@ function withQuestions(groups: CardGroup[], t: T, data: FanData) {
   return groups.map((g) => {
     const first = Boolean(g.eventId) && !seen.has(g.eventId!);
     if (g.eventId) seen.add(g.eventId);
-    return { group: g, ask: first ? hubQuestions(t, data, g.eventId, g.eventName) : [] };
+    return { group: { ...g, eventHref: g.eventId ? eventPathById(data.events, g.eventId) : undefined }, ask: first ? hubQuestions(t, data, g.eventId, g.eventName) : [] };
   });
 }
 
@@ -257,7 +260,7 @@ export function MatchesAndEvents() {
                   <ul className="grid sm:grid-cols-2 gap-3">
                     {pendingGroups.map((g) => (
                       <li key={g.key}>
-                        <Link to={g.eventId ? `/events/${g.eventId}` : "/matches?tab=events"} className="kk-focus block rounded-2xl border border-gray-200 bg-white p-4 hover:border-[var(--kk-blue)]/40 hover:shadow-sm transition">
+                        <Link to={g.eventId ? eventPathById(data.events, g.eventId) : "/matches?tab=events"} className="kk-focus block rounded-2xl border border-gray-200 bg-white p-4 hover:border-[var(--kk-blue)]/40 hover:shadow-sm transition">
                           <p className="text-xs font-semibold text-gray-500">{formatDate(g.date, "weekday")}</p>
                           <p lang={textLang(g.cardName || g.eventName)} className="font-bold text-gray-900 mt-0.5">{g.cardName || g.eventName}</p>
                           <p className="text-sm text-gray-500 mt-0.5">{tn("common.bouts", g.bouts.length)} · {t("fights.awaiting")}</p>
@@ -370,12 +373,12 @@ function NextFightNight({ data, event, past = false }: { data: FanData; event: a
             )}
           </ul>
           <div className="flex flex-wrap gap-2 mt-auto pt-2">
-            <Link to={`/events/${event.id}${past && hasResults ? "?view=results" : ""}`} className="kk-focus inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-[var(--kk-blue)] text-white text-sm font-semibold hover:bg-[var(--kk-navy)] transition">
+            <Link to={`${eventPath(event)}${past && hasResults ? "?view=results" : ""}`} className="kk-focus inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-[var(--kk-blue)] text-white text-sm font-semibold hover:bg-[var(--kk-navy)] transition">
               {t(past && hasResults ? "fights.seeResults" : "fights.viewCard")} <ArrowRight className="w-4 h-4" aria-hidden />
             </Link>
             {!past && <button
               type="button"
-              onClick={() => downloadCalendarEvent({ id: event.id, title: event.name, date: event.date, location: event.location ?? undefined, url: `${window.location.origin}/events/${event.id}` })}
+              onClick={() => downloadCalendarEvent({ id: event.id, title: event.name, date: event.date, location: event.location ?? undefined, url: `${window.location.origin}${eventPath(event)}` })}
               className="kk-focus inline-flex items-center gap-2 h-11 px-4 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:border-gray-300"
             >
               <CalendarPlus className="w-4 h-4" aria-hidden /> {t("fights.addToCalendar")}
@@ -443,8 +446,8 @@ function CardSection({ group, result = false, ask = [] }: { group: CardGroup; re
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-500">{tn("common.bouts", group.bouts.length)}</span>
-          {group.eventId && (
-            <Link to={`/events/${group.eventId}${result ? "?view=results" : ""}`} className="kk-focus inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--kk-blue)] hover:underline underline-offset-4">
+          {group.eventHref && (
+            <Link to={`${group.eventHref}${result ? "?view=results" : ""}`} className="kk-focus inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--kk-blue)] hover:underline underline-offset-4">
               {t("fights.viewEvent")} <ArrowRight className="w-4 h-4" aria-hidden />
             </Link>
           )}
@@ -525,7 +528,7 @@ function EventTile({ e, data }: { e: any; data: FanData }) {
   const station = broadcasterForEvent(data, e);
   return (
     <li>
-      <Link to={`/events/${e.id}`} className="kk-focus group flex flex-col h-full rounded-2xl border border-gray-200 bg-white overflow-hidden hover:border-[var(--kk-blue)]/40 hover:shadow-md transition">
+      <Link to={eventPath(e)} className="kk-focus group flex flex-col h-full rounded-2xl border border-gray-200 bg-white overflow-hidden hover:border-[var(--kk-blue)]/40 hover:shadow-md transition">
         <div className="relative h-36 bg-gradient-to-br from-[#eef3fb] to-[#fdf1f3] flex items-center justify-center">
           {isRealImage(e.image) ? (
             <img src={e.image} alt="" className="absolute inset-0 w-full h-full object-cover" />

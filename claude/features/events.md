@@ -36,7 +36,7 @@ Event + sponsor list are saved in one transaction.
 ## Frontend
 - Admin: `CreateEvent.tsx`, `EventDetailNewSimple.tsx` (`/home/events/:id`),
   `ProgramDashboard.tsx` (`/home/program?tab=events`), `EventsAndMatches.tsx`.
-- Public: event listings on `SuperAppHome.tsx`; event page `pages/EventDetail.tsx` at `/events/:id` (see `features/public-site.md`).
+- Public: event listings on `SuperAppHome.tsx`; event page `pages/EventDetail.tsx` at `/events/<name>-<code>` (see `features/public-site.md`).
 
 ## Tests
 `api-tests/tests/events.test.ts`

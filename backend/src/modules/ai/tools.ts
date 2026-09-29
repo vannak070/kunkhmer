@@ -11,15 +11,12 @@ import { NOT_DELETED, PUBLIC_FIGHTER, UNVERIFIED } from "../fighters/routes.ts";
 import { PUBLIC_EVENT as PUBLISHED_EVENT } from "../events/routes.ts";
 import { PUBLIC_BOUT } from "../matches/proposals.ts";
 import { searchKnowledge } from "../knowledge/hub.ts";
+import { articlePath, championPath, eventPath, nameSlug } from "../../lib/links.ts";
 
 type ToolInput = Record<string, unknown>;
 
 /** Same slug as the public site's getFighterSlug(), so links resolve. */
-export function fighterSlug(f: { id: string; name?: string | null }): string {
-  if (!f.name) return f.id;
-  const slug = f.name.toLowerCase().trim().replace(/[\s_-]+/g, "-");
-  return encodeURIComponent(slug) || f.id;
-}
+export const fighterSlug = nameSlug;
 
 const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
 const num = (d: Prisma.Decimal | number | null | undefined) => (d == null ? null : Number(d));
@@ -50,7 +47,7 @@ const boutInclude = {
   fighterA: { select: fighterSelect },
   fighterB: { select: fighterSelect },
   result: { include: { winner: { select: { name: true } } } },
-  event: { select: { id: true, name: true, status: true } },
+  event: { select: { id: true, name: true, date: true, status: true } },
   subEvent: { select: { name: true, date: true } },
 } satisfies Prisma.MatchInclude;
 
@@ -60,7 +57,7 @@ function bout(m: BoutRow) {
   const r = m.result;
   return {
     event: m.event.name,
-    event_url: `/events/${m.event.id}`,
+    event_url: eventPath(m.event),
     card: m.subEvent.name,
     date: day(m.subEvent.date),
     red_corner: fighterSummary(m.fighterA),
@@ -348,7 +345,7 @@ async function listEvents({ when, limit }: ToolInput) {
       broadcaster: e.broadcastStation?.name ?? null,
       presented_by: e.mainSponsor?.name ?? null,
       bouts: e._count.matches,
-      url: `/events/${e.id}`,
+      url: eventPath(e),
     })),
   };
 }
@@ -379,7 +376,7 @@ async function getEvent({ event }: ToolInput) {
       ? { name: e.broadcastStation.name, website: e.broadcastStation.website_url, stream: e.broadcastStation.stream_url }
       : null,
     presented_by: e.mainSponsor?.name ?? null,
-    url: `/events/${e.id}`,
+    url: eventPath(e),
     fight_card: e.matches.map(bout),
   };
 }
@@ -408,7 +405,9 @@ async function listChampions() {
       holder: c.status === "Vacant" ? null : fighterSummary(c.currentHolder) ?? c.current_holder_name,
       defenses: c.defense_count,
       last_defense: day(c.last_defense_date),
+      url: championPath(c),
     })),
+    all_titles_url: "/champions",
   };
 }
 
@@ -633,7 +632,7 @@ async function listNews({ query, limit }: ToolInput) {
       category: a.category,
       date: day(a.publish_date),
       summary: clip(a.content, 240),
-      url: `/article/${a.id}`,
+      url: articlePath(a),
     })),
   };
 }
@@ -656,7 +655,7 @@ async function getNews({ article }: ToolInput) {
     date: day(a.publish_date),
     text: clip(a.content, 4000),
     english_version: a.title_en || a.content_en ? { title: a.title_en, subtitle: a.subtitle_en, text: clip(a.content_en, 4000) } : null,
-    url: `/article/${a.id}`,
+    url: articlePath(a),
   };
 }
 
