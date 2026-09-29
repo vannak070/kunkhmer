@@ -1,0 +1,54 @@
+# Kun Khmer web server. SITE_DOMAIN / ADMIN_DOMAIN / ACME_EMAIL come from deploy/.env.
+# Caddy gets and renews HTTPS certificates by itself once the domains point at this server.
+{
+	email {$ACME_EMAIL}
+}
+
+(common) {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+	# The API (the backend also serves /api/files pictures and /api/sitemap.xml).
+	handle /api/* {
+		reverse_proxy backend:3001
+	}
+}
+
+# Fan website
+{$SITE_DOMAIN} {
+	import common
+	handle /sitemap.xml {
+		rewrite * /api/sitemap.xml
+		reverse_proxy backend:3001
+	}
+	handle {
+		root * /srv/public
+		# Built files have hashed names: cache them for a year; pages always check for a new version.
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@pages not path /assets/*
+		header @pages Cache-Control "no-cache"
+		# Single-page app: unknown paths (e.g. /fighters/pich-sambath) load index.html.
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+# Staff admin
+{$ADMIN_DOMAIN} {
+	import common
+	header X-Robots-Tag "noindex, nofollow"
+	handle {
+		root * /srv/admin
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@pages not path /assets/*
+		header @pages Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

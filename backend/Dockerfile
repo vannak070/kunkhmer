@@ -26,6 +26,8 @@ COPY prisma ./prisma
 COPY prisma.config.ts ./
 COPY docker ./docker
 COPY --from=build /app/dist ./dist
+# Picture uploads (UPLOAD_DIR); a volume mounted here keeps this owner, so the app can write to it.
+RUN mkdir -p /data/uploads && chown -R node:node /data
 USER node
 EXPOSE 3001
 ENTRYPOINT ["/app/docker/entrypoint.sh"]

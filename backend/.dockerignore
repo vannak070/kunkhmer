@@ -2,3 +2,5 @@ node_modules
 dist
 src/generated
 .env
+# Uploaded pictures and database backups never go into the image
+storage

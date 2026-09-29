@@ -1,0 +1,10 @@
+# Build context for deploy/web.Dockerfile (repo root): only the frontends are needed.
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+backend
+api-tests
+deploy/backups
+deploy/.env
+.git

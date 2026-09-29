@@ -1,0 +1,87 @@
+# Kun Khmer — production on one server (see deploy/README.md).
+#
+#   cd deploy && cp .env.example .env   # fill it in
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Only the web server (Caddy) is reachable from the internet; it serves the fan site, the admin
+# and forwards /api to the backend, with automatic HTTPS certificates.
+name: kunkhmer-prod
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kunkhmer_db
+      POSTGRES_USER: kunkhmer
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kunkhmer -d kunkhmer_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ../backend
+      target: production
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://kunkhmer:${POSTGRES_PASSWORD}@postgres:5432/kunkhmer_db
+      PUBLIC_SITE_URL: https://${SITE_DOMAIN:?set SITE_DOMAIN in deploy/.env}
+      UPLOAD_DIR: /data/uploads
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      AI_RATE_SALT: ${AI_RATE_SALT:?set AI_RATE_SALT in deploy/.env}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-claude-opus-5}
+      AI_MONTHLY_CAP_USD: ${AI_MONTHLY_CAP_USD:-50}
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+      args:
+        SITE_DOMAIN: ${SITE_DOMAIN}
+        SITE_INDEXING: ${SITE_INDEXING:-false}
+    restart: unless-stopped
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN:?set ADMIN_DOMAIN in deploy/.env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in deploy/.env}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+
+  # Daily database dump + pictures archive, kept for BACKUP_KEEP_DAYS (see deploy/README.md to restore).
+  backup:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./backups:/backups
+      - uploads:/uploads:ro
+      - ./backup.sh:/backup.sh:ro
+    entrypoint: ["/bin/sh", "/backup.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  db_data:
+  uploads:
+  caddy_data:
+  caddy_config:
