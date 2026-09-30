@@ -36,6 +36,10 @@ Fan shape (camelCase): `id, email, displayName, language, notifyEmail, createdAt
 401 for fan routes is `{ success: false, error: "Please sign in" }`.
 Notification: `{id, type, data, read, createdAt}`.
 
+KUNKHMER HUB (Phase D3): the fan token is also accepted on `POST /ai/chat[/stream]`, so the Hub can
+answer about the fan's followed fighters (`updates/hub-phase-d3-personal-answers.md`); nothing about
+the fan goes to the model or the log except a signed-in yes/no flag.
+
 ## Data (migration `20260927000000_fan_accounts`)
 - `fans`: unique lowercase `email`, bcrypt `password_hash`, `language`
   (`en`/`km`), `notify_email`.

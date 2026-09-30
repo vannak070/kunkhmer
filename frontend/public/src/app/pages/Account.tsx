@@ -4,6 +4,7 @@ import { BellPlus, Loader2, LogOut, ShieldAlert, UserRound } from "lucide-react"
 import { toast } from "sonner";
 import { SiteHeader } from "../components/layout/SiteHeader";
 import { SiteFooter } from "../components/layout/SiteFooter";
+import { HubAskAbout } from "../components/hub/HubAskAbout";
 import { useFan } from "../contexts/FanContext";
 import { getFighterSlug } from "../data/masterData";
 import { usePageMeta } from "../hooks/usePageTitle";
@@ -203,6 +204,8 @@ function Dashboard() {
             ))}
           </ul>
         )}
+        {/* KUNKHMER HUB Phase D3: questions about the fighters this fan follows (hidden when the Hub is off). */}
+        {follows && follows.length > 0 && <HubAskAbout className="mt-4" questions={[t("hub.qMyNext"), t("hub.qMyRecent")]} />}
       </section>
 
       <div className="grid lg:grid-cols-2 gap-6">

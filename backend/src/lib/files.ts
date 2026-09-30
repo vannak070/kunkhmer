@@ -2,6 +2,8 @@
  * Pictures as files instead of base64 text in the database (claude/updates/images-as-files.md).
  * A body value that is exactly a base64 image data URI is written to UPLOAD_DIR under its content
  * hash and replaced by the link /api/files/<sha256>.<ext>. Same picture → same file.
+ * PDFs are stored the same way, but only where a route asks for it (storePdfDataUri) — the
+ * global hook converts pictures only.
  */
 import { createHash } from "node:crypto";
 import { mkdir, stat, writeFile } from "node:fs/promises";
@@ -27,14 +29,29 @@ export const CONTENT_TYPES: Record<string, string> = {
   gif: "image/gif",
   avif: "image/avif",
   svg: "image/svg+xml",
+  pdf: "application/pdf",
 };
 
-export const FILE_NAME = /^[a-f0-9]{64}\.(png|jpg|webp|gif|avif|svg)$/;
+export const FILE_NAME = /^[a-f0-9]{64}\.(png|jpg|webp|gif|avif|svg|pdf)$/;
 export const FILES_PATH = "/api/files/";
 const MAX_BYTES = 10 * 1024 * 1024;
 const DATA_URI = /^data:(image\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=\s]+)$/i;
+const PDF_DATA_URI = /^data:application\/pdf;base64,([A-Za-z0-9+/=\s]+)$/i;
 
 export const isImageDataUri = (v: unknown): v is string => typeof v === "string" && v.length < 30_000_000 && DATA_URI.test(v);
+export const isPdfDataUri = (v: unknown): v is string => typeof v === "string" && v.length < 30_000_000 && PDF_DATA_URI.test(v);
+
+/** Saves the bytes under their content hash (once) and returns the public link. */
+async function saveFile(bytes: Buffer, ext: string): Promise<string> {
+  const name = `${createHash("sha256").update(bytes).digest("hex")}.${ext}`;
+  const path = join(config.uploadDir, name);
+  const exists = await stat(path).then(() => true, () => false);
+  if (!exists) {
+    await mkdir(config.uploadDir, { recursive: true });
+    await writeFile(path, bytes);
+  }
+  return FILES_PATH + name;
+}
 
 /** Writes one data URI to disk (if not there yet) and returns its public link. */
 export async function storeDataUri(uri: string): Promise<string> {
@@ -45,14 +62,18 @@ export async function storeDataUri(uri: string): Promise<string> {
   const bytes = Buffer.from(m[2].replace(/\s+/g, ""), "base64");
   if (bytes.length === 0) throw new HttpError(422, "Invalid image data");
   if (bytes.length > MAX_BYTES) throw new HttpError(422, "Images must be at most 10 MB");
-  const name = `${createHash("sha256").update(bytes).digest("hex")}.${ext}`;
-  const path = join(config.uploadDir, name);
-  const exists = await stat(path).then(() => true, () => false);
-  if (!exists) {
-    await mkdir(config.uploadDir, { recursive: true });
-    await writeFile(path, bytes);
-  }
-  return FILES_PATH + name;
+  return saveFile(bytes, ext);
+}
+
+/** Writes one base64 PDF data URI to disk (if not there yet) and returns its public link. */
+export async function storePdfDataUri(uri: string): Promise<string> {
+  const m = uri.match(PDF_DATA_URI);
+  if (!m) throw new HttpError(422, "Documents must be PDF files");
+  const bytes = Buffer.from(m[1].replace(/\s+/g, ""), "base64");
+  // Check the file really is a PDF, not just labelled as one.
+  if (bytes.subarray(0, 5).toString("latin1") !== "%PDF-") throw new HttpError(422, "Documents must be PDF files");
+  if (bytes.length > MAX_BYTES) throw new HttpError(422, "Documents must be at most 10 MB");
+  return saveFile(bytes, "pdf");
 }
 
 /** Returns the body with every base64 image data URI (at any depth) replaced by a stored file link. */

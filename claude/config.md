@@ -95,7 +95,8 @@ optional `TRUST_PROXY`; see `updates/rate-limit-real-client-ip.md`).
 - **Pictures**: the admin sends base64 data URIs; a request hook stores them as files
   (`lib/files.ts`, `UPLOAD_DIR`, default `backend/storage/uploads` — must persist on a server) and saves
   the link `/api/files/<hash>.<ext>` instead. Never store base64 in the database
-  (`updates/images-as-files.md`).
+  (`updates/images-as-files.md`). PDFs are not converted by the hook: a route that accepts
+  documents calls `storePdfDataUri()` itself (only the federation page does, `features/about-federation.md`).
 - **Soft deletes**: fighters and videos have `deleted_at`. Always filter with
   `NOT_DELETED` and wrap related fighters with `visibleFighter()`.
 - **Multi-table writes** go in `prisma.$transaction` (see `matches/results.ts`).

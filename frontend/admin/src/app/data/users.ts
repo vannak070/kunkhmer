@@ -26,6 +26,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'hub.review', // KUNKHMER HUB answers, feedback and spend
     'hub.assistant', // Staff assistant (read-only AI chat about KKF records)
     'knowledge.manage', // KUNKHMER HUB knowledge base (publishing: Super Admin only)
+    'federation.manage', // Fan site "About the Federation" page (publishing: Super Admin only)
     // System (e.g. deleting a championship title)
     'system.manage_settings',
     // Phase 4: menu areas by role
@@ -134,6 +135,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'hub.review', // KUNKHMER HUB answers, feedback and spend
     'hub.assistant', // Staff assistant (read-only AI chat about KKF records)
     'knowledge.manage', // KUNKHMER HUB knowledge base (publishing: Super Admin only)
+    'federation.manage', // Fan site "About the Federation" page (publishing: Super Admin only)
     // Phase 4: menu areas by role
     'dashboard.view',
     'officials.manage', // Officials page: add/edit referees and judges

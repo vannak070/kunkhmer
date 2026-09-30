@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { type Actors, get, post, setupActors, shapeOf } from "./helpers";
+import { type Actors, get, post, setupActors, shapeOf, uniq } from "./helpers";
 
 // The test API runs with AI_ENABLED=false, so these pin the "not configured" contract and
 // never call the real model. Chat behaviour with a key is checked by hand (see
@@ -103,5 +103,32 @@ describe("AI assistant — staff assistant (Phase D2)", () => {
       expect(logs.status).toBe(200);
       for (const item of logs.body.data.items) expect(item.source).toBe(source);
     }
+  });
+});
+
+describe("AI assistant — personal answers for signed-in fans (Phase D3)", () => {
+  let a: Actors;
+  let fanToken: string;
+  beforeAll(async () => {
+    a = await setupActors();
+    const res = await post("/fans/register", { email: `hub-${uniq()}@example.com`, password: "correct horse 1", displayName: "Hub Fan" });
+    fanToken = res.body.data.token;
+  });
+
+  it("accepts an optional fan token on the public chat (same contract as anonymous)", async () => {
+    const body = { messages: [{ role: "user", content: "When do my fighters fight next?" }], lang: "en" };
+    for (const path of ["/ai/chat", "/ai/chat/stream"]) {
+      for (const token of [fanToken, "kkf_not-a-real-session", a.officer.token]) {
+        const res = await post(path, body, token);
+        expect(res.status).toBe(503);
+        expect(res.body).toEqual({ success: false, error: "The AI assistant is not configured." });
+      }
+    }
+  });
+
+  it("counts signed-in questions in the staff usage (never which fan)", async () => {
+    const usage = await get("/ai/usage", a.officer.token);
+    expect(usage.status).toBe(200);
+    expect(usage.body.data.signedInQuestions).toEqual(expect.any(Number));
   });
 });

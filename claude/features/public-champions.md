@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) |
+| **Status** | Done — committed 501063af (2026-09-29, pushed) |
 | **Jira** | n/a |
 | **Figma** | n/a (light site style, `features/public-site.md`) |
 | **Owner** | vannak070 |

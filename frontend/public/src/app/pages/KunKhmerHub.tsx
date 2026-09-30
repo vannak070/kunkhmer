@@ -5,11 +5,12 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { BookOpen, CalendarDays, RotateCcw, Send, Sparkles, Trophy, Users, type LucideIcon, ThumbsUp, ThumbsDown } from "lucide-react";
+import { BookOpen, CalendarDays, Heart, RotateCcw, Send, Sparkles, Trophy, Users, type LucideIcon, ThumbsUp, ThumbsDown } from "lucide-react";
 import { SiteHeader } from "../components/layout/SiteHeader";
 import { SiteFooter } from "../components/layout/SiteFooter";
 import { HubMarkdown } from "../components/hub/HubMarkdown";
 import { MAX_QUESTION, useHubChat, useHubEnabled } from "../components/hub/useHubChat";
+import { useFan } from "../contexts/FanContext";
 import { usePageMeta } from "../hooks/usePageTitle";
 import { useI18n } from "../i18n/LanguageContext";
 import type { MessageKey } from "../i18n/messages";
@@ -26,6 +27,9 @@ export function KunKhmerHub() {
   const { t } = useI18n();
   usePageMeta({ title: "KUNKHMER HUB", description: t("hub.metaDescription") });
   const enabled = useHubEnabled();
+  // Phase D3: signed-in fans who follow fighters get questions about "their" fighters.
+  const { fan, followedIds } = useFan();
+  const personal = Boolean(fan) && followedIds.size > 0;
   const { messages, busy, error, send, clear, rate } = useHubChat();
   const last = messages[messages.length - 1];
   const writing = Boolean(last?.streaming && last.content);
@@ -137,6 +141,30 @@ export function KunKhmerHub() {
               {error && <p role="alert" className="mt-3 text-sm text-center text-[var(--kk-red)]">{error}</p>}
               <section aria-labelledby="hub-topics" className="mt-10 mb-4">
                 <h2 id="hub-topics" className="kk-label text-gray-500 mb-3">{t("ai.try")}</h2>
+                {personal && (
+                  <div className="mb-3 rounded-2xl border border-[#d5e0f3] bg-gradient-to-br from-[#eef3fb] via-white to-[#fdf1f3] p-4">
+                    <p className="flex items-center gap-2 font-bold text-[var(--kk-navy)]">
+                      <span className="w-8 h-8 rounded-lg bg-white text-[var(--kk-red)] flex items-center justify-center">
+                        <Heart className="w-4 h-4" aria-hidden />
+                      </span>
+                      {t("hub.topicMine")}
+                    </p>
+                    <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {(["hub.qMyNext", "hub.qMyRecent"] as MessageKey[]).map((q) => (
+                        <li key={q}>
+                          <button
+                            type="button"
+                            disabled={unavailable}
+                            onClick={() => ask(t(q))}
+                            className="kk-focus w-full text-left text-sm px-3 py-2 rounded-xl bg-white hover:bg-[#eef3fb] text-gray-800 disabled:opacity-50 transition-colors"
+                          >
+                            {t(q)}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {TOPICS.map(({ icon: Icon, title, questions }) => (
                     <div key={title} className="rounded-2xl border border-gray-200 bg-white p-4">

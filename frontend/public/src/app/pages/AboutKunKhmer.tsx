@@ -3,11 +3,12 @@
  * glossary — in the site's light style. See claude/updates/public-about-page.md.
  */
 import { Link } from "react-router";
-import { ArrowRight, BookOpen, CalendarDays, Clock, Music, Scale, Swords, Trophy, Tv, Users } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, Clock, Landmark, Music, Scale, Swords, Trophy, Tv, Users } from "lucide-react";
 import { SiteHeader } from "../components/layout/SiteHeader";
 import { SiteFooter } from "../components/layout/SiteFooter";
 import { HubAskAbout } from "../components/hub/HubAskAbout";
 import { useHubVisible } from "../components/hub/useHubChat";
+import { useFederation } from "../data/federation";
 import { usePageMeta } from "../hooks/usePageTitle";
 import { useI18n } from "../i18n/LanguageContext";
 import type { MessageKey } from "../i18n/messages";
@@ -42,6 +43,7 @@ function SectionTitle({ id, children }: { id: string; children: React.ReactNode 
 export function AboutKunKhmer() {
   const { t } = useI18n();
   const hubVisible = useHubVisible();
+  const federation = useFederation();
   usePageMeta({ title: t("about.metaTitle"), description: t("about.metaDescription"), type: "article" });
 
   const contents: { id: string; label: string }[] = [
@@ -162,6 +164,26 @@ export function AboutKunKhmer() {
             <SectionTitle id="ask">{t("about.hubTitle")}</SectionTitle>
             <p className="text-gray-600">{t("about.hubText")}</p>
             <HubAskAbout questions={HUB_QUESTIONS.map((k) => t(k))} />
+          </section>
+        )}
+
+        {/* About the Federation (only once KKF has published it) */}
+        {federation && (
+          <section className="bg-white rounded-3xl border border-gray-200 p-6 md:p-10 flex flex-col md:flex-row md:items-center gap-6">
+            <div className="w-14 h-14 rounded-2xl bg-[#eef3fb] text-[var(--kk-blue)] flex items-center justify-center shrink-0">
+              <Landmark className="w-7 h-7" aria-hidden />
+            </div>
+            <div className="flex-1">
+              <h2 className="kk-heading text-2xl md:text-3xl text-[var(--kk-navy)]">{t("federation.title")}</h2>
+              <p className="text-gray-600 leading-relaxed mt-2">{t("federation.cardText")}</p>
+            </div>
+            <Link
+              to="/federation"
+              className="kk-focus inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl bg-[var(--kk-blue)] hover:bg-[var(--kk-navy)] text-white text-sm font-semibold transition-colors whitespace-nowrap"
+            >
+              {t("federation.cardCta")}
+              <ArrowRight className="w-4 h-4" aria-hidden />
+            </Link>
           </section>
         )}
 

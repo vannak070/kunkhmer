@@ -15,6 +15,7 @@ const fullClub = () => ({
   status: "active",
   rating: 4.5,
   image: "https://example.com/club.png",
+  logoUrl: "https://example.com/logo.png",
   phone: "012345678",
   email: "club@example.com",
   established: "2010",
@@ -32,6 +33,7 @@ describe("clubs CRUD", () => {
       location: input.location,
       head_coach: input.headCoach,
       rating: 4.5,
+      logo_url: input.logoUrl,
     });
     expect(shapeOf(res)).toMatchSnapshot();
   });
@@ -66,6 +68,21 @@ describe("clubs CRUD", () => {
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({ head_coach: "New Coach", rating: 3.5, name: input.name, location: input.location });
     expect(shapeOf(res)).toMatchSnapshot();
+  });
+
+  it("stores an uploaded logo as a file, shows it on the club's fighters, and clears it", async () => {
+    const png = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+    const { body } = await post("/clubs", { name: `Logo ${uniq()}`, logoUrl: png }, a.officer.token);
+    expect(body.data.logo_url).toMatch(/^\/api\/files\/[0-9a-f]{64}\.gif$/);
+
+    const fighter = await post("/fighters", { name: `Logo fighter ${uniq()}`, nameKhmer: "x", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, clubId: body.data.id }, a.admin.token);
+    expect(fighter.body.data.clubLogo).toBe(body.data.logo_url);
+
+    const cleared = await put(`/clubs/${body.data.id}`, { logoUrl: "" }, a.officer.token);
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.data.logo_url).toBeNull();
+    // New fighters wait for verification, so read it as staff.
+    expect((await get(`/fighters/${fighter.body.data.id}`, a.admin.token)).body.data.clubLogo).toBeNull();
   });
 
   it("deletes a club", async () => {

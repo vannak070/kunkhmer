@@ -51,6 +51,7 @@ export function formatFighter(f: FighterWithClub) {
     height: Number(f.height),
     clubId: f.club_id,
     clubName: f.club?.name ?? null,
+    clubLogo: f.club?.logo_url ?? null,
     style: f.style,
     grade: f.grade,
     image: f.image,

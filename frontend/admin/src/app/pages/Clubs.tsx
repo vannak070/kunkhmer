@@ -158,8 +158,9 @@ export function Clubs() {
                 {/* Card Content Section */}
                 <div className="p-5 flex-1 flex flex-col justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors duration-200 tracking-tight leading-tight line-clamp-1 mb-1">
-                      {club.name}
+                    <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors duration-200 tracking-tight leading-tight line-clamp-1 mb-1 flex items-center gap-2">
+                      {club.logo_url && <img src={club.logo_url} alt="" className="w-7 h-7 rounded-lg object-contain bg-white ring-1 ring-black/5 shrink-0" />}
+                      <span className="truncate">{club.name}</span>
                     </h3>
                     <div className="flex items-center gap-1.5 text-muted-foreground mb-4">
                       <MapPin className="w-3.5 h-3.5 text-secondary shrink-0" />

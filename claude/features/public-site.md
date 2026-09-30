@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress — phases 1–4 done; step 2 (event page, `d4fe0ab2`) and the light home with partner promotion (`23d6a1ce`) committed; KUNKHMER HUB (`/hub`, the site's main function) committed `476c64de` 2026-09-28; queued: statistics page (`statistics.md`), then step 3 (menu consolidation) |
+| **Status** | In progress — everything up to website-review steps 1 + 4 committed and pushed (501063af, 2026-09-29); step 2 text fixes done in dev + staff checklist (`updates/review-step2-data-cleanup.md`); step 5 club logos built, not committed (`features/club-logos.md`); step 3 About the Federation page built 2026-09-30, not committed (`features/about-federation.md`, content from KKF via the admin); next: staff clean-up, launch content, go-live |
 | **Jira** | TBD |
 | **Figma** | TBD — brand guideline: design system artifact "Kun Khmer Brand" (https://claude.ai/artifact/5dHcDztT7toqRYCFrcKFLT, owner-private) |
 
@@ -33,7 +33,7 @@ federation's records.
 4. **Real URLs** for everything shareable: `/fighters/:slug`, `/news/<words>-<code>`,
    `/events/<words>-<code>?view=card|results|watch` (`data/links.ts`: title/name words, or the date for Khmer-only
    names, plus the id's first 8 characters so links survive renames; full-id and `/article/:id` links switch to
-   the readable link; backend `lib/links.ts` builds the same for the sitemap and Hub) (old `/matches?tab=events&event=<id>` links redirect), `/compare?red=<slug>&blue=<slug>`,
+   the readable link; backend `lib/links.ts` builds the same for the sitemap and Hub) (old `/matches?tab=events&event=<id>` links redirect), `/compare?red=<slug>&blue=<slug>`, `/federation`,
    `/matches` (`?tab=results|events`), `/clubs/:slug`, `/partners/sponsors/:slug`, `/partners/broadcasters/:slug`, `/about`, `/hub` (`?q=` asks a question), `/account` (`/rankings` was removed and redirects to `/fighters`). Back/Forward must work.
 5. **Brand**: tokens in `src/styles/brand.css` mirror the brand guideline
    (colours measured from the KKF emblem). Red corner left, blue right, always.
@@ -56,6 +56,7 @@ federation's records.
 | Article | `pages/ArticleDetail.tsx`, `data/news.ts`, `components/ShareButtons.tsx` | English site shows the optional English version (`title_en` …, admin "English version") with a "Read the original (Khmer)" switch; Khmer-only articles are labelled "Article in Khmer". Share: Facebook, X, Telegram, copy link. |
 | ~~Rankings~~ | removed 2026-09-28 | Division standings page deleted (KKF has no way to manage official rankings yet, and the unofficial standings could confuse fans); `/rankings` redirects to `/fighters`. |
 | Compare | `pages/Compare.tsx`, `components/fan/Matchup.tsx`, `data/matchup.ts` | Light header + "not a prediction" note, type-to-search pickers, light face-off, tale of the tape, overlaid radar, KK Rating (hidden below 3 shared metrics), head-to-head. |
+| Federation | `pages/Federation.tsx`, `data/federation.ts` | `/federation`: KKF mission & history, leadership, how to register, rules & documents (PDF), contact — written by staff in the admin, only published and filled-in sections shown; "Coming soon" until then. Card on `/about` + footer link only when published. See `features/about-federation.md`. |
 | About | `pages/AboutKunKhmer.tsx` | Newcomer guide in the light style: header with "On this page" chips, quick facts, history, how a fight works (+ red/blue corners), how to watch, glossary (no ranking terms), "Still curious?" KUNKHMER HUB questions (hidden when the Hub is off), light "follow the action" card. See `updates/public-about-page.md`. |
 | KUNKHMER HUB | `pages/KunKhmerHub.tsx`, `components/hub/*` | The site's main function: AI "ask anything about Kun Khmer" page at `/hub`, in the menu inside the "About Kun Khmer" dropdown (`NavDropdown`; indented under About in the phone menu, after About in the footer), with an ask box in the home hero (`HubAskBox`) and an "Ask about this" card (`HubAskAbout`, questions open `/hub?q=`) on fighter, event, compare and article pages. See `features/ai-assistant.md`. |
 | Account | `pages/Account.tsx` | See fan-accounts. |
@@ -95,6 +96,11 @@ one server, Caddy with automatic HTTPS, fan site + admin subdomain, daily backup
   not the Vite dev server.
 - **Data**: add the International Partners (K-1, WKN, Kombat) on the live admin; KKF review of the knowledge
   base Khmer text and flagged facts; English versions of Khmer news where possible.
+- **Launch content (step 6)** — dev data on 2026-09-30: 4 fighters (all with photo and club, none verified),
+  2 clubs (no logos), 1 fight night (10 July, past; its one bout has no result), **no upcoming fight night**,
+  no approved championship titles, 2 news (no English), 1 video, 2 sponsors, 1 broadcaster, no referees/judges,
+  About the Federation not published. Staff to add at least the next fight night with its card, results of past
+  bouts, the title holders, more fighters/clubs (+ logos), federation content — on the live admin.
 - **Later**: share previews with the fighter photo / event poster need a small server-side step on the host
   (chat apps don't run JavaScript).
 

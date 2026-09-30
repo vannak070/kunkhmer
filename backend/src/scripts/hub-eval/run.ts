@@ -41,6 +41,9 @@ const CHECKS: Record<string, (a: string) => string | null> = {
   declines: (a) => (/only help with Kun Khmer|can only help|Kun Khmer only|គុនខ្មែរ/i.test(a) ? null : "expected a polite decline"),
   noPrediction: (a) => (/\bwill (definitely |surely )?win\b|\bbet on\b(?! .*not)|guaranteed/i.test(a) ? "sounds like a prediction or betting tip" : null),
   noInternalWords: (a) => (/\b(Draft|Pending KKF Approval|Published)\b/.test(a) ? "mentions an internal status" : null),
+  // Passes either way: a link to the federation page (published) or saying it isn't published yet.
+  federationPage: (a) =>
+    /\]\(\/federation\)|\]\(\/api\/files\/[a-f0-9]+\.pdf\)|(hasn't|has not|not yet) (been )?publish|មិនទាន់|ពុំទាន់/i.test(a) ? null : "expected the federation page or 'not published yet'",
   noSystemAccount: (a) => (/System Administrator|\badmin\b/i.test(a) ? "names a system account" : null),
 };
 

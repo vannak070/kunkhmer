@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) — waiting for owner review |
+| **Status** | Done — committed c2261785 (2026-09-29, pushed) |
 | **Jira** | n/a |
 | **Feature** | claude/features/public-site.md, claude/features/auth-users.md |
 | **Requested by** | vannak070 (2026-09-29, "go ahead" with step 5a + login protection) |

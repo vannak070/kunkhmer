@@ -5,6 +5,9 @@
  *   POST   /clubs               Super Admin, KKF Officer
  *   PUT    /clubs/:id           Super Admin, KKF Officer
  *   DELETE /clubs/:id           Super Admin, KKF Officer
+ *
+ * `logoUrl` (club logo, claude/features/club-logos.md): a data URI is stored as a file by the
+ * upload hook; "" removes the logo.
  */
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
@@ -27,6 +30,7 @@ export function clubArray(club: Club) {
     status: club.status,
     rating: Number(club.rating),
     image: club.image,
+    logo_url: club.logo_url,
     phone: club.phone,
     email: club.email,
     established: club.established,
@@ -51,6 +55,7 @@ const FIELDS = {
   status: "status",
   rating: "rating",
   image: "image",
+  logoUrl: "logo_url",
   phone: "phone",
   email: "email",
   established: "established",
@@ -96,6 +101,7 @@ export default async function clubRoutes(app: FastifyInstance) {
           status: input.get("status", "active"),
           rating: input.get("rating", 4.0),
           image: input.get("image"),
+          logo_url: input.get("logoUrl"),
           phone: input.get("phone"),
           email: input.get("email"),
           established: input.get("established"),
@@ -111,7 +117,10 @@ export default async function clubRoutes(app: FastifyInstance) {
       requireRole(request, STAFF);
       const id = idParam(request.params, "Club");
       await findClub(id);
-      const data = inputOf(request.body).pick(FIELDS);
+      const input = inputOf(request.body);
+      const data = input.pick(FIELDS);
+      // An empty logo removes it (pick() skips empty values).
+      if (input.present("logoUrl")) data.logo_url = input.get("logoUrl");
       if (Object.keys(data).length > 0) data.updated_at = now();
       return ok(reply, clubArray(await prisma.club.update({ where: { id }, data })));
     });

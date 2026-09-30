@@ -12,6 +12,7 @@ import { PUBLIC_EVENT as PUBLISHED_EVENT } from "../events/routes.ts";
 import { PUBLIC_BOUT } from "../matches/proposals.ts";
 import { searchKnowledge } from "../knowledge/hub.ts";
 import { articlePath, championPath, eventPath, nameSlug } from "../../lib/links.ts";
+import { publishedFederation } from "../federation/routes.ts";
 
 type ToolInput = Record<string, unknown>;
 
@@ -265,7 +266,63 @@ export const TOOLS: Anthropic.Beta.BetaTool[] = [
     description: "The federation's official lists: weight classes (kg ranges), bout rule presets (rounds, minutes per round, knockdown limit, glove size), approved glove brands and venues.",
     input_schema: { type: "object", properties: {} },
   },
+  {
+    name: "about_federation",
+    description: "The Kun Khmer Federation's own published page: mission, history, year founded, leadership (names and roles), office address, hours, phone and email, how fighters, clubs and officials register, and official documents (rule book, forms) with PDF links. Returns published: false when the federation hasn't published it yet.",
+    input_schema: { type: "object", properties: {} },
+  },
 ];
+
+/**
+ * Phase D3 (claude/updates/hub-phase-d3-personal-answers.md): the signed-in fan's followed fighters.
+ * Only for the public Hub, not the staff assistant; kept last so the cached prefix stays stable.
+ * The model gets public fighter facts only — nothing about the fan.
+ */
+export const FAN_TOOL: Anthropic.Beta.BetaTool = {
+  name: "my_followed_fighters",
+  description:
+    "The fighters the visitor follows on this website (only when they are signed in): each with club, official record, latest recorded bout and next scheduled bout. Use it for questions about \"my fighters\" / \"fighters I follow\". Returns signed_in: false when the visitor isn't signed in.",
+  input_schema: { type: "object", properties: {} },
+};
+
+const MAX_FOLLOWED = 20;
+
+export async function myFollowedFighters(fanId: string | null) {
+  if (!fanId) {
+    return {
+      signed_in: false,
+      note: "The visitor is not signed in. Explain that they can sign in or create a free account on the [account page](/account) and follow fighters from their profiles; then you can answer about their fighters.",
+    };
+  }
+  const follows = await prisma.fanFollow.findMany({
+    where: { fan_id: fanId, fighter: VISIBLE_FIGHTER },
+    select: { fighter_id: true },
+    orderBy: { created_at: "asc" },
+    take: MAX_FOLLOWED,
+  });
+  if (follows.length === 0) {
+    return { signed_in: true, fighters: [], note: "The visitor follows no fighters yet. Suggest following fighters with the Follow button on their profiles (see [Fighters](/fighters))." };
+  }
+  const today = todayUtc();
+  const fighters = await Promise.all(
+    follows.map(async ({ fighter_id: id }) => {
+      const f = await prisma.fighter.findFirst({ where: { id, ...VISIBLE_FIGHTER }, select: fighterSelect });
+      if (!f) return null;
+      const bouts = await prisma.match.findMany({
+        where: { AND: [{ OR: [{ fighter_a_id: id }, { fighter_b_id: id }] }, PUBLIC_BOUT], event: PUBLIC_EVENT },
+        include: boutInclude,
+        orderBy: { subEvent: { date: "desc" } },
+        take: 20,
+      });
+      const last = bouts.find((b) => b.result);
+      const next = bouts
+        .filter((b) => !b.result && b.subEvent.date >= today)
+        .sort((a, b) => a.subEvent.date.getTime() - b.subEvent.date.getTime())[0];
+      return { ...fighterSummary(f), latest_recorded_bout: last ? bout(last) : null, next_bout: next ? bout(next) : null };
+    }),
+  );
+  return { signed_in: true, fighters: fighters.filter(Boolean) };
+}
 
 // ─── Tool implementations ───────────────────────────────────────────────────
 
@@ -720,6 +777,34 @@ async function federationSettings() {
   };
 }
 
+/** The published About the Federation page (claude/updates/hub-federation-page.md); drafts never reach the Hub. */
+async function aboutFederation() {
+  const f = await publishedFederation();
+  if (!f) {
+    return {
+      published: false,
+      note: "The federation hasn't published its leadership, contacts, registration steps or documents on the website yet. Say so briefly; never guess names, phone numbers, emails or addresses.",
+    };
+  }
+  return {
+    published: true,
+    url: "/federation",
+    mission: { en: f.missionEn, km: f.missionKm },
+    history: { en: f.historyEn, km: f.historyKm },
+    founded_year: f.foundedYear,
+    leaders: f.leaders.map((l) => ({ name: l.nameEn, name_khmer: l.nameKm, role: l.roleEn, role_khmer: l.roleKm })),
+    office: {
+      address: { en: f.addressEn, km: f.addressKm },
+      hours: { en: f.officeHoursEn, km: f.officeHoursKm },
+      phone: f.phone,
+      email: f.email,
+      map_link: f.mapUrl,
+    },
+    how_to_register: { en: f.registerEn, km: f.registerKm },
+    documents: f.documents.map((d) => ({ title: d.titleEn, title_khmer: d.titleKm, url: d.fileUrl, type: "PDF" })),
+  };
+}
+
 const HANDLERS: Record<string, (input: ToolInput) => Promise<unknown>> = {
   search_fighters: searchFighters,
   get_fighter: getFighter,
@@ -735,6 +820,7 @@ const HANDLERS: Record<string, (input: ToolInput) => Promise<unknown>> = {
   get_news: getNews,
   list_videos: listVideos,
   federation_settings: federationSettings,
+  about_federation: aboutFederation,
   search_knowledge: ({ query, slug }) =>
     searchKnowledge(String(query ?? ""), { slug: typeof slug === "string" && slug.trim() ? slug.trim() : undefined }),
 };

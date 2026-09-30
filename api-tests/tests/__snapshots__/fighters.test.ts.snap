@@ -6,6 +6,7 @@ exports[`fighter verification > sends a fighter back with a reason; the club's e
     "data": {
       "alias": "string",
       "clubId": "uuid",
+      "clubLogo": "null",
       "clubName": "string",
       "createdAt": "datetime(+00:00)",
       "currentWeight": "number",
@@ -40,6 +41,7 @@ exports[`fighters CRUD > creates a fighter with all fields 1`] = `
     "data": {
       "alias": "string",
       "clubId": "uuid",
+      "clubLogo": "null",
       "clubName": "string",
       "createdAt": "datetime(+00:00)",
       "currentWeight": "number",
@@ -81,6 +83,7 @@ exports[`fighters CRUD > lists fighters publicly and filters by status and clubI
 {
   "alias": "string",
   "clubId": "uuid",
+  "clubLogo": "null",
   "clubName": "string",
   "createdAt": "datetime(+00:00)",
   "currentWeight": "number",
@@ -121,6 +124,7 @@ exports[`fighters CRUD > shows a fighter by id, by name, by slug and by Khmer na
     "data": {
       "alias": "string",
       "clubId": "uuid",
+      "clubLogo": "null",
       "clubName": "string",
       "createdAt": "datetime(+00:00)",
       "currentWeight": "number",
@@ -155,6 +159,7 @@ exports[`fighters CRUD > updates only the given fields 1`] = `
     "data": {
       "alias": "string",
       "clubId": "uuid",
+      "clubLogo": "null",
       "clubName": "string",
       "createdAt": "datetime(+00:00)",
       "currentWeight": "number",
@@ -189,6 +194,7 @@ exports[`fighters CRUD > verifies a fighter 1`] = `
     "data": {
       "alias": "string",
       "clubId": "uuid",
+      "clubLogo": "null",
       "clubName": "string",
       "createdAt": "datetime(+00:00)",
       "currentWeight": "number",

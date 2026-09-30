@@ -84,6 +84,10 @@ export const router = createBrowserRouter(
     ...page(() => import("./pages/AboutKunKhmer"), "AboutKunKhmer"),
   },
   {
+    path: "/federation",
+    ...page(() => import("./pages/Federation"), "Federation"),
+  },
+  {
     path: "/hub",
     ...page(() => import("./pages/KunKhmerHub"), "KunKhmerHub"),
   },

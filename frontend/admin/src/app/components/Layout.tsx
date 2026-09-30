@@ -1,4 +1,4 @@
-import { Home, CalendarDays, Dumbbell, ChevronDown, Shield, LogOut, User as UserIcon, ClipboardCheck, Settings, Building2, Users, Newspaper, Bell, Handshake, Menu, X, Gavel, Lock, HelpCircle, Sparkles, BookOpen, Bot } from "lucide-react";
+import { Home, CalendarDays, Dumbbell, ChevronDown, Shield, LogOut, User as UserIcon, ClipboardCheck, Settings, Building2, Users, Newspaper, Bell, Handshake, Menu, X, Gavel, Lock, HelpCircle, Sparkles, BookOpen, Bot, Landmark } from "lucide-react";
 import { Outlet, NavLink, Navigate, useLocation, useNavigate, Link } from "react-router";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -88,6 +88,7 @@ const navGroups: { title: string | null; items: NavItem[] }[] = [
       },
       { icon: Sparkles, label: "Hub answers", path: "/home/hub-answers", permission: "hub.review" },
       { icon: BookOpen, label: "Knowledge base", path: "/home/knowledge", permission: "knowledge.manage" },
+      { icon: Landmark, label: "About the Federation", path: "/home/federation", permission: "federation.manage" },
     ],
   },
   {

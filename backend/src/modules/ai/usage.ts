@@ -72,6 +72,8 @@ export interface LogEntry {
   /** Staff assistant answers record who asked; public answers stay anonymous. */
   source?: "public" | "staff";
   userId?: string | null;
+  /** Public answers: a signed-in fan asked (Phase D3). Only the flag is stored, never the fan. */
+  signedIn?: boolean;
 }
 
 export async function logAnswer(e: LogEntry): Promise<string> {
@@ -95,6 +97,7 @@ export async function logAnswer(e: LogEntry): Promise<string> {
       duration_ms: e.durationMs,
       source: e.source ?? "public",
       user_id: e.source === "staff" ? (e.userId ?? null) : null,
+      signed_in: e.source === "staff" ? false : Boolean(e.signedIn),
     },
   });
   return id;

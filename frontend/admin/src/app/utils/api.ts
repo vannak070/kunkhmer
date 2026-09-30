@@ -142,6 +142,26 @@ export const api = {
     },
   },
 
+  // --- "About the Federation" page (KKF staff; publishing is Super Admin only) ---
+  federation: {
+    async draft() {
+      const res = await request("/federation/draft");
+      return res.data;
+    },
+    async save(data: Record<string, unknown>) {
+      const res = await request("/federation/draft", { method: "PUT", body: JSON.stringify(data) });
+      return res.data;
+    },
+    async publish() {
+      const res = await request("/federation/publish", { method: "POST", body: "{}" });
+      return res.data;
+    },
+    async discard() {
+      const res = await request("/federation/discard", { method: "POST", body: "{}" });
+      return res.data;
+    },
+  },
+
   // --- AUTH & USERS ---
   auth: {
     async login(username: string, password_hash: string) {

@@ -71,6 +71,8 @@ model Club {
   status      String    @default("active") @db.VarChar(255)
   rating      Decimal   @default(4) @db.Decimal(3, 2)
   image       String?
+  /// Club logo (link to a stored file); see claude/features/club-logos.md.
+  logo_url    String?
   phone       String?   @db.VarChar(255)
   email       String?   @db.VarChar(255)
   established String?   @db.VarChar(255)
@@ -632,6 +634,8 @@ model HubLog {
   source             String    @default("public") @db.VarChar(10)
   /// Staff answers only: which staff account asked. Always null for public answers.
   user_id            String?   @db.Uuid
+  /// Public answers: the asker was a signed-in fan (Phase D3). Only this flag — never which fan.
+  signed_in          Boolean   @default(false)
 
   user User? @relation("HubLogUser", fields: [user_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "hub_logs_user_id_foreign")
 
@@ -652,6 +656,22 @@ model HubRateLimit {
 
 /// Federation knowledge base for KUNKHMER HUB: approved articles about the sport (EN + KM).
 /// Officers write drafts; only a Super Admin publishes. The Hub reads Published rows only.
+/// About the Federation page (claude/features/about-federation.md): one row, key "main".
+/// Staff edit `draft`; a Super Admin publishes it by copying it to `published`.
+model FederationPage {
+  key              String    @id @default("main") @db.VarChar(20)
+  draft            Json      @default("{}")
+  published        Json?
+  draft_updated_at DateTime? @db.Timestamp(0)
+  draft_updated_by String?   @db.VarChar(255)
+  published_at     DateTime? @db.Timestamp(0)
+  published_by     String?   @db.VarChar(255)
+  created_at       DateTime  @db.Timestamp(0)
+  updated_at       DateTime  @db.Timestamp(0)
+
+  @@map("federation_page")
+}
+
 model KnowledgeArticle {
   id           String    @id @db.Uuid
   slug         String    @unique @db.VarChar(120)

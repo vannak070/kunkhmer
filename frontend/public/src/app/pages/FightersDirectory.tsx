@@ -284,7 +284,16 @@ export function FighterCard({ f, data, titles }: { f: any; data: FanData; titles
       <div className="p-3 sm:p-4 flex flex-col gap-1.5 flex-1">
         <h3 lang={textLang(name)} className="font-bold text-base sm:text-lg text-gray-900 leading-snug break-words group-hover:text-[var(--kk-blue)]">{name}</h3>
         {other && <p lang={textLang(other)} className="text-xs sm:text-sm text-gray-500 -mt-1 break-words">{other}</p>}
-        {club && <p lang={textLang(club)} className="text-xs sm:text-sm text-gray-600 flex items-start gap-1.5"><Building2 className="w-3.5 h-3.5 mt-0.5 text-[var(--kk-red)] shrink-0" aria-hidden /><span className="line-clamp-2">{club}</span></p>}
+        {club && (
+          <p lang={textLang(club)} className="text-xs sm:text-sm text-gray-600 flex items-start gap-1.5">
+            {isRealImage(f.clubLogo) ? (
+              <img src={f.clubLogo} alt="" className="w-4 h-4 mt-0.5 rounded object-contain bg-white ring-1 ring-black/5 shrink-0" />
+            ) : (
+              <Building2 className="w-3.5 h-3.5 mt-0.5 text-[var(--kk-red)] shrink-0" aria-hidden />
+            )}
+            <span className="line-clamp-2">{club}</span>
+          </p>
+        )}
         {facts.length > 0 && <p className="text-xs sm:text-sm text-gray-600">{facts.join(" · ")}</p>}
         <div className="mt-auto pt-2 flex items-end justify-between gap-2">
           <div aria-label={`${t("common.wins")} ${w}, ${t("common.losses")} ${l}, ${t("common.draws")} ${d}`}>

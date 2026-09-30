@@ -236,7 +236,7 @@ function ClubView({ club }: { club: any }) {
         back={{ to: "/strategic-partners?tab=clubs", label: t("club.back") }}
         eyebrow={t("club.eyebrow")}
         banner={club.image}
-        logo={null}
+        logo={club.logo_url}
         name={name}
         nameKm={club.name_khmer && club.name_khmer !== name ? club.name_khmer : null}
         facts={facts}

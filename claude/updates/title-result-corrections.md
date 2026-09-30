@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) |
+| **Status** | Done — committed 501063af (2026-09-29, pushed) |
 | **Jira** | n/a |
 | **Feature** | claude/features/matches-results.md, claude/features/champions.md |
 | **Requested by** | vannak070 (2026-09-29, pre-launch fix) |

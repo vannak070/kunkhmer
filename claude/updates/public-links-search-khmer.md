@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) |
+| **Status** | Done — committed 501063af (2026-09-29, pushed) |
 | **Jira** | n/a |
 | **Feature** | claude/features/public-site.md |
 | **Requested by** | vannak070 (2026-09-29, website review plan step 1) |

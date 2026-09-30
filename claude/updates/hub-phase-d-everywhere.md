@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | D1 done — committed 7691de40; D2 done — committed f4b4010f (`hub-phase-d2-staff-assistant.md`); D3 not started (open question below) |
+| **Status** | D1 done — committed 7691de40; D2 done — committed f4b4010f; D3 built 2026-09-29, not committed (`hub-phase-d3-personal-answers.md`) |
 | **Jira** | n/a |
 | **Feature** | claude/features/ai-assistant.md |
 | **Requested by** | vannak070 (2026-09-28: "Start Hub Phase D") |
@@ -61,7 +61,7 @@ D1:
 - [x] No prediction questions ("who will win") — the Hub declines those.
 
 ## Open questions
-- D3: OK to send followed fighters to the model (ids only, no personal data)? (ask before D3)
+- D3 decided 2026-09-29: yes, public fighter facts only via a tool — see `hub-phase-d3-personal-answers.md`.
 
 ## Log
 2026-09-28 — D1 built:

@@ -20,6 +20,8 @@ interface Usage {
   outcomes: Record<string, number>;
   helpful: number;
   notHelpful: number;
+  /** Phase D3: answers asked by a signed-in fan this month (never which fan). */
+  signedInQuestions?: number;
   enabled: boolean;
 }
 
@@ -38,6 +40,7 @@ interface LogItem {
   feedback: 1 | -1 | null;
   source: "public" | "staff";
   askedBy: { id: string; name: string } | null;
+  signedIn?: boolean;
 }
 
 const OUTCOME: Record<string, { label: string; tone: string }> = {
@@ -63,6 +66,7 @@ const TOOL_LABEL: Record<string, string> = {
   get_news: "News article",
   list_videos: "Videos",
   federation_settings: "Weights & rules",
+  about_federation: "Federation page",
   search_knowledge: "Knowledge base",
   pending_approvals: "Pending approvals",
   data_quality: "Data checks",
@@ -143,7 +147,7 @@ export function HubAnswers() {
             <div className="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
               <div className={`h-full ${pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
             </div>
-            <p className="mt-2 text-sm text-slate-600 tabular-nums">Fans {usd(usage.publicSpendUsd ?? 0)} · Staff assistant {usd(usage.staffSpendUsd ?? 0)}</p>
+            <p className="mt-2 text-sm text-slate-600 tabular-nums">Fans {usd(usage.publicSpendUsd ?? 0)} · Staff assistant {usd(usage.staffSpendUsd ?? 0)}{usage.signedInQuestions ? ` · ${usage.signedInQuestions} from signed-in fans` : ""}</p>
             <p className="mt-2 text-xs text-slate-500">Estimated from token usage; the Anthropic console bill is the final figure. The Hub pauses when the monthly cap is reached (AI_MONTHLY_CAP_USD).</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -196,6 +200,7 @@ export function HubAnswers() {
                     <p className="mt-1 text-xs text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span>{when(it.createdAt)}</span>
                       <span>· {it.lang === "km" ? "Khmer" : "English"}</span>
+                      {it.signedIn && <span className="px-1.5 py-0.5 rounded font-semibold bg-[#fdf1f3] text-[#b92034]" title="Asked by a signed-in fan (which fan is not stored)">Signed-in fan</span>}
                       {it.source === "staff" && (
                         <span className="px-1.5 py-0.5 rounded font-semibold bg-[#eef3fb] text-primary">Staff{it.askedBy ? ` · ${it.askedBy.name}` : ""}</span>
                       )}

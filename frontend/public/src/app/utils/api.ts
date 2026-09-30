@@ -1,4 +1,11 @@
 import { appPath } from "./basePath";
+import { getFanToken } from "./fanApi";
+
+/** KUNKHMER HUB Phase D3: a signed-in fan's token lets the Hub answer about the fighters they follow. */
+const fanHeader = (): Record<string, string> => {
+  const token = getFanToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
@@ -9,7 +16,8 @@ function getHeaders(extraHeaders: Record<string, string> = {}): Record<string, s
     "Content-Type": "application/json",
     ...extraHeaders
   };
-  if (token) {
+  // A caller's own Authorization (the Hub's fan token) wins over a stored staff token.
+  if (token && !headers["Authorization"]) {
     headers["Authorization"] = `Bearer ${token}`;
   }
   return headers;
@@ -46,6 +54,14 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}): Pr
 }
 
 export const api = {
+  // --- "About the Federation" page (published content, or null) ---
+  federation: {
+    async get() {
+      const res = await request("/federation");
+      return res.data;
+    },
+  },
+
   // --- "ASK KUN KHMER" AI CHAT ---
   ai: {
     async status(): Promise<{ enabled: boolean }> {
@@ -53,7 +69,7 @@ export const api = {
       return res.data;
     },
     async chat(messages: { role: "user" | "assistant"; content: string }[], lang: string): Promise<string> {
-      const res = await request("/ai/chat", { method: "POST", body: JSON.stringify({ messages, lang }) });
+      const res = await request("/ai/chat", { method: "POST", headers: fanHeader(), body: JSON.stringify({ messages, lang }) });
       return res.data.reply;
     },
     /**
@@ -68,7 +84,7 @@ export const api = {
     ): Promise<{ reply: string; logId: string | null }> {
       const response = await fetch(`${API_BASE_URL}/ai/chat/stream`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream", ...fanHeader() },
         body: JSON.stringify({ messages, lang, conversationId }),
       });
       if (!response.ok || !response.body) {

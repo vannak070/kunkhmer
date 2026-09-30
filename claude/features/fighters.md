@@ -22,7 +22,7 @@ records publicly.
 | DELETE | `/fighters/:id` | STAFF | soft delete (`deleted_at`) |
 
 Shape (camelCase): `id, name, nameKhmer, alias, dateOfBirth, nationality,
-province, gender, currentWeight, height, clubId, clubName, style, grade, image,
+province, gender, currentWeight, height, clubId, clubName, clubLogo (club logo, `features/club-logos.md`), style, grade, image,
 record, status, professionalStatus, verifiedBy, verifiedDate, createdAt, updatedAt`.
 Nested inside other responses as snake_case `fighterArray()`.
 

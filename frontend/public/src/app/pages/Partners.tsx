@@ -331,14 +331,23 @@ function ClubCard({ club, onOpen }: { club: any; onOpen: () => void }) {
   const name = localName(club.name, club.name_khmer);
   const coach = club.head_coach || club.headCoach;
   const fighters = Number(club.fighters_count ?? club.active_fighters ?? 0) || 0;
+  const initials = String(club.name).split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
   return (
     <button type="button" onClick={onOpen} className="kk-focus group w-full h-full text-left flex flex-col rounded-2xl border border-gray-200 bg-white overflow-hidden hover:border-[var(--kk-blue)]/40 hover:shadow-md transition">
-      <div className="aspect-[16/9] overflow-hidden bg-gray-100">
+      <div className="relative aspect-[16/9] overflow-hidden bg-gray-100">
         {isRealImage(club.image) ? (
           <img src={club.image} alt="" loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 kk-motion" />
         ) : (
           <span aria-hidden className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#eef3fb] to-[#fdf1f3] text-[var(--kk-navy)]/25 kk-display text-3xl">KKF</span>
         )}
+        {/* Club logo on the photo, like the partner cards; initials until a logo is uploaded. */}
+        <span className="absolute bottom-3 left-3 w-14 h-14 rounded-xl ring-2 ring-white shadow-md bg-white flex items-center justify-center overflow-hidden" aria-hidden>
+          {isRealImage(club.logo_url) ? (
+            <img src={club.logo_url} alt="" className="w-full h-full object-contain" />
+          ) : (
+            <span className="kk-heading text-lg text-[var(--kk-blue)]">{initials}</span>
+          )}
+        </span>
       </div>
       <div className="p-4 flex flex-col gap-2 flex-1">
         <h3 lang={textLang(name)} className="font-bold text-lg text-gray-900 leading-snug line-clamp-2 group-hover:text-[var(--kk-blue)] break-words">{name}</h3>

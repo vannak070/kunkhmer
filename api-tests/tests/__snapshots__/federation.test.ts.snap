@@ -1,0 +1,109 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`About the Federation page > lets an officer save a draft that stays private until the Super Admin publishes 1`] = `
+{
+  "body": {
+    "data": {
+      "changed": "boolean",
+      "draft": {
+        "addressEn": "string",
+        "addressKm": "null",
+        "documents": [
+          {
+            "fileUrl": "string",
+            "titleEn": "string",
+            "titleKm": "string",
+          },
+        ],
+        "email": "string",
+        "foundedYear": "number",
+        "historyEn": "string",
+        "historyKm": "null",
+        "leaders": [
+          {
+            "nameEn": "string",
+            "nameKm": "string",
+            "photoUrl": "string",
+            "roleEn": "string",
+            "roleKm": "string",
+          },
+        ],
+        "mapUrl": "string",
+        "missionEn": "string",
+        "missionKm": "string",
+        "officeHoursEn": "string",
+        "officeHoursKm": "null",
+        "phone": "string",
+        "registerEn": "string",
+        "registerKm": "null",
+      },
+      "draftUpdatedAt": "datetime(+00:00)",
+      "draftUpdatedBy": "string",
+      "published": {
+        "addressEn": "null",
+        "addressKm": "null",
+        "documents": [],
+        "email": "null",
+        "foundedYear": "null",
+        "historyEn": "null",
+        "historyKm": "null",
+        "leaders": [],
+        "mapUrl": "null",
+        "missionEn": "null",
+        "missionKm": "null",
+        "officeHoursEn": "null",
+        "officeHoursKm": "null",
+        "phone": "null",
+        "registerEn": "null",
+        "registerKm": "null",
+      },
+      "publishedAt": "datetime(+00:00)",
+      "publishedBy": "string",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`About the Federation page > lets an officer save a draft that stays private until the Super Admin publishes 2`] = `
+{
+  "body": {
+    "data": {
+      "addressEn": "string",
+      "addressKm": "null",
+      "documents": [
+        {
+          "fileUrl": "string",
+          "titleEn": "string",
+          "titleKm": "string",
+        },
+      ],
+      "email": "string",
+      "foundedYear": "number",
+      "historyEn": "string",
+      "historyKm": "null",
+      "leaders": [
+        {
+          "nameEn": "string",
+          "nameKm": "string",
+          "photoUrl": "string",
+          "roleEn": "string",
+          "roleKm": "string",
+        },
+      ],
+      "mapUrl": "string",
+      "missionEn": "string",
+      "missionKm": "string",
+      "officeHoursEn": "string",
+      "officeHoursKm": "null",
+      "phone": "string",
+      "publishedAt": "datetime(+00:00)",
+      "registerEn": "string",
+      "registerKm": "null",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;

@@ -41,6 +41,7 @@ import { ProgramDashboard } from "./pages/ProgramDashboard";
 import { HubAnswers } from "./pages/HubAnswers";
 import { StaffAssistant } from "./pages/StaffAssistant";
 import { KnowledgeBase } from "./pages/KnowledgeBase";
+import { FederationPage } from "./pages/FederationPage";
 
 /** Old or removed admin URLs → the page that does that job now (Phase 2). */
 function ToFightCard() {
@@ -227,6 +228,7 @@ export const router = createBrowserRouter(
       { path: "hub-answers", element: <HubAnswers /> },
       { path: "assistant", element: <StaffAssistant /> },
       { path: "knowledge", element: <KnowledgeBase /> },
+      { path: "federation", element: <FederationPage /> },
       { path: "user-management", element: <UserManagement /> },
       { path: "user-management/new", element: <UserManagement /> },
       { path: "user-management/:userId/edit", element: <UserManagement /> },

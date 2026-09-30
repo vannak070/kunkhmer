@@ -1,6 +1,8 @@
 /**
  * KUNKHMER HUB (formerly "Ask Kun Khmer") — public AI chat that answers from federation records through read-only tools,
  * plus the admin staff assistant (Phase D2, KKF staff only) with extra read-only staff tools.
+ * Phase D3: a signed-in fan's token (optional) lets the public Hub answer about the fighters they
+ * follow (my_followed_fighters); only a signed-in yes/no flag is logged, never the fan.
  * Stateless: the browser sends the recent conversation (text only) with every request.
  * See claude/features/ai-assistant.md and claude/updates/hub-phase-d2-staff-assistant.md.
  */
@@ -13,7 +15,8 @@ import { iso, now } from "../../lib/dates.ts";
 import { HttpError, isUuid, notFound, ok } from "../../lib/http.ts";
 import { knowledge } from "../knowledge/hub.ts";
 import { ALL_STAFF_TOOLS, runStaffTool } from "./staffTools.ts";
-import { runTool, TOOLS } from "./tools.ts";
+import { FAN_TOOL, myFollowedFighters, runTool, TOOLS } from "./tools.ts";
+import { resolveFan } from "../../lib/fanAuth.ts";
 import { type Tokens, STAFF_RATE_LIMIT, capReached, logAnswer, monthSpend, noTokens, rateLimit } from "./usage.ts";
 
 const MAX_MESSAGES = 12;
@@ -21,7 +24,7 @@ const MAX_CHARS = 1500;
 const MAX_TOOL_ROUNDS = 6;
 
 const SYSTEM = `You are KUNKHMER HUB, the assistant on the official website of the Kun Khmer Federation (KKF), Cambodia.
-You help fans and newcomers from around the world with Kun Khmer: fighters, fight nights, fight cards, results, champions, clubs, news, videos, the federation's weight classes and bout rules, and the basics of the sport.
+You help fans and newcomers from around the world with Kun Khmer: fighters, fight nights, fight cards, results, champions, clubs, news, videos, the federation's weight classes and bout rules, the federation itself (leadership, contacts, how to register, official documents), and the basics of the sport.
 
 Rules:
 - Facts about fighters, events, results and champions must come from your tools, which read the federation's official records. Never guess or invent names, records, dates, results or statistics. If the tools return nothing, say the records don't show it.
@@ -33,6 +36,8 @@ Rules:
 - A fighter's record is the official profile W-L-D. Figures from fighter_stats and head_to_head count only bouts recorded on this website; say so when you quote them.
 - No leaderboards: the federation doesn't publish rankings, so politely decline "who has the most wins / best record / longest streak / is the best" and offer stats for a fighter the user names, or a head-to-head, instead.
 - If a tool says several fighters or clubs match, list them briefly and ask which one the user means; never pick one yourself.
+- Questions about "my fighters" / "fighters I follow": call my_followed_fighters. Answer only about those fighters and never ask for or mention the visitor's name, email or account. If it says the visitor isn't signed in or follows no one, pass on its note briefly.
+- Questions about the Kun Khmer Federation itself (who leads it, its mission and history, when it was founded, contacting the office, how fighters, clubs, referees or judges register, the rule book and forms): call about_federation. It is the official source for these; answer from it and link to [About the Federation](/federation) or to the document's PDF. If it says nothing is published, or doesn't cover the question, say the federation hasn't published that on the website yet. Never guess leaders' names, phone numbers, emails, addresses or fees.
 - For topics unrelated to Kun Khmer, politely say you can only help with Kun Khmer.
 - Don't narrate your lookups (no "let me check"); write only the answer.
 - Questions about the sport itself (history, organisations, famous fighters of the past, rules, techniques, Kun Kru, music, terms, watching and visiting) are answered from the federation knowledge base at the end of these instructions (when only an index of titles is shown there, read the articles you need with search_knowledge first). If it doesn't, give a brief general answer from the background below and say the federation hasn't published more detail on it. Never invent dates, names or numbers.
@@ -109,17 +114,30 @@ const CAPPED = {
 };
 
 /** Who the model loop is answering: fans on the public site or KKF staff in the admin. */
+/** Per-request facts the tools may use but the model never sees directly. */
+interface Context {
+  /** Signed-in fan (public Hub only), for my_followed_fighters. */
+  fanId: string | null;
+}
+
 interface Profile {
   source: "public" | "staff";
   tools: Anthropic.Beta.BetaTool[];
-  run: (name: string, input: unknown) => Promise<{ content: string; isError: boolean }>;
+  run: (name: string, input: unknown, ctx: Context) => Promise<{ content: string; isError: boolean }>;
   system: () => Promise<string>;
 }
 
 const PUBLIC: Profile = {
   source: "public",
-  tools: TOOLS,
-  run: runTool,
+  tools: [...TOOLS, FAN_TOOL],
+  run: async (name, input, ctx) => {
+    if (name !== FAN_TOOL.name) return runTool(name, input);
+    try {
+      return { content: JSON.stringify(await myFollowedFighters(ctx.fanId)), isError: false };
+    } catch {
+      return { content: JSON.stringify({ error: "The records could not be read right now." }), isError: true };
+    }
+  },
   system: async () => {
     const kb = await knowledge();
     const knowledgeBlock =
@@ -131,7 +149,7 @@ const PUBLIC: Profile = {
 const STAFF_PROFILE: Profile = {
   source: "staff",
   tools: ALL_STAFF_TOOLS,
-  run: runStaffTool,
+  run: (name, input) => runStaffTool(name, input),
   system: async () => STAFF_SYSTEM,
 };
 
@@ -156,6 +174,7 @@ async function answer(
   profile: Profile,
   history: Anthropic.Beta.BetaMessageParam[],
   lang: "en" | "km",
+  ctx: Context,
   stream?: { onDelta: (text: string) => void; onReset: () => void },
 ): Promise<Answer> {
   const messages = [...history];
@@ -225,7 +244,7 @@ async function answer(
     messages.push({ role: "assistant", content: response.content });
     const results = await Promise.all(
       toolUses.map(async (t): Promise<Anthropic.Beta.BetaToolResultBlockParam> => {
-        const r = await profile.run(t.name, t.input);
+        const r = await profile.run(t.name, t.input, ctx);
         return { type: "tool_result", tool_use_id: t.id, content: r.content, is_error: r.isError };
       }),
     );
@@ -243,6 +262,10 @@ interface Prepared {
   conversationId: string | null;
   source: "public" | "staff";
   userId: string | null;
+  /** Public Hub: a signed-in fan asked (logged as a yes/no flag only). */
+  signedIn: boolean;
+  /** Kept in memory for the tools; never logged. */
+  ctx: Context;
 }
 
 /**
@@ -259,14 +282,18 @@ async function prepare(request: FastifyRequest, profile: Profile): Promise<Prepa
   const question = String(history[history.length - 1].content);
   const source = profile.source;
   const userId = source === "staff" ? (request.user?.id ?? null) : null;
+  // A fan token is optional on the public Hub; staff tokens are ignored by resolveFan.
+  if (source === "public") await resolveFan(request);
+  const fanId = source === "public" ? (request.fan?.id ?? null) : null;
+  const signedIn = Boolean(fanId);
   if (source === "staff") await rateLimit(`staff:${userId}`, STAFF_RATE_LIMIT);
   else await rateLimit(request.ip);
   if (await capReached()) {
     const message = source === "staff" ? STAFF_CAPPED[lang] : CAPPED[lang];
-    await logAnswer({ conversationId, lang, question, answer: message, outcome: "capped", tools: [], model: config.ai.model, tokens: noTokens(), durationMs: 0, source, userId });
+    await logAnswer({ conversationId, lang, question, answer: message, outcome: "capped", tools: [], model: config.ai.model, tokens: noTokens(), durationMs: 0, source, userId, signedIn });
     throw new HttpError(503, message);
   }
-  return { history, lang, question, conversationId, source, userId };
+  return { history, lang, question, conversationId, source, userId, signedIn, ctx: { fanId } };
 }
 
 function apiErrorMessage(error: unknown, request: FastifyRequest): HttpError | null {
@@ -287,7 +314,7 @@ export default async function aiRoutes(app: FastifyInstance) {
     const p = await prepare(request, profile);
     const started = Date.now();
     try {
-      const a = await answer(profile, p.history, p.lang);
+      const a = await answer(profile, p.history, p.lang, p.ctx);
       const logId = await logAnswer({ ...p, answer: a.text, outcome: a.outcome, tools: a.tools, model: a.model, tokens: a.tokens, durationMs: Date.now() - started });
       return ok(reply, { reply: a.text, logId });
     } catch (error) {
@@ -315,7 +342,7 @@ export default async function aiRoutes(app: FastifyInstance) {
     });
     const send = (event: string, data: unknown) => reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     try {
-      const a = await answer(profile, p.history, p.lang, { onDelta: (text) => send("delta", { text }), onReset: () => send("reset", {}) });
+      const a = await answer(profile, p.history, p.lang, p.ctx, { onDelta: (text) => send("delta", { text }), onReset: () => send("reset", {}) });
       const logId = await logAnswer({ ...p, answer: a.text, outcome: a.outcome, tools: a.tools, model: a.model, tokens: a.tokens, durationMs: Date.now() - started });
       send("done", { reply: a.text, logId });
     } catch (error) {
@@ -359,7 +386,7 @@ export default async function aiRoutes(app: FastifyInstance) {
       const d = new Date();
       const since = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
       const where = { created_at: { gte: since } };
-      const [spend, publicSpend, staffSpend, total, byOutcome, helpful, notHelpful] = await Promise.all([
+      const [spend, publicSpend, staffSpend, total, byOutcome, helpful, notHelpful, signedIn] = await Promise.all([
         monthSpend(),
         monthSpend("public"),
         monthSpend("staff"),
@@ -367,6 +394,7 @@ export default async function aiRoutes(app: FastifyInstance) {
         prisma.hubLog.groupBy({ by: ["outcome"], where, _count: { _all: true } }),
         prisma.hubLog.count({ where: { ...where, feedback: 1 } }),
         prisma.hubLog.count({ where: { ...where, feedback: -1 } }),
+        prisma.hubLog.count({ where: { ...where, signed_in: true } }),
       ]);
       return ok(reply, {
         month: since.toISOString().slice(0, 7),
@@ -379,6 +407,7 @@ export default async function aiRoutes(app: FastifyInstance) {
         outcomes: Object.fromEntries(byOutcome.map((o) => [o.outcome, o._count._all])),
         helpful,
         notHelpful,
+        signedInQuestions: signedIn,
         enabled: config.ai.enabled,
       });
     });
@@ -423,6 +452,7 @@ export default async function aiRoutes(app: FastifyInstance) {
           feedback: r.feedback,
           source: r.source,
           askedBy: r.user ? { id: r.user.id, name: r.user.full_name } : null,
+          signedIn: r.signed_in,
         })),
       });
     });

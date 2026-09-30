@@ -203,7 +203,12 @@ export function SuperAppFighterDetail() {
 
                     <ul className="mt-4 flex flex-wrap justify-center md:justify-start gap-x-5 gap-y-2 text-sm text-gray-700">
                       {(fighter.clubName || fighter.club_name) && view.clubId && (
-                        <li className="inline-flex items-center gap-2"><Building2 className={`${iconCls} text-[var(--kk-blue)]`} aria-hidden />
+                        <li className="inline-flex items-center gap-2">
+                          {isRealImage(fighter.clubLogo) ? (
+                            <img src={fighter.clubLogo} alt="" className="w-6 h-6 rounded-md object-contain bg-white ring-1 ring-black/5" />
+                          ) : (
+                            <Building2 className={`${iconCls} text-[var(--kk-blue)]`} aria-hidden />
+                          )}
                           <Link to={partnerPath("club", { id: view.clubId, name: fighter.clubName || fighter.club_name })} lang={textLang(fighter.clubName)} className="kk-focus font-semibold text-[var(--kk-blue)] hover:underline underline-offset-4">{fighter.clubName || fighter.club_name}</Link>
                         </li>
                       )}

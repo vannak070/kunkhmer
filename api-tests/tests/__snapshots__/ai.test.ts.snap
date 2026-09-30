@@ -25,6 +25,7 @@ exports[`AI assistant — streaming, feedback and staff review (Phase C) > shows
       "outcomes": {},
       "publicSpendUsd": "number",
       "questions": "number",
+      "signedInQuestions": "number",
       "spendUsd": "number",
       "staffSpendUsd": "number",
     },

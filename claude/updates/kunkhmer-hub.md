@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done — committed 476c64de (2026-09-28); owner browser review not yet confirmed |
+| **Status** | Done — committed 476c64de (2026-09-28); Hub phases A–D were built on top of it (see `features/ai-assistant.md`) |
 | **Jira** | n/a |
 | **Feature** | claude/features/ai-assistant.md, claude/features/public-site.md |
 | **Requested by** | vannak070 (2026-09-28) |

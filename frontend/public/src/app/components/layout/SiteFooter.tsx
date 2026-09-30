@@ -1,8 +1,10 @@
+import { Link } from "react-router";
 import { ArrowUp, Handshake, Mail, MapPin } from "lucide-react";
 import kkfLogo from "../../../assets/kkf-logo-192.png";
 import { NavSection, sectionPath, useNavigateSection, useNavItems } from "./SiteHeader";
 import { appPath } from "../../utils/basePath";
 import { useI18n } from "../../i18n/LanguageContext";
+import { useFederation } from "../../data/federation";
 
 /** Official channels. Leave `url` empty to hide a network until the federation has an account. */
 export const SOCIAL_LINKS: { label: string; url: string; path: string }[] = [
@@ -39,6 +41,7 @@ export function SiteFooter({ onSectionChange, flush = false }: SiteFooterProps) 
   const { t } = useI18n();
   const go = useNavigateSection(onSectionChange);
   const navItems = useNavItems();
+  const federation = useFederation();
   const socials = SOCIAL_LINKS.filter((s) => s.url);
   const partnerMail = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(t("home.partnerEmailSubject"))}`;
 
@@ -97,6 +100,13 @@ export function SiteFooter({ onSectionChange, flush = false }: SiteFooterProps) 
                 </a>
               </li>
             ))}
+            {federation && (
+              <li>
+                <Link to="/federation" onClick={() => window.scrollTo(0, 0)} className="kk-focus text-sm text-gray-700 hover:text-[var(--kk-blue)] transition-colors">
+                  {t("federation.title")}
+                </Link>
+              </li>
+            )}
           </ul>
         </nav>
 

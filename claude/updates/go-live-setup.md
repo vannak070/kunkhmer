@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) — waiting for owner review; hosting not chosen yet |
+| **Status** | Done — committed b6270c3d / b6dd0f91 / ecd694e1 (2026-09-29, pushed); hosting (VPS + domain) not chosen yet |
 | **Jira** | n/a |
 | **Feature** | claude/features/public-site.md (go-live checklist) |
 | **Requested by** | vannak070 (2026-09-29, "go ahead" with the go-live setup) |

@@ -69,5 +69,9 @@
   {"id": "b-news-en", "lang": "en", "q": "What's the latest federation news?", "mustInclude": ["/news/"], "check": ["english", "noSystemAccount"]},
   {"id": "b-videos-en", "lang": "en", "q": "Are there any highlight videos?", "mustInclude": ["youtube|video"], "check": ["english"]},
   {"id": "b-weights-en", "lang": "en", "q": "What weight classes does the federation use?", "mustInclude": ["kg"], "check": ["english"]},
-  {"id": "b-weights-km", "lang": "km", "q": "តើសហព័ន្ធមានប្រភេទទម្ងន់អ្វីខ្លះ?", "check": ["khmer"]}
+  {"id": "b-weights-km", "lang": "km", "q": "តើសហព័ន្ធមានប្រភេទទម្ងន់អ្វីខ្លះ?", "check": ["khmer"]},
+  {"id": "fed-leader-en", "lang": "en", "q": "Who is the president of the Kun Khmer Federation?", "check": ["english", "federationPage"]},
+  {"id": "fed-contact-en", "lang": "en", "q": "How can I contact the federation office?", "check": ["english", "federationPage"]},
+  {"id": "fed-register-en", "lang": "en", "q": "How do I register my club with the federation?", "check": ["english", "federationPage"]},
+  {"id": "fed-rulebook-km", "lang": "km", "q": "តើខ្ញុំអាចទាញយកសៀវភៅច្បាប់គុនខ្មែររបស់សហព័ន្ធនៅឯណា?", "check": ["khmer", "federationPage"]}
 ]

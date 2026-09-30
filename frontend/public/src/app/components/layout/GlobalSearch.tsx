@@ -115,7 +115,9 @@ function loadIndex(): Promise<SearchItem[]> {
               title: c.name,
               titleKm: c.name_khmer,
               detail: c.location || undefined,
-              image: picture(c.image),
+              // The club logo when there is one (shown whole), else the club photo.
+              image: picture(c.logo_url) || picture(c.image),
+              logo: Boolean(picture(c.logo_url)),
               href: partnerPath("club", c),
               haystack: [c.name, c.name_khmer, c.location, c.head_coach].filter(Boolean).join(" ").toLowerCase(),
             });

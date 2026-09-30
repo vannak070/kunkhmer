@@ -84,7 +84,8 @@ export function AddClub() {
     established: "",
     description: "",
     status: "active",
-    image: ""
+    image: "",
+    logoUrl: ""
   });
 
   useEffect(() => {
@@ -102,7 +103,8 @@ export function AddClub() {
               established: clubData.established || "",
               description: clubData.description || "",
               status: clubData.status || "active",
-              image: clubData.image || ""
+              image: clubData.image || "",
+              logoUrl: clubData.logo_url || ""
             });
           }
         } catch (err: any) {
@@ -319,7 +321,9 @@ export function AddClub() {
         phone: formData.phone || null,
         email: formData.email || null,
         established: formData.established || null,
-        description: formData.description || null
+        description: formData.description || null,
+        // "" removes the logo; a new upload is a data URI the API stores as a file.
+        logoUrl: formData.logoUrl
       };
 
       if (isEditMode && id) {
@@ -674,6 +678,52 @@ export function AddClub() {
         {/* Right Column: Upload Banner & Description */}
         <div className="lg:col-span-1 space-y-6">
           
+          {/* Card: Club Logo (claude/features/club-logos.md) */}
+          <div className="card-premium">
+            <h3 className="text-sm font-bold text-foreground mb-1 flex items-center gap-2">
+              <Upload className="w-4 h-4 text-primary" />
+              <span>Club Logo</span>
+            </h3>
+            <p className="text-[11px] text-muted-foreground mb-3">Shown on the website next to the club name: club cards, club page, fighter profiles and search.</p>
+            <div className="flex items-center gap-4">
+              <div className="relative w-24 h-24 shrink-0 rounded-2xl border border-border/60 bg-white flex items-center justify-center overflow-hidden">
+                {formData.logoUrl ? (
+                  <>
+                    <img src={formData.logoUrl} alt="Logo preview" className="w-full h-full object-contain" />
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, logoUrl: "" }))}
+                      className="absolute top-1 right-1 p-1 bg-red-500/90 hover:bg-red-600 text-white rounded-md shadow"
+                      aria-label="Remove logo"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground font-medium text-center px-2">No logo</span>
+                )}
+              </div>
+              <label className="flex-1 flex flex-col items-center justify-center h-24 border border-border/80 border-dashed rounded-xl cursor-pointer bg-muted/10 hover:bg-muted/20 transition-all duration-200 text-center px-2">
+                <Upload className="w-6 h-6 text-muted-foreground mb-1" />
+                <span className="text-xs font-semibold text-primary">Upload logo</span>
+                <span className="text-[10px] text-muted-foreground mt-0.5">Square PNG or JPG, transparent background works best (max. 1 MB)</span>
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => setFormData(prev => ({ ...prev, logoUrl: reader.result as string }));
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+
           {/* Card: Upload Banner */}
           <div className="card-premium">
             <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
