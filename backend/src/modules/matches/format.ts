@@ -106,6 +106,18 @@ export const matchRelations = {
 } as const satisfies Prisma.MatchInclude;
 type MatchWithRelations = Prisma.MatchGetPayload<{ include: typeof matchRelations }>;
 
+/**
+ * Weigh-ins (weights and who recorded them) are for the admin only: public responses leave these out
+ * (claude/updates/weigh-in-not-public.md). `staff` = any signed-in admin user.
+ */
+const WEIGH_IN_FIELDS = ["weigh_in_a_kg", "weigh_in_b_kg", "weigh_in_at", "weigh_in_by"] as const;
+export function withoutWeighIn<T extends object>(m: T, staff = false): T {
+  if (staff) return m;
+  const copy = { ...m } as Record<string, unknown>;
+  for (const k of WEIGH_IN_FIELDS) delete copy[k];
+  return copy as T;
+}
+
 /** Match with its batch, fighters (and clubs), referee, result and title, plus flat display fields. */
 export function formatMatch(m: MatchWithRelations) {
   const fighterA = visibleFighter(m.fighterA);

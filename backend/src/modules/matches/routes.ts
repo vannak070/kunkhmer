@@ -29,7 +29,7 @@ import { HttpError, deleted, idParam, isUuid, notFound, ok } from "../../lib/htt
 import { type Input, inputOf, parseBool } from "../../lib/input.ts";
 import { UNVERIFIED } from "../fighters/routes.ts";
 import { UNAPPROVED } from "../events/routes.ts";
-import { formatMatch, formatSubEvent, matchArray, matchRelations, subEventArray, subEventRelations } from "./format.ts";
+import { formatMatch, formatSubEvent, matchArray, matchRelations, subEventArray, subEventRelations, withoutWeighIn } from "./format.ts";
 import { recordMatchResult } from "./results.ts";
 import { PUBLIC_BOUT, RESPONSES, openSide, proposalStatus, sidesFor } from "./proposals.ts";
 import { notifyFollowers } from "../fans/notify.ts";
@@ -152,7 +152,7 @@ export default async function matchRoutes(app: FastifyInstance) {
       include: matchRelations,
       orderBy: [{ sort_order: "asc" }, { created_at: { sort: "asc", nulls: "first" } }],
     });
-    return ok(reply, matches.map(formatMatch));
+    return ok(reply, matches.map((m) => withoutWeighIn(formatMatch(m), Boolean(request.user))));
   });
 
   app.get("/matches/:id", async (request, reply) => {
@@ -160,7 +160,7 @@ export default async function matchRoutes(app: FastifyInstance) {
     if (!request.user && !(await prisma.match.count({ where: { id, event: { status: { notIn: UNAPPROVED } }, ...PUBLIC_BOUT } }))) {
       throw notFound("Match");
     }
-    return ok(reply, await loadMatch(id));
+    return ok(reply, withoutWeighIn(await loadMatch(id), Boolean(request.user)));
   });
 
   app.register(async (protectedRoutes) => {

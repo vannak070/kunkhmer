@@ -112,3 +112,26 @@ describe("weigh-in on the bout", () => {
     expect((await post("/matches/00000000-0000-4000-8000-000000000000/weigh-in", { a: 60 }, a.officer.token)).status).toBe(404);
   });
 });
+
+describe("weigh-ins are not public", () => {
+  it("leaves the weigh-in out for visitors, keeps it for staff", async () => {
+    const ev = (await post("/events", { name: `Public Night ${uniq()}`, date: "2026-11-21", location: "Arena", status: "Published" }, a.admin.token)).body.data;
+    const card = (await post("/matches/batches", { eventId: ev.id, name: "Main card", weekNumber: 1, date: "2026-11-21", location: "Arena" }, a.admin.token)).body.data.id;
+    const red = await fighter();
+    const blue = await fighter();
+    const m = (await post("/matches", { subEventId: card, fighterAId: red.id, fighterBId: blue.id, rounds: 5, roundTime: 180, knockdownLimit: 3, agreedWeight: 60, gloveSize: "10oz", gloveBrand: "Twins" }, a.admin.token)).body.data;
+    await post(`/matches/${m.id}/weigh-in`, { a: 60.4, b: 60.8 }, a.officer.token);
+
+    const WEIGH_IN = ["weigh_in_a_kg", "weigh_in_b_kg", "weigh_in_at", "weigh_in_by"];
+    const pub = (await get(`/matches/${m.id}`)).body.data;
+    expect(pub.id).toBe(m.id);
+    for (const k of WEIGH_IN) expect(pub).not.toHaveProperty(k);
+    const listed = (await get(`/matches?eventId=${ev.id}`)).body.data.find((x: any) => x.id === m.id);
+    expect(listed).toBeTruthy();
+    for (const k of WEIGH_IN) expect(listed).not.toHaveProperty(k);
+
+    const staff = (await get(`/matches/${m.id}`, a.officer.token)).body.data;
+    expect(staff).toMatchObject({ weigh_in_a_kg: 60.4, weigh_in_b_kg: 60.8 });
+  });
+});
+

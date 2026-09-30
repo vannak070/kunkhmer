@@ -105,8 +105,8 @@ Out of scope: Create event form and Add bout wizard redesign; public site (weigh
   - Add bout wizard (`CreateMatchFromBatch.tsx`): "Back to Batch" → "Back to fight night", "CREATE MATCH" /
     "Create Match" → "Add bout".
   - Checks after the fixes: backend typecheck 0 errors, admin `tsc` 0 errors, contract suite **264/264**.
-- Open (not changed): the public match API returns the weigh-in fields (`weigh_in_*`, incl. `weigh_in_by`) to
-  everyone although weigh-ins aren't public (the fan site doesn't show them); the Create fight night form still
+- Open (not changed): ~~the public match API returns the weigh-in fields~~ → fixed in
+  `updates/weigh-in-not-public.md`; the Create fight night form still
   says "Create New Event" with event categories; "Publish fight night" is offered before any fight card exists;
   the Fight nights list and Program overview still load all bouts (needed for their counts).
 - 2026-09-30 later: Program › Overview rebuilt around the next job and the checklist no longer asks for officials /

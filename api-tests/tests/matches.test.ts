@@ -192,7 +192,9 @@ describe("matches", () => {
     const res = await get(`/matches?subEventId=${subEventId}`);
     expect(res.status).toBe(200);
     expect(res.body.data.map((m: any) => m.id)).toEqual([second.id, first.id]);
-    expect(shape(findById(res, first.id))).toEqual(shape(first));
+    // Visitors don't get the weigh-in (admin only); otherwise the same shape as the staff response.
+    const { weigh_in_a_kg, weigh_in_b_kg, weigh_in_at, weigh_in_by, ...publicShape } = shape(first) as Record<string, unknown>;
+    expect(shape(findById(res, first.id))).toEqual(publicShape);
   });
 
   it("shows a match", async () => {

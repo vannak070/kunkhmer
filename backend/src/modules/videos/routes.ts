@@ -18,7 +18,7 @@ import { deleted, idParam, notFound, ok } from "../../lib/http.ts";
 import { inputOf, parseTags } from "../../lib/input.ts";
 import { clubArray } from "../clubs/routes.ts";
 import { fighterArray, visibleFighter } from "../fighters/routes.ts";
-import { matchArray } from "../matches/format.ts";
+import { matchArray, withoutWeighIn } from "../matches/format.ts";
 
 const NOT_DELETED = { deleted_at: null } satisfies Prisma.VideoWhereInput;
 const relations = { fighter: true, club: true, match: true } as const satisfies Prisma.VideoInclude;
@@ -51,7 +51,8 @@ function formatVideo(v: VideoWithRelations) {
     ...videoArray(v),
     fighter: fighter ? fighterArray(fighter) : null,
     club: v.club ? clubArray(v.club) : null,
-    match: v.match ? matchArray(v.match) : null,
+    // A video's bout never needs the weigh-in.
+    match: v.match ? withoutWeighIn(matchArray(v.match)) : null,
   };
 }
 
