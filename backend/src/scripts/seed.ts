@@ -11,7 +11,12 @@ import { now } from "../lib/dates.ts";
 export async function seedDefaultAdmin() {
   if ((await prisma.user.count()) > 0) return;
 
-  const password = process.env.SEED_ADMIN_PASSWORD ?? "admin123";
+  // Empty counts as unset (local default); production requires a real one (deploy/.env).
+  const chosen = process.env.SEED_ADMIN_PASSWORD?.trim() ? process.env.SEED_ADMIN_PASSWORD : null;
+  if (chosen && chosen.length < 8) {
+    throw new Error("SEED_ADMIN_PASSWORD must be at least 8 characters — the Super Admin was not created");
+  }
+  const password = chosen ?? "admin123";
   const at = now();
   await prisma.user.create({
     data: {
@@ -26,7 +31,7 @@ export async function seedDefaultAdmin() {
       updated_at: at,
     },
   });
-  console.log(`Seeded default Super Admin "admin"${process.env.SEED_ADMIN_PASSWORD ? "" : " (password admin123 — change it)"}`);
+  console.log(`Seeded default Super Admin "admin"${chosen ? "" : " (password admin123 — change it)"}`);
 }
 
 // Run directly: `npm run db:seed`

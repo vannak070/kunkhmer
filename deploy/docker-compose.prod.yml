@@ -34,6 +34,8 @@ services:
       UPLOAD_DIR: /data/uploads
       LOG_LEVEL: ${LOG_LEVEL:-info}
       AI_RATE_SALT: ${AI_RATE_SALT:?set AI_RATE_SALT in deploy/.env}
+      # Password of the first Super Admin "admin", used only when the database is still empty (first start).
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?set SEED_ADMIN_PASSWORD in deploy/.env}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-claude-opus-5}
       AI_MONTHLY_CAP_USD: ${AI_MONTHLY_CAP_USD:-50}

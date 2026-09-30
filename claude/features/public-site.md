@@ -88,7 +88,8 @@ and Khmer (`claude/tests/test-admin-ui.md` pattern), and run `vite build` in the
 The production bundle and step-by-step guide are in `deploy/` (`deploy/README.md`, `updates/go-live-setup.md`):
 one server, Caddy with automatic HTTPS, fan site + admin subdomain, daily backups. Before the site is public
 (see also `updates/step5a-seo-speed-login.md`):
-- **Admin password**: change `admin` / `admin123` (and any test accounts) on the live server.
+- **Admin password**: set `SEED_ADMIN_PASSWORD` in `deploy/.env` (required; the server never creates
+  `admin123`); after copying data with `export-local.sh`, change `admin` and remove any test accounts.
 - **Backend env**: `DATABASE_URL`, `PUBLIC_SITE_URL=https://<site>` (sitemap links), `UPLOAD_DIR` on a
   **persistent** volume (pictures), `ANTHROPIC_API_KEY` + `AI_MONTHLY_CAP_USD` if the Hub is on,
   `TRUST_PROXY` for the host's proxy, `AI_RATE_SALT`; never commit `.env`.

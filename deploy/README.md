@@ -33,6 +33,7 @@ cd kunkhmer/deploy
 cp .env.example .env
 nano .env
 #   POSTGRES_PASSWORD and AI_RATE_SALT: generate with   openssl rand -hex 24
+#   SEED_ADMIN_PASSWORD: the first password of the "admin" account (at least 8 characters)
 
 # Build and start (first build takes a few minutes)
 docker compose -f docker-compose.prod.yml up -d --build
@@ -44,8 +45,8 @@ the HTTPS certificates are issued.
 
 ## 3. Right after the first start
 
-1. **Change the admin password.** Sign in at the admin with `admin` / `admin123`, then change it under
-   *My profile*. Do this before anything else.
+1. **Sign in as `admin`** with the `SEED_ADMIN_PASSWORD` from `.env` (the server never uses `admin123`).
+   Change it under *My profile* if others have seen `.env`.
 2. Create the real staff accounts (Users) and remove any you don't need.
 3. Add your data: either copy everything from your computer in one go (see
    [Moving your data to the server](#moving-your-data-to-the-server)), or type it in the admin.

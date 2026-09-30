@@ -152,6 +152,8 @@ and phone width in both languages.
   (Fighter edits are now STAFF + own-club only.)
 - `utils/api.ts` and parts of `data/` are duplicated between the two
   frontends; no frontend tests.
-- The default admin password `admin123` must be changed on any real server.
+- `admin123` is the local default only: production requires `SEED_ADMIN_PASSWORD` in `deploy/.env` for the
+  first admin (`updates/pilot-admin-password-and-router.md`). Accounts copied with `export-local.sh` keep
+  their passwords, so change `admin` right after a data move.
 - Deployment: README demo URLs still point at the old host; the user will set
   up new hosting — `deploy/README.md` + the go-live checklist in `features/public-site.md`.
