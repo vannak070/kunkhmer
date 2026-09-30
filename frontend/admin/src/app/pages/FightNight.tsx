@@ -17,6 +17,7 @@ import { formatDay, useT } from "../i18n/program";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { EventNextSteps } from "../components/EventNextSteps";
 import { FightNightSteps } from "../components/program/FightNightSteps";
+import { FightNightFields, fightNightForm, fightNightPayload, fightNightReady } from "../components/program/FightNightFields";
 import {
   ConfirmDialog, FighterAvatar, LangSwitch, StatusChip, byCardOrder, displayStatus, hasResult, officialsComplete, resultText, weighState,
 } from "../components/program/shared";
@@ -393,43 +394,17 @@ function WeighPill({ m }: { m: any }) {
 
 function EditDetailsDialog({ event, onClose, onSaved }: { event: any; onClose: () => void; onSaved: () => void }) {
   const { t } = useT();
-  const [form, setForm] = useState({
-    name: event.name ?? "",
-    date: String(event.date ?? "").slice(0, 10),
-    location: event.location ?? "",
-    broadcastStationId: event.broadcast_station_id ?? "",
-    mainSponsorId: event.main_sponsor_id ?? "",
-    description: event.description ?? "",
-    image: event.image ?? "",
-  });
-  const [stations, setStations] = useState<any[]>([]);
-  const [sponsors, setSponsors] = useState<any[]>([]);
-  const [venues, setVenues] = useState<any[]>([]);
+  const [form, setForm] = useState(() => fightNightForm(event));
   const [busy, setBusy] = useState(false);
-  const file = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    api.settings.listBroadcastStations().then(setStations).catch(() => {});
-    api.settings.listSponsors().then(setSponsors).catch(() => {});
-    api.settingsLists.list("venues").then(setVenues).catch(() => {});
-  }, []);
 
   const save = async () => {
-    if (!form.name.trim() || !form.date || !form.location.trim()) {
+    if (!fightNightReady(form)) {
       toast.error(t("steps.detailsTodo"));
       return;
     }
     setBusy(true);
     try {
-      await api.events.update(event.id, {
-        name: form.name.trim(),
-        date: form.date,
-        location: form.location.trim(),
-        broadcastStationId: form.broadcastStationId || null,
-        mainSponsorId: form.mainSponsorId || null,
-        description: form.description.trim() || null,
-        image: form.image || null,
-      });
+      await api.events.update(event.id, fightNightPayload(form));
       toast.success(t("night.saved"));
       onSaved();
     } catch (e) {
@@ -439,61 +414,13 @@ function EditDetailsDialog({ event, onClose, onSaved }: { event: any; onClose: (
     }
   };
 
-  const pickImage = (f?: File) => {
-    if (!f) return;
-    const reader = new FileReader();
-    reader.onloadend = () => setForm((s) => ({ ...s, image: reader.result as string }));
-    reader.readAsDataURL(f);
-  };
-
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("night.editDetails")}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">{t("night.name")} *</span>
-            <input className={`${field} mt-1`} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          </label>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">{t("night.date")} *</span>
-              <input type="date" className={`${field} mt-1`} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-            </label>
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">{t("night.venue")} *</span>
-              <input list="fight-night-venues" className={`${field} mt-1`} value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-              <datalist id="fight-night-venues">{venues.map((v) => <option key={v.id} value={v.name} />)}</datalist>
-            </label>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">{t("night.broadcaster")}</span>
-              <select className={`${field} mt-1`} value={form.broadcastStationId} onChange={(e) => setForm({ ...form, broadcastStationId: e.target.value })}>
-                <option value="">{t("common.notSet")}</option>
-                {stations.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">{t("night.sponsor")}</span>
-              <select className={`${field} mt-1`} value={form.mainSponsorId} onChange={(e) => setForm({ ...form, mainSponsorId: e.target.value })}>
-                <option value="">{t("common.notSet")}</option>
-                {sponsors.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </label>
-          </div>
-          <div>
-            <span className="text-sm font-medium text-slate-700">{t("night.poster")}</span>
-            <div className="mt-1 flex items-center gap-3">
-              {form.image ? <img src={form.image} alt="" className="w-20 h-20 rounded-lg object-cover bg-slate-100" /> : <span className="w-20 h-20 rounded-lg bg-slate-100 inline-flex items-center justify-center text-slate-400"><ImagePlus className="w-6 h-6" aria-hidden /></span>}
-              <button type="button" onClick={() => file.current?.click()} className="h-10 px-3 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:border-primary">{t("common.change")}</button>
-              {form.image && <button type="button" onClick={() => setForm({ ...form, image: "" })} className="text-sm text-slate-500 hover:text-red-700">✕</button>}
-              <input ref={file} type="file" accept="image/*" className="hidden" onChange={(e) => pickImage(e.target.files?.[0])} />
-            </div>
-          </div>
-        </div>
+        <FightNightFields form={form} setForm={setForm} />
         <DialogFooter className="gap-2 sm:gap-2">
           <button type="button" onClick={onClose} className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">{t("common.cancel")}</button>
           <button type="button" disabled={busy} onClick={save} className="h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90 disabled:opacity-60">{busy ? t("common.saving") : t("common.save")}</button>

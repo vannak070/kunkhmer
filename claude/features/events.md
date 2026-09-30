@@ -34,7 +34,7 @@ Response: snake_case event row + nested `organizer`, `broadcast_station`,
 Event + sponsor list are saved in one transaction.
 
 ## Frontend
-- Admin: `CreateEvent.tsx`, `EventDetailNewSimple.tsx` (`/home/events/:id`),
+- Admin: `NewFightNight.tsx` (`/home/events/new`, `updates/program-simple-forms.md`), `FightNight.tsx` (`/home/events/:id`),
   `ProgramDashboard.tsx` (`/home/program?tab=events`), `EventsAndMatches.tsx`.
 - Public: event listings on `SuperAppHome.tsx`; event page `pages/EventDetail.tsx` at `/events/<name>-<code>` (see `features/public-site.md`).
 

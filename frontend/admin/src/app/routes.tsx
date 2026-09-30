@@ -7,12 +7,12 @@ import { Fighters } from "./pages/Fighters";
 import { FighterDetail } from "./pages/FighterDetail";
 import { AddFighter } from "./pages/AddFighter";
 import { MatchDetail } from "./pages/MatchDetail";
-import { CreateEvent } from "./pages/CreateEvent";
+import { NewFightNight } from "./pages/NewFightNight";
 import { FightNight } from "./pages/FightNight";
 import { FightCardWeighIn } from "./pages/FightCardWeighIn";
 import { FightCardResults } from "./pages/FightCardResults";
 import { FightCardRedirect } from "./components/program/FightCardRedirect";
-import { CreateMatchFromBatch } from "./pages/CreateMatchFromBatch";
+import { AddBout } from "./pages/AddBout";
 import { MatchCreatedSuccess } from "./pages/MatchCreatedSuccess";
 import { CreateBatch } from "./pages/CreateBatch";
 import { CreateChampion } from "./pages/CreateChampion";
@@ -196,7 +196,7 @@ export const router = createBrowserRouter(
       { path: "clubs", element: <Clubs /> },
       { path: "matches/new", element: <CreateBatch /> },
       { path: "matches/:batchId/edit", element: <CreateBatch /> },
-      { path: "matches/:batchId/create-match", element: <CreateMatchFromBatch /> },
+      { path: "matches/:batchId/create-match", element: <AddBout /> },
       { path: "matches/:batchId/assign-officials", element: <AssignOfficials /> },
       { path: "matches/created", element: <MatchCreatedSuccess /> },
       // The fight card lives on its fight night page now (claude/updates/program-officer-friendly.md).
@@ -211,7 +211,7 @@ export const router = createBrowserRouter(
       { path: "match/new", element: <ScheduleTitleBout /> },
       { path: "match/:id", element: <MatchDetail /> },
       { path: "match/:id/update-result", element: <ToMatch /> },
-      { path: "events/new", element: <CreateEvent /> },
+      { path: "events/new", element: <NewFightNight /> },
       { path: "events/:eventId/assign-fighters", element: <ToEvent /> },
       { path: "events/:id", element: <FightNight /> },
       { path: "events/:eventId/sub-events/:subEventId", element: <ToFightCard /> },

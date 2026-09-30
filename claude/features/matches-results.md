@@ -50,7 +50,7 @@ Approvals are off (`updates/officer-run-program.md`): bouts are confirmed when K
 dashboard lists "Bouts without officials" (next 14 days) and "Weigh-ins to do".
 
 ## Frontend
-- Admin: `CreateBatch.tsx`, `BatchDetail.tsx`, `CreateMatchFromBatch.tsx`,
+- Admin: `AddBout.tsx` (`/home/matches/:batchId/create-match`, `updates/program-simple-forms.md`), `CreateBatch.tsx`,
   `AddMatchToEvent.tsx`, `AssignOfficials.tsx`, `MatchDetail.tsx`,
   `MatchDetailView.tsx` (`/home/match/:id/update-result`), `ShareFightCard.tsx`
   (poster export), `MatchesEnhanced.tsx`.
