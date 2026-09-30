@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { Plus, Search, Video as VideoIcon, Calendar, Eye, Edit2, Trash2, FileText, CheckCircle, Clock, XCircle, Upload, X, Play, User, Building2, ArrowLeft, Save, ChevronDown, Swords, Heading, Bold, Italic, List, Quote, Link2 } from "lucide-react";
 import { usePermissions } from "../hooks/usePermissions";
 import { api } from "../utils/api";
+import { type TextKey, khmerDigits, useT } from "../i18n/program";
 
 interface VideoItem {
   id: string;
@@ -31,7 +32,28 @@ const CATEGORIES = [
   "General"
 ];
 
+const STATUS_TEXT: Record<string, TextKey> = {
+  Draft: "media.status.Draft",
+  Published: "media.status.Published",
+  Archived: "media.status.Archived",
+};
+/** Category names as shown; the stored value stays the English one. */
+const CATEGORY_TEXT: Record<string, TextKey> = {
+  Highlights: "vid.cat.Highlights",
+  "Full Fights": "vid.cat.Full Fights",
+  Interviews: "vid.cat.Interviews",
+  "Behind the Scenes": "vid.cat.Behind the Scenes",
+  "Training & Workouts": "vid.cat.Training & Workouts",
+  Documentary: "vid.cat.Documentary",
+  General: "vid.cat.General",
+};
+
 export function Video() {
+  const { t, lang } = useT();
+  // Khmer script: `km-text` (styles/theme.css) removes letter spacing and enlarges the tiny labels.
+  const km = lang === "km" ? " km-text" : "";
+  const categoryLabel = (c: string) => (CATEGORY_TEXT[c] ? t(CATEGORY_TEXT[c]) : c);
+  const statusLabel = (v: string) => (STATUS_TEXT[v] ? t(STATUS_TEXT[v]) : v);
   const permissions = usePermissions();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -135,12 +157,12 @@ export function Video() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this video?")) {
+    if (confirm(t("vid.deleteConfirm"))) {
       try {
         await api.videos.delete(id);
         setVideos(prev => prev.filter(video => video.id !== id));
       } catch (err) {
-        alert("Failed to delete video: " + (err as Error).message);
+        alert(t("vid.deleteError", { msg: (err as Error).message }));
       }
     }
   };
@@ -246,7 +268,7 @@ export function Video() {
 
   // Simple Markdown-like formatter for preview display
   const renderPreviewHTML = (text: string) => {
-    if (!text) return '<p class="text-slate-400 italic">No description details written yet.</p>';
+    if (!text) return `<p class="text-slate-400 italic">${t("vid.noDescription")}</p>`;
     
     let html = text
       .replace(/&/g, "&amp;")
@@ -285,7 +307,7 @@ export function Video() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim()) {
-      alert("Title is required");
+      alert(t("media.titleRequired"));
       return;
     }
 
@@ -313,7 +335,7 @@ export function Video() {
       await loadRelationsAndVideos();
       setViewMode("list");
     } catch (err) {
-      alert("Failed to save video: " + (err as Error).message);
+      alert(t("vid.saveError", { msg: (err as Error).message }));
     }
   };
 
@@ -334,16 +356,16 @@ export function Video() {
 
   if (loading && viewMode === 'list') {
     return (
-      <div className="p-8 flex flex-col items-center justify-center min-h-[400px]">
+      <div className={`p-8 flex flex-col items-center justify-center min-h-[400px]${km}`}>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A3D91] mb-4" />
-        <p className="text-sm text-slate-500 font-bold uppercase tracking-wider animate-pulse">Loading videos from database…</p>
+        <p className="text-sm text-slate-500 font-bold uppercase tracking-wider animate-pulse">{t("vid.loading")}</p>
       </div>
     );
   }
 
   if (viewMode === "add" || viewMode === "edit") {
     return (
-      <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn">
+      <div className={`p-4 md:p-8 max-w-6xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn${km}`}>
         {/* Header */}
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -356,10 +378,10 @@ export function Video() {
             </button>
             <div>
               <h1 className="text-2xl font-black tracking-tight text-foreground uppercase">
-                {viewMode === "edit" ? "Edit Video Content" : "Upload Video Content"}
+                {t(viewMode === "edit" ? "vid.editTitle" : "vid.createTitle")}
               </h1>
               <p className="text-sm text-muted-foreground mt-1 font-medium">
-                {viewMode === "edit" ? "Modify existing video description, metadata and assignments" : "Upload a new video, highlights or training footage"}
+                {t(viewMode === "edit" ? "vid.editHint" : "vid.createHint")}
               </p>
             </div>
           </div>
@@ -374,26 +396,26 @@ export function Video() {
             <div className="card-premium">
               <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                 <VideoIcon className="w-5 h-5 text-primary" />
-                <span>Video Information</span>
+                <span>{t("vid.info")}</span>
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Video Title <span className="text-secondary">*</span>
+                    {t("vid.f.title")} <span className="text-secondary">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     required
-                    placeholder="Enter video title"
+                    placeholder={t("vid.ph.title")}
                     className="input-premium font-semibold text-slate-800"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    YouTube URL / Embed Link
+                    {t("vid.f.url")}
                   </label>
                   <input
                     type="url"
@@ -406,14 +428,14 @@ export function Video() {
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Duration
+                    {t("vid.f.duration")}
                   </label>
                   <input
                     type="text"
                     value={formData.duration}
                     onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
                     required
-                    placeholder="e.g. 12:45"
+                    placeholder={t("vid.ph.duration")}
                     className="input-premium font-semibold text-slate-800"
                   />
                 </div>
@@ -425,7 +447,7 @@ export function Video() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 border-b border-slate-100 pb-3">
                 <h2 className="text-base font-bold text-foreground flex items-center gap-2">
                   <FileText className="w-5 h-5 text-primary" />
-                  <span>Video Description Editor</span>
+                  <span>{t("vid.editor")}</span>
                 </h2>
                 
                 {/* Editor Tabs */}
@@ -439,7 +461,7 @@ export function Video() {
                         : "text-slate-500 hover:text-slate-800"
                     }`}
                   >
-                    Write
+                    {t("vid.write")}
                   </button>
                   <button
                     type="button"
@@ -450,7 +472,7 @@ export function Video() {
                         : "text-slate-500 hover:text-slate-800"
                     }`}
                   >
-                    Preview
+                    {t("media.preview")}
                   </button>
                 </div>
               </div>
@@ -461,23 +483,23 @@ export function Video() {
                   <button
                     type="button"
                     onClick={() => insertFormat("# ")}
-                    title="Heading"
+                    title={t("media.tb.heading")}
                     className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
                   >
                     <Heading className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
-                    onClick={() => insertFormat("**%s**", "bold text")}
-                    title="Bold"
+                    onClick={() => insertFormat("**%s**", t("media.boldText"))}
+                    title={t("media.tb.bold")}
                     className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
                   >
                     <Bold className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
-                    onClick={() => insertFormat("*%s*", "italic text")}
-                    title="Italic"
+                    onClick={() => insertFormat("*%s*", t("media.italicText"))}
+                    title={t("media.tb.italic")}
                     className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
                   >
                     <Italic className="w-4 h-4" />
@@ -486,7 +508,7 @@ export function Video() {
                   <button
                     type="button"
                     onClick={() => insertFormat("- ")}
-                    title="Bulleted List"
+                    title={t("media.tb.list")}
                     className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
                   >
                     <List className="w-4 h-4" />
@@ -494,15 +516,15 @@ export function Video() {
                   <button
                     type="button"
                     onClick={() => insertFormat("> ")}
-                    title="Blockquote"
+                    title={t("media.tb.quote")}
                     className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
                   >
                     <Quote className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
-                    onClick={() => insertFormat("[Link Text](https://)")}
-                    title="Insert Link"
+                    onClick={() => insertFormat(`[${t("media.linkText")}](https://)`)}
+                    title={t("media.tb.link")}
                     className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
                   >
                     <Link2 className="w-4 h-4" />
@@ -518,7 +540,7 @@ export function Video() {
                     rows={8}
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Enter descriptive details about this fight video clip or event. Markdown syntax is supported..."
+                    placeholder={t("vid.ph.description")}
                     className="w-full bg-white border border-border/80 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-inner transition-all resize-y min-h-[200px] font-mono leading-relaxed"
                   />
                 ) : (
@@ -534,69 +556,69 @@ export function Video() {
             <div className="card-premium">
               <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                 <Swords className="w-5 h-5 text-primary" />
-                <span>Competitor & Match Associations</span>
+                <span>{t("vid.links")}</span>
               </h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Related Match
+                    {t("vid.f.match")}
                   </label>
                   <select
                     value={formData.matchId}
                     onChange={(e) => handleMatchChange(e.target.value)}
                     className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all cursor-pointer"
                   >
-                    <option value="">No match assigned</option>
+                    <option value="">{t("vid.noMatch")}</option>
                     {matchesList.map(match => {
                       const fA = getFighterById(match.fighter_a_id || match.fighterA?.id);
                       const fB = getFighterById(match.fighter_b_id || match.fighterB?.id);
                       return (
                         <option key={match.id} value={match.id}>
-                          {fA?.name || 'Fighter A'} vs {fB?.name || 'Fighter B'} ({match.date || 'TBD'})
+                          {t("vid.matchOption", { a: fA?.name || t("vid.fighterA"), b: fB?.name || t("vid.fighterB"), date: match.date || t("vid.tbd") })}
                         </option>
                       );
                     })}
                   </select>
-                  <p className="text-[10px] text-muted-foreground mt-1">Link this video to a scheduled fight card to display it in match details</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">{t("vid.matchHint")}</p>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Fighter Spotlight
+                    {t("vid.f.fighter")}
                   </label>
                   <select
                     value={formData.fighterId}
                     onChange={(e) => setFormData({ ...formData, fighterId: e.target.value })}
                     className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all cursor-pointer"
                   >
-                    <option value="">No fighter assigned</option>
+                    <option value="">{t("vid.noFighter")}</option>
                     {fightersList.map(fighter => (
                       <option key={fighter.id} value={fighter.id}>
                         {fighter.name}
                       </option>
                     ))}
                   </select>
-                  <p className="text-[10px] text-muted-foreground mt-1">Associate video directly to an athlete's profile library</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">{t("vid.fighterHint")}</p>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Gym / Club Assigned
+                    {t("vid.f.club")}
                   </label>
                   <select
                     value={formData.clubId}
                     onChange={(e) => setFormData({ ...formData, clubId: e.target.value })}
                     className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all cursor-pointer"
                   >
-                    <option value="">No club assigned</option>
+                    <option value="">{t("vid.noClub")}</option>
                     {clubsList.map(club => (
                       <option key={club.id} value={club.id}>
                         {club.name}
                       </option>
                     ))}
                   </select>
-                  <p className="text-[10px] text-muted-foreground mt-1">Showcase video on the gym's public hub page</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">{t("vid.clubHint")}</p>
                 </div>
               </div>
             </div>
@@ -606,12 +628,12 @@ export function Video() {
           <div className="space-y-6">
             {/* Metadata Settings */}
             <div className="card-premium">
-              <h2 className="text-base font-bold text-foreground mb-4">Publishing & Metadata</h2>
+              <h2 className="text-base font-bold text-foreground mb-4">{t("vid.publishing")}</h2>
               
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Video Category
+                    {t("vid.f.category")}
                   </label>
                   <select
                     value={formData.category}
@@ -619,23 +641,23 @@ export function Video() {
                     className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all cursor-pointer"
                   >
                     {CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
+                      <option key={cat} value={cat}>{categoryLabel(cat)}</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Publish Status
+                    {t("media.f.status")}
                   </label>
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
                     className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all cursor-pointer"
                   >
-                    <option value="Draft">Draft</option>
-                    <option value="Published">Published</option>
-                    <option value="Archived">Archived</option>
+                    <option value="Draft">{t("media.status.Draft")}</option>
+                    <option value="Published">{t("media.status.Published")}</option>
+                    <option value="Archived">{t("media.status.Archived")}</option>
                   </select>
                 </div>
 
@@ -644,11 +666,11 @@ export function Video() {
                 {editingVideo && (
                   <div>
                     <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                      Views Count
+                      {t("media.f.views")}
                     </label>
                     <div className="flex items-center gap-1 text-slate-600 text-xs font-bold bg-slate-100 px-3 py-2 rounded-lg border border-slate-200 w-fit">
                       <Eye className="w-3.5 h-3.5 text-primary" />
-                      <span>{editingVideo.views} views recorded</span>
+                      <span>{t("vid.viewsRecorded", { n: editingVideo.views })}</span>
                     </div>
                   </div>
                 )}
@@ -657,13 +679,13 @@ export function Video() {
 
             {/* Thumbnail upload */}
             <div className="card-premium">
-              <h2 className="text-base font-bold text-foreground mb-4">Video Thumbnail Image</h2>
+              <h2 className="text-base font-bold text-foreground mb-4">{t("vid.thumbnail")}</h2>
               
               {thumbnailPreview ? (
                 <div className="relative rounded-xl overflow-hidden border border-border bg-slate-900 aspect-video group">
                   <img
                     src={thumbnailPreview}
-                    alt="Thumbnail Preview"
+                    alt={t("vid.thumbnailAlt")}
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -682,8 +704,8 @@ export function Video() {
                   className="border-2 border-dashed border-border hover:border-primary/50 hover:bg-muted/10 rounded-xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center aspect-video group"
                 >
                   <Upload className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
-                  <span className="text-xs font-bold text-foreground">Upload banner preview image</span>
-                  <span className="text-[10px] text-muted-foreground mt-1">PNG, JPG, or WEBP up to 5MB</span>
+                  <span className="text-xs font-bold text-foreground">{t("vid.uploadThumbnail")}</span>
+                  <span className="text-[10px] text-muted-foreground mt-1">{t("media.imageHint")}</span>
                   <input
                     type="file"
                     ref={thumbnailInputRef}
@@ -703,14 +725,14 @@ export function Video() {
                 className="flex-1 px-4 py-3 bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-sm"
               >
                 <X className="w-4 h-4" />
-                <span>Cancel</span>
+                <span>{t("common.cancel")}</span>
               </button>
               <button
                 type="submit"
                 className="flex-1 px-4 py-3 bg-[#0A3D91] hover:bg-blue-800 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-blue-900/10 hover:shadow-xl hover:shadow-blue-900/20 border border-transparent"
               >
                 <CheckCircle className="w-4 h-4" />
-                <span>Save Video</span>
+                <span>{t("vid.save")}</span>
               </button>
             </div>
           </div>
@@ -720,19 +742,19 @@ export function Video() {
   }
 
   return (
-    <div className="p-4 md:p-8 space-y-6 animate-fadeIn">
+    <div className={`p-4 md:p-8 space-y-6 animate-fadeIn${km}`}>
       {/* Header */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Video Management</h1>
-          <p className="text-sm text-muted-foreground mt-1 font-medium">Upload and manage video content • {filteredVideos.length} {filteredVideos.length === 1 ? 'video' : 'videos'} found</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("vid.heading")}</h1>
+          <p className="text-sm text-muted-foreground mt-1 font-medium">{t(filteredVideos.length === 1 ? "vid.introOne" : "vid.introMany", { n: filteredVideos.length })}</p>
         </div>
         <button
           onClick={handleAddVideo}
           className="btn-secondary py-2.5 px-5"
         >
           <Plus className="w-4 h-4" />
-          Add Video
+          {t("vid.add")}
         </button>
       </header>
 
@@ -742,7 +764,7 @@ export function Video() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <input
             type="text"
-            placeholder="Search videos, categories, description..."
+            placeholder={t("vid.search")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-white border border-border/80 rounded-xl pl-11 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all"
@@ -755,10 +777,10 @@ export function Video() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="px-4 py-2.5 bg-white border border-border/80 rounded-xl text-sm font-medium text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm hover:border-slate-300 transition-all cursor-pointer min-w-[140px] appearance-none pr-10"
             >
-              <option value="all">All Status</option>
-              <option value="Draft">Draft</option>
-              <option value="Published">Published</option>
-              <option value="Archived">Archived</option>
+              <option value="all">{t("media.allStatus")}</option>
+              <option value="Draft">{t("media.status.Draft")}</option>
+              <option value="Published">{t("media.status.Published")}</option>
+              <option value="Archived">{t("media.status.Archived")}</option>
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
               <ChevronDown className="w-4 h-4" />
@@ -771,9 +793,9 @@ export function Video() {
               onChange={(e) => setCategoryFilter(e.target.value)}
               className="px-4 py-2.5 bg-white border border-border/80 rounded-xl text-sm font-medium text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm hover:border-slate-300 transition-all cursor-pointer min-w-[140px] appearance-none pr-10"
             >
-              <option value="all">All Categories</option>
+              <option value="all">{t("media.allCategories")}</option>
               {CATEGORIES.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat} value={cat}>{categoryLabel(cat)}</option>
               ))}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
@@ -821,7 +843,7 @@ export function Video() {
                 {/* Badge Overlays */}
                 <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
                   <div className="px-2.5 py-0.5 bg-white/10 border border-white/20 text-white rounded-full text-[10px] font-bold shadow-sm backdrop-blur-md uppercase">
-                    {video.category}
+                    {categoryLabel(video.category)}
                   </div>
                   
                   <div className={`badge-premium ${
@@ -832,7 +854,7 @@ export function Video() {
                       video.status === 'Published' ? 'bg-emerald-500' : 
                       video.status === 'Draft' ? 'bg-amber-500' : 'bg-red-500'
                     }`} />
-                    <span className="text-[10px] font-bold uppercase">{video.status}</span>
+                    <span className="text-[10px] font-bold uppercase">{statusLabel(video.status)}</span>
                   </div>
                 </div>
 
@@ -879,7 +901,7 @@ export function Video() {
                       {match && (
                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-[#C8102E] border border-red-100 rounded-lg text-[10px] font-bold">
                           <Swords className="w-3 h-3" />
-                          <span>Match: {getFighterById(match.fighter_a_id || match.fighterA?.id)?.name} vs {getFighterById(match.fighter_b_id || match.fighterB?.id)?.name}</span>
+                          <span>{t("vid.matchBadge", { a: getFighterById(match.fighter_a_id || match.fighterA?.id)?.name ?? "", b: getFighterById(match.fighter_b_id || match.fighterB?.id)?.name ?? "" })}</span>
                         </div>
                       )}
                       {fighter && (
@@ -900,14 +922,14 @@ export function Video() {
                   {/* Metadatas */}
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px]">
-                      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Views</div>
+                      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("media.views")}</div>
                       <div className="flex items-center gap-1 text-primary">
                         <Eye className="w-3.5 h-3.5 shrink-0" />
-                        <span className="text-xs font-bold">{video.views.toLocaleString()}</span>
+                        <span className="text-xs font-bold">{lang === "km" ? khmerDigits(video.views.toLocaleString()) : video.views.toLocaleString()}</span>
                       </div>
                     </div>
                     <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px]">
-                      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Uploaded</div>
+                      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("vid.uploaded")}</div>
                       <div className="flex items-center gap-1 text-muted-foreground">
                         <Calendar className="w-3.5 h-3.5 shrink-0" />
                         <span className="text-xs font-semibold">{video.uploadDate}</span>
@@ -920,7 +942,7 @@ export function Video() {
                   {/* Play Action Row */}
                   <div className="flex items-center justify-between text-xs text-muted-foreground font-medium pt-3 border-t border-border/50">
                     <span className="text-primary group-hover:text-secondary font-semibold flex items-center gap-1 transition-colors">
-                      Watch Video
+                      {t("vid.watch")}
                     </span>
                   </div>
                 </div>
@@ -935,9 +957,9 @@ export function Video() {
           <div className="w-16 h-16 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-4">
             <VideoIcon className="w-8 h-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-bold text-foreground tracking-tight mb-1">No Videos Found</h3>
+          <h3 className="text-lg font-bold text-foreground tracking-tight mb-1">{t("vid.emptyTitle")}</h3>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            We couldn't find any videos matching your search. Try adjusting your filters or search term.
+            {t("vid.emptyText")}
           </p>
         </div>
       )}

@@ -96,11 +96,12 @@ one server, Caddy with automatic HTTPS, fan site + admin subdomain, daily backup
   not the Vite dev server.
 - **Data**: add the International Partners (K-1, WKN, Kombat) on the live admin; KKF review of the knowledge
   base Khmer text and flagged facts; English versions of Khmer news where possible.
-- **Launch content (step 6)** — dev data on 2026-09-30: 4 fighters (all with photo and club, none verified),
-  2 clubs (no logos), 1 fight night (10 July, past; its one bout has no result), **no upcoming fight night**,
-  no approved championship titles, 2 news (no English), 1 video, 2 sponsors, 1 broadcaster, no referees/judges,
-  About the Federation not published. Staff to add at least the next fight night with its card, results of past
-  bouts, the title holders, more fighters/clubs (+ logos), federation content — on the live admin.
+- **Launch content (step 6)** — dev data at the end of 2026-09-30: 27 fighters, 5 clubs (no logos yet), the past
+  10 July fight night (its bout still has no result), demo fight nights on Sat 3 Oct (Published, 6 bouts) and
+  10 Oct (Draft, 2 bouts), no recorded results, no approved championship titles, 2 news (no English), 3 videos,
+  9 demo officials, About the Federation not published. Still needed from staff before launch: real fight cards
+  in place of the demo ones, results of past bouts, the title holders, club logos, federation content, and the
+  private fighter records (`features/fighter-personal-records.md`).
 - **Later**: share previews with the fighter photo / event poster need a small server-side step on the host
   (chat apps don't run JavaScript).
 

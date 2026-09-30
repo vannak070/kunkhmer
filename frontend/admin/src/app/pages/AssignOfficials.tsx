@@ -4,12 +4,32 @@ import {
   Shield, Users, CheckCircle, ArrowLeft, Send, 
   Plus, X, AlertCircle, UserCheck, Check, Sparkles
 } from "lucide-react";
-import { officialOption, useOfficials } from "../hooks/useOfficials";
+import { type Official, useOfficials } from "../hooks/useOfficials";
+import { type TextKey, useT } from "../i18n/program";
 import { api } from "../utils/api";
 import { toast } from "sonner";
 import { clsx } from "clsx";
 
+const GRADE_TEXT: Record<string, TextKey> = {
+  "International A": "off.grade.International A",
+  "National A": "off.grade.National A",
+  "National B": "off.grade.National B",
+};
+
 export default function AssignOfficials() {
+  const { t, lang } = useT();
+  // Khmer script needs a larger size, more line height and no letter spacing; English keeps its look.
+  const km = lang === "km";
+  const labelClass = km
+    ? "block text-xs font-semibold text-slate-500 mb-1.5"
+    : "block text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5";
+  /** Picker label in the chosen language: name, grade and the bouts already that night ("busy" hint). */
+  const officialOption = (o: Official) =>
+    [
+      o.fullName,
+      o.grade ? (GRADE_TEXT[o.grade] ? t(GRADE_TEXT[o.grade]) : o.grade) : null,
+      o.boutsOnDate ? t(o.boutsOnDate === 1 ? "assign.busyOne" : "assign.busyMany", { n: o.boutsOnDate }) : null,
+    ].filter(Boolean).join(" · ");
   const { batchId } = useParams();
   const navigate = useNavigate();
   
@@ -39,7 +59,7 @@ export default function AssignOfficials() {
           id: m.id,
           fighterAName: m.fighter_a_name,
           fighterBName: m.fighter_b_name,
-          weightClass: m.agreed_weight ? `${m.agreed_weight} kg` : "Catchweight",
+          weight: m.agreed_weight || null,
           rounds: m.rounds,
           refereeId: m.referee_id || "",
           judgeIds: Array.isArray(m.judge_ids) ? m.judge_ids : [],
@@ -60,7 +80,7 @@ export default function AssignOfficials() {
       }
     } catch (err: any) {
       console.error(err);
-      toast.error("Failed to load fight card data: " + err.message);
+      toast.error(t("assign.loadError", { msg: err.message }));
     } finally {
       setLoading(false);
     }
@@ -87,7 +107,7 @@ export default function AssignOfficials() {
     const firstMatchId = matches[0].id;
     const firstMatchAssignment = matchOfficials[firstMatchId];
     if (!firstMatchAssignment || !firstMatchAssignment.refereeId || firstMatchAssignment.judgeIds.filter(id => id).length !== 3) {
-      toast.error("❌ Configure officials for the first match first!");
+      toast.error(t("assign.firstFirst"));
       return;
     }
 
@@ -99,7 +119,7 @@ export default function AssignOfficials() {
       };
     });
     setMatchOfficials(updated);
-    toast.success("⚡ Officials copied to all matches!");
+    toast.success(t("assign.copied"));
   };
 
   const handleSubmit = async () => {
@@ -114,7 +134,7 @@ export default function AssignOfficials() {
     });
 
     if (!isValid) {
-      toast.error("❌ Each match must have a referee and exactly 3 judges assigned!");
+      toast.error(t("assign.incomplete"));
       return;
     }
 
@@ -129,11 +149,11 @@ export default function AssignOfficials() {
         })
       );
       
-      toast.success(`✅ Officials assigned successfully to all matches!`);
+      toast.success(t("assign.done"));
       navigate(`/home/batches/${batch.id}`);
     } catch (err: any) {
       console.error(err);
-      toast.error("Failed to assign officials: " + err.message);
+      toast.error(t("assign.saveError", { msg: err.message }));
     }
   };
 
@@ -152,9 +172,9 @@ export default function AssignOfficials() {
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-4">Fight card not found</h2>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-4">{t("assign.notFound")}</h2>
           <button onClick={() => navigate("/home/matches")} className="btn-primary px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider">
-            Back to Matches
+            {t("assign.backToMatches")}
           </button>
         </div>
       </div>
@@ -171,16 +191,16 @@ export default function AssignOfficials() {
             className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 font-semibold uppercase tracking-wider text-xs transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Details
+            {t("assign.back")}
           </button>
 
           {matches.length > 0 && (
             <button
               onClick={handleAutoFillOfficials}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 font-extrabold text-[10px] uppercase tracking-wider rounded-xl border border-amber-200/50 transition-colors shadow-sm"
+              className={clsx("inline-flex items-center gap-1.5 px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 font-extrabold uppercase tracking-wider rounded-xl border border-amber-200/50 transition-colors shadow-sm", km ? "text-xs" : "text-[10px]")}
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-550 animate-pulse" />
-              ⚡ Copy Match 1 to All
+              {t("assign.copyFirst")}
             </button>
           )}
         </div>
@@ -194,18 +214,18 @@ export default function AssignOfficials() {
                 <Shield className="w-6 h-6" />
               </span>
               <div>
-                <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 uppercase tracking-tighter">
-                  Assign Match Officials
+                <h1 className={clsx("text-2xl md:text-3xl font-extrabold text-slate-900", km ? "leading-[1.5]" : "uppercase tracking-tighter")}>
+                  {t("assign.title")}
                 </h1>
                 <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  Set the main referee and 3 judges for each fight in {batch.batchNumber || `Fight card #${batch.week_number}`}
+                  {t("assign.intro", { card: batch.batchNumber || t("assign.cardNumber", { n: Number(batch.week_number) || batch.week_number }) })}
                 </p>
               </div>
             </div>
             
             <div className="mt-4 p-4 bg-indigo-50/50 border border-indigo-200/35 rounded-xl text-xs font-semibold text-indigo-750 flex items-center gap-2.5">
               <Shield className="w-4 h-4 text-indigo-600 shrink-0" />
-              <span>Event Card: {batch.event_name} • Location: {batch.location}</span>
+              <span>{t("assign.eventLine", { event: batch.event_name ?? "", place: batch.location ?? "" })}</span>
             </div>
           </div>
 
@@ -214,7 +234,7 @@ export default function AssignOfficials() {
             {matches.length === 0 ? (
               <div className="text-center py-12 text-slate-450 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
                 <Users className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                <p className="font-semibold text-sm">No matches in this fight card yet</p>
+                <p className="font-semibold text-sm">{t("assign.noBouts")}</p>
               </div>
             ) : (
               matches.map((m: any, index: number) => {
@@ -229,16 +249,16 @@ export default function AssignOfficials() {
                           #{index + 1}
                         </span>
                         <span className="font-extrabold text-slate-900 text-sm md:text-base">
-                          {m.fighterAName} <span className="text-slate-400 font-normal">vs</span> {m.fighterBName}
+                          {m.fighterAName} <span className="text-slate-400 font-normal">{t("common.vs")}</span> {m.fighterBName}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 bg-slate-200/70 text-slate-700 font-bold text-[9px] rounded-lg uppercase tracking-wider">
-                          {m.weightClass}
+                        <span className={clsx("px-2.5 py-0.5 bg-slate-200/70 text-slate-700 font-bold rounded-lg uppercase tracking-wider", km ? "text-xs" : "text-[9px]")}>
+                          {m.weight ? t("common.kg", { n: lang === "km" ? Number(m.weight) : m.weight }) : t("assign.catchweight")}
                         </span>
                         {m.isChampionshipBout && (
-                          <span className="px-2.5 py-0.5 bg-amber-100 text-amber-700 border border-amber-250/50 font-bold text-[9px] rounded-lg uppercase tracking-wider flex items-center gap-1">
-                            🏆 Title Fight
+                          <span className={clsx("px-2.5 py-0.5 bg-amber-100 text-amber-700 border border-amber-250/50 font-bold rounded-lg uppercase tracking-wider flex items-center gap-1", km ? "text-xs" : "text-[9px]")}>
+                            {t("assign.titleFight")}
                           </span>
                         )}
                       </div>
@@ -247,15 +267,15 @@ export default function AssignOfficials() {
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                       {/* Referee */}
                       <div>
-                        <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">
-                          Main Referee
+                        <label className={labelClass}>
+                          {t("assign.referee")}
                         </label>
                         <select
                           value={refereeId}
                           onChange={(e) => updateMatchOfficialState(m.id, "refereeId", e.target.value)}
                           className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl p-2.5 focus:border-primary focus:outline-none cursor-pointer"
                         >
-                          <option value="">Select referee...</option>
+                          <option value="">{t("assign.pickReferee")}</option>
                           {availableReferees.map(ref => (
                             <option key={ref.id} value={ref.id}>
                               {officialOption(ref)}
@@ -266,8 +286,8 @@ export default function AssignOfficials() {
 
                       {/* Judge 1 */}
                       <div>
-                        <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">
-                          Judge 1
+                        <label className={labelClass}>
+                          {t("assign.judge", { n: 1 })}
                         </label>
                         <select
                           value={judgeIds[0] || ""}
@@ -278,7 +298,7 @@ export default function AssignOfficials() {
                           }}
                           className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl p-2.5 focus:border-primary focus:outline-none cursor-pointer"
                         >
-                          <option value="">Select judge...</option>
+                          <option value="">{t("assign.pickJudge")}</option>
                           {getFilteredJudgesForSlot(m.id, 0).map(judge => (
                             <option key={judge.id} value={judge.id}>
                               {officialOption(judge)}
@@ -289,8 +309,8 @@ export default function AssignOfficials() {
 
                       {/* Judge 2 */}
                       <div>
-                        <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">
-                          Judge 2
+                        <label className={labelClass}>
+                          {t("assign.judge", { n: 2 })}
                         </label>
                         <select
                           value={judgeIds[1] || ""}
@@ -301,7 +321,7 @@ export default function AssignOfficials() {
                           }}
                           className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl p-2.5 focus:border-primary focus:outline-none cursor-pointer"
                         >
-                          <option value="">Select judge...</option>
+                          <option value="">{t("assign.pickJudge")}</option>
                           {getFilteredJudgesForSlot(m.id, 1).map(judge => (
                             <option key={judge.id} value={judge.id}>
                               {officialOption(judge)}
@@ -312,8 +332,8 @@ export default function AssignOfficials() {
 
                       {/* Judge 3 */}
                       <div>
-                        <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">
-                          Judge 3
+                        <label className={labelClass}>
+                          {t("assign.judge", { n: 3 })}
                         </label>
                         <select
                           value={judgeIds[2] || ""}
@@ -324,7 +344,7 @@ export default function AssignOfficials() {
                           }}
                           className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl p-2.5 focus:border-primary focus:outline-none cursor-pointer"
                         >
-                          <option value="">Select judge...</option>
+                          <option value="">{t("assign.pickJudge")}</option>
                           {getFilteredJudgesForSlot(m.id, 2).map(judge => (
                             <option key={judge.id} value={judge.id}>
                               {officialOption(judge)}
@@ -351,14 +371,14 @@ export default function AssignOfficials() {
                   : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
               )}
             >
-              Assign Officials
+              {t("assign.submit")}
             </button>
             
             <button
               onClick={() => navigate(-1)}
               className="flex-1 py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl font-bold uppercase tracking-wider text-xs border border-slate-200 transition-all active:scale-[0.98] hover:-translate-y-[0.5px]"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
           </div>
         </div>

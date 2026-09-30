@@ -13,6 +13,7 @@ import {
 import { api } from "../utils/api";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { APPROVALS_ENABLED } from "../config/features";
+import { type Lang, type TextKey, formatDay, useT } from "../i18n/program";
 
 interface StaffUser {
   id: string;
@@ -29,14 +30,19 @@ interface StaffUser {
 interface Club { id: string; name: string }
 
 /** Roles the API accepts, with a plain-language description for the picker and the guide. */
-const ROLES: { value: string; description: string; tone: string }[] = [
-  { value: "Super Admin", description: "Full access, including staff accounts and system settings.", tone: "bg-violet-50 text-violet-700 border-violet-200" },
-  { value: "KKF Officer", description: APPROVALS_ENABLED ? "Federation staff: verify fighters, record results and titles, manage news and partners." : "Federation staff: run events, fight cards, bouts, fighters, results and titles; manage news and partners.", tone: "bg-blue-50 text-blue-700 border-blue-200" },
-  { value: "Organizer", description: APPROVALS_ENABLED ? "Creates and runs events, fight cards and matches." : "Read-only for now: sees events, fight cards and fighters (KKF staff run the program).", tone: "bg-amber-50 text-amber-800 border-amber-200" },
-  { value: "Club/Gym", description: APPROVALS_ENABLED ? "Tied to one club: manages that club's fighters and responds to its matches." : "Tied to one club. Read-only for now: sees events, fight cards and fighters.", tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  { value: "Referee", description: "Match official account (no editing access yet).", tone: "bg-slate-100 text-slate-700 border-slate-200" },
-  { value: "Judge", description: "Match official account (no editing access yet).", tone: "bg-slate-100 text-slate-700 border-slate-200" },
+/** `text` = the description in the dictionary; roles whose wording only applies with approvals on stay English. */
+const ROLES: { value: string; description: string; text?: TextKey; label?: TextKey; tone: string }[] = [
+  { value: "Super Admin", description: "Full access, including staff accounts and system settings.", text: "users.desc.admin", tone: "bg-violet-50 text-violet-700 border-violet-200" },
+  { value: "KKF Officer", description: APPROVALS_ENABLED ? "Federation staff: verify fighters, record results and titles, manage news and partners." : "Federation staff: run events, fight cards, bouts, fighters, results and titles; manage news and partners.", text: APPROVALS_ENABLED ? undefined : "users.desc.officer", tone: "bg-blue-50 text-blue-700 border-blue-200" },
+  { value: "Organizer", description: APPROVALS_ENABLED ? "Creates and runs events, fight cards and matches." : "Read-only for now: sees events, fight cards and fighters (KKF staff run the program).", text: APPROVALS_ENABLED ? undefined : "users.desc.organizer", label: "users.role.Organizer", tone: "bg-amber-50 text-amber-800 border-amber-200" },
+  { value: "Club/Gym", description: APPROVALS_ENABLED ? "Tied to one club: manages that club's fighters and responds to its matches." : "Tied to one club. Read-only for now: sees events, fight cards and fighters.", text: APPROVALS_ENABLED ? undefined : "users.desc.club", label: "users.role.Club/Gym", tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  { value: "Referee", description: "Match official account (no editing access yet).", text: "users.desc.official", label: "off.role.Referee", tone: "bg-slate-100 text-slate-700 border-slate-200" },
+  { value: "Judge", description: "Match official account (no editing access yet).", text: "users.desc.official", label: "off.role.Judge", tone: "bg-slate-100 text-slate-700 border-slate-200" },
 ];
+type T = ReturnType<typeof useT>["t"];
+/** Role name and description in the chosen language ("Super Admin" and "KKF Officer" stay as they are). */
+const roleLabel = (role: string, t: T) => { const r = ROLES.find((x) => x.value === role); return r?.label ? t(r.label) : role; };
+const roleText = (role: string, t: T) => { const r = ROLES.find((x) => x.value === role); return r?.text ? t(r.text) : r?.description; };
 const roleTone = (role: string) => ROLES.find((r) => r.value === role)?.tone ?? "bg-slate-100 text-slate-700 border-slate-200";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -48,17 +54,18 @@ function generatePassword() {
   return Array.from(bytes, (b) => chars[b % chars.length]).join("");
 }
 
-function timeAgo(value: string | null): string {
-  if (!value) return "Never";
+function timeAgo(value: string | null, t: T, lang: Lang): string {
+  if (!value) return t("users.never");
   const then = new Date(value).getTime();
   if (isNaN(then)) return "—";
   const mins = Math.round((Date.now() - then) / 60000);
-  if (mins < 2) return "Just now";
-  if (mins < 60) return `${mins} min ago`;
+  if (mins < 2) return t("users.justNow");
+  if (mins < 60) return t("users.minAgo", { n: mins });
   const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours} h ago`;
+  if (hours < 24) return t("users.hAgo", { n: hours });
   const days = Math.round(hours / 24);
-  if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
+  if (days < 30) return t(days === 1 ? "users.dayAgo" : "users.daysAgo", { n: days });
+  if (lang === "km") return formatDay(value, lang);
   return new Date(value).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }
 
@@ -87,6 +94,7 @@ function UserDialog({ open, user, isSelf, clubs, onClose, onSaved, onDelete }: {
   onSaved: (u: StaffUser) => void;
   onDelete: (u: StaffUser) => void;
 }) {
+  const { t } = useT();
   const editing = Boolean(user);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
@@ -106,13 +114,13 @@ function UserDialog({ open, user, isSelf, clubs, onClose, onSaved, onDelete }: {
 
   const validate = () => {
     const e: typeof errors = {};
-    if (!form.fullName.trim()) e.fullName = "Enter their full name.";
-    if (!form.username.trim()) e.username = "Choose a username they will sign in with.";
-    else if (/\s/.test(form.username.trim())) e.username = "Usernames can't contain spaces.";
-    if (!EMAIL.test(form.email.trim())) e.email = "Enter a valid email address.";
-    if (form.role === "Club/Gym" && !form.clubId) e.clubId = "Pick the club this account belongs to.";
-    if (!editing && form.password.length < MIN_PASSWORD) e.password = `At least ${MIN_PASSWORD} characters.`;
-    if (editing && form.password && form.password.length < MIN_PASSWORD) e.password = `At least ${MIN_PASSWORD} characters.`;
+    if (!form.fullName.trim()) e.fullName = t("users.needName");
+    if (!form.username.trim()) e.username = t("users.needUsername");
+    else if (/\s/.test(form.username.trim())) e.username = t("users.usernameSpaces");
+    if (!EMAIL.test(form.email.trim())) e.email = t("users.badEmail");
+    if (form.role === "Club/Gym" && !form.clubId) e.clubId = t("users.needClub");
+    if (!editing && form.password.length < MIN_PASSWORD) e.password = t("users.minPassword", { n: MIN_PASSWORD });
+    if (editing && form.password && form.password.length < MIN_PASSWORD) e.password = t("users.minPassword", { n: MIN_PASSWORD });
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -134,14 +142,14 @@ function UserDialog({ open, user, isSelf, clubs, onClose, onSaved, onDelete }: {
         if (isSelf) delete body.role;
         if (form.password) body.password = form.password;
         saved = await api.auth.updateUser(user.id, body);
-        toast.success(`${saved.fullName} was updated`);
+        toast.success(t("users.updated", { name: saved.fullName }));
       } else {
         saved = await api.auth.createUser({ ...body, password: form.password, status: "Active" });
-        toast.success(`${saved.fullName} can now sign in`, { description: `Username: ${saved.username}. Share the password with them privately.` });
+        toast.success(t("users.created", { name: saved.fullName }), { description: t("users.createdHint", { username: saved.username }) });
       }
       onSaved(saved);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save. Please try again.");
+      toast.error(e instanceof Error ? e.message : t("users.saveError"));
     } finally {
       setSaving(false);
     }
@@ -155,50 +163,50 @@ function UserDialog({ open, user, isSelf, clubs, onClose, onSaved, onDelete }: {
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="text-xl">{editing ? `Edit ${user?.fullName}` : "Add a staff member"}</DialogTitle>
+          <DialogTitle className="text-xl">{editing ? t("users.editTitle", { name: user?.fullName ?? "" }) : t("users.addTitle")}</DialogTitle>
           <DialogDescription>
-            {editing ? "Change their details, role or access." : "They'll sign in to the management system with the username and password below."}
+            {t(editing ? "users.editHint" : "users.addHint")}
           </DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); save(); }} noValidate>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="u-name">Full name</label>
-            <input id="u-name" className={`${field} ${border("fullName")}`} value={form.fullName} onChange={(e) => set("fullName", e.target.value)} placeholder="e.g. Sok Dara" />
+            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="u-name">{t("users.fullName")}</label>
+            <input id="u-name" className={`${field} ${border("fullName")}`} value={form.fullName} onChange={(e) => set("fullName", e.target.value)} placeholder={t("users.fullNameExample")} />
             <Err k="fullName" />
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="u-username">Username</label>
-              <input id="u-username" className={`${field} ${border("username")}`} value={form.username} onChange={(e) => set("username", e.target.value)} autoComplete="off" placeholder="e.g. dara.sok" />
+              <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="u-username">{t("users.username")}</label>
+              <input id="u-username" className={`${field} ${border("username")}`} value={form.username} onChange={(e) => set("username", e.target.value)} autoComplete="off" placeholder={t("users.usernameExample")} />
               <Err k="username" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="u-email">Email</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="u-email">{t("users.email")}</label>
               <input id="u-email" type="email" className={`${field} ${border("email")}`} value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="name@kkf.gov.kh" />
               <Err k="email" />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="u-role">Role</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="u-role">{t("users.role")}</label>
             <div className="relative">
               <select id="u-role" disabled={isSelf} className={`${field} ${border("role")} appearance-none pr-10 disabled:bg-slate-50 disabled:text-slate-500`} value={form.role} onChange={(e) => set("role", e.target.value)}>
-                {ROLES.map((r) => <option key={r.value} value={r.value}>{r.value}</option>)}
+                {ROLES.map((r) => <option key={r.value} value={r.value}>{roleLabel(r.value, t)}</option>)}
               </select>
               <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden />
             </div>
             <p className="mt-1 text-xs text-slate-500">
-              {isSelf ? "You can't change your own role." : ROLES.find((r) => r.value === form.role)?.description}
+              {isSelf ? t("users.ownRole") : roleText(form.role, t)}
             </p>
           </div>
 
           {form.role === "Club/Gym" && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="u-club">Club</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="u-club">{t("users.club")}</label>
               <div className="relative">
                 <select id="u-club" className={`${field} ${border("clubId")} appearance-none pr-10`} value={form.clubId} onChange={(e) => set("clubId", e.target.value)}>
-                  <option value="">Select a club…</option>
+                  <option value="">{t("users.pickClub")}</option>
                   {clubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden />
@@ -210,20 +218,20 @@ function UserDialog({ open, user, isSelf, clubs, onClose, onSaved, onDelete }: {
           {editing && !showPassword ? (
             <button type="button" onClick={() => { setShowPassword(true); set("password", generatePassword()); }} className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline underline-offset-4">
               <KeyRound className="w-4 h-4" aria-hidden />
-              Reset their password
+              {t("users.resetPassword")}
             </button>
           ) : (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="u-password">{editing ? "New password" : "Password"}</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="u-password">{t(editing ? "users.newPassword" : "users.password")}</label>
               <div className="flex gap-2">
                 <input id="u-password" className={`${field} ${border("password")} font-mono`} value={form.password} onChange={(e) => set("password", e.target.value)} autoComplete="new-password" />
-                <button type="button" onClick={() => set("password", generatePassword())} title="Generate a strong password" className="h-11 px-3 rounded-xl border border-slate-300 hover:border-primary text-slate-600 hover:text-primary inline-flex items-center gap-1.5 text-sm shrink-0">
-                  <Wand2 className="w-4 h-4" aria-hidden /> New
+                <button type="button" onClick={() => set("password", generatePassword())} title={t("users.generate")} className="h-11 px-3 rounded-xl border border-slate-300 hover:border-primary text-slate-600 hover:text-primary inline-flex items-center gap-1.5 text-sm shrink-0">
+                  <Wand2 className="w-4 h-4" aria-hidden /> {t("users.generateShort")}
                 </button>
               </div>
               <Err k="password" />
               <p className="mt-1 text-xs text-slate-500">
-                {editing ? "They'll be signed out and must use this new password." : "Copy it now and share it with them privately; they can change it on their Profile page."}
+                {t(editing ? "users.passwordEditHint" : "users.passwordAddHint")}
               </p>
             </div>
           )}
@@ -232,8 +240,8 @@ function UserDialog({ open, user, isSelf, clubs, onClose, onSaved, onDelete }: {
             <label className={`flex items-start gap-3 rounded-xl border p-3 ${isSelf ? "bg-slate-50 border-slate-200" : "border-slate-200 cursor-pointer"}`}>
               <input type="checkbox" className="mt-0.5 w-4 h-4 accent-[#0A3D91]" checked={form.active} disabled={isSelf} onChange={(e) => set("active", e.target.checked)} />
               <span>
-                <span className="block text-sm font-medium text-slate-800">Can sign in</span>
-                <span className="block text-xs text-slate-500">{isSelf ? "You can't deactivate your own account." : "Untick to deactivate: they're signed out and can't sign in, but their history stays."}</span>
+                <span className="block text-sm font-medium text-slate-800">{t("users.canSignIn")}</span>
+                <span className="block text-xs text-slate-500">{t(isSelf ? "users.ownActive" : "users.activeHint")}</span>
               </span>
             </label>
           )}
@@ -241,13 +249,13 @@ function UserDialog({ open, user, isSelf, clubs, onClose, onSaved, onDelete }: {
           <DialogFooter className="gap-2 sm:gap-2 pt-2 flex-col-reverse sm:flex-row sm:justify-between">
             {editing && user && !isSelf ? (
               <button type="button" onClick={() => onDelete(user)} className="inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50">
-                <Trash2 className="w-4 h-4" aria-hidden /> Delete permanently
+                <Trash2 className="w-4 h-4" aria-hidden /> {t("users.deleteForever")}
               </button>
             ) : <span />}
             <div className="flex gap-2 justify-end">
-              <button type="button" onClick={onClose} className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancel</button>
+              <button type="button" onClick={onClose} className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">{t("common.cancel")}</button>
               <button type="submit" disabled={saving} className="h-11 px-5 rounded-xl bg-primary hover:bg-[#083073] disabled:opacity-60 text-white text-sm font-semibold">
-                {saving ? "Saving…" : editing ? "Save changes" : "Add staff member"}
+                {saving ? t("common.saving") : editing ? t("users.saveChanges") : t("users.addButton")}
               </button>
             </div>
           </DialogFooter>
@@ -263,6 +271,7 @@ function Confirm({ open, title, body, confirmLabel, danger, busy, onConfirm, onC
   open: boolean; title: string; body: React.ReactNode; confirmLabel: string; danger?: boolean; busy?: boolean;
   onConfirm: () => void; onClose: () => void;
 }) {
+  const { t } = useT();
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-md rounded-2xl">
@@ -274,9 +283,9 @@ function Confirm({ open, title, body, confirmLabel, danger, busy, onConfirm, onC
           <DialogDescription asChild><div className="text-sm text-slate-600 space-y-2">{body}</div></DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2 sm:gap-2">
-          <button type="button" onClick={onClose} className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancel</button>
+          <button type="button" onClick={onClose} className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">{t("common.cancel")}</button>
           <button type="button" disabled={busy} onClick={onConfirm} className={`h-11 px-5 rounded-xl text-white text-sm font-semibold disabled:opacity-60 ${danger ? "bg-red-600 hover:bg-red-700" : "bg-primary hover:bg-[#083073]"}`}>
-            {busy ? "Working…" : confirmLabel}
+            {busy ? t("users.working") : confirmLabel}
           </button>
         </DialogFooter>
       </DialogContent>
@@ -289,6 +298,7 @@ function Confirm({ open, title, body, confirmLabel, danger, busy, onConfirm, onC
 type StatusFilter = "all" | "active" | "inactive";
 
 export function UserManagement() {
+  const { t, lang } = useT();
   const me = api.auth.getCurrentUser() as StaffUser | null;
   const navigate = useNavigate();
   const location = useLocation();
@@ -306,7 +316,7 @@ export function UserManagement() {
 
   const load = () => {
     setLoadError(null);
-    api.auth.listUsers().then(setUsers).catch((e) => setLoadError(e instanceof Error ? e.message : "Could not load staff accounts."));
+    api.auth.listUsers().then(setUsers).catch((e) => setLoadError(e instanceof Error ? e.message : t("users.loadError")));
   };
 
   useEffect(() => {
@@ -362,16 +372,16 @@ export function UserManagement() {
       if (kind === "delete") {
         await api.auth.deleteUser(user.id);
         setUsers((l) => (l ?? []).filter((u) => u.id !== user.id));
-        toast.success(`${user.fullName} was deleted`);
+        toast.success(t("users.deleted", { name: user.fullName }));
         closeDialog();
       } else {
         const saved = await api.auth.updateUser(user.id, { status: kind === "deactivate" ? "Inactive" : "Active" });
         setUsers((l) => (l ?? []).map((u) => (u.id === saved.id ? saved : u)));
-        toast.success(kind === "deactivate" ? `${user.fullName} can no longer sign in` : `${user.fullName} can sign in again`);
+        toast.success(t(kind === "deactivate" ? "users.nowInactive" : "users.activeAgain", { name: user.fullName }));
       }
       setConfirm(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Something went wrong.");
+      toast.error(e instanceof Error ? e.message : t("users.error"));
     } finally {
       setBusy(false);
     }
@@ -379,9 +389,9 @@ export function UserManagement() {
 
   const StatusPill = ({ u }: { u: StaffUser }) =>
     u.status === "Active" ? (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Active</span>
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />{t("users.active")}</span>
     ) : (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600"><span className="w-1.5 h-1.5 rounded-full bg-slate-400" />Deactivated</span>
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600"><span className="w-1.5 h-1.5 rounded-full bg-slate-400" />{t("users.deactivated")}</span>
     );
 
   const Actions = ({ u }: { u: StaffUser }) => {
@@ -389,15 +399,15 @@ export function UserManagement() {
     return (
       <div className="flex items-center justify-end gap-1">
         <button type="button" onClick={() => setDialog({ open: true, user: u })} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100">
-          <Pencil className="w-4 h-4" aria-hidden /> Edit
+          <Pencil className="w-4 h-4" aria-hidden /> {t("common.edit")}
         </button>
         {!self && (u.status === "Active" ? (
           <button type="button" onClick={() => setConfirm({ kind: "deactivate", user: u })} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-700">
-            <UserMinus className="w-4 h-4" aria-hidden /> Deactivate
+            <UserMinus className="w-4 h-4" aria-hidden /> {t("users.deactivate")}
           </button>
         ) : (
           <button type="button" onClick={() => setConfirm({ kind: "reactivate", user: u })} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-medium text-emerald-700 hover:bg-emerald-50">
-            <UserRoundCheck className="w-4 h-4" aria-hidden /> Reactivate
+            <UserRoundCheck className="w-4 h-4" aria-hidden /> {t("users.reactivate")}
           </button>
         ))}
       </div>
@@ -410,7 +420,7 @@ export function UserManagement() {
       <div className="min-w-0">
         <p className="font-semibold text-slate-900 truncate">
           {u.fullName}
-          {u.id === me?.id && <span className="ml-2 align-middle text-[11px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">You</span>}
+          {u.id === me?.id && <span className="ml-2 align-middle text-[11px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">{t("users.you")}</span>}
         </p>
         <p className="text-xs text-slate-500 truncate">@{u.username} · {u.email}</p>
       </div>
@@ -424,7 +434,7 @@ export function UserManagement() {
       aria-pressed={status === key}
       className={`h-10 px-4 rounded-xl text-sm font-medium border transition ${status === key ? "bg-primary text-white border-primary" : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"}`}
     >
-      {label} <span className={status === key ? "text-white/70" : "text-slate-400"}>{counts[key]}</span>
+      {label} <span className={status === key ? "text-white/70" : "text-slate-400"}>{t("users.count", { n: counts[key] })}</span>
     </button>
   );
 
@@ -433,12 +443,12 @@ export function UserManagement() {
       <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
-            <UsersIcon className="w-7 h-7 text-primary" aria-hidden /> Staff accounts
+            <UsersIcon className="w-7 h-7 text-primary" aria-hidden /> {t("users.title")}
           </h1>
-          <p className="text-slate-600 mt-1">People who can sign in to the management system, and what each of them can do.</p>
+          <p className="text-slate-600 mt-1">{t("users.intro")}</p>
         </div>
         <button type="button" onClick={() => setDialog({ open: true, user: null })} className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl bg-primary hover:bg-[#083073] text-white font-semibold shadow-sm">
-          <UserPlus className="w-5 h-5" aria-hidden /> Add staff member
+          <UserPlus className="w-5 h-5" aria-hidden /> {t("users.addButton")}
         </button>
       </header>
 
@@ -446,15 +456,15 @@ export function UserManagement() {
       <section className="rounded-2xl border border-[#d5e0f3] bg-[#f5f8fd]">
         <button type="button" onClick={() => setShowGuide((s) => !s)} aria-expanded={showGuide} className="w-full flex items-center gap-3 px-5 py-3.5 text-left">
           <Info className="w-5 h-5 text-primary shrink-0" aria-hidden />
-          <span className="flex-1 text-sm font-medium text-slate-800">What can each role do?</span>
+          <span className="flex-1 text-sm font-medium text-slate-800">{t("users.guide")}</span>
           <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${showGuide ? "rotate-180" : ""}`} aria-hidden />
         </button>
         {showGuide && (
           <ul className="grid sm:grid-cols-2 gap-3 px-5 pb-5">
             {ROLES.map((r) => (
               <li key={r.value} className="rounded-xl bg-white border border-slate-200 p-3">
-                <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-md border ${r.tone}`}>{r.value}</span>
-                <p className="mt-1.5 text-sm text-slate-600">{r.description}</p>
+                <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-md border ${r.tone}`}>{roleLabel(r.value, t)}</span>
+                <p className="mt-1.5 text-sm text-slate-600">{roleText(r.value, t)}</p>
               </li>
             ))}
           </ul>
@@ -465,19 +475,19 @@ export function UserManagement() {
       <div className="flex flex-col lg:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name, username or email" aria-label="Search staff" className="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("users.searchPlaceholder")} aria-label={t("users.searchLabel")} className="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" />
         </div>
         <div className="relative">
-          <select value={role} onChange={(e) => setRole(e.target.value)} aria-label="Filter by role" className="h-10 w-full lg:w-48 pl-3 pr-9 rounded-xl border border-slate-200 bg-white text-sm appearance-none outline-none focus:border-primary">
-            <option value="all">All roles</option>
-            {ROLES.map((r) => <option key={r.value} value={r.value}>{r.value}</option>)}
+          <select value={role} onChange={(e) => setRole(e.target.value)} aria-label={t("users.roleFilter")} className="h-10 w-full lg:w-48 pl-3 pr-9 rounded-xl border border-slate-200 bg-white text-sm appearance-none outline-none focus:border-primary">
+            <option value="all">{t("users.allRoles")}</option>
+            {ROLES.map((r) => <option key={r.value} value={r.value}>{roleLabel(r.value, t)}</option>)}
           </select>
           <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden />
         </div>
         <div className="flex gap-2 overflow-x-auto">
-          {filterBtn("all", "All")}
-          {filterBtn("active", "Active")}
-          {filterBtn("inactive", "Deactivated")}
+          {filterBtn("all", t("users.all"))}
+          {filterBtn("active", t("users.active"))}
+          {filterBtn("inactive", t("users.deactivated"))}
         </div>
       </div>
 
@@ -485,27 +495,27 @@ export function UserManagement() {
       {loadError ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
           <p className="text-red-700 font-medium">{loadError}</p>
-          <button type="button" onClick={load} className="mt-3 h-10 px-4 rounded-xl bg-white border border-red-200 text-sm font-medium text-red-700">Try again</button>
+          <button type="button" onClick={load} className="mt-3 h-10 px-4 rounded-xl bg-white border border-red-200 text-sm font-medium text-red-700">{t("common.tryAgain")}</button>
         </div>
       ) : !users ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-10 flex justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
       ) : visible.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
-          <p className="font-medium text-slate-800">No staff accounts match these filters.</p>
-          <button type="button" onClick={() => { setQuery(""); setRole("all"); setStatus("all"); }} className="mt-2 text-sm font-medium text-primary hover:underline">Clear filters</button>
+          <p className="font-medium text-slate-800">{t("users.noMatch")}</p>
+          <button type="button" onClick={() => { setQuery(""); setRole("all"); setStatus("all"); }} className="mt-2 text-sm font-medium text-primary hover:underline">{t("users.clearFilters")}</button>
         </div>
       ) : (
         <>
           {/* Desktop table */}
           <div className="hidden md:block rounded-2xl border border-slate-200 bg-white overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <thead className={`bg-slate-50 text-left text-xs font-semibold text-slate-500 ${lang === "km" ? "" : "uppercase tracking-wide"}`}>
                 <tr>
-                  <th className="px-5 py-3">Person</th>
-                  <th className="px-5 py-3">Role</th>
-                  <th className="px-5 py-3">Status</th>
-                  <th className="px-5 py-3">Last sign-in</th>
-                  <th className="px-5 py-3 text-right"><span className="sr-only">Actions</span></th>
+                  <th className="px-5 py-3">{t("users.col.person")}</th>
+                  <th className="px-5 py-3">{t("users.role")}</th>
+                  <th className="px-5 py-3">{t("users.col.status")}</th>
+                  <th className="px-5 py-3">{t("users.col.lastSignIn")}</th>
+                  <th className="px-5 py-3 text-right"><span className="sr-only">{t("users.col.actions")}</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -513,11 +523,11 @@ export function UserManagement() {
                   <tr key={u.id} className="hover:bg-slate-50/60">
                     <td className="px-5 py-3.5 max-w-[320px]"><Person u={u} /></td>
                     <td className="px-5 py-3.5">
-                      <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-md border ${roleTone(u.role)}`}>{u.role}</span>
-                      {u.role === "Club/Gym" && <p className="text-xs text-slate-500 mt-1 truncate max-w-[180px]">{clubName(u.clubId) ?? "No club set"}</p>}
+                      <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-md border ${roleTone(u.role)}`}>{roleLabel(u.role, t)}</span>
+                      {u.role === "Club/Gym" && <p className="text-xs text-slate-500 mt-1 truncate max-w-[180px]">{clubName(u.clubId) ?? t("users.noClub")}</p>}
                     </td>
                     <td className="px-5 py-3.5"><StatusPill u={u} /></td>
-                    <td className="px-5 py-3.5 text-slate-600">{timeAgo(u.lastLogin)}</td>
+                    <td className="px-5 py-3.5 text-slate-600">{timeAgo(u.lastLogin, t, lang)}</td>
                     <td className="px-5 py-3.5"><Actions u={u} /></td>
                   </tr>
                 ))}
@@ -531,15 +541,15 @@ export function UserManagement() {
               <li key={u.id} className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
                 <Person u={u} />
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-md border ${roleTone(u.role)}`}>{u.role}</span>
+                  <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-md border ${roleTone(u.role)}`}>{roleLabel(u.role, t)}</span>
                   <StatusPill u={u} />
-                  <span className="text-xs text-slate-500">Last sign-in: {timeAgo(u.lastLogin)}</span>
+                  <span className="text-xs text-slate-500">{t("users.lastSignIn", { when: timeAgo(u.lastLogin, t, lang) })}</span>
                 </div>
                 <div className="border-t border-slate-100 pt-2"><Actions u={u} /></div>
               </li>
             ))}
           </ul>
-          <p className="text-xs text-slate-500 flex items-center gap-1.5"><ShieldCheck className="w-4 h-4" aria-hidden /> Showing {visible.length} of {counts.all} accounts. Only Super Admins can see this page.</p>
+          <p className="text-xs text-slate-500 flex items-center gap-1.5"><ShieldCheck className="w-4 h-4" aria-hidden /> {t("users.showing", { n: visible.length, total: counts.all })}</p>
         </>
       )}
 
@@ -555,9 +565,9 @@ export function UserManagement() {
 
       <Confirm
         open={confirm?.kind === "deactivate"}
-        title={`Deactivate ${confirm?.user.fullName ?? ""}?`}
-        body={<><p>They'll be signed out right away and won't be able to sign in.</p><p>Their history stays, and you can reactivate them at any time.</p></>}
-        confirmLabel="Deactivate"
+        title={t("users.deactivateTitle", { name: confirm?.user.fullName ?? "" })}
+        body={<><p>{t("users.deactivate1")}</p><p>{t("users.deactivate2")}</p></>}
+        confirmLabel={t("users.deactivate")}
         danger
         busy={busy}
         onConfirm={runConfirm}
@@ -565,18 +575,18 @@ export function UserManagement() {
       />
       <Confirm
         open={confirm?.kind === "reactivate"}
-        title={`Reactivate ${confirm?.user.fullName ?? ""}?`}
-        body={<p>They'll be able to sign in again with their existing password.</p>}
-        confirmLabel="Reactivate"
+        title={t("users.reactivateTitle", { name: confirm?.user.fullName ?? "" })}
+        body={<p>{t("users.reactivate1")}</p>}
+        confirmLabel={t("users.reactivate")}
         busy={busy}
         onConfirm={runConfirm}
         onClose={() => setConfirm(null)}
       />
       <Confirm
         open={confirm?.kind === "delete"}
-        title={`Delete ${confirm?.user.fullName ?? ""} permanently?`}
-        body={<><p>This removes the account for good and can't be undone.</p><p>To keep their history, <strong>deactivate</strong> them instead.</p></>}
-        confirmLabel="Delete permanently"
+        title={t("users.deleteTitle", { name: confirm?.user.fullName ?? "" })}
+        body={<><p>{t("users.delete1")}</p><p>{t("users.delete2a")}<strong>{t("users.delete2b")}</strong>{t("users.delete2c")}</p></>}
+        confirmLabel={t("users.deleteForever")}
         danger
         busy={busy}
         onConfirm={runConfirm}

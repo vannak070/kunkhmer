@@ -7,6 +7,8 @@ import { usePermissions } from "../hooks/usePermissions";
 import { api } from "../utils/api";
 import { useAdminOverview } from "../hooks/useAdminOverview";
 import { HeaderSearch } from "./HeaderSearch";
+import { LangSwitch } from "./program/shared";
+import { useT, type TextKey } from "../i18n/program";
 import logoImg from "../../assets/modern_logo.png";
 
 function cn(...inputs: ClassValue[]) {
@@ -108,6 +110,42 @@ const navGroups: { title: string | null; items: NavItem[] }[] = [
 const navItems = navGroups.flatMap((g) => g.items);
 
 /**
+ * English / Khmer text for each menu label and group title above (the English label stays the item's id).
+ * See claude/updates/admin-menu-khmer.md.
+ */
+const MENU_TEXT: Record<string, TextKey> = {
+  Dashboard: "menu.dashboard",
+  "Staff assistant": "menu.assistant",
+  "My bouts": "menu.myBouts",
+  Competition: "menu.group.competition",
+  Program: "program.title",
+  Overview: "program.tab.overview",
+  "Fight nights": "program.tab.fightNights",
+  Champions: "program.tab.champions",
+  Fighters: "menu.fighters",
+  "Kun Khmer": "menu.fighters.local",
+  Foreigner: "menu.fighters.foreign",
+  Clubs: "menu.clubs",
+  "Match Proposals": "menu.proposals",
+  "Content & partners": "menu.group.content",
+  Media: "menu.media",
+  News: "menu.media.news",
+  Video: "menu.media.video",
+  "Strategic Partners": "menu.partners",
+  Broadcasters: "menu.partners.broadcasters",
+  Sponsors: "menu.partners.sponsors",
+  "International Partners": "menu.partners.international",
+  "Hub answers": "menu.hubAnswers",
+  "Knowledge base": "menu.knowledge",
+  "About the Federation": "menu.federation",
+  Administration: "menu.group.admin",
+  Users: "menu.users",
+  Officials: "menu.officials",
+  "System Settings": "menu.settings",
+  Help: "menu.help",
+};
+
+/**
  * Pages outside the menu that need a permission (create/edit screens). The API
  * refuses these actions anyway; the guard just avoids showing a form that can't save.
  */
@@ -143,6 +181,10 @@ export function Layout() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const todoCount = useAdminOverview().data?.todos.length ?? 0;
+  const { t, lang } = useT();
+  /** Menu label in the chosen language (falls back to the English label). */
+  const label = (text: string) => (MENU_TEXT[text] ? t(MENU_TEXT[text]) : text);
+  const todoText = todoCount === 0 ? t("frame.todoNone") : todoCount === 1 ? t("frame.todoOne") : t("frame.todoMany", { n: todoCount });
 
   useEffect(() => {
     const activeItem = navItems.find((item) =>
@@ -171,21 +213,21 @@ export function Layout() {
           <img src={logoImg} alt="" className="w-9 h-9 rounded-full object-contain bg-white shrink-0" />
           <div className="min-w-0">
             <p className="font-extrabold text-[#0A3D91] text-sm tracking-wide leading-none">KUNKHMER</p>
-            <p className="text-[11px] text-slate-500 mt-1">Management system</p>
+            <p className="text-[11px] text-slate-500 mt-1">{t("frame.system")}</p>
           </div>
         </Link>
-        <button type="button" onClick={() => setMobileMenu(false)} aria-label="Close menu" className="md:hidden w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500">
+        <button type="button" onClick={() => setMobileMenu(false)} aria-label={t("frame.closeMenu")} className="md:hidden w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500">
           <X className="w-5 h-5" />
         </button>
       </div>
 
-      <nav aria-label="Main" className="flex-1 px-3 py-4 overflow-y-auto no-scrollbar space-y-5">
+      <nav aria-label="Main" lang={lang} className="flex-1 px-3 py-4 overflow-y-auto no-scrollbar space-y-5">
         {navGroups.map((group, gi) => {
           const items = group.items.filter((item) => allowed(item.permission));
           if (items.length === 0) return null;
           return (
             <div key={group.title ?? `untitled-${gi}`}>
-              {group.title && <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{group.title}</p>}
+              {group.title && <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label(group.title)}</p>}
               <div className="space-y-0.5">
                 {items.map((item) => {
                   const isActive = item.path === "/home" ? location.pathname === "/home" : location.pathname.startsWith(item.path);
@@ -199,7 +241,7 @@ export function Layout() {
                     return (
                       <NavLink key={item.path} to={item.path} className={rowClass}>
                         <Icon className={iconClass} aria-hidden />
-                        <span>{item.label}</span>
+                        <span>{label(item.label)}</span>
                       </NavLink>
                     );
                   }
@@ -208,7 +250,7 @@ export function Layout() {
                     <div key={item.path}>
                       <button type="button" onClick={() => setOpenSubmenu(open ? null : item.label)} aria-expanded={open} className={rowClass}>
                         <Icon className={iconClass} aria-hidden />
-                        <span className="flex-1 text-left">{item.label}</span>
+                        <span className="flex-1 text-left">{label(item.label)}</span>
                         <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", open && "rotate-180")} aria-hidden />
                       </button>
                       {open && (
@@ -227,7 +269,7 @@ export function Layout() {
                                   subActive ? "text-[#0A3D91] font-semibold bg-[#eef3fb]" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100",
                                 )}
                               >
-                                {sub.label}
+                                {label(sub.label)}
                               </NavLink>
                             );
                           })}
@@ -242,16 +284,18 @@ export function Layout() {
         })}
       </nav>
 
-      <div className="p-3 border-t border-slate-200 shrink-0">
+      <div className="p-3 border-t border-slate-200 shrink-0 space-y-2">
+        {/* Language for the menu and every page that has Khmer text; remembered in this browser. */}
+        <div className="px-2"><LangSwitch /></div>
         <div className="flex items-center gap-3 rounded-xl p-2 hover:bg-slate-50">
-          <Link to="/home/profile" className="flex items-center gap-3 flex-1 min-w-0" title="My profile">
+          <Link to="/home/profile" className="flex items-center gap-3 flex-1 min-w-0" title={t("frame.profile")}>
             <span className="w-9 h-9 rounded-full bg-[#0A3D91] text-white flex items-center justify-center font-bold text-sm shrink-0">{initial}</span>
             <span className="min-w-0">
               <span className="block text-sm font-semibold text-slate-900 truncate">{fullName}</span>
               <span className="block text-xs text-slate-500 truncate">{apiRole()}</span>
             </span>
           </Link>
-          <button type="button" onClick={handleLogout} title="Sign out" aria-label="Sign out" className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50">
+          <button type="button" onClick={handleLogout} title={t("frame.signOut")} aria-label={t("frame.signOut")} className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50">
             <LogOut className="w-4 h-4" />
           </button>
         </div>
@@ -267,7 +311,7 @@ export function Layout() {
       {/* Phone menu drawer */}
       {mobileMenu && (
         <div className="md:hidden fixed inset-0 z-[60]">
-          <button type="button" aria-label="Close menu" onClick={() => setMobileMenu(false)} className="absolute inset-0 bg-slate-900/40" />
+          <button type="button" aria-label={t("frame.closeMenu")} onClick={() => setMobileMenu(false)} className="absolute inset-0 bg-slate-900/40" />
           <aside className="relative h-full w-[280px] max-w-[85vw] flex flex-col bg-white shadow-2xl">{sidebar}</aside>
         </div>
       )}
@@ -275,7 +319,7 @@ export function Layout() {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 bg-[#F8FAFC]">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between gap-3 px-4 md:px-6 shrink-0 z-30">
-          <button type="button" onClick={() => setMobileMenu(true)} aria-label="Open menu" className="md:hidden w-10 h-10 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+          <button type="button" onClick={() => setMobileMenu(true)} aria-label={t("frame.openMenu")} className="md:hidden w-10 h-10 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
             <Menu className="w-5 h-5" />
           </button>
           {hasDashboard ? <HeaderSearch /> : <div className="flex-1" />}
@@ -284,8 +328,8 @@ export function Layout() {
             {/* Bell = the dashboard's "Needs your attention" count. */}
             {hasDashboard && <Link
               to="/home#todo"
-              title={todoCount ? `${todoCount} ${todoCount === 1 ? "thing needs" : "things need"} your attention` : "Nothing needs your attention"}
-              aria-label={todoCount ? `${todoCount} to-do items` : "No to-do items"}
+              title={todoText}
+              aria-label={todoText}
               className="relative p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-muted"
             >
               <Bell className="w-5 h-5" />
@@ -309,15 +353,15 @@ export function Layout() {
                 <div className="absolute right-0 mt-2 w-48 bg-white border border-border rounded-lg shadow-lg py-1 z-50 animate-fadeIn">
                   <Link to="/home/profile" onClick={() => setShowProfileMenu(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors">
                     <UserIcon className="w-4 h-4 text-muted-foreground" />
-                    <span>My profile</span>
+                    <span>{t("frame.profile")}</span>
                   </Link>
                   <Link to="/home/help" onClick={() => setShowProfileMenu(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors">
                     <HelpCircle className="w-4 h-4 text-muted-foreground" />
-                    <span>Help</span>
+                    <span>{t("menu.help")}</span>
                   </Link>
                   <Link to="/home/settings" onClick={() => setShowProfileMenu(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors">
                     <Settings className="w-4 h-4 text-muted-foreground" />
-                    <span>Settings</span>
+                    <span>{t("frame.settings")}</span>
                   </Link>
                   <hr className="border-border my-1" />
                   <button
@@ -328,7 +372,7 @@ export function Layout() {
                     className="w-full flex items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-red-50 text-left transition-colors"
                   >
                     <LogOut className="w-4 h-4" />
-                    <span>Sign out</span>
+                    <span>{t("frame.signOut")}</span>
                   </button>
                 </div>
               )}
@@ -347,9 +391,9 @@ export function Layout() {
           ) : (
             <div className="max-w-lg mx-auto mt-10 rounded-2xl border border-slate-200 bg-white p-8 text-center">
               <Lock className="w-8 h-8 text-slate-400 mx-auto mb-3" aria-hidden />
-              <h1 className="text-lg font-semibold text-slate-900 mb-1">Not available for your role</h1>
-              <p className="text-sm text-slate-600 mb-5">Your account ({apiRole() || "no role"}) can't use this page. Ask a KKF Super Admin if you need access.</p>
-              <Link to="/home" className="inline-flex items-center h-10 px-4 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-[#083073]">Go to your home page</Link>
+              <h1 className="text-lg font-semibold text-slate-900 mb-1">{t("frame.blockedTitle")}</h1>
+              <p className="text-sm text-slate-600 mb-5">{t("frame.blockedText", { role: apiRole() || "—" })}</p>
+              <Link to="/home" className="inline-flex items-center h-10 px-4 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-[#083073]">{t("frame.home")}</Link>
             </div>
           )}
         </main>
@@ -363,13 +407,13 @@ export function Layout() {
           return (
             <NavLink key={item.path} to={item.path} className={cn("flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors", isActive ? "text-primary" : "text-muted-foreground")}>
               <Icon className="w-5 h-5" />
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <span className="text-[10px] font-medium">{label(item.label)}</span>
             </NavLink>
           );
         })}
         <button type="button" onClick={() => setMobileMenu(true)} className="flex flex-col items-center justify-center w-full h-full space-y-1 text-muted-foreground">
           <Menu className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Menu</span>
+          <span className="text-[10px] font-medium">{t("frame.menu")}</span>
         </button>
       </nav>
     </div>

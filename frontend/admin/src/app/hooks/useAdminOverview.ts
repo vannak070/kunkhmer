@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../utils/api";
 import { proposalOf, waitingOnMe } from "../components/BoutAnswer";
 import { APPROVALS_ENABLED } from "../config/features";
+import type { TextKey } from "../i18n/program";
 
 export type TodoKind =
   | "fighter" | "fighterSentBack" | "eventApproval" | "eventSentBack" | "readyToPublish"
@@ -22,6 +23,24 @@ export interface TodoItem {
   /** Sort key: most urgent first (lower = sooner). */
   rank: number;
   fighterId?: string;
+  /**
+   * The facts behind `detail`, so the page can write it in English or Khmer (components/program/todoText.ts).
+   * Missing on kinds that only exist with approvals on; those keep the English `detail`.
+   */
+  info?: TodoInfo;
+}
+
+export interface TodoInfo {
+  /** Red and blue corner names, for a bout. */
+  pair?: [string, string];
+  /** Names shown first as they are: club or fight night. */
+  lead?: (string | null | undefined)[];
+  /** Date to show; null = "no date"; leave out for none. */
+  date?: string | null;
+  /** What is missing. */
+  note: TextKey;
+  /** Fighters the note is about (weigh-in). */
+  who?: string[];
 }
 
 export interface Overview {
@@ -81,6 +100,7 @@ async function build(): Promise<Overview> {
         f.clubName,
         !APPROVALS_ENABLED ? "draft, not visible to fans" : f.status === "Draft" ? "registered, not yet verified" : "waiting for KKF verification",
       ].filter(Boolean).join(" · "),
+      ...(APPROVALS_ENABLED ? {} : { info: { lead: [f.clubName], note: "todo.note.draftFighter" as TextKey } }),
       href: `/home/fighters/${f.id}`,
       rank: 2,
     });
@@ -96,6 +116,8 @@ async function build(): Promise<Overview> {
     const hasResult = Boolean(m.winner_id || m.winner_method || m.result);
     const d = time(m.date);
     const vs = `${m.fighter_a_name ?? "TBD"} vs ${m.fighter_b_name ?? "TBD"}`;
+    const pair: [string, string] = [m.fighter_a_name ?? "TBD", m.fighter_b_name ?? "TBD"];
+    const bout = (note: TextKey, who?: string[]) => ({ pair, lead: [ev.name], date: m.date ?? null, note, who });
 
     // Club confirmation of bouts (Match Proposals) — only while approvals are on.
     const proposal = proposalOf(m);
@@ -115,13 +137,14 @@ async function build(): Promise<Overview> {
       continue;
     }
     if (!hasResult && d < today && isStaff) {
-      todos.push({ kind: "result", id: `r-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · no result recorded`, href: `/home/fight-cards/${m.sub_event_id}/results`, rank: 1 });
+      todos.push({ kind: "result", id: `r-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · no result recorded`, info: bout("todo.note.noResult"), href: `/home/fight-cards/${m.sub_event_id}/results`, rank: 1 });
     } else if (!hasResult && isStaff && d >= today && d - today <= 14 * DAY && (!m.referee_id || (m.judge_ids?.length ?? 0) < 3)) {
       // Officer flow: KKF assigns a referee and three judges before fight night (Assign officials page rule).
-      todos.push({ kind: "noOfficials", id: `o-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · ${m.referee_id ? "judges missing" : "no referee yet"}`, href: `/home/matches/${m.sub_event_id}/assign-officials`, rank: 2 });
+      todos.push({ kind: "noOfficials", id: `o-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · ${m.referee_id ? "judges missing" : "no referee yet"}`, info: bout(m.referee_id ? "todo.note.judgesMissing" : "todo.note.noReferee"), href: `/home/matches/${m.sub_event_id}/assign-officials`, rank: 2 });
     } else if (!hasResult && d >= today && d - today <= 14 * DAY && !(m.fighter_a_confirmed && m.fighter_b_confirmed)) {
-      const missing = [!m.fighter_a_confirmed && m.fighter_a_name, !m.fighter_b_confirmed && m.fighter_b_name].filter(Boolean).join(" and ");
-      todos.push({ kind: "unconfirmed", id: `u-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · ${missing || "fighters"} not weighed in yet`, href: `/home/fight-cards/${m.sub_event_id}/weigh-in`, rank: 3 });
+      const missingNames = [!m.fighter_a_confirmed && m.fighter_a_name, !m.fighter_b_confirmed && m.fighter_b_name].filter(Boolean) as string[];
+      const missing = missingNames.join(" and ");
+      todos.push({ kind: "unconfirmed", id: `u-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · ${missing || "fighters"} not weighed in yet`, info: bout("todo.note.notWeighed", missingNames), href: `/home/fight-cards/${m.sub_event_id}/weigh-in`, rank: 3 });
     }
   }
 
@@ -144,15 +167,15 @@ async function build(): Promise<Overview> {
     if (isClub) continue;
     // Without approvals, an event that was submitted / approved earlier is just not published yet.
     if (e.status === "Draft" || (!APPROVALS_ENABLED && (e.status === "Pending KKF Approval" || e.status === "Approved"))) {
-      todos.push({ kind: "draftEvent", id: `d-${e.id}`, title: e.name, detail: `${fmtDate(e.date)} · still a draft, not visible to fans`, href: `/home/events/${e.id}`, rank: d >= today ? 2 : 5 });
+      todos.push({ kind: "draftEvent", id: `d-${e.id}`, title: e.name, detail: `${fmtDate(e.date)} · still a draft, not visible to fans`, info: { date: e.date ?? null, note: "todo.note.draftEvent" }, href: `/home/events/${e.id}`, rank: d >= today ? 2 : 5 });
     } else if (!CLOSED_EVENT.has(e.status) && d >= today && !boutsByEvent.get(e.id)) {
-      todos.push({ kind: "emptyEvent", id: `e-${e.id}`, title: e.name, detail: `${fmtDate(e.date)} · no fight card yet`, href: `/home/events/${e.id}`, rank: 3 });
+      todos.push({ kind: "emptyEvent", id: `e-${e.id}`, title: e.name, detail: `${fmtDate(e.date)} · no fight card yet`, info: { date: e.date ?? null, note: "todo.note.noCard" }, href: `/home/events/${e.id}`, rank: 3 });
     }
   }
 
   for (const c of (champions as any[]).filter((c) => isStaff && (c.approval_status ?? "approved") === "approved")) {
     if (c.status === "Vacant" || !c.current_holder_id) {
-      todos.push({ kind: "vacantTitle", id: `t-${c.id}`, title: c.title_name, detail: "title is vacant · schedule a title bout", href: `/home/champion/${c.id}/schedule-defense`, rank: 4 });
+      todos.push({ kind: "vacantTitle", id: `t-${c.id}`, title: c.title_name, detail: "title is vacant · schedule a title bout", info: { note: "todo.note.vacant" }, href: `/home/champion/${c.id}/schedule-defense`, rank: 4 });
     }
   }
 

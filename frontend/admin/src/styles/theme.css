@@ -110,8 +110,9 @@
 }
 
 @theme inline {
-  --font-sans: "Outfit", "Inter", sans-serif;
-  --font-mono: "Fira Code", monospace;
+  /* Khmer has no glyphs in Outfit / Inter, so Khmer text falls through to Kantumruy Pro on every page. */
+  --font-sans: "Outfit", "Inter", "Kantumruy Pro", sans-serif;
+  --font-mono: "Fira Code", ui-monospace, "SFMono-Regular", Menlo, Consolas, "Kantumruy Pro", monospace;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -300,4 +301,22 @@
 
 .table-premium tr {
   @apply hover:bg-muted/20 transition-all duration-150;
+}
+
+/* Khmer script on the older pages (Media): their tiny capital-letter labels with letter spacing are
+   unreadable in Khmer. A page adds `km-text` to its root only when Khmer is chosen; English is untouched. */
+.km-text,
+.km-text * {
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+.km-text .text-\[9px\],
+.km-text .text-\[10px\] {
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+.km-text h1,
+.km-text h2,
+.km-text h3 {
+  line-height: 1.5;
 }

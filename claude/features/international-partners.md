@@ -84,3 +84,7 @@ auth) + 422 for bad year / sort order; shape snapshots added. Suite 230/230.
 - Link fight nights they co-promote (event field, event page, partner dialog).
 - Pick a title's sanctioning organisation (`champions.organization`, free text "KKF" today) from this list.
 - KUNKHMER HUB tool for international partners.
+
+## Language
+The admin page follows the language button (English / Khmer); type, reach, tier and organisation type are
+translated on screen only, stored values stay English — `updates/partners-khmer.md`.

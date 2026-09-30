@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { CheckCircle2, Undo2 } from "lucide-react";
 import { api } from "../utils/api";
 import { APPROVALS_ENABLED } from "../config/features";
+import { useT } from "../i18n/program";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 
 export const WAITING_STATUSES = ["Draft", "Pending KKF Verification", "Pending"];
@@ -23,6 +24,7 @@ export function FighterReviewActions({ fighter, onDone, compact = false }: {
   onDone: (updated: any) => void;
   compact?: boolean;
 }) {
+  const { t } = useT();
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -62,7 +64,7 @@ export function FighterReviewActions({ fighter, onDone, compact = false }: {
     <>
       <div className="flex flex-wrap gap-2">
         <button type="button" disabled={busy} onClick={verify} className={`inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold ${h}`}>
-          <CheckCircle2 className="w-4 h-4" aria-hidden /> {APPROVALS_ENABLED ? "Verify" : "Activate"}
+          <CheckCircle2 className="w-4 h-4" aria-hidden /> {APPROVALS_ENABLED ? "Verify" : t("dash.activate")}
         </button>
         {APPROVALS_ENABLED && (
           <button type="button" disabled={busy} onClick={() => { setError(null); setOpen(true); }} className={`inline-flex items-center gap-1.5 rounded-lg border border-slate-300 hover:border-red-300 hover:text-red-700 text-slate-700 font-semibold ${h}`}>

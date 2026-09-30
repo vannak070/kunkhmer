@@ -31,3 +31,7 @@ the public site.
 
 ## Tests
 `api-tests/tests/settings.test.ts`
+
+## Language
+The admin page follows the language button (English / Khmer); type, reach, tier and organisation type are
+translated on screen only, stored values stay English — `updates/partners-khmer.md`.

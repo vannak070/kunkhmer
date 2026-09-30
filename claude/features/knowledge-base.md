@@ -81,3 +81,7 @@ with the fan's question. No public `/learn` pages yet (optional later).
 ## Open questions
 - Is there an official KKF rulebook / history document to replace the Wikipedia-based drafts?
 - Public `/learn` pages from the same articles?
+
+## Page language
+The admin page follows the language button (English / Khmer, `kb.*` in `i18n/program.ts`); its content tab
+(English / ខ្មែរ) is separate. Topic names are translated on screen only — `updates/knowledge-base-khmer.md`.

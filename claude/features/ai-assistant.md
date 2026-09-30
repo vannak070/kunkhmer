@@ -133,3 +133,7 @@ estimated spend reaches it). The IP is the visitor's real one through our proxy
 
 Not yet done for public launch: login rate limiting and federation review of Khmer replies.
 (Spend cap, answer log and staff review arrived in Phase C.)
+
+## Hub answers page language
+The admin "Hub answers" page follows the language button (English / Khmer, `hub.*` in `i18n/program.ts`);
+questions and answers stay as asked — `updates/hub-answers-khmer.md`.

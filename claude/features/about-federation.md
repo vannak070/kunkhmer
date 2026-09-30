@@ -100,3 +100,7 @@ publish), `draft_updated_at/by`, `published_at/by`, `created_at`, `updated_at`.
 - ~~Should KUNKHMER HUB answer from this page?~~ Yes (owner, 2026-09-30): tool `about_federation`,
   published content only — `updates/hub-federation-page.md`.
 - KKF to supply the actual content (leadership, mission/history, contacts, how to register, rule PDFs).
+
+## Editor language
+The admin editor follows the language button (English / Khmer, `fed.*` in `i18n/program.ts`); its content tab
+(English / ខ្មែរ) is separate and chooses which version is being typed — `updates/federation-editor-khmer.md`.

@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { Plus, Search, Newspaper, Calendar, Eye, Edit2, Trash2, Image as ImageIcon, FileText, CheckCircle, Clock, XCircle, Upload, X, ArrowLeft, Save, ChevronDown, Heading, Bold, Italic, List, Quote, Link2, Globe } from "lucide-react";
 import { usePermissions } from "../hooks/usePermissions";
 import { api } from "../utils/api";
+import { type TextKey, khmerDigits, useT } from "../i18n/program";
 
 interface NewsArticle {
   id: string;
@@ -30,7 +31,27 @@ const CATEGORIES = [
   "Community"
 ];
 
+const STATUS_TEXT: Record<string, TextKey> = {
+  Draft: "media.status.Draft",
+  Published: "media.status.Published",
+  Archived: "media.status.Archived",
+};
+/** Category names as shown; the stored value stays the English one. */
+const CATEGORY_TEXT: Record<string, TextKey> = {
+  News: "news.cat.News",
+  Events: "news.cat.Events",
+  "Fighter Spotlight": "news.cat.Fighter Spotlight",
+  Regulations: "news.cat.Regulations",
+  Training: "news.cat.Training",
+  Community: "news.cat.Community",
+};
+
 export function News() {
+  const { t, lang } = useT();
+  // Khmer script: `km-text` (styles/theme.css) removes letter spacing and enlarges the tiny labels.
+  const km = lang === "km" ? " km-text" : "";
+  const categoryLabel = (c: string) => (CATEGORY_TEXT[c] ? t(CATEGORY_TEXT[c]) : c);
+  const statusLabel = (v: string) => (STATUS_TEXT[v] ? t(STATUS_TEXT[v]) : v);
   const permissions = usePermissions();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -120,12 +141,12 @@ export function News() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this news article?")) {
+    if (confirm(t("news.deleteConfirm"))) {
       try {
         await api.news.delete(id);
         setNews(prev => prev.filter(article => article.id !== id));
       } catch (err) {
-        alert("Failed to delete news article: " + (err as Error).message);
+        alert(t("news.deleteError", { msg: (err as Error).message }));
       }
     }
   };
@@ -216,7 +237,7 @@ export function News() {
 
   // Simple parser to display markdown format in Preview tab
   const renderPreviewHTML = (text: string) => {
-    if (!text) return '<p class="text-slate-400 italic">No content written yet.</p>';
+    if (!text) return `<p class="text-slate-400 italic">${t("news.noContent")}</p>`;
     
     let html = text
       .replace(/&/g, "&amp;")
@@ -255,7 +276,7 @@ export function News() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim()) {
-      alert("Title is required");
+      alert(t("media.titleRequired"));
       return;
     }
 
@@ -299,22 +320,22 @@ export function News() {
       await fetchNews();
       setViewMode("list");
     } catch (err) {
-      alert("Failed to save news article: " + (err as Error).message);
+      alert(t("news.saveError", { msg: (err as Error).message }));
     }
   };
 
   if (loading && viewMode === 'list') {
     return (
-      <div className="p-8 flex flex-col items-center justify-center min-h-[400px]">
+      <div className={`p-8 flex flex-col items-center justify-center min-h-[400px]${km}`}>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A3D91] mb-4" />
-        <p className="text-sm text-slate-500 font-bold uppercase tracking-wider animate-pulse">Loading articles from database…</p>
+        <p className="text-sm text-slate-500 font-bold uppercase tracking-wider animate-pulse">{t("news.loading")}</p>
       </div>
     );
   }
 
   if (viewMode === "add" || viewMode === "edit") {
     return (
-      <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn">
+      <div className={`p-4 md:p-8 max-w-6xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn${km}`}>
         {/* Header */}
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -327,10 +348,10 @@ export function News() {
             </button>
             <div>
               <h1 className="text-2xl font-black tracking-tight text-foreground uppercase">
-                {viewMode === "edit" ? "Edit News Article" : "Create News Article"}
+                {t(viewMode === "edit" ? "news.editTitle" : "news.createTitle")}
               </h1>
               <p className="text-sm text-muted-foreground mt-1 font-medium">
-                {viewMode === "edit" ? "Modify existing article details and publish status" : "Publish a new Kun Khmer federation news article"}
+                {t(viewMode === "edit" ? "news.editHint" : "news.createHint")}
               </p>
             </div>
           </div>
@@ -345,32 +366,32 @@ export function News() {
             <div className="card-premium">
               <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                 <FileText className="w-5 h-5 text-primary" />
-                <span>Article General Information</span>
+                <span>{t("news.general")}</span>
               </h2>
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Article Title <span className="text-secondary">*</span>
+                    {t("news.f.title")} <span className="text-secondary">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     required
-                    placeholder="e.g., Championship Title Fight Confirmed for April"
+                    placeholder={t("news.ph.title")}
                     className="input-premium font-semibold text-slate-800"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Subtitle / Excerpt Summary
+                    {t("news.f.subtitle")}
                   </label>
                   <input
                     type="text"
                     value={formData.subtitle}
                     onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
-                    placeholder="Enter short description or summary highlighting this article"
+                    placeholder={t("news.ph.subtitle")}
                     className="input-premium font-medium text-slate-700"
                   />
                 </div>
@@ -382,7 +403,7 @@ export function News() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 border-b border-slate-100 pb-3">
                 <h2 className="text-base font-bold text-foreground flex items-center gap-2">
                   <FileText className="w-5 h-5 text-primary" />
-                  <span>Full Article Content Editor</span>
+                  <span>{t("news.editor")}</span>
                 </h2>
                 
                 {/* Editor Mode Tabs */}
@@ -396,7 +417,7 @@ export function News() {
                         : "text-slate-500 hover:text-slate-800"
                     }`}
                   >
-                    Write Content
+                    {t("news.write")}
                   </button>
                   <button
                     type="button"
@@ -407,7 +428,7 @@ export function News() {
                         : "text-slate-500 hover:text-slate-800"
                     }`}
                   >
-                    Live Preview
+                    {t("news.preview")}
                   </button>
                 </div>
               </div>
@@ -418,23 +439,23 @@ export function News() {
                   <button
                     type="button"
                     onClick={() => insertFormat("# ")}
-                    title="Heading 1"
+                    title={t("media.tb.h1")}
                     className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
                   >
                     <Heading className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
-                    onClick={() => insertFormat("**%s**", "bold text")}
-                    title="Bold"
+                    onClick={() => insertFormat("**%s**", t("media.boldText"))}
+                    title={t("media.tb.bold")}
                     className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
                   >
                     <Bold className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
-                    onClick={() => insertFormat("*%s*", "italic text")}
-                    title="Italic"
+                    onClick={() => insertFormat("*%s*", t("media.italicText"))}
+                    title={t("media.tb.italic")}
                     className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
                   >
                     <Italic className="w-4 h-4" />
@@ -443,7 +464,7 @@ export function News() {
                   <button
                     type="button"
                     onClick={() => insertFormat("- ")}
-                    title="Bulleted List"
+                    title={t("media.tb.list")}
                     className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
                   >
                     <List className="w-4 h-4" />
@@ -451,15 +472,15 @@ export function News() {
                   <button
                     type="button"
                     onClick={() => insertFormat("> ")}
-                    title="Blockquote"
+                    title={t("media.tb.quote")}
                     className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
                   >
                     <Quote className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
-                    onClick={() => insertFormat("[Link Text](https://)")}
-                    title="Insert Link"
+                    onClick={() => insertFormat(`[${t("media.linkText")}](https://)`)}
+                    title={t("media.tb.link")}
                     className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
                   >
                     <Link2 className="w-4 h-4" />
@@ -476,7 +497,7 @@ export function News() {
                     value={formData.content}
                     onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                     required
-                    placeholder="Write the full content of the news article here. Markdown syntax is supported (e.g. use **text** for bold, # for Headings, - for Lists)..."
+                    placeholder={t("news.ph.content")}
                     className="w-full bg-white border border-border/80 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-inner transition-all resize-y min-h-[320px] font-mono leading-relaxed"
                   />
                 ) : (
@@ -491,43 +512,42 @@ export function News() {
             <div className="card-premium">
               <h2 className="text-base font-bold text-foreground mb-1 flex items-center gap-2">
                 <Globe className="w-5 h-5 text-primary" />
-                <span>English version (optional)</span>
+                <span>{t("news.en.title")}</span>
               </h2>
               <p className="text-sm text-muted-foreground mb-4">
-                If the article above is in Khmer, add an English translation for international fans. The English website shows it
-                instead of the Khmer text; without it, English visitors see the Khmer article with an "Article in Khmer" label.
+                {t("news.en.hint")}
               </p>
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="news-title-en" className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">English title</label>
+                  <label htmlFor="news-title-en" className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{t("news.en.f.title")}</label>
                   <input
                     id="news-title-en"
                     type="text"
                     value={formData.titleEn}
                     onChange={(e) => setFormData({ ...formData, titleEn: e.target.value })}
-                    placeholder="e.g., Fighters and team return safely to Cambodia"
+                    placeholder={t("news.en.ph.title")}
                     className="input-premium font-semibold text-slate-800"
                   />
                 </div>
                 <div>
-                  <label htmlFor="news-subtitle-en" className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">English summary</label>
+                  <label htmlFor="news-subtitle-en" className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{t("news.en.f.summary")}</label>
                   <input
                     id="news-subtitle-en"
                     type="text"
                     value={formData.subtitleEn}
                     onChange={(e) => setFormData({ ...formData, subtitleEn: e.target.value })}
-                    placeholder="One sentence for news cards and link previews"
+                    placeholder={t("news.en.ph.summary")}
                     className="input-premium font-medium text-slate-700"
                   />
                 </div>
                 <div>
-                  <label htmlFor="news-content-en" className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">English article text</label>
+                  <label htmlFor="news-content-en" className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{t("news.en.f.text")}</label>
                   <textarea
                     id="news-content-en"
                     rows={10}
                     value={formData.contentEn}
                     onChange={(e) => setFormData({ ...formData, contentEn: e.target.value })}
-                    placeholder="The full article in English (same formatting as above)."
+                    placeholder={t("news.en.ph.text")}
                     className="w-full bg-white border border-border/80 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all resize-y min-h-[200px] leading-relaxed"
                   />
                 </div>
@@ -539,12 +559,12 @@ export function News() {
           <div className="space-y-6">
             {/* Publishing Settings */}
             <div className="card-premium">
-              <h2 className="text-base font-bold text-foreground mb-4">Publishing Settings</h2>
+              <h2 className="text-base font-bold text-foreground mb-4">{t("news.publishing")}</h2>
               
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    News Category
+                    {t("news.f.category")}
                   </label>
                   <select
                     value={formData.category}
@@ -552,29 +572,29 @@ export function News() {
                     className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all cursor-pointer"
                   >
                     {CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
+                      <option key={cat} value={cat}>{categoryLabel(cat)}</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Publish Status
+                    {t("media.f.status")}
                   </label>
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
                     className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all cursor-pointer"
                   >
-                    <option value="Draft">Draft</option>
-                    <option value="Published">Published</option>
-                    <option value="Archived">Archived</option>
+                    <option value="Draft">{t("media.status.Draft")}</option>
+                    <option value="Published">{t("media.status.Published")}</option>
+                    <option value="Archived">{t("media.status.Archived")}</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Publish Date
+                    {t("news.f.date")}
                   </label>
                   <input
                     type="date"
@@ -587,14 +607,14 @@ export function News() {
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Author / Publisher
+                    {t("news.f.author")}
                   </label>
                   <input
                     type="text"
                     value={formData.author}
                     onChange={(e) => setFormData({ ...formData, author: e.target.value })}
                     required
-                    placeholder="e.g. KKF Official"
+                    placeholder={t("news.ph.author")}
                     className="input-premium font-semibold text-slate-800"
                   />
                 </div>
@@ -602,11 +622,11 @@ export function News() {
                 {editingNews && (
                   <div>
                     <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                      Views Count
+                      {t("media.f.views")}
                     </label>
                     <div className="flex items-center gap-1 text-slate-600 text-xs font-bold bg-slate-100 px-3 py-2 rounded-lg border border-slate-200 w-fit">
                       <Eye className="w-3.5 h-3.5 text-primary" />
-                      <span>{editingNews.views} total views</span>
+                      <span>{t("news.totalViews", { n: editingNews.views })}</span>
                     </div>
                   </div>
                 )}
@@ -614,8 +634,8 @@ export function News() {
                 {/* Featured Switch */}
                 <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                   <div>
-                    <p className="text-xs font-black text-slate-700 uppercase tracking-wide">Featured Article</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">Highlight and pin this article to top pages</p>
+                    <p className="text-xs font-black text-slate-700 uppercase tracking-wide">{t("news.featured")}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{t("news.featuredHint")}</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -632,13 +652,13 @@ export function News() {
 
             {/* Featured Image upload */}
             <div className="card-premium">
-              <h2 className="text-base font-bold text-foreground mb-4">Featured Banner Image</h2>
+              <h2 className="text-base font-bold text-foreground mb-4">{t("news.banner")}</h2>
               
               {imagePreview ? (
                 <div className="relative rounded-xl overflow-hidden border border-border bg-slate-900 aspect-video group">
                   <img
                     src={imagePreview}
-                    alt="Preview"
+                    alt={t("media.preview")}
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -657,8 +677,8 @@ export function News() {
                   className="border-2 border-dashed border-border hover:border-primary/50 hover:bg-muted/10 rounded-xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center aspect-video group"
                 >
                   <ImageIcon className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
-                  <span className="text-xs font-bold text-foreground">Upload banner image</span>
-                  <span className="text-[10px] text-muted-foreground mt-1">PNG, JPG, or WEBP up to 5MB</span>
+                  <span className="text-xs font-bold text-foreground">{t("news.uploadBanner")}</span>
+                  <span className="text-[10px] text-muted-foreground mt-1">{t("media.imageHint")}</span>
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -678,14 +698,14 @@ export function News() {
                 className="flex-1 px-4 py-3 bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-sm"
               >
                 <X className="w-4 h-4" />
-                <span>Cancel</span>
+                <span>{t("common.cancel")}</span>
               </button>
               <button
                 type="submit"
                 className="flex-1 px-4 py-3 bg-[#0A3D91] hover:bg-blue-800 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-blue-900/10 hover:shadow-xl hover:shadow-blue-900/20 border border-transparent"
               >
                 <CheckCircle className="w-4 h-4" />
-                <span>Save Article</span>
+                <span>{t("news.save")}</span>
               </button>
             </div>
           </div>
@@ -695,19 +715,19 @@ export function News() {
   }
 
   return (
-    <div className="p-4 md:p-8 space-y-6 animate-fadeIn">
+    <div className={`p-4 md:p-8 space-y-6 animate-fadeIn${km}`}>
       {/* Header */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">News Management</h1>
-          <p className="text-sm text-muted-foreground mt-1 font-medium">Create and publish Kun Khmer articles and federation news</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("news.heading")}</h1>
+          <p className="text-sm text-muted-foreground mt-1 font-medium">{t("news.intro")}</p>
         </div>
         <button
           onClick={handleAddNews}
           className="btn-secondary py-2.5 px-5"
         >
           <Plus className="w-4 h-4" />
-          Add Article
+          {t("news.add")}
         </button>
       </header>
 
@@ -717,7 +737,7 @@ export function News() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <input
             type="text"
-            placeholder="Search articles by title, subtitle, author, or category..."
+            placeholder={t("news.search")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-white border border-border/80 rounded-xl pl-11 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all"
@@ -729,10 +749,10 @@ export function News() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-4 py-2.5 bg-white border border-border/80 rounded-xl text-sm font-medium text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm hover:border-slate-300 transition-all cursor-pointer min-w-[140px]"
           >
-            <option value="all">All Status</option>
-            <option value="Draft">Draft</option>
-            <option value="Published">Published</option>
-            <option value="Archived">Archived</option>
+            <option value="all">{t("media.allStatus")}</option>
+            <option value="Draft">{t("media.status.Draft")}</option>
+            <option value="Published">{t("media.status.Published")}</option>
+            <option value="Archived">{t("media.status.Archived")}</option>
           </select>
 
           <select 
@@ -740,9 +760,9 @@ export function News() {
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="px-4 py-2.5 bg-white border border-border/80 rounded-xl text-sm font-medium text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm hover:border-slate-300 transition-all cursor-pointer min-w-[140px]"
           >
-            <option value="all">All Categories</option>
+            <option value="all">{t("media.allCategories")}</option>
             {CATEGORIES.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
+              <option key={cat} value={cat}>{categoryLabel(cat)}</option>
             ))}
           </select>
         </div>
@@ -769,7 +789,7 @@ export function News() {
                 {/* Badge Overlays */}
                 <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
                   <div className="px-2.5 py-0.5 bg-white/10 border border-white/20 text-white rounded-full text-[10px] font-bold shadow-sm backdrop-blur-md uppercase">
-                    {article.category}
+                    {categoryLabel(article.category)}
                   </div>
                   
                   <div className={`badge-premium ${
@@ -780,7 +800,7 @@ export function News() {
                       article.status === 'Published' ? 'bg-emerald-500' : 
                       article.status === 'Draft' ? 'bg-amber-500' : 'bg-red-500'
                     }`} />
-                    <span className="text-[10px] font-bold uppercase">{article.status}</span>
+                    <span className="text-[10px] font-bold uppercase">{statusLabel(article.status)}</span>
                   </div>
                 </div>
                 
@@ -816,7 +836,7 @@ export function News() {
                     </h3>
                     {article.featured && (
                       <span className="px-2 py-0.5 bg-amber-100 border border-amber-200 text-amber-700 rounded-md text-[9px] font-black uppercase flex-shrink-0">
-                        Featured
+                        {t("news.featuredBadge")}
                       </span>
                     )}
                   </div>
@@ -826,14 +846,14 @@ export function News() {
 
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px]">
-                      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Author</div>
+                      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("news.author")}</div>
                       <div className="text-xs font-semibold text-foreground line-clamp-1">{article.author}</div>
                     </div>
                     <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px]">
-                      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Views</div>
+                      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("media.views")}</div>
                       <div className="flex items-center gap-1 text-primary">
                         <Eye className="w-3.5 h-3.5 shrink-0" />
-                        <span className="text-xs font-bold">{article.views.toLocaleString()}</span>
+                        <span className="text-xs font-bold">{lang === "km" ? khmerDigits(article.views.toLocaleString()) : article.views.toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
@@ -847,7 +867,7 @@ export function News() {
                       {article.publishDate}
                     </span>
                     <span className="text-primary group-hover:text-secondary font-semibold flex items-center gap-1 transition-colors">
-                      Read Article
+                      {t("news.read")}
                     </span>
                   </div>
                 </div>
@@ -862,9 +882,9 @@ export function News() {
           <div className="w-16 h-16 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-4">
             <Newspaper className="w-8 h-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-bold text-foreground tracking-tight mb-1">No Articles Found</h3>
+          <h3 className="text-lg font-bold text-foreground tracking-tight mb-1">{t("news.emptyTitle")}</h3>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            We couldn't find any news articles matching your search. Try adjusting your filters or search term.
+            {t("news.emptyText")}
           </p>
         </div>
       )}

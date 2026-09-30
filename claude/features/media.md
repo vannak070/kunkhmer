@@ -32,7 +32,8 @@ Videos (`backend/src/modules/videos/routes.ts`):
 - Status values in use: Draft, Published, Archived (not enforced).
 
 ## Frontend
-- Admin: `News.tsx` (`/home/media/news`), `Video.tsx` (`/home/media/video`).
+- Admin: `News.tsx` (`/home/media/news`), `Video.tsx` (`/home/media/video`). Both follow the admin language button
+  (English / Khmer; category and status names translated on screen only — `updates/media-khmer.md`).
 - Public: `SuperAppHome.tsx` sections, `ArticleDetail.tsx` (`/article/:id`),
   `components/layout/GlobalSearch.tsx`.
 

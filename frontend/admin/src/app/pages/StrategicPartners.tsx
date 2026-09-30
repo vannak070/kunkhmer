@@ -6,6 +6,24 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../utils/api";
+import { type TextKey, khmerDigits, useT } from "../i18n/program";
+
+/** Stored values (broadcast type, reach, sponsor tier) as shown in the chosen language; the data stays English. */
+const VALUE_TEXT: Record<string, TextKey> = {
+  "National TV": "par.type.National TV",
+  "Cable TV": "par.type.Cable TV",
+  "Digital Platform": "par.type.Digital Platform",
+  Radio: "par.type.Radio",
+  National: "par.reach.National",
+  "Urban Areas": "par.reach.Urban Areas",
+  "Online/Mobile": "par.reach.Online/Mobile",
+  Platinum: "par.tier.Platinum",
+  Gold: "par.tier.Gold",
+  Silver: "par.tier.Silver",
+  Bronze: "par.tier.Bronze",
+};
+type T = ReturnType<typeof useT>["t"];
+const shown = (value: string | null | undefined, t: T) => (value && VALUE_TEXT[value] ? t(VALUE_TEXT[value]) : value ?? "");
 
 // Angkor Wat watermark for premium branding
 const AngkorWatWatermark = () => (
@@ -35,11 +53,12 @@ export type PartnerType = 'BROADCAST_PARTNERS' | 'OFFICIAL_SPONSORS';
 
 // ── LIVE CARD PREVIEW SUB-COMPONENT ──────────────────────────────────────────
 function LivePartnerPreview({ name, logoUrl, bannerUrl, type, isBroadcaster, contactPerson, contactEmail, contactPhone, websiteUrl, active }: any) {
+  const { t } = useT();
   const imageSrc = bannerUrl || logoUrl;
   
   return (
     <div className="space-y-2">
-      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-1">Live Card Preview</div>
+      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-1">{t("par.preview")}</div>
       <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-md flex flex-col relative w-full pointer-events-none opacity-95">
         {/* Image Banner Section */}
         <div className="h-32 relative overflow-hidden bg-muted">
@@ -75,7 +94,7 @@ function LivePartnerPreview({ name, logoUrl, bannerUrl, type, isBroadcaster, con
             {/* Active Status Badge */}
             <div className={`badge-premium ${active ? 'badge-emerald' : 'badge-red'} text-[9px] px-2 py-0.5`}>
               <span className={`badge-dot ${active ? 'bg-emerald-500' : 'bg-red-500'}`} />
-              {active ? 'Active' : 'Inactive'}
+              {t(active ? "par.active" : "par.inactive")}
             </div>
           </div>
         </div>
@@ -84,7 +103,7 @@ function LivePartnerPreview({ name, logoUrl, bannerUrl, type, isBroadcaster, con
         <div className="p-4 flex-1 flex flex-col justify-between">
           <div>
             <h3 className="text-sm font-bold text-foreground tracking-tight leading-tight line-clamp-1 mb-1 text-left">
-              {name || "Partner Name"}
+              {name || t("par.namePlaceholder")}
             </h3>
             {/* Subtitle details */}
             <div className="space-y-1 mb-3 text-left border-l-2 border-border pl-2.5">
@@ -131,6 +150,7 @@ interface GridCardProps {
 }
 
 function GridPartnerCard({ partner, type, onEdit, onDelete }: GridCardProps) {
+  const { t } = useT();
   const isBroadcaster = type === "BROADCAST_PARTNERS";
   const imageSrc = partner.image || partner.logoUrl;
   
@@ -164,7 +184,7 @@ function GridPartnerCard({ partner, type, onEdit, onDelete }: GridCardProps) {
             ) : (
               <Award className="w-3 h-3 text-amber-500 fill-amber-500/20" />
             )}
-            <span>{isBroadcaster ? partner.type : `${partner.tier} Tier`}</span>
+            <span>{isBroadcaster ? shown(partner.type, t) : t("par.tierBadge", { tier: shown(partner.tier, t) })}</span>
           </div>
           
           {/* Active Status Badge */}
@@ -174,7 +194,7 @@ function GridPartnerCard({ partner, type, onEdit, onDelete }: GridCardProps) {
               : 'badge-red'
           }`}>
             <span className={`badge-dot ${partner.active !== false ? 'bg-emerald-500' : 'bg-red-500'}`} />
-            {partner.active !== false ? 'Active' : 'Inactive'}
+            {t(partner.active !== false ? "par.active" : "par.inactive")}
           </div>
         </div>
         
@@ -183,14 +203,14 @@ function GridPartnerCard({ partner, type, onEdit, onDelete }: GridCardProps) {
           <button 
             onClick={(e) => { e.stopPropagation(); onEdit(partner); }}
             className="p-2 bg-white/95 hover:bg-white text-primary border border-border/40 rounded-xl shadow-md backdrop-blur-md transition-all duration-150 hover:scale-105 active:scale-95"
-            title="Edit Partner"
+            title={t("par.editPartner")}
           >
             <Edit className="w-4 h-4" />
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); onDelete(partner.id); }}
             className="p-2 bg-red-50/95 hover:bg-red-500 hover:text-white text-secondary border border-red-100 rounded-xl shadow-md backdrop-blur-md transition-all duration-150 hover:scale-105 active:scale-95"
-            title="Delete Partner"
+            title={t("par.deletePartner")}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -243,23 +263,23 @@ function GridPartnerCard({ partner, type, onEdit, onDelete }: GridCardProps) {
             {isBroadcaster ? (
               <>
                 <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px] text-left">
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Broadcast Type</div>
-                  <div className="text-xs font-semibold text-slate-800 line-clamp-1">{partner.type}</div>
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("par.broadcastType")}</div>
+                  <div className="text-xs font-semibold text-slate-800 line-clamp-1">{shown(partner.type, t)}</div>
                 </div>
                 <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px] text-left">
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Coverage Reach</div>
-                  <div className="text-xs font-semibold text-slate-800 line-clamp-1">{partner.reach}</div>
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("par.reach")}</div>
+                  <div className="text-xs font-semibold text-slate-800 line-clamp-1">{shown(partner.reach, t)}</div>
                 </div>
               </>
             ) : (
               <>
                 <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px] text-left">
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Industry Sector</div>
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("par.industry")}</div>
                   <div className="text-xs font-semibold text-slate-800 line-clamp-1">{partner.industry}</div>
                 </div>
                 <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px] text-left">
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Sponsor Tier</div>
-                  <div className="text-xs font-semibold text-slate-800 line-clamp-1">{partner.tier}</div>
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("par.tier")}</div>
+                  <div className="text-xs font-semibold text-slate-800 line-clamp-1">{shown(partner.tier, t)}</div>
                 </div>
               </>
             )}
@@ -271,7 +291,7 @@ function GridPartnerCard({ partner, type, onEdit, onDelete }: GridCardProps) {
           className="btn-outline w-full py-2 flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider hover:bg-[#0A3D91]/5 hover:text-[#0A3D91] transition-all"
         >
           <Edit className="w-3.5 h-3.5" />
-          Edit Profile
+          {t("par.editProfile")}
         </button>
       </div>
     </div>
@@ -280,6 +300,10 @@ function GridPartnerCard({ partner, type, onEdit, onDelete }: GridCardProps) {
 
 // ── MAIN DASHBOARD COMPONENT ────────────────────────────────────────────────
 export function StrategicPartners() {
+  const { t, lang } = useT();
+  // Khmer script: `km-text` (styles/theme.css) removes letter spacing and enlarges the tiny labels.
+  const km = lang === "km" ? " km-text" : "";
+  const count = (n: number) => (lang === "km" ? khmerDigits(n) : n);
   const { partnerType, partnerId } = useParams<{ partnerType: string; partnerId?: string }>();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -349,7 +373,7 @@ export function StrategicPartners() {
       setBroadcastStations(mappedStations);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load partners data from database");
+      toast.error(t("par.loadError"));
     } finally {
       setLoading(false);
     }
@@ -406,19 +430,19 @@ export function StrategicPartners() {
   }, [partnerId, isBroadcasterView, sponsors, broadcastStations]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm(`⚠️ Are you sure you want to delete this ${isBroadcasterView ? "broadcaster" : "sponsor"}?`)) return;
+    if (!confirm(t(isBroadcasterView ? "par.deleteConfirmBroadcaster" : "par.deleteConfirmSponsor"))) return;
     try {
       if (isBroadcasterView) {
         await api.settings.deleteBroadcastStation(id);
-        toast.success("🗑️ Broadcast station deleted successfully.");
+        toast.success(t("par.deletedBroadcaster"));
       } else {
         await api.settings.deleteSponsor(id);
-        toast.success("🗑️ Sponsor deleted successfully.");
+        toast.success(t("par.deletedSponsor"));
       }
       loadData();
     } catch (err) {
       console.error(err);
-      toast.error("Failed to delete partner");
+      toast.error(t("par.deleteError"));
     }
   };
 
@@ -443,7 +467,7 @@ export function StrategicPartners() {
             websiteUrl: websiteUrl.trim() || undefined,
             active: partnerActive
           });
-          toast.success("✅ New broadcasting partner added!");
+          toast.success(t("par.addedBroadcaster"));
         } else {
           await api.settings.createSponsor({
             name: partnerName.trim(),
@@ -457,7 +481,7 @@ export function StrategicPartners() {
             websiteUrl: websiteUrl.trim() || undefined,
             active: partnerActive
           });
-          toast.success("✅ New official sponsor added!");
+          toast.success(t("par.addedSponsor"));
         }
       } else {
         // EDIT MODE
@@ -474,7 +498,7 @@ export function StrategicPartners() {
             websiteUrl: websiteUrl.trim() || undefined,
             active: partnerActive
           });
-          toast.success("✅ Broadcaster details updated successfully.");
+          toast.success(t("par.updatedBroadcaster"));
         } else {
           await api.settings.updateSponsor(partnerId, {
             name: partnerName.trim(),
@@ -488,21 +512,21 @@ export function StrategicPartners() {
             websiteUrl: websiteUrl.trim() || undefined,
             active: partnerActive
           });
-          toast.success("✅ Sponsor details updated successfully.");
+          toast.success(t("par.updatedSponsor"));
         }
       }
       navigate(`/home/strategic-partners/${partnerType}`);
       loadData();
     } catch (err) {
       console.error(err);
-      toast.error("Failed to save strategic partner");
+      toast.error(t("par.saveError"));
     }
   };
 
   if (isFormView) {
     const isEdit = !!partnerId;
     return (
-      <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn relative">
+      <div className={`p-4 md:p-8 max-w-4xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn relative${km}`}>
         <AngkorWatWatermark />
         {/* Header */}
         <header className="flex items-center gap-4 relative z-10">
@@ -514,10 +538,10 @@ export function StrategicPartners() {
           </Link>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              {isEdit ? "Edit Partner Details" : "Add New Partner"}
+              {t(isEdit ? "par.editTitle" : "par.addTitle")}
             </h1>
             <p className="text-sm text-muted-foreground mt-1 font-medium">
-              {isBroadcasterView ? "Broadcaster Module" : "Sponsor Module"}
+              {t(isBroadcasterView ? "par.moduleBroadcaster" : "par.moduleSponsor")}
             </p>
           </div>
         </header>
@@ -531,19 +555,19 @@ export function StrategicPartners() {
             {/* Partner Information */}
             <div className="card-premium">
               <h2 className="text-base font-bold text-foreground mb-4">
-                Partner Information
+                {t("par.info")}
               </h2>
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Partner Name <span className="text-[#C8102E]">*</span>
+                    {t("par.name")} <span className="text-[#C8102E]">*</span>
                   </label>
                   <input
                     type="text"
                     required
                     value={partnerName}
                     onChange={e => setPartnerName(e.target.value)}
-                    placeholder={isBroadcasterView ? "e.g. CNC Sports" : "e.g. Smart Axiata"}
+                    placeholder={t(isBroadcasterView ? "par.ph.broadcaster" : "par.ph.sponsor")}
                     className="input-premium font-semibold text-slate-800"
                   />
                 </div>
@@ -552,7 +576,7 @@ export function StrategicPartners() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                        Broadcast Type
+                        {t("par.broadcastType")}
                       </label>
                       <div className="relative">
                         <select
@@ -560,17 +584,17 @@ export function StrategicPartners() {
                           onChange={e => setBroadcasterType(e.target.value as any)}
                           className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none"
                         >
-                          <option value="National TV">National TV</option>
-                          <option value="Cable TV">Cable TV</option>
-                          <option value="Digital Platform">Digital Platform</option>
-                          <option value="Radio">Radio</option>
+                          <option value="National TV">{t("par.type.National TV")}</option>
+                          <option value="Cable TV">{t("par.type.Cable TV")}</option>
+                          <option value="Digital Platform">{t("par.type.Digital Platform")}</option>
+                          <option value="Radio">{t("par.type.Radio")}</option>
                         </select>
                       </div>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                        Coverage Reach
+                        {t("par.reach")}
                       </label>
                       <div className="relative">
                         <select
@@ -578,9 +602,9 @@ export function StrategicPartners() {
                           onChange={e => setBroadcasterReach(e.target.value)}
                           className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none"
                         >
-                          <option value="National">National</option>
-                          <option value="Urban Areas">Urban Areas</option>
-                          <option value="Online/Mobile">Online/Mobile</option>
+                          <option value="National">{t("par.reach.National")}</option>
+                          <option value="Urban Areas">{t("par.reach.Urban Areas")}</option>
+                          <option value="Online/Mobile">{t("par.reach.Online/Mobile")}</option>
                         </select>
                       </div>
                     </div>
@@ -589,7 +613,7 @@ export function StrategicPartners() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                        Sponsor Tier
+                        {t("par.tier")}
                       </label>
                       <div className="relative">
                         <select
@@ -597,23 +621,23 @@ export function StrategicPartners() {
                           onChange={e => setSponsorTier(e.target.value as any)}
                           className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none"
                         >
-                          <option value="Platinum">Platinum</option>
-                          <option value="Gold">Gold</option>
-                          <option value="Silver">Silver</option>
-                          <option value="Bronze">Bronze</option>
+                          <option value="Platinum">{t("par.tier.Platinum")}</option>
+                          <option value="Gold">{t("par.tier.Gold")}</option>
+                          <option value="Silver">{t("par.tier.Silver")}</option>
+                          <option value="Bronze">{t("par.tier.Bronze")}</option>
                         </select>
                       </div>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                        Industry Sector
+                        {t("par.industry")}
                       </label>
                       <input
                         type="text"
                         value={sponsorIndustry}
                         onChange={e => setSponsorIndustry(e.target.value)}
-                        placeholder="e.g. Telecommunications"
+                        placeholder={t("par.ph.industry")}
                         className="input-premium font-semibold text-slate-800"
                       />
                     </div>
@@ -626,57 +650,57 @@ export function StrategicPartners() {
             <div className="card-premium">
               <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                 <User className="w-5 h-5 text-primary" />
-                <span>Contact Details</span>
+                <span>{t("par.contact")}</span>
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Contact Person Name
+                    {t("par.contactPerson")}
                   </label>
                   <input
                     type="text"
                     value={contactPerson}
                     onChange={e => setContactPerson(e.target.value)}
-                    placeholder="e.g. Mr. Sok Phalla"
+                    placeholder={t("par.ph.person")}
                     className="input-premium font-semibold text-slate-800"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Contact Email Address
+                    {t("par.contactEmail")}
                   </label>
                   <input
                     type="email"
                     value={contactEmail}
                     onChange={e => setContactEmail(e.target.value)}
-                    placeholder="e.g. contact@domain.com"
+                    placeholder={t("par.ph.email")}
                     className="input-premium font-semibold text-slate-800"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Contact Phone Number
+                    {t("par.contactPhone")}
                   </label>
                   <input
                     type="tel"
                     value={contactPhone}
                     onChange={e => setContactPhone(e.target.value)}
-                    placeholder="e.g. +855 12 345 678"
+                    placeholder={t("par.ph.phone")}
                     className="input-premium font-semibold text-slate-800"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Website / Channel URL
+                    {t("par.website")}
                   </label>
                   <input
                     type="url"
                     value={websiteUrl}
                     onChange={e => setWebsiteUrl(e.target.value)}
-                    placeholder="e.g. https://www.broadcaster.com"
+                    placeholder={t("par.ph.website")}
                     className="input-premium font-semibold text-slate-800"
                   />
                 </div>
@@ -687,21 +711,21 @@ export function StrategicPartners() {
             <div className="card-premium">
               <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                 <Upload className="w-5 h-5 text-primary" />
-                <span>Branding Assets</span>
+                <span>{t("par.branding")}</span>
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
                 {/* Logo Upload Dropzone */}
                 <div className="space-y-3">
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                    Partner Logo
+                    {t("par.logo")}
                   </label>
                   <div className="flex flex-col items-center gap-3">
                     <label className="flex flex-col items-center justify-center w-full h-28 border border-border/80 border-dashed rounded-xl cursor-pointer bg-muted/10 hover:bg-muted/20 transition-all duration-200">
                       <div className="flex flex-col items-center justify-center pt-2 pb-2 px-2 text-center">
                         <Upload className="w-6 h-6 text-muted-foreground mb-1" />
-                        <span className="text-xs font-semibold text-primary hover:underline">Upload Logo</span>
-                        <span className="text-[9px] text-muted-foreground mt-0.5">PNG, JPG (MAX. 1MB)</span>
+                        <span className="text-xs font-semibold text-primary hover:underline">{t("par.uploadLogo")}</span>
+                        <span className="text-[9px] text-muted-foreground mt-0.5">{t("par.logoHint")}</span>
                       </div>
                       <input 
                         type="file" 
@@ -722,7 +746,7 @@ export function StrategicPartners() {
                     
                     {logoUrl && (
                       <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-border shadow-sm animate-fadeIn bg-slate-50 flex items-center justify-center">
-                        <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                        <img src={logoUrl} alt={t("par.logoAlt")} className="w-full h-full object-contain" />
                         <button
                           type="button"
                           onClick={() => setLogoUrl("")}
@@ -738,14 +762,14 @@ export function StrategicPartners() {
                 {/* Banner Upload Dropzone */}
                 <div className="space-y-3">
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                    Banner / Cover Image
+                    {t("par.banner")}
                   </label>
                   <div className="flex flex-col items-center gap-3">
                     <label className="flex flex-col items-center justify-center w-full h-28 border border-border/80 border-dashed rounded-xl cursor-pointer bg-muted/10 hover:bg-muted/20 transition-all duration-200">
                       <div className="flex flex-col items-center justify-center pt-2 pb-2 px-2 text-center">
                         <Upload className="w-6 h-6 text-muted-foreground mb-1" />
-                        <span className="text-xs font-semibold text-primary hover:underline">Upload Banner</span>
-                        <span className="text-[9px] text-muted-foreground mt-0.5">PNG, JPG (MAX. 2MB)</span>
+                        <span className="text-xs font-semibold text-primary hover:underline">{t("par.uploadBanner")}</span>
+                        <span className="text-[9px] text-muted-foreground mt-0.5">{t("par.bannerHint")}</span>
                       </div>
                       <input 
                         type="file" 
@@ -766,7 +790,7 @@ export function StrategicPartners() {
 
                     {bannerUrl && (
                       <div className="relative w-full h-20 rounded-xl overflow-hidden border border-border shadow-sm animate-fadeIn">
-                        <img src={bannerUrl} alt="Banner" className="w-full h-full object-cover" />
+                        <img src={bannerUrl} alt={t("par.bannerAlt")} className="w-full h-full object-cover" />
                         <button
                           type="button"
                           onClick={() => setBannerUrl("")}
@@ -792,7 +816,7 @@ export function StrategicPartners() {
               name={partnerName}
               logoUrl={logoUrl}
               bannerUrl={bannerUrl}
-              type={isBroadcasterView ? broadcasterType : `${sponsorTier} Tier`}
+              type={isBroadcasterView ? shown(broadcasterType, t) : t("par.tierBadge", { tier: shown(sponsorTier, t) })}
               isBroadcaster={isBroadcasterView}
               contactPerson={contactPerson}
               contactEmail={contactEmail}
@@ -804,11 +828,11 @@ export function StrategicPartners() {
             {/* Status Settings Card */}
             <div className="card-premium">
               <h3 className="text-sm font-bold text-foreground mb-3">
-                Status Settings
+                {t("par.statusSettings")}
               </h3>
               <div>
                 <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                  Partner Status
+                  {t("par.status")}
                 </label>
                 <div className="relative">
                   <select
@@ -816,8 +840,8 @@ export function StrategicPartners() {
                     onChange={e => setPartnerActive(e.target.value === "active")}
                     className="input-premium font-semibold text-slate-800 cursor-pointer appearance-none animate-fadeIn"
                   >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
+                    <option value="active">{t("par.active")}</option>
+                    <option value="inactive">{t("par.inactive")}</option>
                   </select>
                 </div>
               </div>
@@ -830,13 +854,13 @@ export function StrategicPartners() {
                 className="btn-primary w-full py-3 flex items-center justify-center gap-1.5"
               >
                 <Save className="w-4 h-4 animate-pulse" />
-                {isEdit ? "Update Partner" : "Save Partner"}
+                {t(isEdit ? "par.update" : "par.save")}
               </button>
               <Link
                 to={`/home/strategic-partners/${partnerType}`}
                 className="btn-outline w-full py-3 text-center"
               >
-                Cancel
+                {t("common.cancel")}
               </Link>
             </div>
 
@@ -847,7 +871,7 @@ export function StrategicPartners() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn relative">
+    <div className={`max-w-7xl mx-auto space-y-6 animate-fadeIn relative${km}`}>
       <AngkorWatWatermark />
 
       {/* Header Panel - Deep Solid Navy with Gold Line */}
@@ -859,20 +883,17 @@ export function StrategicPartners() {
               {isBroadcasterView ? (
                 <>
                   <Tv className="w-6 h-6 animate-pulse" />
-                  <span>Broadcasters Directory</span>
+                  <span>{t("par.headBroadcasters")}</span>
                 </>
               ) : (
                 <>
                   <Trophy className="w-6 h-6 animate-pulse" />
-                  <span>Official Sponsors Setup</span>
+                  <span>{t("par.headSponsors")}</span>
                 </>
               )}
             </h2>
             <p className="text-xs text-white/80 mt-2 max-w-2xl leading-relaxed font-semibold">
-              {isBroadcasterView 
-                ? "Configure broadcasting channels, coverage areas, and network configurations. Updates instantly sync to the event creation panel."
-                : "Manage partnerships, brand logos, industry sectors, and sponsor tiers. Changes automatically populate federation sponsor sliders."
-              }
+              {t(isBroadcasterView ? "par.introBroadcasters" : "par.introSponsors")}
             </p>
           </div>
           <Link
@@ -880,7 +901,7 @@ export function StrategicPartners() {
             className="px-4 py-2 bg-[#F2C94C] hover:bg-[#d8b340] text-slate-900 rounded-xl font-extrabold text-xs uppercase tracking-widest shadow-md transition-all active:scale-95 flex items-center gap-1.5 shrink-0"
           >
             <Plus className="w-4 h-4" />
-            <span>Add {isBroadcasterView ? "Broadcaster" : "Sponsor"}</span>
+            <span>{t(isBroadcasterView ? "par.addBroadcaster" : "par.addSponsor")}</span>
           </Link>
         </div>
       </div>
@@ -890,39 +911,39 @@ export function StrategicPartners() {
         {isBroadcasterView ? (
           <>
             <div className="bg-white border-l-4 border-l-[#0A3D91] border-slate-200/80 rounded-r-2xl p-4 shadow-sm hover:shadow-md transition-all">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Total Broadcasters</span>
-              <span className="text-2xl font-black text-slate-800">{totalBroadcasters}</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">{t("par.kpi.totalBroadcasters")}</span>
+              <span className="text-2xl font-black text-slate-800">{count(totalBroadcasters)}</span>
             </div>
             <div className="bg-white border-l-4 border-l-emerald-500 border-slate-200/80 rounded-r-2xl p-4 shadow-sm hover:shadow-md transition-all">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">National Reach</span>
-              <span className="text-2xl font-black text-emerald-600">{nationalBroadcasters}</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">{t("par.kpi.national")}</span>
+              <span className="text-2xl font-black text-emerald-600">{count(nationalBroadcasters)}</span>
             </div>
             <div className="bg-white border-l-4 border-l-[#F2C94C] border-slate-200/80 rounded-r-2xl p-4 shadow-sm hover:shadow-md transition-all">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Digital Platforms</span>
-              <span className="text-2xl font-black text-amber-500">{digitalBroadcasters}</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">{t("par.kpi.digital")}</span>
+              <span className="text-2xl font-black text-amber-500">{count(digitalBroadcasters)}</span>
             </div>
             <div className="bg-white border-l-4 border-l-purple-500 border-slate-200/80 rounded-r-2xl p-4 shadow-sm hover:shadow-md transition-all">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Active Status</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">{t("par.kpi.activeStatus")}</span>
               <span className="text-2xl font-black text-purple-600">105% SLA</span>
             </div>
           </>
         ) : (
           <>
             <div className="bg-white border-l-4 border-l-[#0A3D91] border-slate-200/80 rounded-r-2xl p-4 shadow-sm hover:shadow-md transition-all">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Total Sponsors</span>
-              <span className="text-2xl font-black text-slate-800">{totalSponsors}</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">{t("par.kpi.totalSponsors")}</span>
+              <span className="text-2xl font-black text-slate-800">{count(totalSponsors)}</span>
             </div>
             <div className="bg-white border-l-4 border-l-indigo-500 border-slate-200/80 rounded-r-2xl p-4 shadow-sm hover:shadow-md transition-all">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Platinum Sponsors</span>
-              <span className="text-2xl font-black text-indigo-600">{platinumSponsors}</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">{t("par.kpi.platinum")}</span>
+              <span className="text-2xl font-black text-indigo-600">{count(platinumSponsors)}</span>
             </div>
             <div className="bg-white border-l-4 border-l-[#F2C94C] border-slate-200/80 rounded-r-2xl p-4 shadow-sm hover:shadow-md transition-all">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Gold Sponsors</span>
-              <span className="text-2xl font-black text-[#b89755]">{goldSponsors}</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">{t("par.kpi.gold")}</span>
+              <span className="text-2xl font-black text-[#b89755]">{count(goldSponsors)}</span>
             </div>
             <div className="bg-white border-l-4 border-l-rose-500 border-slate-200/80 rounded-r-2xl p-4 shadow-sm hover:shadow-md transition-all">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Active Deals</span>
-              <span className="text-2xl font-black text-rose-600">100% Verified</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">{t("par.kpi.deals")}</span>
+              <span className="text-2xl font-black text-rose-600">{t("par.kpi.verified")}</span>
             </div>
           </>
         )}
@@ -938,8 +959,8 @@ export function StrategicPartners() {
           broadcastStations.length === 0 ? (
             <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center shadow-sm">
               <Tv className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="text-slate-500 font-bold text-sm">No broadcasters registered</p>
-              <p className="text-xs text-muted-foreground mt-1 mb-4">Click "Add Partner" to set up a new broadcast partner.</p>
+              <p className="text-slate-500 font-bold text-sm">{t("par.emptyBroadcasters")}</p>
+              <p className="text-xs text-muted-foreground mt-1 mb-4">{t("par.emptyBroadcastersText")}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -958,8 +979,8 @@ export function StrategicPartners() {
           sponsors.length === 0 ? (
             <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center shadow-sm">
               <Trophy className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="text-slate-500 font-bold text-sm">No sponsors registered</p>
-              <p className="text-xs text-muted-foreground mt-1 mb-4">Click "Add Partner" to set up a new sponsor profile.</p>
+              <p className="text-slate-500 font-bold text-sm">{t("par.emptySponsors")}</p>
+              <p className="text-xs text-muted-foreground mt-1 mb-4">{t("par.emptySponsorsText")}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

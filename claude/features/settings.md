@@ -43,7 +43,8 @@ as numbers; `sortOrder` and `active` on PUT.
 
 ## Frontend
 - Admin `pages/SystemSettings.tsx` (`?tab=`): the four lists; `settings.view`
-  (staff) to see, `settings.manage` (Super Admin) to edit.
+  (staff) to see, `settings.manage` (Super Admin) to edit. Follows the admin language button
+  (English / Khmer, `set.*` in `i18n/program.ts` — `updates/settings-khmer.md`).
 - Admin `hooks/useSettingsLists.ts`: cached lists, `useWeightClasses`,
   `gloveLabel`, `venuePin`. Used by Fighters, FighterDetail, AddFighter,
   CreateEvent (venues, tournament weight class), CreateBatch (venues),
@@ -55,7 +56,8 @@ as numbers; `sortOrder` and `active` on PUT.
 - Admin `pages/Help.tsx` (`/home/help`, menu for every role and in the profile
   menu; `/home/process-flow` redirects): your role's tasks with links, the
   event-to-result steps, fighter verification, common questions; English /
-  ខ្មែរ switch remembered per browser. Admin now loads Noto Sans Khmer.
+  ខ្មែរ switch remembered per browser. Khmer text in the admin uses Kantumruy Pro
+  (since 2026-09-30, `updates/admin-khmer-font.md`).
 
 ## Tests
 `api-tests/tests/settings-lists.test.ts`.

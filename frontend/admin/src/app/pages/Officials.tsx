@@ -7,14 +7,24 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Gavel, Loader2, Plus, Search, Shield, UserCheck, UserX } from "lucide-react";
 import { api } from "../utils/api";
-import { type Official, OFFICIAL_GRADES, officialSummary, useOfficials } from "../hooks/useOfficials";
+import { type Official, OFFICIAL_GRADES, useOfficials } from "../hooks/useOfficials";
+import { type TextKey, khmerDigits, useT } from "../i18n/program";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 
 type RoleFilter = "all" | "Referee" | "Judge";
 
+const ROLE_TABS: Record<RoleFilter, TextKey> = { all: "off.all", Referee: "off.referees", Judge: "off.judges" };
+const ROLE_TEXT: Record<Official["role"], TextKey> = { Referee: "off.role.Referee", Judge: "off.role.Judge" };
+const GRADE_TEXT: Record<string, TextKey> = {
+  "International A": "off.grade.International A",
+  "National A": "off.grade.National A",
+  "National B": "off.grade.National B",
+};
+
 const inputClass = "w-full h-11 rounded-xl border border-slate-300 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none px-3 text-sm bg-white";
 
 export function Officials() {
+  const { t, lang } = useT();
   const { officials, loading, reload } = useOfficials();
   const [role, setRole] = useState<RoleFilter>("all");
   const [search, setSearch] = useState("");
@@ -33,14 +43,21 @@ export function Officials() {
 
   const count = (r: RoleFilter) => officials.filter((o) => o.status === "Active" && (r === "all" || o.role === r)).length;
 
+  /** "International A · 12 yrs" in the chosen language, skipping what isn't known. */
+  const summary = (o: Official) =>
+    [
+      o.grade ? (GRADE_TEXT[o.grade] ? t(GRADE_TEXT[o.grade]) : o.grade) : null,
+      o.yearsExperience != null ? t(o.yearsExperience === 1 ? "off.yearOne" : "off.yearMany", { n: o.yearsExperience }) : null,
+    ].filter(Boolean).join(" · ");
+
   const toggleActive = async (o: Official) => {
     const next = o.status === "Active" ? "Inactive" : "Active";
     try {
       await api.officials.update(o.id, { status: next });
-      toast.success(next === "Active" ? `${o.fullName} is active again` : `${o.fullName} is deactivated and can't sign in`);
+      toast.success(t(next === "Active" ? "off.activeAgain" : "off.nowInactive", { name: o.fullName }));
       reload();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not change the status.");
+      toast.error(e instanceof Error ? e.message : t("off.statusError"));
     }
   };
 
@@ -49,19 +66,19 @@ export function Officials() {
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground flex items-center gap-2">
-            <Shield className="w-6 h-6 text-primary" aria-hidden /> Officials
+            <Shield className="w-6 h-6 text-primary" aria-hidden /> {t("menu.officials")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1 font-medium">
-            Referees and judges KKF assigns to bouts. They sign in to see the bouts they're assigned to.
+            {t("off.intro")}
           </p>
         </div>
         <button type="button" onClick={() => setEditing("new")} className="btn-primary py-2.5 px-5">
-          <Plus className="w-4 h-4" aria-hidden /> Add official
+          <Plus className="w-4 h-4" aria-hidden /> {t("off.add")}
         </button>
       </header>
 
       <div className="flex flex-col md:flex-row gap-3 md:items-center">
-        <div role="tablist" aria-label="Role" className="flex gap-1 rounded-xl bg-slate-100 p-1">
+        <div role="tablist" aria-label={t("off.roleTabs")} className="flex gap-1 rounded-xl bg-slate-100 p-1">
           {(["all", "Referee", "Judge"] as RoleFilter[]).map((r) => (
             <button
               key={r}
@@ -71,7 +88,7 @@ export function Officials() {
               onClick={() => setRole(r)}
               className={`flex-1 md:flex-none h-9 px-3 whitespace-nowrap rounded-lg text-sm font-semibold transition-colors ${role === r ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
             >
-              {r === "all" ? "All" : `${r}s`} <span className="ml-1 text-xs font-bold text-slate-400">{count(r)}</span>
+              {t(ROLE_TABS[r])} <span className="ml-1 text-xs font-bold text-slate-400">{lang === "km" ? khmerDigits(count(r)) : count(r)}</span>
             </button>
           ))}
         </div>
@@ -81,21 +98,21 @@ export function Officials() {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or username"
-            aria-label="Search officials"
+            placeholder={t("off.searchPlaceholder")}
+            aria-label={t("off.searchLabel")}
             className={`${inputClass} pl-10`}
           />
         </div>
         <label className="inline-flex items-center gap-2 text-sm text-slate-600 whitespace-nowrap">
           <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="w-4 h-4 rounded border-slate-300" />
-          Show deactivated
+          {t("off.showInactive")}
         </label>
       </div>
 
-      {loading && <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="w-4 h-4 animate-spin" aria-hidden /> Loading officials…</div>}
+      {loading && <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="w-4 h-4 animate-spin" aria-hidden /> {t("off.loading")}</div>}
       {!loading && shown.length === 0 && (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">
-          {officials.length ? "No officials match these filters." : "No referees or judges yet. Add the first one."}
+          {t(officials.length ? "off.noMatch" : "off.empty")}
         </div>
       )}
 
@@ -108,20 +125,20 @@ export function Officials() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-slate-900 truncate">{o.fullName}</p>
-                <p className="text-sm text-slate-600">{o.role}{officialSummary(o) ? ` · ${officialSummary(o)}` : ""}</p>
+                <p className="text-sm text-slate-600">{t(ROLE_TEXT[o.role])}{summary(o) ? ` · ${summary(o)}` : ""}</p>
                 {o.username && <p className="text-xs text-slate-400 truncate">@{o.username}</p>}
               </div>
-              {o.status !== "Active" && <span className="text-[11px] font-semibold rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-slate-500">Deactivated</span>}
+              {o.status !== "Active" && <span className="text-[11px] font-semibold rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-slate-500">{t("off.deactivated")}</span>}
             </div>
             <p className="text-sm text-slate-600">
-              {o.upcomingBouts ? `${o.upcomingBouts} upcoming bout${o.upcomingBouts === 1 ? "" : "s"}` : "No upcoming bouts"}
+              {o.upcomingBouts ? t(o.upcomingBouts === 1 ? "off.upcomingOne" : "off.upcomingMany", { n: o.upcomingBouts }) : t("off.noUpcoming")}
             </p>
             <div className="mt-auto flex gap-2">
               <button type="button" onClick={() => setEditing(o)} className="h-9 px-3 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 hover:border-primary hover:text-primary">
-                Edit
+                {t("common.edit")}
               </button>
               <button type="button" onClick={() => toggleActive(o)} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900">
-                {o.status === "Active" ? <><UserX className="w-4 h-4" aria-hidden /> Deactivate</> : <><UserCheck className="w-4 h-4" aria-hidden /> Activate</>}
+                {o.status === "Active" ? <><UserX className="w-4 h-4" aria-hidden /> {t("off.deactivate")}</> : <><UserCheck className="w-4 h-4" aria-hidden /> {t("off.activate")}</>}
               </button>
             </div>
           </li>
@@ -140,6 +157,7 @@ export function Officials() {
 }
 
 function OfficialDialog({ official, onClose, onSaved }: { official: Official | null; onClose: () => void; onSaved: () => void }) {
+  const { t } = useT();
   const isNew = !official;
   const [form, setForm] = useState({
     fullName: official?.fullName ?? "",
@@ -156,9 +174,9 @@ function OfficialDialog({ official, onClose, onSaved }: { official: Official | n
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.fullName.trim()) return setError("Enter the official's name.");
-    if (isNew && (!form.username.trim() || !form.email.trim())) return setError("Enter a username and email for the sign-in account.");
-    if ((isNew || form.password) && form.password.length < 8) return setError("The password needs at least 8 characters.");
+    if (!form.fullName.trim()) return setError(t("off.needName"));
+    if (isNew && (!form.username.trim() || !form.email.trim())) return setError(t("off.needAccount"));
+    if ((isNew || form.password) && form.password.length < 8) return setError(t("off.shortPassword"));
     setBusy(true);
     setError(null);
     const body: Record<string, unknown> = {
@@ -173,10 +191,10 @@ function OfficialDialog({ official, onClose, onSaved }: { official: Official | n
     try {
       if (isNew) await api.officials.create(body);
       else await api.officials.update(official!.id, body);
-      toast.success(isNew ? `${form.fullName} added as ${form.role.toLowerCase()}` : `${form.fullName} saved`);
+      toast.success(t(!isNew ? "off.saved" : form.role === "Judge" ? "off.addedJudge" : "off.addedReferee", { name: form.fullName }));
       onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save.");
+      setError(err instanceof Error ? err.message : t("off.saveError"));
     } finally {
       setBusy(false);
     }
@@ -187,57 +205,57 @@ function OfficialDialog({ official, onClose, onSaved }: { official: Official | n
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isNew ? "Add official" : `Edit ${official?.fullName}`}</DialogTitle>
+          <DialogTitle>{isNew ? t("off.add") : t("off.editTitle", { name: official?.fullName ?? "" })}</DialogTitle>
           <DialogDescription>
-            {isNew ? "Creates a sign-in account. The official uses it to see the bouts KKF assigns them." : "Changes apply straight away. A new password signs them out everywhere."}
+            {t(isNew ? "off.addHint" : "off.editHint")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={save} className="space-y-4">
           <div>
-            <label htmlFor="o-name" className="block text-sm font-medium text-slate-700 mb-1">Full name</label>
+            <label htmlFor="o-name" className="block text-sm font-medium text-slate-700 mb-1">{t("off.fullName")}</label>
             <input id="o-name" value={form.fullName} onChange={set("fullName")} className={inputClass} autoComplete="off" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="o-role" className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+              <label htmlFor="o-role" className="block text-sm font-medium text-slate-700 mb-1">{t("off.roleTabs")}</label>
               <select id="o-role" value={form.role} onChange={set("role")} className={inputClass}>
-                <option value="Referee">Referee</option>
-                <option value="Judge">Judge</option>
+                <option value="Referee">{t("off.role.Referee")}</option>
+                <option value="Judge">{t("off.role.Judge")}</option>
               </select>
             </div>
             <div>
-              <label htmlFor="o-grade" className="block text-sm font-medium text-slate-700 mb-1">Grade</label>
+              <label htmlFor="o-grade" className="block text-sm font-medium text-slate-700 mb-1">{t("off.grade")}</label>
               <select id="o-grade" value={form.grade} onChange={set("grade")} className={inputClass}>
-                <option value="">Not set</option>
-                {OFFICIAL_GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
+                <option value="">{t("common.notSet")}</option>
+                {OFFICIAL_GRADES.map((g) => <option key={g} value={g}>{GRADE_TEXT[g] ? t(GRADE_TEXT[g]) : g}</option>)}
               </select>
             </div>
           </div>
           <div>
-            <label htmlFor="o-since" className="block text-sm font-medium text-slate-700 mb-1">Year started officiating</label>
-            <input id="o-since" type="number" inputMode="numeric" min={1950} max={thisYear} value={form.since} onChange={set("since")} placeholder={`e.g. ${thisYear - 10}`} className={inputClass} />
+            <label htmlFor="o-since" className="block text-sm font-medium text-slate-700 mb-1">{t("off.since")}</label>
+            <input id="o-since" type="number" inputMode="numeric" min={1950} max={thisYear} value={form.since} onChange={set("since")} placeholder={t("off.sinceExample", { year: String(thisYear - 10) })} className={inputClass} />
           </div>
           <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3">
-            <legend className="px-1 text-sm font-medium text-slate-700">Sign-in account</legend>
+            <legend className="px-1 text-sm font-medium text-slate-700">{t("off.account")}</legend>
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
-                <label htmlFor="o-username" className="block text-sm font-medium text-slate-700 mb-1">Username</label>
+                <label htmlFor="o-username" className="block text-sm font-medium text-slate-700 mb-1">{t("off.username")}</label>
                 <input id="o-username" value={form.username} onChange={set("username")} disabled={!isNew} className={`${inputClass} disabled:bg-slate-50 disabled:text-slate-500`} autoComplete="off" />
               </div>
               <div>
-                <label htmlFor="o-email" className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                <label htmlFor="o-email" className="block text-sm font-medium text-slate-700 mb-1">{t("off.email")}</label>
                 <input id="o-email" type="email" value={form.email} onChange={set("email")} className={inputClass} autoComplete="off" />
               </div>
             </div>
             <div>
-              <label htmlFor="o-password" className="block text-sm font-medium text-slate-700 mb-1">{isNew ? "Password" : "New password (optional)"}</label>
-              <input id="o-password" type="password" value={form.password} onChange={set("password")} className={inputClass} autoComplete="new-password" placeholder="At least 8 characters" />
+              <label htmlFor="o-password" className="block text-sm font-medium text-slate-700 mb-1">{t(isNew ? "off.password" : "off.newPassword")}</label>
+              <input id="o-password" type="password" value={form.password} onChange={set("password")} className={inputClass} autoComplete="new-password" placeholder={t("off.passwordHint")} />
             </div>
           </fieldset>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <DialogFooter className="gap-2 sm:gap-2">
-            <button type="button" onClick={onClose} className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button type="submit" disabled={busy} className="h-11 px-5 rounded-xl bg-primary hover:bg-[#083073] disabled:opacity-60 text-white text-sm font-semibold">{isNew ? "Add official" : "Save"}</button>
+            <button type="button" onClick={onClose} className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">{t("common.cancel")}</button>
+            <button type="submit" disabled={busy} className="h-11 px-5 rounded-xl bg-primary hover:bg-[#083073] disabled:opacity-60 text-white text-sm font-semibold">{isNew ? t("off.add") : t("common.save")}</button>
           </DialogFooter>
         </form>
       </DialogContent>

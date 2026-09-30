@@ -57,6 +57,10 @@ User shape (camelCase): `id, username, fullName, email, role, clubId, status, la
   Administration), user card linking to My profile, phone menu drawer + "Menu" tab.
   Sign out calls `POST /users/logout` (`api.auth.logout`), then clears storage.
 
+- The Users and Profile pages follow the admin language button (English / Khmer, `users.*` and `prof.*` in
+  `i18n/program.ts`; "Super Admin" and "KKF Officer" keep their Latin names) — `updates/users-khmer.md`,
+  `updates/profile-khmer.md`.
+
 ## Business rules
 - Login and user writes never return `password_hash`.
 - Username and email are unique (422 on duplicates).

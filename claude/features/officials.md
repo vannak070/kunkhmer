@@ -51,6 +51,10 @@ yearsExperience, upcomingBouts, boutsOnDate`.
 - `pages/MyBouts.tsx` (`/home/my-bouts`): Referee/Judge home — coming up and
   earlier bouts with their role, fighters, clubs, venue, rules and result.
 
+- Officials, "Assign officials" and "My bouts" follow the admin language button (English / Khmer; `off.*`,
+  `assign.*`, `my.*` in `i18n/program.ts` — `updates/officials-khmer.md`, `updates/assign-officials-khmer.md`,
+  `updates/my-bouts-khmer.md`).
+
 ## Tests
 `api-tests/tests/officials.test.ts`; assignment rules in `matches.test.ts`
 ("referees and judges").

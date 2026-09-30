@@ -274,7 +274,7 @@ export function Help() {
   const role = roleKey(api.auth.getCurrentUser()?.role);
   const officialOnly = role === "Official";
   const faqs = FAQ.filter((f) => !f.roles || (role && f.roles.includes(role)));
-  const khmer = lang === "km" ? "font-['Noto_Sans_Khmer',sans-serif] leading-relaxed" : "";
+  const khmer = lang === "km" ? "font-['Kantumruy_Pro',sans-serif] leading-relaxed" : "";
 
   return (
     <div className={`p-4 md:p-8 max-w-4xl mx-auto space-y-8 ${khmer}`} lang={lang === "km" ? "km" : "en"}>
@@ -293,7 +293,7 @@ export function Help() {
               type="button"
               aria-pressed={lang === l}
               onClick={() => setLang(l)}
-              className={`h-8 px-3 rounded-lg text-sm font-semibold ${l === "km" ? "font-['Noto_Sans_Khmer',sans-serif]" : ""} ${lang === l ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+              className={`h-8 px-3 rounded-lg text-sm font-semibold ${l === "km" ? "font-['Kantumruy_Pro',sans-serif]" : ""} ${lang === l ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
             >
               {l === "en" ? "English" : "ខ្មែរ"}
             </button>
