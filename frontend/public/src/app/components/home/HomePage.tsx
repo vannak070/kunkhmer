@@ -165,7 +165,7 @@ function PartnerLogo({ p, size = "md" }: { p: Partner; size?: "sm" | "md" | "lg"
 function HeroEventCard({ event, poster, sponsor, onOpen }: { event: HomeEvent; poster: string | null; sponsor: Partner | null; onOpen: () => void }) {
   const { t, formatDate } = useI18n();
   return (
-    <div className="rounded-3xl bg-white text-gray-900 border border-gray-100 shadow-[0_24px_60px_-24px_rgba(36,51,111,0.35)] overflow-hidden">
+    <div className="rounded-3xl bg-white text-gray-900 border border-[#d5e0f3] shadow-[0_6px_18px_-10px_rgba(36,51,111,0.18)] overflow-hidden">
       {poster && (
         <button type="button" onClick={onOpen} className="kk-focus block w-full bg-[var(--kk-navy)]">
           <img src={poster} alt={event.name} className="w-full max-h-[300px] object-contain mx-auto" />

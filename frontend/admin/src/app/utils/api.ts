@@ -15,6 +15,22 @@ function getHeaders(extraHeaders: Record<string, string> = {}): Record<string, s
   return headers;
 }
 
+/**
+ * The sign-in has ended (signed in on another device, password changed, signed out): forget it and go to the
+ * login page with a message, instead of leaving screens to show "not found" or empty lists.
+ * claude/updates/session-expired.md
+ */
+function sessionEnded(response: Response) {
+  const flagged = response.headers.get("X-Session-Expired") === "1";
+  const unauthenticated = response.status === 401 && Boolean(localStorage.getItem("token"));
+  if (!flagged && !unauthenticated) return;
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  if (typeof window !== "undefined" && !window.location.pathname.endsWith("/login")) {
+    window.location.href = appPath("/login?expired=1");
+  }
+}
+
 // Unified request handler
 async function request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -30,13 +46,7 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}): Pr
     data = { success: false, error: text || "Invalid JSON response from server" };
   }
 
-  if (response.status === 401) {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    if (typeof window !== "undefined" && !window.location.pathname.endsWith("/login")) {
-      window.location.href = appPath("/login");
-    }
-  }
+  sessionEnded(response);
 
   if (!response.ok) {
     // `status` lets a page tell "not found" (404) from a failed load.
@@ -69,11 +79,7 @@ export const api = {
       });
       if (!response.ok || !response.body) {
         const data = await response.json().catch(() => ({}));
-        if (response.status === 401) {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-          window.location.href = appPath("/login");
-        }
+        sessionEnded(response);
         throw new Error(data.error || data.message || `HTTP ${response.status}`);
       }
       const reader = response.body.getReader();
@@ -252,6 +258,27 @@ export const api = {
     async get(id: string) {
       const res = await request(`/fighters/${id}`);
       return res.data;
+    },
+    // Private details (ID / KYC, emergency contact, medical) — KKF staff only, claude/features/fighter-personal-records.md
+    async privateGet(id: string) {
+      const res = await request(`/fighters/${id}/private`);
+      return res.data;
+    },
+    async privatePut(id: string, input: any) {
+      const res = await request(`/fighters/${id}/private`, { method: "PUT", body: JSON.stringify(input) });
+      return res.data;
+    },
+    /** Fighters with missing / expired details: [{ fighterId, missing: [...], idExpired, medicalExpired, needsGuardian }]. */
+    async privateSummary(): Promise<any[]> {
+      const res = await request("/fighters/private-summary");
+      return res.data;
+    },
+    /** The stored scan as a blob (it needs the staff token, so it can't be a plain link). kind: "id" | "medical". */
+    async privateDocument(id: string, kind: "id" | "medical"): Promise<Blob> {
+      const response = await fetch(`${API_BASE_URL}/fighters/${id}/private/documents/${kind}`, { headers: getHeaders() });
+      sessionEnded(response);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.blob();
     },
     async create(input: any) {
       const res = await request("/fighters", {

@@ -42,6 +42,9 @@ Nested inside other responses as snake_case `fighterArray()`.
   `AddFighter.tsx` (new/edit), `FighterDetail.tsx`.
 - Public: `/fighters/:id` → `SuperAppFighterDetail.tsx` (uses slugs/names).
 
+## Private details
+ID / KYC, emergency contact and medical records are staff-only and live outside the public API: see `features/fighter-personal-records.md`.
+
 ## Club registration form (Excel)
 `docs/forms/KKF_Fighter_Registration_Form.xlsx` (rebuild with
 `python3 docs/forms/build_fighter_registration_form.py`): clubs fill it in,

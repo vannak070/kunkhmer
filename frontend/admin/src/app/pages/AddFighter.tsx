@@ -5,6 +5,8 @@
  * date of birth, club, weight, height, record, grade, fighting styles, province, nickname; status when editing.
  * The Khmer name is required for Cambodian fighters, optional for foreign fighters. A fighter KKF staff register
  * is active at once (approvals off). English + Khmer. See claude/updates/admin-fighters-clubs.md.
+ * Staff also fill in the private details (ID number + emergency contact required for a new fighter; the rest optional):
+ * saved to /fighters/:id/private, never public (claude/features/fighter-personal-records.md).
  */
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
@@ -14,7 +16,8 @@ import { api } from "../utils/api";
 import { useT } from "../i18n/program";
 import { LangSwitch } from "../components/program/shared";
 import { fieldCls } from "../components/program/FightNightFields";
-import { FIGHTER_STATUSES, FIGHTING_STYLES, NATIONALITIES, isRealPhoto, isUnverified, nationalityLabel, recordParts } from "../components/fighters/fighterUtils";
+import { FIGHTER_STATUSES, FIGHTING_STYLES, NATIONALITIES, ageOf, isRealPhoto, isUnverified, nationalityLabel, recordParts } from "../components/fighters/fighterUtils";
+import { PrivateFields, emptyPrivate, privateBody, privateFromApi, validatePrivate, type PrivateForm } from "../components/fighters/PrivateDetails";
 
 const PROVINCES = [
   "Phnom Penh", "Banteay Meanchey", "Battambang", "Kampong Cham", "Kampong Chhnang", "Kampong Speu", "Kampong Thom", "Kampot",
@@ -46,6 +49,7 @@ export function AddFighter() {
   const [loaded, setLoaded] = useState(!editing);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [priv, setPriv] = useState<PrivateForm>(emptyPrivate);
   const file = useRef<HTMLInputElement>(null);
   const me = api.auth.getCurrentUser();
   const isStaff = me?.role === "Super Admin" || me?.role === "KKF Officer";
@@ -53,6 +57,7 @@ export function AddFighter() {
   useEffect(() => {
     api.clubs.list().then((c: any[]) => setClubs((c || []).filter((x) => x.status !== "inactive").sort((a, b) => a.name.localeCompare(b.name)))).catch(() => {});
     if (!editing) return;
+    if (isStaff) api.fighters.privateGet(id!).then((p: any) => setPriv(privateFromApi(p))).catch(() => toast.error(t("pv.loadFailed")));
     api.fighters.get(id!).then((f: any) => {
       const r = recordParts(f.record) ?? [0, 0, 0];
       setForm({
@@ -66,7 +71,13 @@ export function AddFighter() {
     }).catch(() => { toast.error(t("fp.loadFailed")); setLoaded(true); });
   }, [id]);
 
+  useEffect(() => {
+    if (loaded && location.hash === "#private") document.getElementById("private")?.scrollIntoView({ block: "start" });
+  }, [loaded]);
+
   const set = (patch: Partial<Form>) => setForm((f) => ({ ...f, ...patch }));
+  const setPrivate = (patch: Partial<PrivateForm>) => setPriv((p) => ({ ...p, ...patch }));
+  const minor = Boolean(form.dateOfBirth) && (ageOf(form.dateOfBirth) ?? 99) < 18;
   const foreign = form.nationality !== "Cambodian";
   const back = editing ? `/home/fighters/${id}` : params.get("clubId") ? `/home/clubs/${params.get("clubId")}` : "/home/fighters";
 
@@ -89,6 +100,16 @@ export function AddFighter() {
     const cm = Number(form.height);
     if (!(cm >= 100 && cm <= 250)) e.height = t("ff.heightRange");
     for (const k of ["wins", "losses", "draws"] as const) if (!/^\d+$/.test(form[k].trim())) e.record = t("ff.recordNumbers");
+    // A new fighter needs an ID number and an emergency contact; when editing, only a wrong email is refused.
+    if (isStaff) {
+      const p = validatePrivate(priv, t);
+      if (editing) {
+        delete p.idNumber;
+        delete p.emergencyName;
+        delete p.emergencyPhone;
+      }
+      Object.assign(e, p);
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -116,6 +137,16 @@ export function AddFighter() {
     };
     try {
       const saved = editing ? await api.fighters.update(id!, body) : await api.fighters.create(body);
+      if (isStaff) {
+        try {
+          await api.fighters.privatePut(saved?.id ?? id!, privateBody(priv));
+        } catch {
+          // The fighter exists; tell the officer to add the private details again from the fighter page.
+          toast.warning(t("pv.saveFailed"));
+          navigate(`/home/fighters/${saved?.id ?? id}`);
+          return;
+        }
+      }
       toast.success(editing ? t("ff.saved") : isUnverified(saved?.status) ? t("ff.createdDraft") : t("ff.created", { name: saved?.name ?? form.name }));
       navigate(`/home/fighters/${saved?.id ?? id}`);
     } catch (err) {
@@ -241,6 +272,8 @@ export function AddFighter() {
           </label>
         )}
       </section>
+
+      {isStaff && <PrivateFields form={priv} set={setPrivate} errors={errors} minor={minor} />}
 
       <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
         <Link to={back} className="h-12 px-6 rounded-xl border border-slate-300 bg-white text-base font-semibold text-slate-700 hover:bg-slate-50 inline-flex items-center justify-center">{t("common.cancel")}</Link>

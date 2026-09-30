@@ -62,6 +62,38 @@ model PersonalAccessToken {
   @@map("personal_access_tokens")
 }
 
+/// Private details of a fighter: ID / KYC, emergency contact, medical. Staff only — never in a public
+/// response, the fan site, search or the Hub. Documents are stored privately (not under /api/files).
+/// See claude/features/fighter-personal-records.md.
+model FighterPrivate {
+  fighter_id         String    @id @db.Uuid
+  id_type            String?   @db.VarChar(50)
+  id_number          String?   @db.VarChar(100)
+  id_expiry          DateTime? @db.Date
+  /// File name inside the private folder (never a URL).
+  id_document        String?   @db.VarChar(100)
+  phone              String?   @db.VarChar(50)
+  email              String?   @db.VarChar(255)
+  address            String?
+  emergency_name     String?   @db.VarChar(255)
+  emergency_relation String?   @db.VarChar(100)
+  emergency_phone    String?   @db.VarChar(50)
+  guardian_name      String?   @db.VarChar(255)
+  guardian_phone     String?   @db.VarChar(50)
+  blood_type         String?   @db.VarChar(5)
+  last_medical_check DateTime? @db.Date
+  medical_expiry     DateTime? @db.Date
+  medical_notes      String?
+  medical_document   String?   @db.VarChar(100)
+  consent_at         DateTime? @db.Timestamp(0)
+  created_at         DateTime? @db.Timestamp(0)
+  updated_at         DateTime? @db.Timestamp(0)
+
+  fighter Fighter @relation(fields: [fighter_id], references: [id], onDelete: Cascade)
+
+  @@map("fighter_private")
+}
+
 model Club {
   id          String    @id @db.Uuid
   name        String    @db.VarChar(255)
@@ -129,6 +161,7 @@ model Fighter {
   videos               Video[]
   followers            FanFollow[]
   fanNotifications     FanNotification[]
+  private              FighterPrivate?
 
   @@map("fighters")
 }

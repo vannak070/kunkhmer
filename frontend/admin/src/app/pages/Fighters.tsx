@@ -20,12 +20,15 @@ export function Fighters() {
   const origin = location.pathname.endsWith("/foreigner") ? "foreign" : location.pathname.endsWith("/kunkhmer") ? "local" : "all";
   const [data, setData] = useState<{ fighters: any[]; bouts: any[]; classes: any[] } | null>(null);
   const [failed, setFailed] = useState(false);
+  const [gaps, setGaps] = useState<Map<string, unknown>>(new Map());
 
   const load = () => {
     setFailed(false);
     Promise.all([api.fighters.list(), api.matches.list().catch(() => []), api.settingsLists.list("weight-classes").catch(() => [])])
       .then(([fighters, bouts, classes]) => setData({ fighters, bouts, classes }))
       .catch(() => setFailed(true));
+    // Staff see which fighters have missing / expired private details.
+    api.fighters.privateSummary().then((rows) => setGaps(new Map(rows.map((r: any) => [r.fighterId, r])))).catch(() => setGaps(new Map()));
   };
   useEffect(load, []);
 
@@ -65,6 +68,7 @@ export function Fighters() {
           classes={data.classes}
           origin={origin}
           canEdit={permissions.hasPermission("fighters.edit")}
+          gaps={gaps}
           empty={permissions.hasPermission("fighters.create") ? <Link to="/home/fighters/kunkhmer/new" className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold"><Plus className="w-4 h-4" aria-hidden /> {t("f.register")}</Link> : null}
         />
       )}

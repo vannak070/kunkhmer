@@ -16,9 +16,10 @@ import { formatDay, useT } from "../i18n/program";
 import { ConfirmDialog, Initials, LangSwitch } from "../components/program/shared";
 import { FighterReviewActions } from "../components/FighterReview";
 import { FighterStatusChip, RecordText } from "../components/fighters/FighterTable";
+import { PrivateDetailsView, issueTexts } from "../components/fighters/PrivateDetails";
 import { nationalityLabel, withEventNames, ageOf, boutsOf, classFor, className, isRealPhoto, isUnverified, nextBout, opponentOf, outcomeFor, recordParts, weightOf, type Outcome } from "../components/fighters/fighterUtils";
 
-type Tab = "overview" | "fights" | "videos" | "titles";
+type Tab = "overview" | "fights" | "videos" | "titles" | "private";
 
 export function FighterDetail() {
   const { id } = useParams();
@@ -32,6 +33,9 @@ export function FighterDetail() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Private details (ID / emergency contact / medical): KKF staff only — claude/features/fighter-personal-records.md
+  const [priv, setPriv] = useState<any | null>(null);
+  const [privFailed, setPrivFailed] = useState(false);
 
   const load = () => {
     Promise.all([
@@ -46,6 +50,11 @@ export function FighterDetail() {
       .catch(() => setData(null));
   };
   useEffect(() => { setData(undefined); load(); }, [id]);
+  useEffect(() => {
+    setPriv(null);
+    setPrivFailed(false);
+    if (isStaff) api.fighters.privateGet(id!).then(setPriv).catch(() => setPrivFailed(true));
+  }, [id]);
 
   const view = useMemo(() => {
     if (!data) return null;
@@ -101,6 +110,7 @@ export function FighterDetail() {
     { id: "fights", label: t("fp.tab.fights"), count: view.bouts.length },
     { id: "videos", label: t("fp.tab.videos"), count: view.videos.length },
     { id: "titles", label: t("fp.tab.titles"), count: view.held.length + view.titleFights.length },
+    ...(isStaff ? [{ id: "private" as Tab, label: t("pv.tab"), count: issueTexts(priv, t).length }] : []),
   ];
 
   return (
@@ -238,6 +248,8 @@ export function FighterDetail() {
           </ul>
         )
       )}
+
+      {tab === "private" && isStaff && <PrivateDetailsView fighterId={f.id} data={priv} error={privFailed} />}
 
       {tab === "titles" && (
         view.held.length + view.titleFights.length === 0 ? <Empty text={t("fp.noTitles")} /> : (

@@ -95,9 +95,11 @@ export function FightNightSteps({ event, cards, bouts, canEdit, isStaff, onEditD
     {
       key: "publish",
       title: t("steps.publish"),
-      detail: published ? t("steps.publishDone") : t("steps.publishTodo"),
+      // Publish guard (claude/updates/publish-guard.md): nothing to publish before the first bout; the API refuses too.
+      detail: published ? t("steps.publishDone") : bouts.length ? t("steps.publishTodo") : t("steps.publishNeedsBout"),
       done: published,
-      action: canEdit ? { label: t("steps.publishAction"), run: publish } : undefined,
+      later: !published && !bouts.length,
+      action: canEdit && bouts.length ? { label: t("steps.publishAction"), run: publish } : undefined,
     },
     {
       key: "weighin",

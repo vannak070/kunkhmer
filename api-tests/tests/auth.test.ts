@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   ADMIN_PASSWORD,
+  API_URL,
   ADMIN_USERNAME,
   type Actors,
   del,
@@ -276,5 +277,32 @@ describe("Super Admin safety rules on PUT /users/:id", () => {
     const token = await login(input.username, input.password);
     await put(`/users/${created.body.data.id}`, { password: randomPassword() }, a.admin.token);
     expect((await get("/users/me", token)).status).toBe(401);
+  });
+});
+
+describe("ended sessions are flagged (X-Session-Expired)", () => {
+  const raw = (path: string, token?: string) =>
+    fetch(`${API_URL}${path}`, { headers: { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+
+  it("flags a revoked staff token on public and protected routes; not a valid, missing or fan token", async () => {
+    // Own actors: signing the officer in again below revokes their earlier token.
+    const own = await setupActors();
+    const officer = own.officer.token;
+    const valid = await raw("/events", officer);
+    expect(valid.status).toBe(200);
+    expect(valid.headers.get("x-session-expired")).toBeNull();
+
+    // Signing in again revokes the earlier token (single-session policy).
+    await login(own.officer.username, own.officer.password);
+    const stalePublic = await raw("/events", officer);
+    expect(stalePublic.status).toBe(200); // public answer unchanged…
+    expect(stalePublic.headers.get("x-session-expired")).toBe("1"); // …but flagged
+    const staleProtected = await raw("/users/me", officer);
+    expect(staleProtected.status).toBe(401);
+    expect(staleProtected.headers.get("x-session-expired")).toBe("1");
+
+    expect((await raw("/events", "999999|not-a-real-token")).headers.get("x-session-expired")).toBe("1");
+    expect((await raw("/events")).headers.get("x-session-expired")).toBeNull();
+    expect((await raw("/events", "kkf_not-a-real-fan-session")).headers.get("x-session-expired")).toBeNull();
   });
 });

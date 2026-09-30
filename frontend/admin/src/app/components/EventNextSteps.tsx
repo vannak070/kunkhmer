@@ -70,20 +70,23 @@ export function EventNextSteps({ event, cards, canEdit, onEditDetails, onAddFigh
   };
 
   const status = event.kkfStatus ?? "Draft";
+  // Publish guard (claude/updates/publish-guard.md): the API refuses to publish a fight night without bouts.
+  const hasBouts = cards.some((c) => c.matches.length > 0);
+  const NEEDS_BOUT = "Add a bout first — then you can publish.";
   const approval: Step = !APPROVALS_ENABLED
     ? PUBLISHED.has(status)
       ? { key: "publish", title: "Publish", detail: "Published — fans can see this event.", done: true }
       : {
           key: "publish",
           title: "Publish",
-          detail: "Fans can't see this event yet. Publish it when the fight card is ready.",
+          detail: hasBouts ? "Fans can't see this event yet. Publish it when the fight card is ready." : NEEDS_BOUT,
           done: false,
-          action: canEdit ? { label: "Publish event", run: publish } : undefined,
+          action: canEdit && hasBouts ? { label: "Publish event", run: publish } : undefined,
         }
     : (() => {
     if (PUBLISHED.has(status)) return { key: "publish", title: "Approve & publish", detail: "Approved and visible to fans.", done: true };
     if (status === "Approved") {
-      return { key: "publish", title: "Approve & publish", detail: "Approved by KKF — publish it when you're ready.", done: false, action: canEdit ? { label: "Publish event", run: publish } : undefined };
+      return { key: "publish", title: "Approve & publish", detail: hasBouts ? "Approved by KKF — publish it when you're ready." : `Approved by KKF. ${NEEDS_BOUT}`, done: false, action: canEdit && hasBouts ? { label: "Publish event", run: publish } : undefined };
     }
     if (status === PENDING) {
       return isStaff

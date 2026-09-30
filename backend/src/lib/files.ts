@@ -76,6 +76,36 @@ export async function storePdfDataUri(uri: string): Promise<string> {
   return saveFile(bytes, "pdf");
 }
 
+// ─── Private documents (ID / medical scans) ─────────────────────────────────
+// Kept in UPLOAD_DIR/private, which the public /api/files route can't reach (it only reads names in the
+// top folder). The database holds the file name; a staff-only route streams the file.
+// claude/features/fighter-personal-records.md
+
+/** Allowed private document types: PDF and common photo formats (no SVG). */
+const PRIVATE_TYPES: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/jpg": "jpg", "image/webp": "webp", "application/pdf": "pdf" };
+const PRIVATE_DATA_URI = /^data:((?:image|application)\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=\s]+)$/i;
+
+export const isPrivateDataUri = (v: unknown): v is string => typeof v === "string" && v.length < 30_000_000 && PRIVATE_DATA_URI.test(v);
+export const privateDir = () => join(config.uploadDir, "private");
+
+/** Stores a base64 PDF or photo privately and returns its file name (not a URL). */
+export async function storePrivateDocument(uri: string): Promise<string> {
+  const m = uri.match(PRIVATE_DATA_URI);
+  const ext = m && PRIVATE_TYPES[m[1].toLowerCase()];
+  if (!m || !ext) throw new HttpError(422, "Documents must be a PDF or a PNG, JPEG or WebP picture");
+  const bytes = Buffer.from(m[2].replace(/\s+/g, ""), "base64");
+  if (bytes.length === 0) throw new HttpError(422, "Invalid document data");
+  if (bytes.length > MAX_BYTES) throw new HttpError(422, "Documents must be at most 10 MB");
+  if (ext === "pdf" && bytes.subarray(0, 5).toString("latin1") !== "%PDF-") throw new HttpError(422, "Documents must be PDF files");
+  const name = `${createHash("sha256").update(bytes).digest("hex")}.${ext}`;
+  const path = join(privateDir(), name);
+  if (!(await stat(path).then(() => true, () => false))) {
+    await mkdir(privateDir(), { recursive: true });
+    await writeFile(path, bytes);
+  }
+  return name;
+}
+
 /** Returns the body with every base64 image data URI (at any depth) replaced by a stored file link. */
 export async function replaceInlineImages<T>(value: T, depth = 0): Promise<T> {
   if (isImageDataUri(value)) return (await storeDataUri(value)) as T;

@@ -117,6 +117,11 @@ describe("event approval", () => {
     expect(approved.body.data.kkf_approval_date).toBeTruthy();
     expect((await get(`/events/${id}`)).status).toBe(404); // approved but not yet published
 
+    // Publish guard: an approved event still needs a bout first.
+    const empty = await put(`/events/${id}`, { status: "Published" }, a.organizer.token);
+    expect(empty.status).toBe(422);
+    await addBout(id);
+
     const published = await put(`/events/${id}`, { status: "Published" }, a.organizer.token);
     expect(published.body.data.status).toBe("Published");
     expect((await get(`/events/${id}`)).status).toBe(200);
@@ -159,5 +164,35 @@ describe("events permissions", () => {
 
   it("requires authentication for writes", async () => {
     expect((await post("/events", fullEvent())).status).toBe(401);
+  });
+});
+
+/** A fight card with one bout on the event (two fresh fighters), created by the admin. */
+async function addBout(eventId: string) {
+  const card = (await post("/matches/batches", { eventId, name: "Main card", weekNumber: 1, date: "2026-11-01", location: "Arena" }, a.admin.token)).body.data.id;
+  const fighter = async () =>
+    (await post("/fighters", { name: `Guard ${uniq()}`, nameKhmer: "x", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170 }, a.admin.token)).body.data;
+  const [red, blue] = [await fighter(), await fighter()];
+  const res = await post("/matches", { subEventId: card, fighterAId: red.id, fighterBId: blue.id, rounds: 5, roundTime: 180, knockdownLimit: 3, agreedWeight: 60, gloveSize: "10oz", gloveBrand: "Twins" }, a.admin.token);
+  expect(res.body.success).toBe(true);
+}
+
+describe("publish guard", () => {
+  it("won't publish a fight night without bouts; publishes once it has one; leaves published events editable", async () => {
+    const id = (await post("/events", fullEvent(), a.officer.token)).body.data.id;
+    const empty = await put(`/events/${id}`, { status: "Published" }, a.officer.token);
+    expect(empty.status).toBe(422);
+    expect(empty.body).toEqual({ success: false, error: "Add at least one bout before publishing this fight night" });
+    expect((await get(`/events/${id}`)).status).toBe(404); // still hidden
+
+    await addBout(id);
+    const published = await put(`/events/${id}`, { status: "Published" }, a.officer.token);
+    expect(published.status).toBe(200);
+    expect(published.body.data.status).toBe("Published");
+
+    // Editing an already published event (even re-sending its status) is not blocked.
+    const direct = (await post("/events", { ...fullEvent(), status: "Published" }, a.admin.token)).body.data.id;
+    const renamed = await put(`/events/${direct}`, { name: `Renamed ${uniq()}`, status: "Published" }, a.admin.token);
+    expect(renamed.status).toBe(200);
   });
 });

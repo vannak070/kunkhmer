@@ -6,6 +6,7 @@ import { BadInput } from "./lib/dates.ts";
 import { HttpError } from "./lib/http.ts";
 import { normalizeBody } from "./lib/input.ts";
 import { replaceInlineImages } from "./lib/files.ts";
+import fighterPrivateRoutes from "./modules/fighters/private.ts";
 import aiRoutes from "./modules/ai/routes.ts";
 import authRoutes from "./modules/auth/routes.ts";
 import championRoutes from "./modules/champions/routes.ts";
@@ -23,6 +24,9 @@ import settingsRoutes from "./modules/settings/routes.ts";
 import seoRoutes from "./modules/seo/routes.ts";
 import settingsListRoutes from "./modules/settings/lists.ts";
 import videoRoutes from "./modules/videos/routes.ts";
+
+/** Requests whose pictures must not be turned into public files (claude/features/fighter-personal-records.md). */
+const PRIVATE_ROUTE = /\/fighters\/[^/?]+\/private(?:[/?]|$)/;
 
 export async function buildApp(opts: { logger?: boolean } = {}): Promise<FastifyInstance> {
   const app = Fastify({
@@ -46,10 +50,17 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
   });
 
   app.addHook("onRequest", resolveUser);
+  // A dead staff sign-in is flagged on every answer, public routes included, so the admin can send the
+  // officer back to the login page instead of showing "not found" (claude/updates/session-expired.md).
+  app.addHook("onSend", async (request, reply, payload) => {
+    if (request.staleToken) reply.header("X-Session-Expired", "1");
+    return payload;
+  });
   app.addHook("preHandler", async (request) => {
     request.body = normalizeBody(request.body ?? {});
     // Pictures arrive as base64 data URIs; keep them as files, not as text in the database.
-    if (request.method === "POST" || request.method === "PUT" || request.method === "PATCH") {
+    // Not for /fighters/:id/private: ID and medical scans must stay private, never become public files.
+    if ((request.method === "POST" || request.method === "PUT" || request.method === "PATCH") && !PRIVATE_ROUTE.test(request.url)) {
       request.body = await replaceInlineImages(request.body);
     }
   });
@@ -93,6 +104,7 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
       await api.register(authRoutes);
       await api.register(clubRoutes);
       await api.register(fighterRoutes);
+      await api.register(fighterPrivateRoutes);
       await api.register(fileRoutes);
       await api.register(seoRoutes);
       await api.register(settingsRoutes);

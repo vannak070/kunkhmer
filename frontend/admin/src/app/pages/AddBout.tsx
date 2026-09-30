@@ -16,6 +16,7 @@ import { api } from "../utils/api";
 import { useT } from "../i18n/program";
 import { WEIGHT_CLASSES } from "../data/champion";
 import { FighterAvatar, LangSwitch } from "../components/program/shared";
+import { issueTexts } from "../components/fighters/PrivateDetails";
 import { fieldCls } from "../components/program/FightNightFields";
 
 const weightOf = (f: any) => Number(f?.currentWeight ?? f?.current_weight) || null;
@@ -45,6 +46,8 @@ export function AddBout() {
   const [titleId, setTitleId] = useState(params.get("championId") ?? "");
   const [isTitle, setIsTitle] = useState(Boolean(params.get("championId")));
   const [busy, setBusy] = useState(false);
+  // Fighters with missing / expired private details (staff only) — a warning, never a block.
+  const [gapById, setGapById] = useState<Map<string, any>>(new Map());
 
   const load = async () => {
     try {
@@ -57,6 +60,7 @@ export function AddBout() {
         api.settingsLists.list("glove-brands").catch(() => []),
       ]);
       setCard(c);
+      api.fighters.privateSummary().then((rows) => setGapById(new Map(rows.map((r: any) => [r.fighterId, r])))).catch(() => {});
       // Only registered (verified) fighters can be matched.
       setFighters((fs as any[]).filter((f) => f.status === "Active"));
       setTitles(cs);
@@ -138,6 +142,7 @@ export function AddBout() {
   const warnings = [red, blue].filter(Boolean).flatMap((f: any) => [
     ...(onCard(f) ? [t("bout.warnOnCard", { name: f.name })] : []),
     ...(offWeight(f) ? [t("bout.warnWeight", { name: f.name, kg: weightOf(f), agreed: weight })] : []),
+    ...(gapById.has(f.id) ? [t("pv.warnLine", { name: f.name, issues: issueTexts(gapById.get(f.id), t).join(", ") })] : []),
   ]);
 
   return (

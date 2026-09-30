@@ -37,6 +37,8 @@ declare module "fastify" {
   interface FastifyRequest {
     user: User | null;
     tokenId: bigint | null;
+    /** A staff token was sent but isn't valid any more (claude/updates/session-expired.md). */
+    staleToken: boolean;
   }
 }
 
@@ -81,17 +83,22 @@ async function findToken(bearer: string) {
 export async function resolveUser(request: FastifyRequest) {
   request.user = null;
   request.tokenId = null;
+  request.staleToken = false;
   const header = request.headers.authorization;
   if (!header?.startsWith("Bearer ")) return;
   // Fan tokens are handled by resolveFan and never grant staff access.
   if (header.startsWith(`Bearer ${FAN_TOKEN_PREFIX}`)) return;
 
+  // From here on a staff token was sent: if it doesn't lead to a user, the session has ended
+  // (signed in elsewhere, password changed, signed out) and the answer says so in a header.
+  request.staleToken = true;
   const token = await findToken(header.slice(7).trim());
   if (!token || token.tokenable_type !== TOKENABLE_TYPE) return;
   if (token.expires_at && token.expires_at < new Date()) return;
 
   const user = await prisma.user.findUnique({ where: { id: token.tokenable_id } });
   if (!user) return;
+  request.staleToken = false;
 
   request.user = user;
   request.tokenId = token.id;

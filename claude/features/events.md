@@ -59,3 +59,5 @@ sent back, and ready to publish.
 ## Open questions / gaps
 - Approval history keeps only the latest approval and the latest send-back
   comment (no full audit trail).
+
+Publish guard: an event can't be switched to Published while it has no bouts (422; `updates/publish-guard.md`).

@@ -1,0 +1,75 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`private fighter details > staff read an empty record with everything missing, then save and read it back > empty 1`] = `
+{
+  "body": {
+    "data": {
+      "address": "null",
+      "bloodType": "null",
+      "consentAt": "null",
+      "consentGiven": "boolean",
+      "email": "null",
+      "emergencyName": "null",
+      "emergencyPhone": "null",
+      "emergencyRelation": "null",
+      "fighterId": "uuid",
+      "guardianName": "null",
+      "guardianPhone": "null",
+      "hasIdDocument": "boolean",
+      "hasMedicalDocument": "boolean",
+      "idExpired": "boolean",
+      "idExpiry": "null",
+      "idNumber": "null",
+      "idType": "null",
+      "lastMedicalCheck": "null",
+      "medicalExpired": "boolean",
+      "medicalExpiry": "null",
+      "medicalNotes": "null",
+      "missing": [
+        "string",
+      ],
+      "needsGuardian": "boolean",
+      "phone": "null",
+      "updatedAt": "null",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`private fighter details > staff read an empty record with everything missing, then save and read it back > saved 1`] = `
+{
+  "body": {
+    "data": {
+      "address": "string",
+      "bloodType": "string",
+      "consentAt": "datetime(+00:00)",
+      "consentGiven": "boolean",
+      "email": "string",
+      "emergencyName": "string",
+      "emergencyPhone": "string",
+      "emergencyRelation": "string",
+      "fighterId": "uuid",
+      "guardianName": "null",
+      "guardianPhone": "null",
+      "hasIdDocument": "boolean",
+      "hasMedicalDocument": "boolean",
+      "idExpired": "boolean",
+      "idExpiry": "date",
+      "idNumber": "string",
+      "idType": "string",
+      "lastMedicalCheck": "date",
+      "medicalExpired": "boolean",
+      "medicalExpiry": "date",
+      "medicalNotes": "string",
+      "missing": [],
+      "needsGuardian": "boolean",
+      "phone": "string",
+      "updatedAt": "datetime(+00:00)",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;

@@ -36,4 +36,4 @@
 ## Log
 ### 2026-09-30
 - Built and checked on the test API (rebuilt with a small sample) through a temporary admin.
-- Not changed: "Publish fight night" is still offered before any bout exists; the admin side menu is English only.
+- Not changed: the admin side menu is English only. (Session expiry showing "not found" — fixed 2026-09-30, `session-expired.md`.) ("Publish fight night" before any bout — fixed 2026-09-30, `publish-guard.md`.)

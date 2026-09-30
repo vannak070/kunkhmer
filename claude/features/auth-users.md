@@ -67,3 +67,5 @@ User shape (camelCase): `id, username, fullName, email, role, clubId, status, la
 ## Open questions / gaps
 - Login rate limiting; minimum password length is only
   enforced for own password changes and in the admin UI (the API create/reset don't check it).
+
+Ended sessions: any answer to a request that carried a dead staff token gets the header `X-Session-Expired: 1` (public routes too); the admin then signs out and shows the login page with a notice (`updates/session-expired.md`).

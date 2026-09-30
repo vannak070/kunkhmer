@@ -4,7 +4,9 @@
  *   GET    /events, /events/:id   public; newest date first
  *   POST   /events                Super Admin, KKF Officer, Organizer (becomes organizer; Organizer events start as Draft)
  *   PUT    /events/:id            Super Admin, KKF Officer; Organizer only their own events and
- *                                 status only → Published (once Approved) or Cancelled
+ *                                 status only → Published (once Approved) or Cancelled.
+ *                                 Nobody can switch an event to Published while it has no bouts
+ *                                 (claude/updates/publish-guard.md).
  *   POST   /events/:id/submit     Organizer (own) or STAFF: Draft → Pending KKF Approval
  *   POST   /events/:id/approve    STAFF: Pending KKF Approval → Approved (records who/when)
  *   POST   /events/:id/reject     STAFF: Pending KKF Approval → Draft with a comment
@@ -197,6 +199,11 @@ export default async function eventRoutes(app: FastifyInstance) {
           }
         }
         if (input.has("organizerId")) throw forbidden();
+      }
+      // Publish guard: fans must never get an empty fight night.
+      if (input.get<string>("status") === "Published" && existing.status !== "Published") {
+        const bouts = await prisma.match.count({ where: { event_id: id } });
+        if (bouts === 0) throw new HttpError(422, "Add at least one bout before publishing this fight night");
       }
       const data: Prisma.EventUncheckedUpdateInput = input.pick({
         name: "name",

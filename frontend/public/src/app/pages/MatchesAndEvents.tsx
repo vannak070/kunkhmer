@@ -529,18 +529,22 @@ function EventTile({ e, data }: { e: any; data: FanData }) {
   return (
     <li>
       <Link to={eventPath(e)} className="kk-focus group flex flex-col h-full rounded-2xl border border-gray-200 bg-white overflow-hidden hover:border-[var(--kk-blue)]/40 hover:shadow-md transition">
-        <div className="relative h-36 bg-gradient-to-br from-[#eef3fb] to-[#fdf1f3] flex items-center justify-center">
-          {isRealImage(e.image) ? (
-            <img src={e.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
-          ) : (
+        {isRealImage(e.image) ? (
+          // The poster shows whole (wide banners stay wide, tall posters are capped), and the countdown sits below it, not over the artwork.
+          <img src={e.image} alt="" className="w-full h-auto max-h-64 object-cover object-top bg-[#eef3fb]" />
+        ) : (
+          <div className="relative h-36 bg-gradient-to-br from-[#eef3fb] to-[#fdf1f3] flex items-center justify-center">
             <div className="text-center" aria-hidden>
               <DateBlock date={e.date} size="lg" />
             </div>
-          )}
-          <span className="absolute top-3 left-3"><CountdownChip date={e.date} /></span>
-        </div>
+            <span className="absolute top-3 left-3"><CountdownChip date={e.date} /></span>
+          </div>
+        )}
         <div className="p-4 flex flex-col gap-1.5 flex-1">
-          <p className="text-xs font-semibold text-gray-500">{formatDate(e.date, "weekday")}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-xs font-semibold text-gray-500">{formatDate(e.date, "weekday")}</p>
+            {isRealImage(e.image) && <CountdownChip date={e.date} />}
+          </div>
           <p lang={textLang(e.name)} className="font-bold text-gray-900 leading-snug group-hover:text-[var(--kk-blue)] break-words">{e.name}</p>
           {e.location && <p lang={textLang(e.location)} className="text-sm text-gray-600 flex items-start gap-1.5"><MapPin className="w-3.5 h-3.5 mt-0.5 text-[var(--kk-red)] shrink-0" aria-hidden />{e.location}</p>}
           {station && <p className="text-sm text-gray-600 flex items-center gap-1.5"><Tv className="w-3.5 h-3.5 text-[var(--kk-blue)] shrink-0" aria-hidden />{station.name}</p>}

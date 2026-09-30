@@ -6,7 +6,7 @@
  */
 import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router";
-import { Pencil, Search } from "lucide-react";
+import { AlertTriangle, Pencil, Search } from "lucide-react";
 import { formatDay, useT } from "../../i18n/program";
 import { FighterAvatar } from "../program/shared";
 import { STATUS_TONE, classFor, className, isForeign, isUnverified, nextBout, opponentOf, recordParts, weightOf, type WeightClass } from "./fighterUtils";
@@ -39,13 +39,15 @@ export function RecordText({ record }: { record?: string | null }) {
   );
 }
 
-export function FighterTable({ fighters, bouts, classes, showClub = true, origin: initialOrigin = "all", canEdit = false, empty }: {
+export function FighterTable({ fighters, bouts, classes, showClub = true, origin: initialOrigin = "all", canEdit = false, gaps, empty }: {
   fighters: any[];
   bouts: any[];
   classes: WeightClass[];
   showClub?: boolean;
   origin?: Origin;
   canEdit?: boolean;
+  /** Staff only: fighter id → what's missing / expired in the private details (claude/features/fighter-personal-records.md). */
+  gaps?: Map<string, unknown>;
   /** Shown when there are no fighters at all (e.g. a "Register fighter" button). */
   empty?: ReactNode;
 }) {
@@ -134,6 +136,7 @@ export function FighterTable({ fighters, bouts, classes, showClub = true, origin
                   <span className="min-w-0">
                     <span className="block text-base font-semibold text-slate-900 break-words">{f.name}</span>
                     {f.nameKhmer && <span lang="km" className="block text-sm text-slate-600 break-words">{f.nameKhmer}</span>}
+                    {gaps?.has(f.id) && <span title={t("pv.badge")} className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-800"><AlertTriangle className="w-3 h-3" aria-hidden /> {t("pv.badge")}</span>}
                     {showClub && <span className="md:hidden block text-sm text-slate-600 break-words">{f.clubName || t("f.noClub")}</span>}
                   </span>
                   {showClub && <span className="hidden md:block text-sm text-slate-700 break-words">{f.clubName || <span className="text-slate-400">{t("f.noClub")}</span>}</span>}

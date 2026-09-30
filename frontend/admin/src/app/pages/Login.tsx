@@ -1,11 +1,15 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { LogIn, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { api } from "../utils/api";
+import { useT } from "../i18n/program";
 import logoImg from "../../assets/modern_logo.png";
 
 export function Login() {
   const navigate = useNavigate();
+  const { t } = useT();
+  // Sent here by the API because the sign-in ended (claude/updates/session-expired.md).
+  const expired = useSearchParams()[0].get("expired") === "1";
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -55,6 +59,13 @@ export function Login() {
               Sign In
             </h2>
             <p className="text-[#707070] text-sm text-center mb-8">Enter your credentials to continue</p>
+
+            {expired && !error && (
+              <div role="status" className="mb-6 p-4 bg-amber-50 border-2 border-amber-200 rounded-xl flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-sm font-bold text-amber-800">{t("login.expired")}</p>
+              </div>
+            )}
 
             {error && (
               <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-xl flex items-start gap-3 animate-pulse">
