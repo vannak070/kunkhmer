@@ -281,6 +281,29 @@ describe("match results", () => {
   });
 });
 
+describe("one fight night's cards and bouts", () => {
+  it("filters fight cards and bouts by ?eventId=", async () => {
+    const m = await newMatch();
+    const other = (await post("/events", { name: `Other Night ${uniq()}`, date: "2026-11-01", location: "Siem Reap", status: "Published" }, a.admin.token)).body.data.id;
+    const otherCard = (await post("/matches/batches", { ...fullBatch(), eventId: other }, a.admin.token)).body.data.id;
+
+    const cards = (await get(`/matches/batches?eventId=${eventId}`, a.admin.token)).body.data;
+    expect(cards.length).toBeGreaterThan(0);
+    expect(cards.every((c: any) => c.event_id === eventId)).toBe(true);
+    expect(cards.map((c: any) => c.id)).toContain(m.sub_event_id);
+    expect(cards.map((c: any) => c.id)).not.toContain(otherCard);
+
+    const bouts = (await get(`/matches?eventId=${eventId}`, a.admin.token)).body.data;
+    expect(bouts.every((b: any) => b.event_id === eventId)).toBe(true);
+    expect(bouts.map((b: any) => b.id)).toContain(m.id);
+    expect((await get(`/matches?eventId=${other}`, a.admin.token)).body.data).toEqual([]);
+
+    // Not an id → nothing, not an error.
+    expect((await get("/matches?eventId=nope")).body.data).toEqual([]);
+    expect((await get("/matches/batches?eventId=nope")).body.data).toEqual([]);
+  });
+});
+
 describe("title matches update the championship registry", () => {
   async function newTitle(holderId: string | null = null) {
     const res = await post("/champions", { titleName: `Title ${uniq()}`, championType: "National", weightClass: 60, currentHolderId: holderId, status: holderId ? "Active" : "Vacant" }, a.admin.token);

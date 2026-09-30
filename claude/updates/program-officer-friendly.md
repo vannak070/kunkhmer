@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress (2026-09-30) |
+| **Status** | Done — built and committed (168843e4, 2026-09-30); walk-through fixes 2026-09-30 not committed yet |
 | **Jira** | n/a |
 | **Feature** | events.md, matches-results.md, fighters.md, officer-run-program.md |
 | **Requested by** | vannak070 (2026-09-30: "improve Program Function for more user friendly and professional. Especially, Officer is limited on tech") |
@@ -61,10 +61,53 @@ Out of scope: Create event form and Add bout wizard redesign; public site (weigh
 - Frontends: admin only; the fan site keeps reading `record`.
 
 ## Acceptance criteria
-- [ ] Recording / correcting a result adds to / adjusts the career record (contract tests).
-- [ ] Weigh-in saved on the bout, profile weight untouched, Pass/Over shown (contract tests + browser).
-- [ ] An officer runs a fight night from the list → page → bouts → officials → publish → weigh-in → results
+- [x] Recording / correcting a result adds to / adjusts the career record (contract tests).
+- [x] Weigh-in saved on the bout, profile weight untouched, Pass/Over shown (contract tests + browser).
+- [x] An officer runs a fight night from the list → page → bouts → officials → publish → weigh-in → results
       without other screens, in English and Khmer.
-- [ ] Typecheck, full contract suite, admin build; browser check on the test API.
+- [x] Typecheck, full contract suite, admin build; browser check on the test API.
 
 ## Log
+### 2026-09-30
+- Committed by the owner in 168843e4 (with `officer-run-program.md`). Review of the commit against this doc:
+  - Backend: `lib/record.ts` + `fighters.career_record` (migration 20260930000002) — results add to the career
+    record (`matches/results.ts`); weigh-in fields on the bout (migration 20260930000003) and
+    `POST /matches/:id/weigh-in`; new `api-tests/tests/records-weighin.test.ts`.
+  - Admin: Program tabs Overview · Fight nights · Champions (no "Fight cards" tab); `FightNights.tsx` (Upcoming /
+    Past / All, search, new fight night, no delete); `FightNight.tsx` (Edit details, Next steps
+    `components/program/FightNightSteps.tsx`, cards with Add bout / Assign officials / Weigh-in / Results /
+    Share poster, "+ Add fight card", More → Cancel / Delete with confirm); `FightCardResults.tsx` (per bout,
+    title-winner change confirm); `FightCardWeighIn.tsx` (Pass / Over at agreed + 1 kg); old batch / match
+    links → `FightCardRedirect`; EN / KM texts in `i18n/program.ts` (Khmer for KKF review). Old
+    `BatchDetail`, `EventDetailNewSimple`, `EventsAndMatches`, `MatchesEnhanced` removed.
+  - Checks: backend typecheck clean; admin `tsc` 0 errors (was 16 before); admin `vite build` passes;
+    `CI=true` contract suite **263/263**. Dev DB has both migrations; each fighter's career_record = record.
+- Still to do: walk the officer flow in the browser on the test API (EN + KM, desktop + phone): create fight
+  night → card → bouts → officials → publish → weigh-in (Pass / Over, profile weight unchanged) → results
+  (incl. a title fight change) → public pages; then tick the criteria above.
+- Browser walk-through (test API, temporary admin on :5198): list → New fight night (created through the API;
+  the Create form is out of scope) → Add fight card dialog → bouts (API, auto-accepted with approvals off) →
+  Assign officials (referee + 3 judges) → Publish → Weigh-in (60.5 kg Pass, 61.5 kg "Over by 0.5 kg"; saved on the
+  bout, profile weight unchanged) → Results (KO round 2: records 10-3-1 → 11-3-1 / 8-2-0 → 8-3-0, belt to the
+  winner) → Change winner → title confirm → belt moved, records 10-4-1 / 9-2-0, history replaced → public API
+  shows the published fight night and both bouts. All four screens in Khmer at 375 px: no overflow, only data
+  names in English.
+- Fixed while walking through:
+  - The fight-night page loaded **every** bout and fight card in the system to show one fight night (slow as
+    history grows; it failed through the slow test bridge). New additive `?eventId=` filter on `GET /matches` and
+    `GET /matches/batches` (contract test in `matches.test.ts`); admin `api.batches.list(eventId)` /
+    `api.matches.listForEvent(eventId)`.
+  - Any load error said "This fight night could not be found." Now only a 404 says that; other failures show
+    "We couldn't load this fight night … Try again" (EN + KM), and a failed refresh after an action shows a
+    banner with Try again. `utils/api.ts` errors carry `status`.
+  - Fight nights list: a failed load showed an empty list (looked like lost data) → message + Try again.
+    Results / Weigh-in: error message now has Try again.
+  - Add bout wizard (`CreateMatchFromBatch.tsx`): "Back to Batch" → "Back to fight night", "CREATE MATCH" /
+    "Create Match" → "Add bout".
+  - Checks after the fixes: backend typecheck 0 errors, admin `tsc` 0 errors, contract suite **264/264**.
+- Open (not changed): the public match API returns the weigh-in fields (`weigh_in_*`, incl. `weigh_in_by`) to
+  everyone although weigh-ins aren't public (the fan site doesn't show them); the Create fight night form still
+  says "Create New Event" with event categories; "Publish fight night" is offered before any fight card exists;
+  the Fight nights list and Program overview still load all bouts (needed for their counts).
+- 2026-09-30 later: Program › Overview rebuilt around the next job and the checklist no longer asks for officials /
+  weigh-in after a fight night — `updates/program-overview-next-job.md`.

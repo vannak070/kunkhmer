@@ -35,6 +35,8 @@ export function FightNight() {
   const canEdit = permissions.hasPermission("events.edit");
 
   const [event, setEvent] = useState<any | null | undefined>(undefined);
+  // A load that failed for another reason than "not found" (network, server) — offer Try again.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [cards, setCards] = useState<any[]>([]);
   const [bouts, setBouts] = useState<any[]>([]);
   const [editing, setEditing] = useState(false);
@@ -45,16 +47,19 @@ export function FightNight() {
 
   const load = async () => {
     try {
-      const [ev, allCards, allBouts] = await Promise.all([api.events.get(id!), api.batches.list(), api.matches.list()]);
+      // Only this fight night's cards and bouts, not the whole database.
+      const [ev, nightCards, nightBouts] = await Promise.all([api.events.get(id!), api.batches.list(id!), api.matches.listForEvent(id!)]);
       setEvent(ev);
+      setLoadFailed(false);
       setCards(
-        (allCards as any[])
+        (nightCards as any[])
           .filter((c) => c.event_id === id)
           .sort((a, b) => (a.week_number ?? 0) - (b.week_number ?? 0) || String(a.date).localeCompare(String(b.date))),
       );
-      setBouts((allBouts as any[]).filter((m) => m.event_id === id).sort(byCardOrder));
-    } catch {
-      setEvent(null);
+      setBouts((nightBouts as any[]).filter((m) => m.event_id === id).sort(byCardOrder));
+    } catch (e) {
+      if ((e as { status?: number }).status === 404) setEvent(null);
+      else setLoadFailed(true);
     }
   };
 
@@ -83,6 +88,14 @@ export function FightNight() {
     }
   };
 
+  if (loadFailed && !event) {
+    return (
+      <div className="max-w-3xl mx-auto p-8 text-center space-y-4">
+        <p className="text-lg font-semibold text-slate-900">{t("night.loadFailed")}</p>
+        <button type="button" onClick={() => { setLoadFailed(false); setEvent(undefined); load(); }} className="h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90">{t("common.tryAgain")}</button>
+      </div>
+    );
+  }
   if (event === undefined) {
     return <div className="p-10 flex justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" aria-label={t("common.loading")} /></div>;
   }
@@ -108,6 +121,12 @@ export function FightNight() {
       <Link to="/home/program?tab=events" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-primary">
         <ArrowLeft className="w-4 h-4" aria-hidden /> {t("night.back")}
       </Link>
+      {loadFailed && (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <span>{t("night.loadFailed")}</span>
+          <button type="button" onClick={() => load()} className="h-9 px-4 rounded-lg bg-white border border-amber-300 font-semibold hover:bg-amber-100">{t("common.tryAgain")}</button>
+        </div>
+      )}
 
       {/* Header */}
       <header className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 flex flex-col md:flex-row gap-5">

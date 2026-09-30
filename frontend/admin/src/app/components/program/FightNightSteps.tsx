@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
-import { CheckCircle2, ChevronRight, Circle, ListChecks } from "lucide-react";
+import { CheckCircle2, ChevronRight, Circle, ListChecks, MinusCircle } from "lucide-react";
 import { api } from "../../utils/api";
 import { useT } from "../../i18n/program";
 import { dayOf, hasResult, officialsComplete, todayUtc, weighState } from "./shared";
@@ -18,6 +18,8 @@ interface Step {
   done: boolean;
   /** Not relevant yet (e.g. results before fight night). */
   later?: boolean;
+  /** Can't be done any more: the fight night is over (officials, weigh-in). Not the next step. */
+  skipped?: boolean;
   action?: { label: string; run: () => void };
 }
 
@@ -87,6 +89,7 @@ export function FightNightSteps({ event, cards, bouts, canEdit, isStaff, onEditD
       detail: !bouts.length ? t("steps.after") : noOfficials.length ? t("steps.officialsTodo", { done: open.length - noOfficials.length, total: open.length }) : t("steps.officialsDone"),
       done: bouts.length > 0 && noOfficials.length === 0,
       later: !bouts.length,
+      skipped: nightPassed && bouts.length > 0 && noOfficials.length > 0,
       action: isStaff && noOfficials[0] ? { label: t("card.officials"), run: () => navigate(`/home/matches/${cardOf(noOfficials[0])?.id}/assign-officials`) } : undefined,
     },
     {
@@ -102,6 +105,7 @@ export function FightNightSteps({ event, cards, bouts, canEdit, isStaff, onEditD
       detail: !bouts.length ? t("steps.after") : notWeighed.length ? t("steps.weighinTodo", { done: open.length - notWeighed.length, total: open.length }) : t("steps.weighinDone"),
       done: bouts.length > 0 && notWeighed.length === 0,
       later: !bouts.length,
+      skipped: nightPassed && bouts.length > 0 && notWeighed.length > 0,
       action: isStaff && notWeighed[0] ? { label: t("card.weighin"), run: () => navigate(`/home/fight-cards/${cardOf(notWeighed[0])?.id}/weigh-in`) } : undefined,
     },
     {
@@ -120,8 +124,8 @@ export function FightNightSteps({ event, cards, bouts, canEdit, isStaff, onEditD
     },
   ];
 
-  const doneCount = steps.filter((s) => s.done).length;
-  const next = steps.find((s) => !s.done && !s.later);
+  const doneCount = steps.filter((s) => s.done || s.skipped).length;
+  const next = steps.find((s) => !s.done && !s.later && !s.skipped);
 
   return (
     <section aria-labelledby="next-steps-title" className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6">
@@ -140,13 +144,13 @@ export function FightNightSteps({ event, cards, bouts, canEdit, isStaff, onEditD
           return (
             <li key={s.key} className={`rounded-xl border p-4 flex flex-col gap-2 ${isNext ? "border-primary bg-[#f5f8fd] ring-2 ring-primary/10" : s.done ? "border-emerald-200 bg-emerald-50/40" : "border-slate-200"}`}>
               <div className="flex items-center gap-2">
-                {s.done ? <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" aria-hidden /> : <Circle className={`w-5 h-5 shrink-0 ${isNext ? "text-primary" : "text-slate-300"}`} aria-hidden />}
+                {s.done ? <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" aria-hidden /> : s.skipped ? <MinusCircle className="w-5 h-5 text-slate-300 shrink-0" aria-hidden /> : <Circle className={`w-5 h-5 shrink-0 ${isNext ? "text-primary" : "text-slate-300"}`} aria-hidden />}
                 <span className="text-xs font-semibold text-slate-400">{i + 1}</span>
                 <span className="font-semibold text-slate-900">{s.title}</span>
                 {isNext && <span className="ml-auto text-[11px] font-bold uppercase tracking-wide text-primary">{t("steps.next")}</span>}
               </div>
-              <p className={`text-sm ${s.later ? "text-slate-400" : "text-slate-600"}`}>{s.detail}</p>
-              {!s.done && !s.later && s.action && (
+              <p className={`text-sm ${s.later || s.skipped ? "text-slate-400" : "text-slate-600"}`}>{s.skipped ? t("steps.skipped") : s.detail}</p>
+              {!s.done && !s.later && !s.skipped && s.action && (
                 <button
                   type="button"
                   disabled={busy}

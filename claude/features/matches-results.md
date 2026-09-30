@@ -14,11 +14,11 @@ fighter records and championship titles.
 ## API (`backend/src/modules/matches/`)
 | Method | Path | Who | Notes |
 |---|---|---|---|
-| GET | `/matches/batches[/:id]` | public | with `event`, creator (`created_by` = user object!), `event_name`, `creator_name` |
+| GET | `/matches/batches[/:id]` | public | `?eventId=` = one fight night's cards; with `event`, creator (`created_by` = user object!), `event_name`, `creator_name` |
 | POST | `/matches/batches` | STAFF, Organizer (own events) | requires eventId, name, weekNumber, date, location; batch number auto `BATCH-<ms>` |
 | PUT | `/matches/batches/:id` | STAFF, Organizer (own events) | moving a card to another organizer's event → 403 |
 | DELETE | `/matches/batches/:id` | Super Admin | cascades to matches |
-| GET | `/matches[/:id]` | public | `?subEventId=`; ordered by `sort_order`. Without a staff token only bouts of published events that both clubs accepted (or that have a result) |
+| GET | `/matches[/:id]` | public | `?subEventId=` or `?eventId=` (one fight night, used by the admin fight-night page; non-UUID → `[]`); ordered by `sort_order`. Without a staff token only bouts of published events that both clubs accepted (or that have a result) |
 | GET | `/matches/proposals` | STAFF, Organizer, Club/Gym | club answers, see `match-proposals.md` |
 | POST | `/matches` | STAFF, Organizer (own events) | requires subEventId, fighterAId, fighterBId, rounds, roundTime, knockdownLimit, agreedWeight, gloveSize, gloveBrand; both fighters verified; event derived from batch; sent to both clubs (proposal fields in the body are ignored); 200 |
 | PUT | `/matches/:id` | STAFF, Organizer (own events) | only STAFF change `refereeId` / `judgeIds` (active officials, see `officials.md`); accepts `sortOrder` or `sort_order`; proposal fields ignored; swapping a fighter (must be verified) resets that side's club answer |

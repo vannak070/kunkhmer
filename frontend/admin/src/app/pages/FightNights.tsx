@@ -9,7 +9,7 @@ import { ChevronRight, MapPin, Plus, Search } from "lucide-react";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { formatDay, khmerDigits, useT } from "../i18n/program";
-import { StatusChip, dayOf, displayStatus, hasResult, officialsComplete, todayUtc, weighState } from "../components/program/shared";
+import { StatusChip, dayOf, displayStatus, nextStepText, todayUtc } from "../components/program/shared";
 
 type Filter = "upcoming" | "past" | "all";
 
@@ -17,20 +17,24 @@ export function FightNights() {
   const { t, lang } = useT();
   const permissions = usePermissions();
   const [events, setEvents] = useState<any[] | null>(null);
+  const [failed, setFailed] = useState(false);
   const [cards, setCards] = useState<any[]>([]);
   const [bouts, setBouts] = useState<any[]>([]);
   const [filter, setFilter] = useState<Filter>("upcoming");
   const [query, setQuery] = useState("");
 
-  useEffect(() => {
+  // A failed load says so (with Try again) instead of an empty list that looks like lost data.
+  const load = () => {
+    setFailed(false);
     Promise.all([api.events.list(), api.batches.list(), api.matches.list()])
       .then(([e, c, m]) => {
         setEvents(e);
         setCards(c);
         setBouts(m);
       })
-      .catch(() => setEvents([]));
-  }, []);
+      .catch(() => setFailed(true));
+  };
+  useEffect(load, []);
 
   const rows = useMemo(() => {
     if (!events) return [];
@@ -42,19 +46,6 @@ export function FightNights() {
       .sort((a, b) => (filter === "past" ? dayOf(b.date) - dayOf(a.date) : dayOf(a.date) - dayOf(b.date)));
   }, [events, filter, query]);
 
-  /** The next thing to do for a fight night, in plain words. */
-  const nextStep = (e: any, evCards: any[], evBouts: any[]): string | null => {
-    if (e.status === "Cancelled") return null;
-    if (!evCards.length) return t("next.card");
-    if (!evBouts.length) return t("next.bouts");
-    const open = evBouts.filter((b) => !hasResult(b));
-    const passed = dayOf(e.date) <= todayUtc();
-    if (passed && open.length) return t("next.results", { done: evBouts.length - open.length, total: evBouts.length });
-    if (!passed && open.some((b) => !officialsComplete(b))) return t("next.officials");
-    if (!["Published", "Completed"].includes(e.status)) return t("next.publish");
-    if (!passed && open.some((b) => weighState(b) === "none" || weighState(b) === "half")) return t("next.weighin");
-    return passed ? null : t("next.wait");
-  };
 
   const tab = (key: Filter, label: string) => (
     <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)} className={`h-10 px-4 rounded-xl text-sm font-semibold border ${filter === key ? "bg-primary text-white border-primary" : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"}`}>
@@ -78,7 +69,12 @@ export function FightNights() {
         )}
       </div>
 
-      {!events ? (
+      {failed ? (
+        <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center space-y-4">
+          <p className="text-amber-900">{t("list.loadFailed")}</p>
+          <button type="button" onClick={load} className="h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90">{t("common.tryAgain")}</button>
+        </div>
+      ) : !events ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-10 flex justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" aria-label={t("common.loading")} /></div>
       ) : rows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
@@ -90,7 +86,7 @@ export function FightNights() {
           {rows.map((e) => {
             const evCards = cards.filter((c) => c.event_id === e.id);
             const evBouts = bouts.filter((b) => b.event_id === e.id);
-            const next = nextStep(e, evCards, evBouts);
+            const next = nextStepText(t, e, evCards, evBouts);
             const d = new Date(`${String(e.date).slice(0, 10)}T00:00:00Z`);
             return (
               <li key={e.id}>

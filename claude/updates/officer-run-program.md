@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built 2026-09-30 in a separate worktree (branch `no-approvals`); copied into the main tree after the owner's demo; not committed |
+| **Status** | Done — built 2026-09-30 in a separate worktree, copied into the main tree after the owner's demo, committed by the owner in 168843e4 |
 | **Jira** | n/a |
 | **Feature** | events.md, matches-results.md, match-proposals.md, fighters.md, admin-phase3a-approvals.md |
 | **Requested by** | vannak070 (2026-09-30: "Event doesn't need KKF approve. The officer will create event" / "There is not approval process yet … all process flow is managing by officer") |

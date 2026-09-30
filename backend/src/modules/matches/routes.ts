@@ -6,7 +6,7 @@
  *   PUT    /matches/batches/:id     Super Admin, KKF Officer, Organizer (own events)
  *   DELETE /matches/batches/:id     Super Admin
  *
- *   GET    /matches[/:id]           public; ?subEventId= filter, in sort order
+ *   GET    /matches[/:id]           public; ?subEventId= or ?eventId= filter, in sort order
  *   GET    /matches/proposals       signed in; a club sees bouts with its fighters; ?state=
  *   POST   /matches                 Super Admin, KKF Officer, Organizer (own events)
  *   PUT    /matches/:id             same (Club/Gym answer through /respond)
@@ -117,8 +117,14 @@ async function requireVerified(fighterIds: string[]) {
 export default async function matchRoutes(app: FastifyInstance) {
   // ─── Batches ─────────────────────────────────────────────
   app.get("/matches/batches", async (request, reply) => {
+    // ?eventId= limits the list to one fight night (the admin fight-night page).
+    const { eventId } = request.query as { eventId?: string };
+    if (eventId && !isUuid(eventId)) return ok(reply, []);
     const subEvents = await prisma.subEvent.findMany({
-      where: request.user ? {} : { event: { status: { notIn: UNAPPROVED } } },
+      where: {
+        ...(eventId ? { event_id: eventId } : {}),
+        ...(request.user ? {} : { event: { status: { notIn: UNAPPROVED } } }),
+      },
       include: subEventRelations,
       orderBy: [{ date: "desc" }, { created_at: { sort: "desc", nulls: "last" } }],
     });
@@ -135,11 +141,12 @@ export default async function matchRoutes(app: FastifyInstance) {
 
   // ─── Matches ─────────────────────────────────────────────
   app.get("/matches", async (request, reply) => {
-    const { subEventId } = request.query as { subEventId?: string };
-    if (subEventId && !isUuid(subEventId)) return ok(reply, []);
+    const { subEventId, eventId } = request.query as { subEventId?: string; eventId?: string };
+    if ((subEventId && !isUuid(subEventId)) || (eventId && !isUuid(eventId))) return ok(reply, []);
     const matches = await prisma.match.findMany({
       where: {
         ...(subEventId ? { sub_event_id: subEventId } : {}),
+        ...(eventId ? { event_id: eventId } : {}),
         ...(request.user ? {} : { event: { status: { notIn: UNAPPROVED } }, ...PUBLIC_BOUT }),
       },
       include: matchRelations,

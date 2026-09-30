@@ -141,3 +141,21 @@ export function resultText(m: any, t: (k: any, v?: any) => string): string | nul
   const round = m.winner_round && method !== "Decision" ? ` · ${t("common.round", { n: m.winner_round })}` : "";
   return `${t("card.won", { name })}${how ? ` · ${how}` : ""}${round}`;
 }
+
+/**
+ * The next thing to do for a fight night, in plain words ("add bouts", "record results (1 of 2)"), or null when
+ * nothing is left. Used by the Fight nights list and the Program overview.
+ */
+export function nextStepText(t: (k: any, v?: any) => string, e: any, cards: any[], bouts: any[]): string | null {
+  if (e.status === "Cancelled") return null;
+  if (!cards.length) return t("next.card");
+  if (!bouts.length) return t("next.bouts");
+  const open = bouts.filter((b) => !hasResult(b));
+  const passed = dayOf(e.date) <= todayUtc();
+  if (passed && open.length) return t("next.results", { done: bouts.length - open.length, total: bouts.length });
+  if (!passed && open.some((b) => !officialsComplete(b))) return t("next.officials");
+  if (!["Published", "Completed"].includes(e.status)) return t("next.publish");
+  if (!passed && open.some((b) => weighState(b) === "none" || weighState(b) === "half")) return t("next.weighin");
+  return passed ? null : t("next.wait");
+}
+

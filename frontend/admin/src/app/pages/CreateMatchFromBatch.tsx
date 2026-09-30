@@ -345,7 +345,7 @@ export function CreateMatchFromBatch() {
           className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 font-medium transition-colors text-sm"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Batch
+          Back to fight night
         </button>
 
         {/* Blue Header with Stepper */}
@@ -355,7 +355,7 @@ export function CreateMatchFromBatch() {
               <Swords className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-black uppercase tracking-tight">CREATE MATCH</h1>
+              <h1 className="text-3xl font-black uppercase tracking-tight">ADD BOUT</h1>
               <p className="text-white/80 font-medium text-sm mt-1">
                 {batch.batchNumber} · {batch.eventName}
               </p>
@@ -902,7 +902,7 @@ export function CreateMatchFromBatch() {
               </button>
               <button onClick={handleProposeMatch} disabled={!canSubmit}
                 className="flex-1 max-w-sm bg-gradient-to-r from-[#10B981] to-[#059669] hover:opacity-90 text-white px-8 py-4 rounded-xl font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg">
-                <CheckCircle className="w-5 h-5" /> Create Match
+                <CheckCircle className="w-5 h-5" /> Add bout
               </button>
             </div>
           </div>

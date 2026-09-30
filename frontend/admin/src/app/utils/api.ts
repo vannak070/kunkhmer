@@ -39,7 +39,8 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}): Pr
   }
 
   if (!response.ok) {
-    throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+    // `status` lets a page tell "not found" (404) from a failed load.
+    throw Object.assign(new Error(data.error || `HTTP ${response.status}: ${response.statusText}`), { status: response.status });
   }
 
   return data;
@@ -355,8 +356,9 @@ export const api = {
 
   // --- BATCHES (SUB-EVENTS) ---
   batches: {
-    async list() {
-      const res = await request("/matches/batches");
+    /** All fight cards, or one fight night's cards. */
+    async list(eventId?: string) {
+      const res = await request(`/matches/batches${eventId ? `?eventId=${eventId}` : ""}`);
       return res.data;
     },
     async get(id: string) {
@@ -390,6 +392,11 @@ export const api = {
         query = `?subEventId=${subEventId}`;
       }
       const res = await request(`/matches${query}`);
+      return res.data;
+    },
+    /** One fight night's bouts (every card). */
+    async listForEvent(eventId: string) {
+      const res = await request(`/matches?eventId=${eventId}`);
       return res.data;
     },
     async get(id: string) {

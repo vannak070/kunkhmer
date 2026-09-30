@@ -54,7 +54,13 @@ export function FightCardResults() {
   }, [cardId]);
 
   if (card === undefined) return <div className="p-10 flex justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" aria-label={t("common.loading")} /></div>;
-  if (card === null) return <div className="p-8 text-center text-slate-600">{t("common.error")}</div>;
+  if (card === null)
+    return (
+      <div className="max-w-3xl mx-auto p-8 text-center space-y-4">
+        <p className="text-slate-700">{t("common.error")}</p>
+        <button type="button" onClick={() => { setCard(undefined); load(); }} className="h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90">{t("common.tryAgain")}</button>
+      </div>
+    );
 
   const set = (id: string, patch: Partial<Draft>) => setDrafts((d) => ({ ...d, [id]: { ...d[id], ...patch } }));
 
