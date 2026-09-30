@@ -426,6 +426,11 @@ export const api = {
       });
       return res.data;
     },
+    /** Weigh-in (kg per corner; null clears). Saved on the bout, not on the fighter's profile. */
+    async weighIn(matchId: string, weights: { a?: number | null; b?: number | null }) {
+      const res = await request(`/matches/${matchId}/weigh-in`, { method: "POST", body: JSON.stringify(weights) });
+      return res.data;
+    },
     async saveResult(matchId: string, result: any) {
       const res = await request(`/matches/${matchId}/result`, {
         method: "POST",

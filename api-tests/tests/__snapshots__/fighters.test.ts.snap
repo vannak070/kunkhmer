@@ -5,6 +5,7 @@ exports[`fighter verification > sends a fighter back with a reason; the club's e
   "body": {
     "data": {
       "alias": "string",
+      "careerRecord": "string",
       "clubId": "uuid",
       "clubLogo": "null",
       "clubName": "string",
@@ -40,6 +41,7 @@ exports[`fighters CRUD > creates a fighter with all fields 1`] = `
   "body": {
     "data": {
       "alias": "string",
+      "careerRecord": "string",
       "clubId": "uuid",
       "clubLogo": "null",
       "clubName": "string",
@@ -82,6 +84,7 @@ exports[`fighters CRUD > deletes a fighter 1`] = `
 exports[`fighters CRUD > lists fighters publicly and filters by status and clubId > list item 1`] = `
 {
   "alias": "string",
+  "careerRecord": "string",
   "clubId": "uuid",
   "clubLogo": "null",
   "clubName": "string",
@@ -123,6 +126,7 @@ exports[`fighters CRUD > shows a fighter by id, by name, by slug and by Khmer na
   "body": {
     "data": {
       "alias": "string",
+      "careerRecord": "string",
       "clubId": "uuid",
       "clubLogo": "null",
       "clubName": "string",
@@ -158,6 +162,7 @@ exports[`fighters CRUD > updates only the given fields 1`] = `
   "body": {
     "data": {
       "alias": "string",
+      "careerRecord": "string",
       "clubId": "uuid",
       "clubLogo": "null",
       "clubName": "string",
@@ -193,6 +198,7 @@ exports[`fighters CRUD > verifies a fighter 1`] = `
   "body": {
     "data": {
       "alias": "string",
+      "careerRecord": "string",
       "clubId": "uuid",
       "clubLogo": "null",
       "clubName": "string",

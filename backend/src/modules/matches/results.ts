@@ -1,7 +1,7 @@
 /**
  * Recording a match result: saves the bout result, marks the match completed,
  * updates the championship registry for title matches and recalculates both
- * fighters' W-L-D records — all in one transaction.
+ * fighters' W-L-D records (career before this system + results recorded here) — all in one transaction.
  *
  * Title fights: applying a result to a belt stores the belt's holder fields as
  * they were just before (`championship_changes`). Re-saving the result of a
@@ -16,6 +16,7 @@ import { prisma } from "../../db.ts";
 import type { Champion, ChampionshipChange, Match, Prisma } from "../../generated/prisma/client.ts";
 import { now } from "../../lib/dates.ts";
 import { notFound } from "../../lib/http.ts";
+import { ZERO, addRecords, formatRecord, parseRecord, recordedResults } from "../../lib/record.ts";
 import { NOT_DELETED } from "../fighters/routes.ts";
 
 type Tx = Prisma.TransactionClient;
@@ -183,25 +184,13 @@ async function applyTitleResult(tx: Tx, match: TitleFight) {
   }
 }
 
-/** Rebuild a fighter's "W-L-D" record from their completed matches. */
+/** A fighter's record = career before this system + results recorded here. */
 async function recalculateRecord(tx: Tx, fighterId: string) {
-  const matches = await tx.match.findMany({
-    where: { status: "Completed", OR: [{ fighter_a_id: fighterId }, { fighter_b_id: fighterId }] },
-    include: { result: true },
-  });
-
-  let wins = 0;
-  let losses = 0;
-  let draws = 0;
-  for (const m of matches) {
-    if (!m.result) continue;
-    if (m.result.winner_id === fighterId) wins++;
-    else if (m.result.winner_id === null) draws++;
-    else losses++;
-  }
-
+  const fighter = await tx.fighter.findUnique({ where: { id: fighterId }, select: { career_record: true } });
+  if (!fighter) return;
+  const total = addRecords(parseRecord(fighter.career_record) ?? ZERO, await recordedResults(tx, fighterId));
   await tx.fighter.updateMany({
     where: { id: fighterId, ...NOT_DELETED },
-    data: { record: `${wins}-${losses}-${draws}`, updated_at: now() },
+    data: { record: formatRecord(total), updated_at: now() },
   });
 }

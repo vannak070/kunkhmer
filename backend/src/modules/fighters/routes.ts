@@ -23,6 +23,8 @@ import { Role, STAFF, currentUser, hasRole, requireAuth, requireRole } from "../
 import { dateOnly, iso, micro, now, toDate } from "../../lib/dates.ts";
 import { HttpError, deleted, idParam, isUuid, notFound, ok } from "../../lib/http.ts";
 import { inputOf } from "../../lib/input.ts";
+import { config } from "../../config.ts";
+import { formatRecord, recordedResults, requireRecord } from "../../lib/record.ts";
 
 /** Soft-deleted fighters are invisible everywhere. */
 export const NOT_DELETED = { deleted_at: null } satisfies Prisma.FighterWhereInput;
@@ -56,6 +58,7 @@ export function formatFighter(f: FighterWithClub) {
     grade: f.grade,
     image: f.image,
     record: f.record,
+    careerRecord: f.career_record,
     status: f.status,
     professionalStatus: f.professional_status,
     verifiedBy: f.verified_by,
@@ -83,6 +86,7 @@ export function fighterArray(f: Fighter) {
     image: f.image,
     style: f.style,
     record: f.record,
+    career_record: f.career_record,
     grade: f.grade,
     status: f.status,
     professional_status: f.professional_status,
@@ -135,7 +139,6 @@ const UPDATABLE = {
   grade: "grade",
   image: "image",
   professionalStatus: "professional_status",
-  record: "record",
 };
 
 export default async function fighterRoutes(app: FastifyInstance) {
@@ -189,8 +192,12 @@ export default async function fighterRoutes(app: FastifyInstance) {
           style: input.get("style"),
           grade: input.get("grade", "D"),
           image: input.get("image"),
+          // A new fighter has no results here yet: the record typed in is the career record.
           record: input.get("record"),
-          status: isStaff(user) ? input.get("status", "Draft") : "Draft",
+          career_record: requireRecord(input.get("record")) ? input.get("record") : null,
+          // With approvals off, a fighter KKF staff register is verified by them at once.
+          status: isStaff(user) ? input.get("status", config.approvals ? "Draft" : "Active") : "Draft",
+          ...(isStaff(user) && !config.approvals && !input.has("status") ? { verified_by: user.id, verified_date: at } : {}),
           professional_status: input.get("professionalStatus", "Professional"),
           created_at: at,
           updated_at: at,
@@ -216,6 +223,23 @@ export default async function fighterRoutes(app: FastifyInstance) {
       const input = inputOf(request.body);
       const data: Prisma.FighterUncheckedUpdateInput = input.pick(UPDATABLE);
       if (input.has("dateOfBirth")) data.date_of_birth = toDate(input.get("dateOfBirth"))!;
+      if (input.present("record")) {
+        // The record is the total the officer sees (career + results recorded here); keep the results and
+        // store the rest as the career, so saving a form unchanged never counts results twice.
+        const typed = requireRecord(input.get("record"));
+        const recorded = await recordedResults(prisma, id);
+        if (typed) {
+          const career = { w: typed.w - recorded.w, l: typed.l - recorded.l, d: typed.d - recorded.d };
+          if (career.w < 0 || career.l < 0 || career.d < 0) {
+            throw new HttpError(422, `The record can't be lower than the results recorded in this system (${formatRecord(recorded)})`);
+          }
+          data.career_record = formatRecord(career);
+          data.record = formatRecord(typed);
+        } else {
+          data.career_record = null;
+          data.record = recorded.w + recorded.l + recorded.d ? formatRecord(recorded) : null;
+        }
+      }
       if (input.has("clubId") && user.role !== Role.Club) data.club_id = input.get("clubId");
       if (input.has("status") && isStaff(user)) data.status = input.get<string>("status")!;
       // A club fixing a fighter KKF sent back re-submits it for verification.

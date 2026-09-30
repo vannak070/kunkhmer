@@ -144,6 +144,10 @@ and phone width in both languages.
   since Phase 5 (`features/settings.md`). Create Match / titles keep a
   separate agreed-weight list (51, 54, 57 … kg) by decision. UI says "Fight card"; code/API
   still say batch / sub_event.
+- KKF approval steps (event approval, club answers on bouts, fighter verification) are **switched off**
+  (2026-09-30): KKF staff run the whole Program flow; Organizer / Club/Gym are read-only in the admin. Turning
+  them back on = `APPROVALS_ENABLED=true` (backend) + `config/features.ts` in the admin
+  (`updates/officer-run-program.md`).
 - Staff login is rate-limited in memory (`lib/loginThrottle.ts`, failed attempts only; one API instance).
   (Fighter edits are now STAFF + own-club only.)
 - `utils/api.ts` and parts of `data/` are duplicated between the two

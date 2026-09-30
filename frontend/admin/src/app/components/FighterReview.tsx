@@ -1,11 +1,14 @@
 /**
  * KKF fighter verification controls: Verify (→ Active) and Send back with a reason (→ Rejected).
  * Shown to KKF Officers and Super Admins for fighters that are waiting for verification.
+ * With approvals off (config/features.ts) there is no review: one "Activate" button makes a Draft fighter
+ * visible and matchable (same API call), and there is no Send back.
  */
 import { useState } from "react";
 import { toast } from "sonner";
 import { CheckCircle2, Undo2 } from "lucide-react";
 import { api } from "../utils/api";
+import { APPROVALS_ENABLED } from "../config/features";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 
 export const WAITING_STATUSES = ["Draft", "Pending KKF Verification", "Pending"];
@@ -29,7 +32,7 @@ export function FighterReviewActions({ fighter, onDone, compact = false }: {
     setBusy(true);
     try {
       const updated = await api.fighters.verify(fighter.id);
-      toast.success(`${fighter.name} is verified and can now be matched`);
+      toast.success(APPROVALS_ENABLED ? `${fighter.name} is verified and can now be matched` : `${fighter.name} is active — visible to fans and can be matched`);
       onDone(updated);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not verify this fighter.");
@@ -59,11 +62,13 @@ export function FighterReviewActions({ fighter, onDone, compact = false }: {
     <>
       <div className="flex flex-wrap gap-2">
         <button type="button" disabled={busy} onClick={verify} className={`inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold ${h}`}>
-          <CheckCircle2 className="w-4 h-4" aria-hidden /> Verify
+          <CheckCircle2 className="w-4 h-4" aria-hidden /> {APPROVALS_ENABLED ? "Verify" : "Activate"}
         </button>
-        <button type="button" disabled={busy} onClick={() => { setError(null); setOpen(true); }} className={`inline-flex items-center gap-1.5 rounded-lg border border-slate-300 hover:border-red-300 hover:text-red-700 text-slate-700 font-semibold ${h}`}>
-          <Undo2 className="w-4 h-4" aria-hidden /> Send back
-        </button>
+        {APPROVALS_ENABLED && (
+          <button type="button" disabled={busy} onClick={() => { setError(null); setOpen(true); }} className={`inline-flex items-center gap-1.5 rounded-lg border border-slate-300 hover:border-red-300 hover:text-red-700 text-slate-700 font-semibold ${h}`}>
+            <Undo2 className="w-4 h-4" aria-hidden /> Send back
+          </button>
+        )}
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>

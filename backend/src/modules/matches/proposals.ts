@@ -6,9 +6,12 @@
  * both accepted → accepted; either declined → declined; otherwise pending.
  * A side whose fighter has no club is accepted automatically. The public only
  * sees accepted bouts (or bouts that already have a result).
+ * With approvals switched off (config.approvals, the default) there is no club step: the KKF staff member
+ * who creates a bout, or swaps a fighter, confirms that side at once (claude/updates/officer-run-program.md).
  */
 import type { Fighter, Match, Prisma, User } from "../../generated/prisma/client.ts";
 import { Role, STAFF, hasRole } from "../../lib/auth.ts";
+import { config } from "../../config.ts";
 import { HttpError } from "../../lib/http.ts";
 
 export type Side = "a" | "b";
@@ -26,8 +29,19 @@ export function proposalStatus(a: string, b: string) {
   return "pending";
 }
 
-/** Fresh answer for a side: a fighter without a club needs no confirmation. */
-export function openSide(side: Side, fighter: Pick<Fighter, "club_id">) {
+/**
+ * Fresh answer for a side: a fighter without a club needs no confirmation. With approvals off the
+ * side is confirmed at once by `by` (the user creating or changing the bout).
+ */
+export function openSide(side: Side, fighter: Pick<Fighter, "club_id">, by: { userId: string; at: Date }) {
+  if (!config.approvals) {
+    return {
+      [`club_${side}_response`]: "accepted",
+      [`club_${side}_note`]: null,
+      [`club_${side}_responded_at`]: by.at,
+      [`club_${side}_responded_by`]: by.userId,
+    } as Prisma.MatchUncheckedUpdateInput;
+  }
   return {
     [`club_${side}_response`]: fighter.club_id ? "pending" : "accepted",
     [`club_${side}_note`]: null,

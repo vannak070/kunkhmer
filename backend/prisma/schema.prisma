@@ -102,6 +102,8 @@ model Fighter {
   image               String?
   style               String?   @db.VarChar(255)
   record              String?   @db.VarChar(50)
+  /// W-L-D before this system; `record` = this + results recorded here.
+  career_record       String?   @db.VarChar(20)
   grade               String    @default("D") @db.VarChar(5)
   status              String    @default("Draft") @db.VarChar(50)
   professional_status String    @default("Professional") @db.VarChar(50)
@@ -281,6 +283,11 @@ model Match {
   fighter_b_confirmed  Boolean   @default(false)
   referee_confirmed    Boolean   @default(false)
   glove_confirmed_date DateTime? @db.Timestamp(0)
+  /// Weigh-in on fight night (kg); fighter_a/b_confirmed = weighed in. The profile weight isn't changed.
+  weigh_in_a_kg        Decimal?  @db.Decimal(5, 2)
+  weigh_in_b_kg        Decimal?  @db.Decimal(5, 2)
+  weigh_in_at          DateTime? @db.Timestamp(0)
+  weigh_in_by          String?   @db.Uuid
   status               String    @default("Draft") @db.VarChar(255)
   proposal_status      String    @default("draft") @db.VarChar(255)
   club_a_response      String    @default("pending") @db.VarChar(255)

@@ -9,6 +9,7 @@ import unknownFighterImg from "figma:asset/b9f2c3f9c8bd58ed74f9c92de40fb83809a13
 import { useWeightClasses } from "../hooks/useSettingsLists";
 import { toast } from "sonner";
 import { FighterReviewActions, canReviewFighters, isWaiting } from "../components/FighterReview";
+import { APPROVALS_ENABLED } from "../config/features";
 
 // Helper function to derive advanced fighter status based on matches
 const getFighterStatus = (fighter: any, matches: any[] = []) => {
@@ -192,7 +193,9 @@ export function Fighters() {
         return (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3">
             <p className="text-sm font-medium text-amber-900">
-              {waiting} {waiting === 1 ? "fighter is" : "fighters are"} waiting for KKF verification{reviewer ? "" : " — they can't be matched until KKF verifies them"}.
+              {APPROVALS_ENABLED
+                ? <>{waiting} {waiting === 1 ? "fighter is" : "fighters are"} waiting for KKF verification{reviewer ? "" : " — they can't be matched until KKF verifies them"}.</>
+                : <>{waiting} draft {waiting === 1 ? "fighter isn't" : "fighters aren't"} visible to fans and can't be matched yet.</>}
             </p>
             <button type="button" onClick={() => setFilterStatus('waiting')} className="h-9 px-4 rounded-lg bg-white border border-amber-300 text-sm font-semibold text-amber-900 hover:bg-amber-100">
               Show {waiting === 1 ? "it" : "them"}
@@ -230,8 +233,8 @@ export function Fighters() {
                 className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm text-foreground font-medium appearance-none focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm cursor-pointer hover:border-slate-300 transition-all"
               >
                 <option value="all">All Status</option>
-                <option value="waiting">Waiting for verification</option>
-                <option value="Rejected">Sent back to club</option>
+                <option value="waiting">{APPROVALS_ENABLED ? "Waiting for verification" : "Draft (not visible)"}</option>
+                {APPROVALS_ENABLED && <option value="Rejected">Sent back to club</option>}
                 <option value="Active">Active</option>
                 <option value="Injured">Injured</option>
                 <option value="Suspended">Suspended</option>
@@ -415,7 +418,7 @@ export function Fighters() {
                   {/* KKF verification */}
                   {isWaiting(fighter.status) && (
                     <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 space-y-2">
-                      <p className="text-xs font-semibold text-amber-900">Waiting for KKF verification</p>
+                      <p className="text-xs font-semibold text-amber-900">{APPROVALS_ENABLED ? "Waiting for KKF verification" : "Draft — not visible to fans"}</p>
                       {reviewer && (
                         <FighterReviewActions
                           compact

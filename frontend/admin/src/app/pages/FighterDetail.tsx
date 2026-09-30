@@ -11,6 +11,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import { useWeightClasses } from "../hooks/useSettingsLists";
 import { toast } from "sonner";
 import { FighterReviewActions, canReviewFighters, isWaiting } from "../components/FighterReview";
+import { APPROVALS_ENABLED } from "../config/features";
 
 const tabs = [
   { id: "overview", label: "Overview", icon: User },
@@ -199,8 +200,12 @@ export function FighterDetail() {
       {isWaiting(fighter.status) && (
         <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 flex flex-col md:flex-row md:items-center gap-4">
           <div className="flex-1">
-            <p className="font-semibold text-amber-900">Waiting for KKF verification</p>
-            <p className="text-sm text-amber-800">This fighter can't be matched or shown on the fan website until KKF verifies them.</p>
+            <p className="font-semibold text-amber-900">{APPROVALS_ENABLED ? "Waiting for KKF verification" : "Draft fighter"}</p>
+            <p className="text-sm text-amber-800">
+              {APPROVALS_ENABLED
+                ? "This fighter can't be matched or shown on the fan website until KKF verifies them."
+                : "This fighter can't be matched or shown on the fan website until you activate the profile."}
+            </p>
           </div>
           {canReviewFighters() && (
             <FighterReviewActions fighter={fighter} onDone={(u) => setFighter((f: any) => ({ ...f, status: u.status, reviewNote: u.reviewNote, verifiedDate: u.verifiedDate }))} />

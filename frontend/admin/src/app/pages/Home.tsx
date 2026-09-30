@@ -12,6 +12,7 @@ import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { type TodoItem, type TodoKind, useAdminOverview } from "../hooks/useAdminOverview";
 import { FighterReviewActions } from "../components/FighterReview";
+import { APPROVALS_ENABLED } from "../config/features";
 
 const GROUPS: { kind: TodoKind; title: string; hint: string; icon: typeof Gavel; tone: string; action: string }[] = [
   { kind: "eventApproval", title: "Events to approve", hint: "Organizers submitted these events. Approve them, or send them back with a comment.", icon: CalendarCheck, tone: "text-violet-700 bg-violet-50", action: "Review" },
@@ -20,12 +21,15 @@ const GROUPS: { kind: TodoKind; title: string; hint: string; icon: typeof Gavel;
   { kind: "boutToAnswer", title: "Bouts to answer", hint: "Bouts proposed for your fighters. Accept them, or decline with a reason.", icon: Swords, tone: "text-sky-700 bg-sky-50", action: "Answer" },
   { kind: "boutDeclined", title: "Bouts declined by a club", hint: "A club said no. Change the fighter, or remove the bout.", icon: MessageSquareWarning, tone: "text-red-700 bg-red-50", action: "Fix bout" },
   { kind: "fighterSentBack", title: "Fighters sent back", hint: "KKF asked for changes to these profiles. Edit and save to send them again.", icon: MessageSquareWarning, tone: "text-red-700 bg-red-50", action: "Fix profile" },
-  { kind: "result", title: "Results to record", hint: "Bouts that already happened but have no result. Fans and rankings wait for these.", icon: Gavel, tone: "text-red-600 bg-red-50", action: "Record result" },
-  { kind: "fighter", title: "Fighters to verify", hint: "Registered fighters waiting for KKF approval before they can be matched.", icon: UserCheck, tone: "text-amber-700 bg-amber-50", action: "Review" },
+  { kind: "result", title: "Results to record", hint: "Bouts that already happened but have no result. Fans and fighter records wait for these.", icon: Gavel, tone: "text-red-600 bg-red-50", action: "Record result" },
+  { kind: "noOfficials", title: "Bouts without officials", hint: "Fight night is within 14 days. Assign a referee and three judges.", icon: ShieldCheck, tone: "text-sky-700 bg-sky-50", action: "Assign officials" },
+  APPROVALS_ENABLED
+    ? { kind: "fighter", title: "Fighters to verify", hint: "Registered fighters waiting for KKF approval before they can be matched.", icon: UserCheck, tone: "text-amber-700 bg-amber-50", action: "Review" }
+    : { kind: "fighter", title: "Draft fighters", hint: "Not visible to fans and can't be matched yet. Activate them when the profile is complete.", icon: UserCheck, tone: "text-amber-700 bg-amber-50", action: "Open" },
   { kind: "draftEvent", title: "Draft events", hint: "Events fans can't see yet. Finish the details and publish them.", icon: FilePenLine, tone: "text-violet-700 bg-violet-50", action: "Open event" },
   { kind: "emptyEvent", title: "Events without a fight card", hint: "Upcoming events with no bouts scheduled.", icon: Layers, tone: "text-blue-700 bg-blue-50", action: "Add fight card" },
   { kind: "boutWaiting", title: "Bouts waiting for clubs", hint: "Fight night is within 14 days and a club hasn't answered. Fans can't see these bouts yet.", icon: Clock, tone: "text-amber-700 bg-amber-50", action: "Open" },
-  { kind: "unconfirmed", title: "Bouts to confirm", hint: "Bouts in the next 14 days where a fighter hasn't confirmed.", icon: ClipboardList, tone: "text-sky-700 bg-sky-50", action: "Open fight card" },
+  { kind: "unconfirmed", title: "Weigh-ins to do", hint: "Bouts in the next 14 days where a fighter hasn't been weighed in yet.", icon: ClipboardList, tone: "text-sky-700 bg-sky-50", action: "Open fight card" },
   { kind: "vacantTitle", title: "Vacant titles", hint: "Championship titles with no holder.", icon: Trophy, tone: "text-amber-700 bg-amber-50", action: "Schedule title bout" },
 ];
 
@@ -158,7 +162,7 @@ export function Home() {
               { label: "Active fighters", value: data.stats.activeFighters, href: "/home/fighters", icon: ShieldCheck },
               { label: "Clubs", value: data.stats.clubs, href: "/home/clubs", icon: Users },
               { label: "Upcoming events", value: data.stats.upcomingEvents, href: "/home/program?tab=events", icon: CalendarDays },
-              { label: "Results recorded", value: data.stats.recordedResults, href: "/home/program?tab=matches", icon: Gavel },
+              { label: "Results recorded", value: data.stats.recordedResults, href: "/home/program?tab=events", icon: Gavel },
             ].map((s) => (
               <Link key={s.label} to={s.href} className="rounded-2xl border border-slate-200 bg-white p-4 hover:border-primary transition">
                 <s.icon className="w-5 h-5 text-slate-400" aria-hidden />
@@ -205,7 +209,7 @@ export function Home() {
             <section className="rounded-2xl border border-slate-200 bg-white">
               <header className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
                 <h2 className="font-bold text-slate-900">Recent results</h2>
-                <Link to="/home/program?tab=matches" className="text-sm font-medium text-primary hover:underline">All matches</Link>
+                <Link to="/home/program?tab=events" className="text-sm font-medium text-primary hover:underline">All fight nights</Link>
               </header>
               {data.recent.length === 0 ? (
                 <p className="p-6 text-center text-sm text-slate-600">No results recorded yet.</p>

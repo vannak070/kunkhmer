@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done — committed b6270c3d / b6dd0f91 / ecd694e1 (2026-09-29, pushed); hosting (VPS + domain) not chosen yet |
+| **Status** | Done — committed b6270c3d / b6dd0f91 / ecd694e1 (2026-09-29, pushed); re-tested locally with b56e744d on 2026-09-30; hosting (VPS + domain) not chosen yet |
 | **Jira** | n/a |
 | **Feature** | claude/features/public-site.md (go-live checklist) |
 | **Requested by** | vannak070 (2026-09-29, "go ahead" with the go-live setup) |
@@ -49,3 +49,15 @@ image target but nothing runs the built sites, handles HTTPS, routes `/api` / `/
   production stack: all rows present (1 user, 2 clubs, 5 fighters with 4 visible, 1 event, 67 articles, 3
   international partners, 14 migrations), sessions and Hub logs empty, pictures served with the right owner,
   admin login works; "no" cancels without stopping anything. Test stack, files and images removed.
+### 2026-09-30 — re-test with the latest code (b56e744d)
+- Same local production test after club logos, Hub D3 and the About the Federation page (ports 8480/8943,
+  because 8080/8443 were taken on the owner's Mac; set `HTTP_PORT`/`HTTPS_PORT` in `.env` the same way on a
+  server that already uses 80/443). Fresh database: all 18 migrations applied; `/`, `/federation`, `/hub`,
+  `/about`, deep links and the admin (`/home/federation`) load through Caddy; robots still "Disallow" (pre-launch).
+- Federation page in production: admin login, draft with a leader photo + PDF, publish → PDF served as
+  `application/pdf` with year-long caching, photo as `image/png`, both on the uploads volume (app user);
+  `/federation` added to the sitemap.
+- Data copy with today's dev data (`export-local.sh` 159 KB + 4.5 MB pictures → `restore.sh`): 18 migrations,
+  5 fighters, 2 clubs, 67 published articles, the (empty) federation row; sessions and Hub logs empty; a dev
+  picture served through Caddy. Stack, volumes, images, `.env` and transfer files removed afterwards.
+- Still open: the owner's VPS + domain (see `deploy/README.md`).

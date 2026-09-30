@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { api } from "../utils/api";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
+import { APPROVALS_ENABLED } from "../config/features";
 
 interface StaffUser {
   id: string;
@@ -30,9 +31,9 @@ interface Club { id: string; name: string }
 /** Roles the API accepts, with a plain-language description for the picker and the guide. */
 const ROLES: { value: string; description: string; tone: string }[] = [
   { value: "Super Admin", description: "Full access, including staff accounts and system settings.", tone: "bg-violet-50 text-violet-700 border-violet-200" },
-  { value: "KKF Officer", description: "Federation staff: verify fighters, record results and titles, manage news and partners.", tone: "bg-blue-50 text-blue-700 border-blue-200" },
-  { value: "Organizer", description: "Creates and runs events, fight cards and matches.", tone: "bg-amber-50 text-amber-800 border-amber-200" },
-  { value: "Club/Gym", description: "Tied to one club: manages that club's fighters and responds to its matches.", tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  { value: "KKF Officer", description: APPROVALS_ENABLED ? "Federation staff: verify fighters, record results and titles, manage news and partners." : "Federation staff: run events, fight cards, bouts, fighters, results and titles; manage news and partners.", tone: "bg-blue-50 text-blue-700 border-blue-200" },
+  { value: "Organizer", description: APPROVALS_ENABLED ? "Creates and runs events, fight cards and matches." : "Read-only for now: sees events, fight cards and fighters (KKF staff run the program).", tone: "bg-amber-50 text-amber-800 border-amber-200" },
+  { value: "Club/Gym", description: APPROVALS_ENABLED ? "Tied to one club: manages that club's fighters and responds to its matches." : "Tied to one club. Read-only for now: sees events, fight cards and fighters.", tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   { value: "Referee", description: "Match official account (no editing access yet).", tone: "bg-slate-100 text-slate-700 border-slate-200" },
   { value: "Judge", description: "Match official account (no editing access yet).", tone: "bg-slate-100 text-slate-700 border-slate-200" },
 ];

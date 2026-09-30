@@ -8,10 +8,12 @@ import { FighterDetail } from "./pages/FighterDetail";
 import { AddFighter } from "./pages/AddFighter";
 import { MatchDetail } from "./pages/MatchDetail";
 import { CreateEvent } from "./pages/CreateEvent";
-import { EventDetailNew } from "./pages/EventDetailNewSimple";
+import { FightNight } from "./pages/FightNight";
+import { FightCardWeighIn } from "./pages/FightCardWeighIn";
+import { FightCardResults } from "./pages/FightCardResults";
+import { FightCardRedirect } from "./components/program/FightCardRedirect";
 import { CreateMatchFromBatch } from "./pages/CreateMatchFromBatch";
 import { MatchCreatedSuccess } from "./pages/MatchCreatedSuccess";
-import { BatchDetail } from "./pages/BatchDetail";
 import { CreateBatch } from "./pages/CreateBatch";
 import { CreateChampion } from "./pages/CreateChampion";
 import { ChampionDetail } from "./pages/ChampionDetail";
@@ -197,18 +199,21 @@ export const router = createBrowserRouter(
       { path: "matches/:batchId/create-match", element: <CreateMatchFromBatch /> },
       { path: "matches/:batchId/assign-officials", element: <AssignOfficials /> },
       { path: "matches/created", element: <MatchCreatedSuccess /> },
-      { path: "matches/:batchId", element: <BatchDetail /> },
-      { path: "batches/:batchId", element: <BatchDetail /> },
+      // The fight card lives on its fight night page now (claude/updates/program-officer-friendly.md).
+      { path: "matches/:batchId", element: <FightCardRedirect /> },
+      { path: "batches/:batchId", element: <FightCardRedirect /> },
+      { path: "fight-cards/:cardId/weigh-in", element: <FightCardWeighIn /> },
+      { path: "fight-cards/:cardId/results", element: <FightCardResults /> },
       { path: "batches/:batchId/share", element: <ShareFightCard /> },
       { path: "program", element: <ProgramDashboard /> },
-      { path: "matches", element: <Navigate to="/home/program?tab=matches" replace /> },
-      { path: "matches-old", element: <Navigate to="/home/program?tab=matches" replace /> },
+      { path: "matches", element: <Navigate to="/home/program?tab=events" replace /> },
+      { path: "matches-old", element: <Navigate to="/home/program?tab=events" replace /> },
       { path: "match/new", element: <ScheduleTitleBout /> },
       { path: "match/:id", element: <MatchDetail /> },
       { path: "match/:id/update-result", element: <ToMatch /> },
       { path: "events/new", element: <CreateEvent /> },
       { path: "events/:eventId/assign-fighters", element: <ToEvent /> },
-      { path: "events/:id", element: <EventDetailNew /> },
+      { path: "events/:id", element: <FightNight /> },
       { path: "events/:eventId/sub-events/:subEventId", element: <ToFightCard /> },
       { path: "events/:eventId/sub-events/:subEventId/add-match", element: <ToFightCard /> },
       { path: "events/:eventId/add-match", element: <ToEvent /> },
@@ -238,7 +243,7 @@ export const router = createBrowserRouter(
       { path: "settings", element: <SystemSettings /> },
       { path: "help", element: <Help /> },
       { path: "process-flow", element: <Navigate to="/home/help" replace /> },
-      { path: "assign-officials", element: <Navigate to="/home/program?tab=matches" replace /> },
+      { path: "assign-officials", element: <Navigate to="/home/program?tab=events" replace /> },
       { path: "product-management", element: <Navigate to="/home" replace /> },
       { path: "categories-setting", element: <Navigate to="/home" replace /> },
       { path: "store-settings", element: <Navigate to="/home" replace /> },

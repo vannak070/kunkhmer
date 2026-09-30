@@ -161,6 +161,18 @@ describe("fighter verification", () => {
 });
 
 describe("fighters permissions", () => {
+  it("registers a fighter KKF staff create as verified at once (approvals off)", async () => {
+    const { status: _draft, ...input } = fullFighter(a.clubId);
+    const res = await post("/fighters", input, a.officer.token);
+    expect(res.status).toBe(201);
+    expect(res.body.data).toMatchObject({ status: "Active", verifiedBy: a.officer.id });
+    expect(res.body.data.verifiedDate).toMatch(/Z$/);
+    // Public and matchable straight away, without a separate Verify step.
+    expect((await get(`/fighters/${res.body.data.id}`)).status).toBe(200);
+    // Staff can still register a Draft on purpose, and clubs' fighters still start as Draft.
+    expect((await post("/fighters", fullFighter(a.clubId), a.officer.token)).body.data).toMatchObject({ status: "Draft", verifiedBy: null });
+  });
+
   it("a Club/Gym user always creates Draft fighters in their own club", async () => {
     const res = await post("/fighters", { ...fullFighter(otherClubId), status: "Active" }, a.club.token);
     expect(res.status).toBe(201);

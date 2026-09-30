@@ -2,10 +2,14 @@
 
 | | |
 |---|---|
-| **Status** | Done — 2026-09-26 |
+| **Status** | Done — 2026-09-26; **switched off 2026-09-30** — see below |
 | **Jira** | n/a |
 | **Figma** | n/a |
 | **Owner** | vannak070 |
+
+> **Switched off since 2026-09-30** (`updates/officer-run-program.md`): KKF staff run the whole Program flow; the rules below apply only with `APPROVALS_ENABLED=true` (backend) + `APPROVALS_ENABLED = true` (`frontend/admin/src/app/config/features.ts`). With approvals off, every new bout (and a swapped fighter's side) is accepted at once and
+> `club_x_responded_by` = the staff member who created / changed it; the Match Proposals menu, badges and
+> answer buttons are hidden; `/respond` still works (dormant).
 
 ## Goal
 When a bout is put on a fight card, both fighters' clubs are asked to accept

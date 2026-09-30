@@ -173,14 +173,13 @@ describe("notifications", () => {
     expect((await get("/fans/me/notifications", bystander.token)).body.data).toEqual({ items: [], unreadCount: 0 });
   });
 
-  it("announces a bout only once the fighter's club accepts it", async () => {
+  it("announces a bout as soon as KKF puts it on a card (approvals off)", async () => {
     const fan = await register();
     const followed = await newFighter(a.clubId);
     await put(`/fans/me/follows/${followed}`, {}, fan.token);
 
     const matchId = await newMatch(followed, await newFighter());
-    expect((await get("/fans/me/notifications", fan.token)).body.data.unreadCount).toBe(0);
-
+    // Answering again later doesn't announce it twice.
     await post(`/matches/${matchId}/respond`, { response: "accepted" }, a.club.token);
     const items = (await get("/fans/me/notifications", fan.token)).body.data.items;
     expect(items).toHaveLength(1);

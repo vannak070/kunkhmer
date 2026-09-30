@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { CheckCircle2, Clock, XCircle } from "lucide-react";
 import { api } from "../utils/api";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
+import { APPROVALS_ENABLED } from "../config/features";
 
 export type Side = "a" | "b";
 export type Answer = "pending" | "accepted" | "declined";
@@ -71,8 +72,9 @@ const TONE: Record<Answer, string> = {
   declined: "bg-red-50 text-red-700 border-red-200",
 };
 
-/** One-line status for a bout: accepted, waiting for which club(s), or declined by whom. */
+/** One-line status for a bout: accepted, waiting for which club(s), or declined by whom. None with approvals off. */
 export function ProposalBadge({ match, className = "" }: { match: any; className?: string }) {
+  if (!APPROVALS_ENABLED) return null;
   const p = proposalOf(match);
   const waiting = p.sides.filter((s) => s.response === "pending").map((s) => s.club ?? s.fighter);
   const declined = p.sides.find((s) => s.response === "declined");
@@ -93,9 +95,13 @@ export function ProposalBadge({ match, className = "" }: { match: any; className
 
 /**
  * Accept / Decline for one side (staff) or for all of the club's sides (club users).
- * `side` is only passed for staff answering on a club's behalf.
+ * `side` is only passed for staff answering on a club's behalf. Nothing with approvals off.
  */
-export function BoutAnswerActions({ match, side, label, onDone }: {
+export function BoutAnswerActions(props: Parameters<typeof BoutAnswerButtons>[0]) {
+  return APPROVALS_ENABLED ? <BoutAnswerButtons {...props} /> : null;
+}
+
+function BoutAnswerButtons({ match, side, label, onDone }: {
   match: any;
   side?: Side;
   /** Who the answer is for, shown in the decline dialog (e.g. the club name). */

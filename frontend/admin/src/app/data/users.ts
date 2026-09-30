@@ -1,3 +1,4 @@
+import { APPROVALS_ENABLED } from "../config/features";
 // User Management Data Structure - Updated with 2-Role System
 
 // 'official' = Referee or Judge accounts; 'none' = a role the admin doesn't know (no access).
@@ -20,7 +21,7 @@ export interface User {
   clubId?: string;
 }
 
-export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+const BASE_ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   // 👑 1. KKF Super Admin - Full system control & approvals
   kkf_super_admin: [
     'hub.review', // KUNKHMER HUB answers, feedback and spend
@@ -310,6 +311,29 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   ],
   none: [],
 };
+
+/**
+ * With approvals off (config/features.ts) KKF staff run the whole Program flow: no Match Proposals, and
+ * Organizer / Club/Gym accounts are read-only (claude/updates/officer-run-program.md).
+ */
+const APPROVAL_ONLY = ['matches.view_proposals'];
+const READ_ONLY_ROLES: UserRole[] = ['organizer', 'club'];
+const WRITE_PERMISSIONS = [
+  'events.create', 'events.edit', 'events.submit',
+  'matches.create', 'matches.edit', 'matches.submit', 'matches.accept', 'matches.reject',
+  'fighters.create', 'fighters.edit',
+];
+
+export const ROLE_PERMISSIONS: Record<UserRole, string[]> = APPROVALS_ENABLED
+  ? BASE_ROLE_PERMISSIONS
+  : (Object.fromEntries(
+      Object.entries(BASE_ROLE_PERMISSIONS).map(([role, perms]) => [
+        role,
+        perms.filter(
+          (p) => !APPROVAL_ONLY.includes(p) && !(READ_ONLY_ROLES.includes(role as UserRole) && WRITE_PERMISSIONS.includes(p)),
+        ),
+      ]),
+    ) as Record<UserRole, string[]>);
 
 export const ROLE_LABELS: Record<UserRole, { label: string; color: string; description: string }> = {
   kkf_super_admin: {

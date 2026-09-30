@@ -32,6 +32,11 @@ export const config = {
   /** Failed staff logins allowed per IP (any username) per 15 minutes. */
   loginIpRateLimit: Number(process.env.LOGIN_IP_RATE_LIMIT ?? 50),
   /** The fan site's public address, for absolute links in sitemap.xml (e.g. https://kunkhmer.com). */
+  /**
+   * KKF approval steps (event approval, club answers on bouts, fighter verification). Off by default:
+   * KKF staff run the whole Program flow (claude/updates/officer-run-program.md). APPROVALS_ENABLED=true brings them back.
+   */
+  approvals: process.env.APPROVALS_ENABLED === "true",
   publicSiteUrl: (process.env.PUBLIC_SITE_URL || "http://localhost:5176").replace(/\/$/, ""),
   /** "Ask Kun Khmer" AI chat. Off unless a key is set; AI_ENABLED=false forces it off (tests). */
   ai: {

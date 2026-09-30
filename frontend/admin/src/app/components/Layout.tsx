@@ -43,8 +43,7 @@ const navGroups: { title: string | null; items: NavItem[] }[] = [
         permission: "events.view",
         submenu: [
           { label: "Overview", path: "/home/program?tab=overview", permission: "events.view" },
-          { label: "Events", path: "/home/program?tab=events", permission: "events.view" },
-          { label: "Matches", path: "/home/program?tab=matches", permission: "events.view" },
+          { label: "Fight nights", path: "/home/program?tab=events", permission: "events.view" },
           { label: "Champions", path: "/home/program?tab=champions", permission: "events.view" },
         ],
       },

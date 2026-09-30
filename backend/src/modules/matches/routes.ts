@@ -237,9 +237,9 @@ export default async function matchRoutes(app: FastifyInstance) {
       // A new bout goes to both clubs; a side without a club is accepted already.
       const clubs = await prisma.fighter.findMany({ where: { id: { in: [fighterAId, fighterBId].filter(isUuid) } }, select: { id: true, club_id: true } });
       const clubOf = (id: string) => ({ club_id: clubs.find((f) => f.id === id)?.club_id ?? null });
-      const sides = { ...openSide("a", clubOf(fighterAId)), ...openSide("b", clubOf(fighterBId)) } as Record<string, string>;
-
       const at = now();
+      const by = { userId: user.id, at };
+      const sides = { ...openSide("a", clubOf(fighterAId), by), ...openSide("b", clubOf(fighterBId), by) } as Prisma.MatchUncheckedCreateInput;
       const match = await prisma.match.create({
         data: {
           id: randomUUID(),
@@ -254,9 +254,13 @@ export default async function matchRoutes(app: FastifyInstance) {
           glove_size: input.required("gloveSize"),
           glove_brand: input.required("gloveBrand"),
           status: input.get("status", "Draft"),
-          proposal_status: proposalStatus(sides.club_a_response, sides.club_b_response),
+          proposal_status: proposalStatus(sides.club_a_response as string, sides.club_b_response as string),
           club_a_response: sides.club_a_response,
           club_b_response: sides.club_b_response,
+          club_a_responded_at: sides.club_a_responded_at,
+          club_b_responded_at: sides.club_b_responded_at,
+          club_a_responded_by: sides.club_a_responded_by,
+          club_b_responded_by: sides.club_b_responded_by,
           referee_id: input.get("refereeId"),
           judge_ids: input.get("judgeIds", []),
           is_title_match: input.has("isTitleMatch") ? parseBool(input.get("isTitleMatch")) : false,
@@ -303,7 +307,7 @@ export default async function matchRoutes(app: FastifyInstance) {
         for (const s of swapped) {
           const fighter = await prisma.fighter.findUnique({ where: { id: data[`fighter_${s}_id`] as string }, select: { club_id: true } });
           if (!fighter) throw new HttpError(422, "The selected fighter does not exist");
-          Object.assign(data, openSide(s, fighter));
+          Object.assign(data, openSide(s, fighter, { userId: user.id, at: now() }));
         }
         const a = (data.club_a_response as string | undefined) ?? match.club_a_response;
         const b = (data.club_b_response as string | undefined) ?? match.club_b_response;
@@ -394,6 +398,37 @@ export default async function matchRoutes(app: FastifyInstance) {
         duration: input.get("duration"),
       });
       await notifyFollowers(id, "bout_result", request.log);
+      return ok(reply, await loadMatch(id));
+    });
+
+    /**
+     * Weigh-in (KKF staff): `{ a?, b? }` in kg (20–200) for the red / blue corner; `null` clears a side.
+     * Saved on the bout — the fighter's profile weight is not changed. fighter_x_confirmed = weighed in.
+     */
+    protectedRoutes.post("/matches/:id/weigh-in", async (request, reply) => {
+      const user = requireRole(request, STAFF);
+      const id = idParam(request.params, "Match");
+      const match = await prisma.match.findUnique({ where: { id } });
+      if (!match) throw notFound("Match");
+      const input = inputOf(request.body);
+      if (!input.present("a") && !input.present("b")) throw new HttpError(422, "Send the weight for a (red corner) or b (blue corner)");
+
+      const kg = (side: "a" | "b") => {
+        const raw = input.get(side);
+        if (raw === null) return null;
+        const n = Number(raw);
+        if (!Number.isFinite(n) || n < 20 || n > 200) throw new HttpError(422, `The weight for ${side} must be between 20 and 200 kg`);
+        return Math.round(n * 100) / 100;
+      };
+      const at = now();
+      const data: Prisma.MatchUncheckedUpdateInput = { weigh_in_at: at, weigh_in_by: user.id, updated_at: at };
+      for (const side of ["a", "b"] as const) {
+        if (!input.present(side)) continue;
+        const w = kg(side);
+        data[`weigh_in_${side}_kg`] = w;
+        data[`fighter_${side}_confirmed`] = w !== null;
+      }
+      await prisma.match.update({ where: { id }, data });
       return ok(reply, await loadMatch(id));
     });
   });

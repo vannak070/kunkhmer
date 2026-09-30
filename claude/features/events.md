@@ -41,7 +41,14 @@ Event + sponsor list are saved in one transaction.
 ## Tests
 `api-tests/tests/events.test.ts`
 
+## Officer flow (current, 2026-09-30)
+KKF staff create the event (Draft, hidden) → fight card → bouts → officials → **Publish** → weigh-in → results.
+The admin shows an event as Completed once fight night has passed and every bout has a result (derived, not
+stored); the Edit Event status list is Draft / Published / Cancelled. Organizer accounts are read-only in the
+admin. Submit / approve / send-back endpoints still exist but the admin doesn't use them.
+
 ## Approval flow (Phase 3a, 2026-09-26)
+**Switched off since 2026-09-30** (`updates/officer-run-program.md`): KKF staff run the whole Program flow; the rules below apply only with `APPROVALS_ENABLED=true` (backend) + `APPROVALS_ENABLED = true` (`frontend/admin/src/app/config/features.ts`).
 Draft → (submit) Pending KKF Approval → (approve) Approved → (publish) Published; KKF can send a
 pending event back to Draft with a comment. KKF staff may publish directly. Without a staff
 token, `GET /events`, `/events/:id`, fight cards and bouts hide Draft / Pending / Approved

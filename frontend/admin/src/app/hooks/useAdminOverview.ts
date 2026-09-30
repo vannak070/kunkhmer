@@ -6,11 +6,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../utils/api";
 import { proposalOf, waitingOnMe } from "../components/BoutAnswer";
+import { APPROVALS_ENABLED } from "../config/features";
 
 export type TodoKind =
   | "fighter" | "fighterSentBack" | "eventApproval" | "eventSentBack" | "readyToPublish"
   | "result" | "draftEvent" | "emptyEvent" | "unconfirmed" | "vacantTitle"
-  | "boutToAnswer" | "boutDeclined" | "boutWaiting";
+  | "boutToAnswer" | "boutDeclined" | "boutWaiting" | "noOfficials";
 
 export interface TodoItem {
   kind: TodoKind;
@@ -76,7 +77,10 @@ async function build(): Promise<Overview> {
       id: `f-${f.id}`,
       fighterId: f.id,
       title: f.name,
-      detail: [f.clubName, f.status === "Draft" ? "registered, not yet verified" : "waiting for KKF verification"].filter(Boolean).join(" · "),
+      detail: [
+        f.clubName,
+        !APPROVALS_ENABLED ? "draft, not visible to fans" : f.status === "Draft" ? "registered, not yet verified" : "waiting for KKF verification",
+      ].filter(Boolean).join(" · "),
       href: `/home/fighters/${f.id}`,
       rank: 2,
     });
@@ -93,49 +97,53 @@ async function build(): Promise<Overview> {
     const d = time(m.date);
     const vs = `${m.fighter_a_name ?? "TBD"} vs ${m.fighter_b_name ?? "TBD"}`;
 
-    // Club confirmation of bouts (Match Proposals).
+    // Club confirmation of bouts (Match Proposals) — only while approvals are on.
     const proposal = proposalOf(m);
-    if (!hasResult && isClub && waitingOnMe(proposal)) {
+    if (APPROVALS_ENABLED && !hasResult && isClub && waitingOnMe(proposal)) {
       todos.push({ kind: "boutToAnswer", id: `ba-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · accept or decline`, href: "/home/match-proposals", rank: 1 });
       continue;
     }
     if (!isStaff && !(isOrganizer && ev.organizer_id === me?.id)) continue;
-    if (!hasResult && proposal.status === "declined") {
+    if (APPROVALS_ENABLED && !hasResult && proposal.status === "declined") {
       const by = proposal.sides.find((s) => s.response === "declined");
       todos.push({ kind: "boutDeclined", id: `bd-${m.id}`, title: vs, detail: `${by?.club ?? "A club"} declined${by?.note ? `: ${by.note}` : ""}`, href: "/home/match-proposals?tab=declined", rank: 1 });
       continue;
     }
-    if (!hasResult && proposal.status === "pending" && d >= today && d - today <= 14 * DAY) {
+    if (APPROVALS_ENABLED && !hasResult && proposal.status === "pending" && d >= today && d - today <= 14 * DAY) {
       const waiting = proposal.sides.filter((s) => s.response === "pending").map((s) => s.club ?? s.fighter).join(" and ");
       todos.push({ kind: "boutWaiting", id: `bw-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · waiting for ${waiting}`, href: "/home/match-proposals", rank: 3 });
       continue;
     }
     if (!hasResult && d < today && isStaff) {
-      todos.push({ kind: "result", id: `r-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · no result recorded`, href: `/home/match/${m.id}`, rank: 1 });
+      todos.push({ kind: "result", id: `r-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · no result recorded`, href: `/home/fight-cards/${m.sub_event_id}/results`, rank: 1 });
+    } else if (!hasResult && isStaff && d >= today && d - today <= 14 * DAY && (!m.referee_id || (m.judge_ids?.length ?? 0) < 3)) {
+      // Officer flow: KKF assigns a referee and three judges before fight night (Assign officials page rule).
+      todos.push({ kind: "noOfficials", id: `o-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · ${m.referee_id ? "judges missing" : "no referee yet"}`, href: `/home/matches/${m.sub_event_id}/assign-officials`, rank: 2 });
     } else if (!hasResult && d >= today && d - today <= 14 * DAY && !(m.fighter_a_confirmed && m.fighter_b_confirmed)) {
       const missing = [!m.fighter_a_confirmed && m.fighter_a_name, !m.fighter_b_confirmed && m.fighter_b_name].filter(Boolean).join(" and ");
-      todos.push({ kind: "unconfirmed", id: `u-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · ${missing || "fighters"} not confirmed`, href: `/home/matches/${m.sub_event_id}`, rank: 3 });
+      todos.push({ kind: "unconfirmed", id: `u-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · ${missing || "fighters"} not weighed in yet`, href: `/home/fight-cards/${m.sub_event_id}/weigh-in`, rank: 3 });
     }
   }
 
   for (const e of events as any[]) {
     const d = time(e.date);
     const mine = e.organizer_id === me?.id;
-    if (e.status === "Pending KKF Approval") {
+    if (APPROVALS_ENABLED && e.status === "Pending KKF Approval") {
       if (isStaff) todos.push({ kind: "eventApproval", id: `a-${e.id}`, title: e.name, detail: `${fmtDate(e.date)} · submitted by ${e.organizer_name ?? "organizer"}`, href: `/home/events/${e.id}`, rank: 1 });
       continue;
     }
-    if (e.status === "Approved" && (isStaff || (isOrganizer && mine))) {
+    if (APPROVALS_ENABLED && e.status === "Approved" && (isStaff || (isOrganizer && mine))) {
       todos.push({ kind: "readyToPublish", id: `p-${e.id}`, title: e.name, detail: `${fmtDate(e.date)} · approved by KKF, not published yet`, href: `/home/events/${e.id}`, rank: 2 });
       continue;
     }
-    if (e.status === "Draft" && e.kkf_comment && (isOrganizer ? mine : isStaff)) {
+    if (APPROVALS_ENABLED && e.status === "Draft" && e.kkf_comment && (isOrganizer ? mine : isStaff)) {
       todos.push({ kind: "eventSentBack", id: `s-${e.id}`, title: e.name, detail: `KKF: ${e.kkf_comment}`, href: `/home/events/${e.id}`, rank: isOrganizer ? 1 : 5 });
       continue;
     }
     if (isOrganizer && !mine) continue;
     if (isClub) continue;
-    if (e.status === "Draft") {
+    // Without approvals, an event that was submitted / approved earlier is just not published yet.
+    if (e.status === "Draft" || (!APPROVALS_ENABLED && (e.status === "Pending KKF Approval" || e.status === "Approved"))) {
       todos.push({ kind: "draftEvent", id: `d-${e.id}`, title: e.name, detail: `${fmtDate(e.date)} · still a draft, not visible to fans`, href: `/home/events/${e.id}`, rank: d >= today ? 2 : 5 });
     } else if (!CLOSED_EVENT.has(e.status) && d >= today && !boutsByEvent.get(e.id)) {
       todos.push({ kind: "emptyEvent", id: `e-${e.id}`, title: e.name, detail: `${fmtDate(e.date)} · no fight card yet`, href: `/home/events/${e.id}`, rank: 3 });
@@ -152,7 +160,7 @@ async function build(): Promise<Overview> {
   const counts = {
     fighter: 0, fighterSentBack: 0, eventApproval: 0, eventSentBack: 0, readyToPublish: 0,
     result: 0, draftEvent: 0, emptyEvent: 0, unconfirmed: 0, vacantTitle: 0,
-    boutToAnswer: 0, boutDeclined: 0, boutWaiting: 0,
+    boutToAnswer: 0, boutDeclined: 0, boutWaiting: 0, noOfficials: 0,
   } as Record<TodoKind, number>;
   for (const t of todos) counts[t.kind]++;
 

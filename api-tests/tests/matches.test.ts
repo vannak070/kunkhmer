@@ -162,11 +162,13 @@ describe("matches", () => {
       rounds: 5,
       agreed_weight: 60.5,
       status: "Draft",
-      // Sent to both clubs; proposal fields sent by the client are ignored.
-      proposal_status: "pending",
-      club_a_response: "pending",
-      club_b_response: "pending",
-      club_a_responder_name: null,
+      // Approvals are off: KKF staff creating a bout confirm both sides at once
+      // (claude/updates/officer-run-program.md); proposal fields sent by the client are ignored.
+      proposal_status: "accepted",
+      club_a_response: "accepted",
+      club_b_response: "accepted",
+      club_a_responded_by: a.admin.id,
+      club_b_responded_by: a.admin.id,
       judge_ids: judges,
       referee_name: "Test Referee",
       date: "2026-10-08",
@@ -214,8 +216,8 @@ describe("matches", () => {
     expect(shapeOf(res)).toMatchSnapshot();
     expect(res.status).toBe(403);
     // Organizers can't set club answers through a plain update either.
-    const updated = await put(`/matches/${ours.id}`, { clubAResponse: "accepted", proposalStatus: "accepted" }, a.organizer.token);
-    expect(updated.body.data).toMatchObject({ club_a_response: "pending", proposal_status: "pending" });
+    const updated = await put(`/matches/${ours.id}`, { clubAResponse: "declined", proposalStatus: "declined" }, a.organizer.token);
+    expect(updated.body.data).toMatchObject({ club_a_response: "accepted", proposal_status: "accepted" });
   });
 
   it("deletes a match (Super Admin only)", async () => {
@@ -440,33 +442,20 @@ describe("matching rules", () => {
 describe("match proposals (club confirmation)", () => {
   const respond = (id: string, body: Record<string, unknown>, token: string) => post(`/matches/${id}/respond`, body, token);
 
-  it("sends a new bout to both clubs and keeps it off the public site until both accept", async () => {
+  it("confirms a new bout at once and shows it publicly (approvals off)", async () => {
     const m = await newMatch({}, { accept: false });
-    expect((await get(`/matches/${m.id}`)).status).toBe(404);
-    expect((await get(`/matches?subEventId=${m.sub_event_id}`)).body.data).toEqual([]);
-    expect((await get(`/matches/${m.id}`, a.organizer.token)).status).toBe(200);
+    expect(m).toMatchObject({ proposal_status: "accepted", club_a_responded_by: a.admin.id, club_b_responded_by: a.admin.id });
+    expect(m.club_a_responded_at).toMatch(/Z$/);
+    expect((await get(`/matches/${m.id}`)).status).toBe(200);
+    expect((await get(`/matches?subEventId=${m.sub_event_id}`)).body.data.map((x: any) => x.id)).toContain(m.id);
 
-    // Our club accepts its side (A); the bout still waits for the other club.
-    let res = await respond(m.id, { response: "accepted" }, a.club.token);
-    expect(res.status).toBe(200);
-    expect(res.body.data).toMatchObject({
-      club_a_response: "accepted",
-      club_a_responded_by: a.club.id,
-      club_a_responder_role: "Club/Gym",
-      club_b_response: "pending",
-      proposal_status: "pending",
-    });
-    expect(res.body.data.club_a_responded_at).toMatch(/Z$/);
-    expect((await get(`/matches/${m.id}`)).status).toBe(404);
-
-    // KKF answers for the other club (e.g. after a phone call); who answered is kept.
-    res = await respond(m.id, { response: "accepted", side: "b" }, a.officer.token);
+    // The dormant club answer still records who answered (e.g. KKF after a phone call).
+    const res = await respond(m.id, { response: "accepted", side: "b" }, a.officer.token);
     expect(res.body.data).toMatchObject({ club_b_response: "accepted", club_b_responder_name: "Test KKF Officer", proposal_status: "accepted" });
     expect(shapeOf(res)).toMatchSnapshot();
-    expect((await get(`/matches/${m.id}`)).status).toBe(200);
   });
 
-  it("needs a reason to decline, and a fighter swap sends that side back to the club", async () => {
+  it("needs a reason to decline, and a fighter swap confirms that side again (approvals off)", async () => {
     const m = await newMatch({}, { accept: false });
     expect((await respond(m.id, { response: "declined" }, a.club.token)).status).toBe(422);
     const res = await respond(m.id, { response: "declined", note: "Fighter injured" }, a.club.token);
@@ -474,7 +463,7 @@ describe("match proposals (club confirmation)", () => {
 
     const swapped = await put(`/matches/${m.id}`, { fighterAId: await newFighter() }, a.organizer.token);
     expect(swapped.status).toBe(200);
-    expect(swapped.body.data).toMatchObject({ proposal_status: "pending", club_a_response: "pending", club_a_note: null, club_a_responded_by: null });
+    expect(swapped.body.data).toMatchObject({ proposal_status: "accepted", club_a_response: "accepted", club_a_note: null, club_a_responded_by: a.organizer.id });
 
     // Only verified fighters can be swapped in.
     expect((await put(`/matches/${m.id}`, { fighterAId: await draftFighter() }, a.organizer.token)).status).toBe(422);
@@ -505,7 +494,7 @@ describe("match proposals (club confirmation)", () => {
 
   it("accepts a side automatically when its fighter has no club", async () => {
     const m = await newMatch({ fighterAId: await newFighter(null), fighterBId: await newFighter(null) }, { accept: false });
-    expect(m).toMatchObject({ proposal_status: "accepted", club_a_response: "accepted", club_b_response: "accepted", club_a_responded_by: null });
+    expect(m).toMatchObject({ proposal_status: "accepted", club_a_response: "accepted", club_b_response: "accepted", club_a_responded_by: a.admin.id });
     expect((await get(`/matches/${m.id}`)).status).toBe(200);
   });
 
@@ -521,7 +510,7 @@ describe("match proposals (club confirmation)", () => {
     const ours = await newMatch({}, { accept: false });
     const theirs = await newMatch({ fighterAId: await newFighter(otherClubId) }, { accept: false });
 
-    const club = await get("/matches/proposals?state=pending", a.club.token);
+    const club = await get("/matches/proposals?state=accepted", a.club.token);
     expect(club.status).toBe(200);
     const ids = club.body.data.map((m: any) => m.id);
     expect(ids).toContain(ours.id);
@@ -529,7 +518,7 @@ describe("match proposals (club confirmation)", () => {
     expect(findById(club, ours.id)).toMatchObject({ event_name: expect.stringMatching(/^Match Event/), event_status: "Published" });
     expect(shape(findById(club, ours.id))).toMatchSnapshot();
 
-    const staff = (await get("/matches/proposals?state=pending", a.organizer.token)).body.data.map((m: any) => m.id);
+    const staff = (await get("/matches/proposals?state=accepted", a.organizer.token)).body.data.map((m: any) => m.id);
     expect(staff).toEqual(expect.arrayContaining([ours.id, theirs.id]));
     expect((await get("/matches/proposals?state=declined", a.club.token)).body.data.map((m: any) => m.id)).not.toContain(ours.id);
     expect((await get("/matches/proposals", a.referee.token)).status).toBe(403);

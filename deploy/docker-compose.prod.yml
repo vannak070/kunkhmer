@@ -37,6 +37,8 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-claude-opus-5}
       AI_MONTHLY_CAP_USD: ${AI_MONTHLY_CAP_USD:-50}
+      # KKF approval steps (off: KKF staff run the whole Program flow; see claude/updates/officer-run-program.md).
+      APPROVALS_ENABLED: ${APPROVALS_ENABLED:-false}
     volumes:
       - uploads:/data/uploads
     depends_on:

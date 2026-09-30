@@ -44,6 +44,11 @@ Match response: snake_case row + nested `sub_event`, `fighter_a`/`fighter_b`
   winner moves the title; the same result changes nothing (`updates/title-result-corrections.md`).
   Manual holder edits made in between are replaced. The admin match page asks to confirm a winner change.
 
+## Officer flow (2026-09-30)
+Approvals are off (`updates/officer-run-program.md`): bouts are confirmed when KKF staff create them, the event
+"Next steps" includes an Officials step (referee + 3 judges, as the Assign officials page requires), and the
+dashboard lists "Bouts without officials" (next 14 days) and "Weigh-ins to do".
+
 ## Frontend
 - Admin: `CreateBatch.tsx`, `BatchDetail.tsx`, `CreateMatchFromBatch.tsx`,
   `AddMatchToEvent.tsx`, `AssignOfficials.tsx`, `MatchDetail.tsx`,

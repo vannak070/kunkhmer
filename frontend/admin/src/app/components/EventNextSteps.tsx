@@ -1,15 +1,18 @@
 /**
  * "Next steps" checklist on the event page: the order an event is run in, what's done, and one
  * button to the screen for the next step. Computed from the event's real fight cards and bouts.
+ * With approvals off (config/features.ts) KKF staff run every step: details → fight card → bouts →
+ * officials → publish → weigh-in → results (claude/updates/officer-run-program.md).
  */
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { CheckCircle2, ChevronRight, Circle, ListChecks, MessageSquareWarning } from "lucide-react";
 import { api } from "../utils/api";
+import { APPROVALS_ENABLED } from "../config/features";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 
-interface Bout { id: string; winner?: string; winnerMethod?: string | null; proposalStatus?: string }
+interface Bout { id: string; winner?: string; winnerMethod?: string | null; proposalStatus?: string; apiMatch?: { referee_id?: string | null; judge_ids?: string[] | null } }
 interface FightCard { id: string; name: string; status?: string; matches: Bout[] }
 
 const WEIGHED_IN = new Set(["Weight-In", "Weigh-in", "Scheduled", "Ready", "Live", "Complete", "Completed"]);
@@ -67,7 +70,17 @@ export function EventNextSteps({ event, cards, canEdit, onEditDetails, onAddFigh
   };
 
   const status = event.kkfStatus ?? "Draft";
-  const approval: Step = (() => {
+  const approval: Step = !APPROVALS_ENABLED
+    ? PUBLISHED.has(status)
+      ? { key: "publish", title: "Publish", detail: "Published — fans can see this event.", done: true }
+      : {
+          key: "publish",
+          title: "Publish",
+          detail: "Fans can't see this event yet. Publish it when the fight card is ready.",
+          done: false,
+          action: canEdit ? { label: "Publish event", run: publish } : undefined,
+        }
+    : (() => {
     if (PUBLISHED.has(status)) return { key: "publish", title: "Approve & publish", detail: "Approved and visible to fans.", done: true };
     if (status === "Approved") {
       return { key: "publish", title: "Approve & publish", detail: "Approved by KKF — publish it when you're ready.", done: false, action: canEdit ? { label: "Publish event", run: publish } : undefined };
@@ -98,9 +111,27 @@ export function EventNextSteps({ event, cards, canEdit, onEditDetails, onAddFigh
     ? ` ${open.length - declinedCount ? `${open.length - declinedCount} waiting for clubs` : ""}${open.length - declinedCount && declinedCount ? ", " : ""}${declinedCount ? `${declinedCount} declined` : ""} — hidden from fans until both clubs accept.`
     : "";
   // Publishing isn't blocked by open bouts, but say what fans won't see.
-  if (open.length && !approval.done) {
+  if (APPROVALS_ENABLED && open.length && !approval.done) {
     approval.detail += ` Note: ${open.length} bout${open.length === 1 ? " isn't" : "s aren't"} accepted by both clubs yet and won't show until they are.`;
   }
+
+  // Officer flow: a referee and three judges per bout, the same rule as the Assign officials page.
+  const noReferee = bouts.filter(
+    (b) => !(b.winner || b.winnerMethod) && (!b.apiMatch?.referee_id || (b.apiMatch?.judge_ids?.length ?? 0) < 3),
+  );
+  const cardNeedingOfficials = noReferee.length ? cards.find((c) => c.matches.some((m) => m.id === noReferee[0].id)) : undefined;
+  const officials: Step = {
+    key: "officials",
+    title: "Officials",
+    detail: !bouts.length
+      ? "After bouts are added."
+      : noReferee.length
+        ? `${bouts.length - noReferee.length} of ${bouts.length} bouts have a referee and 3 judges.`
+        : "Every bout has a referee and 3 judges.",
+    done: bouts.length > 0 && noReferee.length === 0,
+    later: !bouts.length,
+    action: cardNeedingOfficials && isStaff ? { label: "Assign officials", run: () => navigate(`/home/matches/${cardNeedingOfficials.id}/assign-officials`) } : undefined,
+  };
 
   const steps: Step[] = [
     {
@@ -110,7 +141,7 @@ export function EventNextSteps({ event, cards, canEdit, onEditDetails, onAddFigh
       done: Boolean(event.name && event.date && event.location),
       action: canEdit ? { label: "Edit details", run: onEditDetails } : undefined,
     },
-    approval,
+    ...(APPROVALS_ENABLED ? [approval] : []),
     {
       key: "card",
       title: "Fight card",
@@ -121,12 +152,13 @@ export function EventNextSteps({ event, cards, canEdit, onEditDetails, onAddFigh
     {
       key: "bouts",
       title: "Bouts",
-      detail: bouts.length ? `${bouts.length} bout${bouts.length === 1 ? "" : "s"} scheduled.${clubsNote}` : "Add the bouts: which fighters meet, weight and rounds.",
-      done: bouts.length > 0 && open.length === 0,
-      action: open.length
+      detail: bouts.length ? `${bouts.length} bout${bouts.length === 1 ? "" : "s"} scheduled.${APPROVALS_ENABLED ? clubsNote : ""}` : "Add the bouts: which fighters meet, weight and rounds.",
+      done: bouts.length > 0 && (!APPROVALS_ENABLED || open.length === 0),
+      action: APPROVALS_ENABLED && open.length
         ? { label: "Match proposals", run: () => navigate("/home/match-proposals") }
         : canEdit && cardNeedingBouts ? { label: "Add bouts", run: () => navigate(`/home/matches/${cardNeedingBouts.id}/create-match`) } : undefined,
     },
+    ...(APPROVALS_ENABLED ? [] : [officials, approval]),
     {
       key: "weighin",
       title: "Weigh-in",
@@ -161,7 +193,7 @@ export function EventNextSteps({ event, cards, canEdit, onEditDetails, onAddFigh
         </h2>
         <span className="text-sm font-medium text-slate-500">{doneCount} of {steps.length} done</span>
       </div>
-      {status === "Draft" && event.kkf_comment && (
+      {APPROVALS_ENABLED && status === "Draft" && event.kkf_comment && (
         <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
           <MessageSquareWarning className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" aria-hidden />
           <div>

@@ -7,6 +7,7 @@ import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Eye, EyeOff, KeyRound, LogOut, Mail, ShieldCheck, UserRound } from "lucide-react";
 import { api } from "../utils/api";
+import { APPROVALS_ENABLED } from "../config/features";
 
 interface Me {
   id: string;
@@ -21,9 +22,11 @@ interface Me {
 
 const ROLE_HELP: Record<string, string> = {
   "Super Admin": "Full access, including staff accounts and system settings.",
-  "KKF Officer": "Federation staff: verify fighters, record results and titles, manage news and partners.",
-  Organizer: "Create and run events, fight cards and matches.",
-  "Club/Gym": "Manage your club's fighters and respond to its matches.",
+  "KKF Officer": APPROVALS_ENABLED
+    ? "Federation staff: verify fighters, record results and titles, manage news and partners."
+    : "Federation staff: run events, fight cards, bouts, fighters, results and titles; manage news and partners.",
+  Organizer: APPROVALS_ENABLED ? "Create and run events, fight cards and matches." : "Read-only for now: view events, fight cards and fighters.",
+  "Club/Gym": APPROVALS_ENABLED ? "Manage your club's fighters and respond to its matches." : "Read-only for now: view events, fight cards and fighters.",
   Referee: "Match official account.",
   Judge: "Match official account.",
 };

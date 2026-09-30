@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done |
+| **Status** | Done — verification switched off 2026-09-30: a fighter KKF staff create is Active at once (`verifiedBy` = them), Club/Gym accounts are read-only in the admin; a Draft fighter is made active with "Activate" (same `/verify` call). See `updates/officer-run-program.md` |
 | **Jira** | n/a |
 | **Figma** | n/a |
 

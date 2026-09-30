@@ -7,26 +7,35 @@ import {
 } from "lucide-react";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
-import { EventsAndMatches } from "./EventsAndMatches";
-import { MatchesEnhanced } from "./MatchesEnhanced";
+import { FightNights } from "./FightNights";
+import { LangSwitch } from "../components/program/shared";
+import { useT } from "../i18n/program";
 import { Champion } from "./Champion";
+import { useAdminOverview, type TodoKind } from "../hooks/useAdminOverview";
 import { toast } from "sonner";
 import { clsx } from "clsx";
 
 export function ProgramDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "overview";
+  const rawTab = searchParams.get("tab") || "overview";
+  // The old cross-event "Fight cards" tab is gone: fight cards live on their fight night.
+  const activeTab = rawTab === "matches" ? "events" : rawTab;
+  const { t } = useT();
   const navigate = useNavigate();
   const permissions = usePermissions();
 
   const [stats, setStats] = useState({
     eventsCount: 0,
-    activeEvents: 0,
+    publishedEvents: 0,
+    draftEvents: 0,
     batchesCount: 0,
-    liveBatches: 0,
+    bouts: 0,
+    boutsWithResult: 0,
     championsCount: 0,
-    activeChamps: 0,
+    heldTitles: 0,
   });
+  const [upcomingResults, setUpcomingResults] = useState({ bouts: 0, withResult: 0 });
+  const { data: overview } = useAdminOverview();
 
   const [upcomingEvent, setUpcomingEvent] = useState<any>(null);
 
@@ -41,25 +50,25 @@ export function ProgramDashboard() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [eventsList, batchesList, championsList, fightersList] = await Promise.all([
+      const [eventsList, batchesList, championsList, fightersList, matchesList] = await Promise.all([
         api.events.list(),
         api.batches.list(),
         api.champions.list(),
-        api.fighters.list()
+        api.fighters.list(),
+        api.matches.list(),
       ]);
 
-      // Calculate statistics
-      const activeEvs = eventsList.filter((e: any) => e.status === "In Progress" || e.status === "Published").length;
-      const liveBts = batchesList.filter((b: any) => b.status === "Live" || b.status === "Weight-In").length;
-      const activeChampsCount = championsList.filter((c: any) => c.status === "Active" || c.status === "Title Defense Scheduled").length;
-
+      // Real numbers only: statuses the system actually uses.
+      const hasResult = (m: any) => Boolean(m.winner_id || m.winner_method || m.result);
       setStats({
         eventsCount: eventsList.length,
-        activeEvents: activeEvs,
+        publishedEvents: eventsList.filter((e: any) => e.status === "Published").length,
+        draftEvents: eventsList.filter((e: any) => !["Published", "Cancelled", "Completed"].includes(e.status)).length,
         batchesCount: batchesList.length,
-        liveBatches: liveBts,
+        bouts: matchesList.length,
+        boutsWithResult: matchesList.filter(hasResult).length,
         championsCount: championsList.length,
-        activeChamps: activeChampsCount,
+        heldTitles: championsList.filter((c: any) => c.current_holder_id).length,
       });
 
       // Find the next upcoming or in progress event
@@ -74,8 +83,11 @@ export function ProgramDashboard() {
       const open = (e: any) => !["Draft", "Cancelled", "Completed"].includes(e.status);
       const nextEvent = sortedEvents.find((e: any) => new Date(e.date).getTime() >= today && open(e));
       const lastEvent = [...sortedEvents].reverse().find((e: any) => new Date(e.date).getTime() < today && e.status !== "Draft");
-      setUpcomingEvent(nextEvent ?? lastEvent ?? null);
+      const shown = nextEvent ?? lastEvent ?? null;
+      setUpcomingEvent(shown);
       setUpcomingIsPast(!nextEvent && Boolean(lastEvent));
+      const shownBouts = shown ? matchesList.filter((m: any) => m.event_id === shown.id) : [];
+      setUpcomingResults({ bouts: shownBouts.length, withResult: shownBouts.filter(hasResult).length });
 
       // Top champions (sorted by defenses descending)
       const sortedChamps = [...championsList]
@@ -125,24 +137,20 @@ export function ProgramDashboard() {
               <Calendar className="w-6 h-6" />
             </span>
             <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
-              Program Workspace
+              {t("program.title")}
             </h1>
           </div>
           <p className="text-sm text-slate-500 mt-1 font-medium pl-10">
-            Consolidated portal to schedule events, coordinate match fight cards, and manage championships.
+            {t("program.subtitle")}
           </p>
         </div>
 
         {/* Quick actions depending on active view */}
         <div className="flex items-center gap-3 self-end md:self-auto pl-10 md:pl-0">
+          <LangSwitch />
           {permissions.hasPermission("events.create") && (
             <>
-              {activeTab === "events" && (
-                <Link to="/home/events/new" className="btn-primary py-2.5 px-5 flex items-center gap-2 text-xs uppercase tracking-wider font-bold rounded-xl shadow-md shadow-primary/10 hover:-translate-y-0.5 transition-transform duration-200">
-                  <Plus className="w-4 h-4" /> Create Event
-                </Link>
-              )}
-              {/* Matches tab: the list below has its own "Create fight card" button. */}
+              {/* The Fight nights list has its own "New fight night" button. */}
               {activeTab === "champions" && (
                 <Link to="/home/champion/new" className="btn-primary py-2.5 px-5 flex items-center gap-2 text-xs uppercase tracking-wider font-bold rounded-xl shadow-md shadow-primary/10 hover:-translate-y-0.5 transition-transform duration-200">
                   <Crown className="w-4 h-4" /> Create Title
@@ -157,29 +165,20 @@ export function ProgramDashboard() {
       <div className="flex flex-wrap gap-2.5">
         <button onClick={() => handleTabChange("overview")} className={getTabClass("overview")}>
           <Activity className="w-4 h-4" />
-          Workspace Overview
+          {t("program.tab.overview")}
         </button>
         <button onClick={() => handleTabChange("events")} className={getTabClass("events")}>
           <Calendar className="w-4 h-4" />
-          Events
+          {t("program.tab.fightNights")}
           {stats.eventsCount > 0 && (
             <span className={clsx("ml-1.5 px-2 py-0.5 text-[10px] rounded-full font-bold", activeTab === "events" ? "bg-white text-primary" : "bg-slate-100 text-slate-600")}>
               {stats.eventsCount}
             </span>
           )}
         </button>
-        <button onClick={() => handleTabChange("matches")} className={getTabClass("matches")}>
-          <Swords className="w-4 h-4" />
-          Matches
-          {stats.batchesCount > 0 && (
-            <span className={clsx("ml-1.5 px-2 py-0.5 text-[10px] rounded-full font-bold", activeTab === "matches" ? "bg-white text-primary" : "bg-slate-100 text-slate-600")}>
-              {stats.batchesCount}
-            </span>
-          )}
-        </button>
         <button onClick={() => handleTabChange("champions")} className={getTabClass("champions")}>
           <Trophy className="w-4 h-4" />
-          Champions
+          {t("program.tab.champions")}
           {stats.championsCount > 0 && (
             <span className={clsx("ml-1.5 px-2 py-0.5 text-[10px] rounded-full font-bold", activeTab === "champions" ? "bg-white text-primary" : "bg-slate-100 text-slate-600")}>
               {stats.championsCount}
@@ -193,7 +192,7 @@ export function ProgramDashboard() {
         {loading ? (
           <div className="py-24 text-center bg-white rounded-2xl border border-slate-100 shadow-sm">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="text-sm text-slate-500 mt-4 font-semibold">Loading Program workspace data...</p>
+            <p className="text-sm text-slate-500 mt-4 font-semibold">{t("common.loading")}</p>
           </div>
         ) : (
           <>
@@ -209,10 +208,10 @@ export function ProgramDashboard() {
                     className="bg-white p-5 rounded-2xl border border-slate-100 hover:border-primary/20 shadow-sm hover:shadow-md cursor-pointer transition-all duration-300 group flex items-center justify-between"
                   >
                     <div className="space-y-1">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Events Management</p>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t("program.tab.fightNights")}</p>
                       <h3 className="text-3xl font-extrabold text-slate-900 group-hover:text-primary transition-colors">{stats.eventsCount}</h3>
                       <p className="text-xs font-semibold text-slate-500">
-                        <span className="text-primary font-bold">{stats.activeEvents} active</span> published events
+                        <span className="text-primary font-bold">{t("ov.published", { n: stats.publishedEvents })}</span> · {t("ov.notPublished", { n: stats.draftEvents })}
                       </p>
                     </div>
                     <span className="p-3.5 bg-blue-50 text-primary rounded-xl group-hover:bg-primary group-hover:text-white transition-all duration-300">
@@ -222,14 +221,14 @@ export function ProgramDashboard() {
 
                   {/* Matches Stats */}
                   <div 
-                    onClick={() => handleTabChange("matches")}
+                    onClick={() => handleTabChange("events")}
                     className="bg-white p-5 rounded-2xl border border-slate-100 hover:border-primary/20 shadow-sm hover:shadow-md cursor-pointer transition-all duration-300 group flex items-center justify-between"
                   >
                     <div className="space-y-1">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Fight Cards</p>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t("ov.fightCards")}</p>
                       <h3 className="text-3xl font-extrabold text-slate-900 group-hover:text-primary transition-colors">{stats.batchesCount}</h3>
                       <p className="text-xs font-semibold text-slate-500">
-                        <span className="text-orange-500 font-bold">{stats.liveBatches} ready/live</span> fight cards
+                        <span className="text-orange-500 font-bold">{t("ov.bouts", { n: stats.bouts })}</span> · {t("ov.withResult", { n: stats.boutsWithResult })}
                       </p>
                     </div>
                     <span className="p-3.5 bg-orange-50 text-orange-500 rounded-xl group-hover:bg-orange-500 group-hover:text-white transition-all duration-300">
@@ -243,10 +242,10 @@ export function ProgramDashboard() {
                     className="bg-white p-5 rounded-2xl border border-slate-100 hover:border-primary/20 shadow-sm hover:shadow-md cursor-pointer transition-all duration-300 group flex items-center justify-between"
                   >
                     <div className="space-y-1">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Championship Belts</p>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t("ov.belts")}</p>
                       <h3 className="text-3xl font-extrabold text-slate-900 group-hover:text-primary transition-colors">{stats.championsCount}</h3>
                       <p className="text-xs font-semibold text-slate-500">
-                        <span className="text-emerald-600 font-bold">{stats.activeChamps} active</span> title holders
+                        <span className="text-emerald-600 font-bold">{t("ov.held", { n: stats.heldTitles })}</span> · {t("ov.vacant", { n: stats.championsCount - stats.heldTitles })}
                       </p>
                     </div>
                     <span className="p-3.5 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
@@ -264,7 +263,7 @@ export function ProgramDashboard() {
                     <div className="flex items-center justify-between">
                       <h2 className="text-base font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
                         <Sparkles className="w-5 h-5 text-amber-500" />
-                        {upcomingIsPast ? "Last Fight Night" : "Next Featured Fight Night"}
+                        {upcomingIsPast ? t("ov.last") : t("ov.next")}
                       </h2>
                     </div>
 
@@ -276,12 +275,18 @@ export function ProgramDashboard() {
                           <div className="flex items-start justify-between">
                             <span className={`px-3 py-1 border text-white rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm ${upcomingIsPast ? "bg-slate-600/90 border-slate-500/30" : "bg-red-600/90 border-red-500/30"}`}>
                               <Activity className={upcomingIsPast ? "w-3.5 h-3.5" : "w-3.5 h-3.5 animate-pulse"} />
-                              {upcomingIsPast ? "Finished" : "Next Up"}
+                              {upcomingIsPast
+                                ? upcomingResults.bouts && upcomingResults.withResult < upcomingResults.bouts
+                                  ? t("ov.results", { done: upcomingResults.withResult, total: upcomingResults.bouts })
+                                  : t("ov.finished")
+                                : upcomingEvent.status === "Published" ? t("ov.nextUp") : `${t("ov.nextUp")} · ${t("status.Draft")}`}
                             </span>
-                            <div className="flex items-center gap-2 text-xs font-bold bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
-                              <Tv className="w-4 h-4 text-amber-400" />
-                              <span>{upcomingEvent.broadcast_station_name || "Digital Broadcast"}</span>
-                            </div>
+                            {upcomingEvent.broadcast_station_name && (
+                              <div className="flex items-center gap-2 text-xs font-bold bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
+                                <Tv className="w-4 h-4 text-amber-400" />
+                                <span>{upcomingEvent.broadcast_station_name}</span>
+                              </div>
+                            )}
                           </div>
 
                           {/* Event details */}
@@ -304,21 +309,23 @@ export function ProgramDashboard() {
 
                           {/* Banner bottom footer */}
                           <div className="flex items-center justify-between border-t border-white/10 pt-5">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 bg-white/10 rounded-lg flex items-center justify-center border border-white/10">
-                                <DollarSign className="w-4 h-4 text-amber-400" />
+                            {upcomingEvent.main_sponsor_name ? (
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-7 h-7 bg-white/10 rounded-lg flex items-center justify-center border border-white/10">
+                                  <DollarSign className="w-4 h-4 text-amber-400" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-[10px] text-white/60 font-semibold uppercase tracking-wider">{t("night.sponsor")}</p>
+                                  <p className="text-xs font-bold text-white truncate">{upcomingEvent.main_sponsor_name}</p>
+                                </div>
                               </div>
-                              <div className="min-w-0">
-                                <p className="text-[10px] text-white/60 font-semibold uppercase tracking-wider">Main Sponsor</p>
-                                <p className="text-xs font-bold text-white truncate">{upcomingEvent.main_sponsor_name || "KKF Sponsors"}</p>
-                              </div>
-                            </div>
+                            ) : <span />}
 
                             <Link 
                               to={`/home/events/${upcomingEvent.id}`}
                               className="px-4 py-2 bg-white text-slate-900 rounded-xl text-xs font-bold hover:bg-amber-400 hover:text-slate-950 transition-colors flex items-center gap-1.5 shadow"
                             >
-                              View Fight Card
+                              {t("ov.open")}
                               <ArrowRight className="w-3.5 h-3.5" />
                             </Link>
                           </div>
@@ -327,11 +334,11 @@ export function ProgramDashboard() {
                     ) : (
                       <div className="bg-white p-8 rounded-2xl border border-slate-100 text-center text-slate-500 shadow-sm flex flex-col justify-center items-center h-[360px]">
                         <Calendar className="w-12 h-12 text-slate-350 mb-3" />
-                        <p className="font-semibold text-sm">No upcoming events scheduled</p>
-                        <p className="text-xs text-slate-400 mt-1 mb-4">Create your first fight event to coordinate match cards</p>
+                        <p className="font-semibold text-sm">{t("ov.noUpcoming")}</p>
+                        <p className="text-xs text-slate-400 mt-1 mb-4">{t("list.emptyHint")}</p>
                         {permissions.hasPermission("events.create") && (
                           <Link to="/home/events/new" className="btn-secondary py-2 px-4 text-xs font-bold">
-                            <Plus className="w-3.5 h-3.5" /> Create Event
+                            <Plus className="w-3.5 h-3.5" /> {t("list.new")}
                           </Link>
                         )}
                       </div>
@@ -343,7 +350,7 @@ export function ProgramDashboard() {
                     <div className="flex items-center justify-between">
                       <h2 className="text-base font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
                         <Trophy className="w-5 h-5 text-emerald-500" />
-                        Active Champions
+                        {t("ov.activeChamps")}
                       </h2>
                     </div>
 
@@ -386,7 +393,7 @@ export function ProgramDashboard() {
                         ) : (
                           <div className="py-12 text-center text-slate-400 space-y-2">
                             <Trophy className="w-8 h-8 mx-auto text-slate-300" />
-                            <p className="text-xs font-semibold">No active title holders</p>
+                            <p className="text-xs font-semibold">{t("ov.noHolders")}</p>
                           </div>
                         )}
                       </div>
@@ -395,57 +402,78 @@ export function ProgramDashboard() {
                         onClick={() => handleTabChange("champions")}
                         className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl transition-colors text-center block mt-3"
                       >
-                        Browse Championships & belts
+                        {t("ov.browse")}
                       </button>
                     </div>
                   </div>
 
                 </div>
 
-                {/* Quick actions panel */}
+                {/* Needs attention (Program to-dos from the dashboard) */}
+                {(() => {
+                  const PROGRAM: TodoKind[] = ["result", "noOfficials", "draftEvent", "emptyEvent", "unconfirmed", "vacantTitle"];
+                  const items = (overview?.todos ?? []).filter((t) => PROGRAM.includes(t.kind));
+                  if (!overview || items.length === 0) return null;
+                  return (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">{t("ov.attention")}</h3>
+                        <Link to="/home" className="text-xs font-semibold text-primary hover:underline">{t("ov.allTodos")}</Link>
+                      </div>
+                      <ul className="divide-y divide-slate-100">
+                        {items.slice(0, 6).map((t) => (
+                          <li key={t.id}>
+                            <Link to={t.href} className="flex items-center justify-between gap-3 py-2.5 hover:bg-slate-50 rounded-lg px-2 -mx-2">
+                              <span className="min-w-0">
+                                <span className="block text-sm font-semibold text-slate-900 truncate">{t.title}</span>
+                                <span className="block text-xs text-slate-500 truncate">{t.detail}</span>
+                              </span>
+                              <ArrowRight className="w-4 h-4 text-slate-400 shrink-0" />
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                      {items.length > 6 && <p className="text-xs text-slate-500 mt-2">{t("ov.moreTodos", { n: items.length - 6 })}</p>}
+                    </div>
+                  );
+                })()}
+
+                {/* Quick actions panel (only what this user may do) */}
+                {permissions.hasPermission("events.create") && (
                 <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
-                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Program Quick Actions Workspace</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">{t("ov.quick")}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     
                     <Link to="/home/events/new" className="flex items-center gap-4 p-4 bg-[#0A3D91]/5 hover:bg-[#0A3D91]/10 rounded-xl border border-[#0A3D91]/10 transition-colors group">
                       <span className="p-3 bg-[#0A3D91] text-white rounded-xl">
                         <Calendar className="w-5 h-5" />
                       </span>
                       <div>
-                        <h4 className="text-sm font-bold text-[#0A3D91]">Create New Event</h4>
-                        <p className="text-xs text-slate-500 mt-0.5">Set date, venue, broadcaster & sponsor</p>
+                        <h4 className="text-sm font-bold text-[#0A3D91]">{t("list.new")}</h4>
+                        <p className="text-xs text-slate-500 mt-0.5">{t("ov.newNightHint")}</p>
                       </div>
                     </Link>
 
-                    <Link to="/home/matches/new" className="flex items-center gap-4 p-4 bg-orange-500/5 hover:bg-orange-500/10 rounded-xl border border-orange-500/10 transition-colors group">
-                      <span className="p-3 bg-orange-500 text-white rounded-xl">
-                        <Swords className="w-5 h-5" />
-                      </span>
-                      <div>
-                        <h4 className="text-sm font-bold text-orange-650">Create Fight Card</h4>
-                        <p className="text-xs text-slate-500 mt-0.5">Add match cards and pair fighters</p>
-                      </div>
-                    </Link>
 
                     <Link to="/home/champion/new" className="flex items-center gap-4 p-4 bg-emerald-600/5 hover:bg-emerald-600/10 rounded-xl border border-emerald-600/10 transition-colors group">
                       <span className="p-3 bg-emerald-600 text-white rounded-xl">
                         <Crown className="w-5 h-5" />
                       </span>
                       <div>
-                        <h4 className="text-sm font-bold text-emerald-700">Add Title Belt</h4>
-                        <p className="text-xs text-slate-500 mt-0.5">Define new weight class & organization</p>
+                        <h4 className="text-sm font-bold text-emerald-700">{t("ov.newTitle")}</h4>
+                        <p className="text-xs text-slate-500 mt-0.5">{t("ov.newTitleHint")}</p>
                       </div>
                     </Link>
 
                   </div>
                 </div>
+                )}
 
               </div>
             )}
 
-            {activeTab === "events" && <EventsAndMatches embedded={true} />}
+            {activeTab === "events" && <FightNights />}
 
-            {activeTab === "matches" && <MatchesEnhanced embedded={true} />}
 
             {activeTab === "champions" && <Champion embedded={true} />}
           </>
