@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) |
+| **Status** | Done — committed 867e04e6 (2026-09-30, pushed) |
 | **Jira** | n/a |
 | **Feature** | program-officer-friendly.md, events.md |
 | **Requested by** | vannak070 (2026-09-30, screenshot: "please improve this page. I don't like it.") |

@@ -102,6 +102,16 @@ export function fighterArray(f: Fighter) {
 
 const withClub = { club: true } as const;
 
+/**
+ * The Khmer name is required for Cambodian fighters and optional for foreign fighters (owner, 2026-09-30);
+ * the column can't be NULL, so a foreign fighter without one stores "" (sites then show the English name).
+ */
+function khmerName(nationality: string | null | undefined, nameKhmer: string | null | undefined): string {
+  if (nameKhmer) return nameKhmer;
+  if (!nationality || nationality === "Cambodian") throw new HttpError(422, "The nameKhmer field is required");
+  return "";
+}
+
 const isStaff = (user: User | null) => hasRole(user, STAFF);
 
 async function findFighter(id: string) {
@@ -180,7 +190,7 @@ export default async function fighterRoutes(app: FastifyInstance) {
         data: {
           id: randomUUID(),
           name: input.required("name"),
-          name_khmer: input.required("nameKhmer"),
+          name_khmer: khmerName(input.get("nationality", "Cambodian"), input.get("nameKhmer")),
           alias: input.get("alias"),
           date_of_birth: toDate(input.required("dateOfBirth"))!,
           nationality: input.get("nationality", "Cambodian"),
@@ -223,6 +233,11 @@ export default async function fighterRoutes(app: FastifyInstance) {
       const input = inputOf(request.body);
       const data: Prisma.FighterUncheckedUpdateInput = input.pick(UPDATABLE);
       if (input.has("dateOfBirth")) data.date_of_birth = toDate(input.get("dateOfBirth"))!;
+      if (input.present("nameKhmer") && !input.has("nameKhmer")) {
+        data.name_khmer = khmerName(input.get("nationality", fighter.nationality), null);
+      } else if (input.has("nationality") && input.get("nationality") === "Cambodian" && !input.has("nameKhmer") && !fighter.name_khmer) {
+        throw new HttpError(422, "The nameKhmer field is required");
+      }
       if (input.present("record")) {
         // The record is the total the officer sees (career + results recorded here); keep the results and
         // store the rest as the career, so saving a form unchanged never counts results twice.

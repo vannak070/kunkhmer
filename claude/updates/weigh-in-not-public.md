@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) |
+| **Status** | Done — committed 449238ae (2026-09-30, pushed) |
 | **Jira** | n/a |
 | **Feature** | matches-results.md, program-officer-friendly.md |
 | **Requested by** | vannak070 (2026-09-30, "go ahead" — found in the officer walk-through) |

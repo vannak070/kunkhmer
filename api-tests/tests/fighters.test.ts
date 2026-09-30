@@ -123,6 +123,23 @@ describe("fighters CRUD", () => {
   });
 });
 
+describe("Khmer name", () => {
+  it("is required for a Cambodian fighter and optional for a foreign fighter", async () => {
+    const { nameKhmer: _, ...noKhmer } = fullFighter();
+    expect((await post("/fighters", noKhmer, a.admin.token)).status).toBe(422);
+    expect((await post("/fighters", { ...noKhmer, nameKhmer: "" }, a.admin.token)).status).toBe(422);
+
+    const res = await post("/fighters", { ...noKhmer, nationality: "Thai" }, a.admin.token);
+    expect(res.status).toBe(201);
+    expect(res.body.data).toMatchObject({ nationality: "Thai", nameKhmer: "" });
+
+    // Clearing it later: fine for the foreign fighter, not for a Cambodian one.
+    const khmer = (await post("/fighters", fullFighter(), a.admin.token)).body.data;
+    expect((await put(`/fighters/${khmer.id}`, { nameKhmer: "" }, a.admin.token)).status).toBe(422);
+    expect((await put(`/fighters/${res.body.data.id}`, { nameKhmer: "" }, a.admin.token)).status).toBe(200);
+  });
+});
+
 describe("fighter verification", () => {
   it("hides unverified fighters from the public until KKF verifies them", async () => {
     const { body } = await post("/fighters", fullFighter(), a.club.token);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, MapPin, Dumbbell, Star, Edit2, Trash2 } from "lucide-react";
+import { Plus, Search, MapPin, Dumbbell, Edit2, Trash2 } from "lucide-react";
 import { Link } from "react-router";
 import { api } from "../utils/api";
 import { toast } from "sonner";
@@ -112,20 +112,24 @@ export function Clubs() {
               >
                 {/* Image Banner Section */}
                 <div className="h-44 relative overflow-hidden bg-muted">
-                  <img 
-                    src={club.image || "https://images.unsplash.com/photo-1540206351-d6465b3ac5c1?q=80&w=2940&auto=format&fit=crop"} 
-                    alt={club.name} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                  />
+                  {/* The club's own picture or logo; no stock photo of strangers. */}
+                  {club.image || club.logo_url ? (
+                    <img
+                      src={club.image || club.logo_url}
+                      alt={club.name}
+                      className={`w-full h-full ${club.image ? "object-cover" : "object-contain p-6 bg-white"} group-hover:scale-105 transition-transform duration-700 ease-out`}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#eef3fb] to-white">
+                      <span className="text-4xl font-bold text-primary/70">{club.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w: string) => w[0]).join("").toUpperCase()}</span>
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
                   
                   {/* Badge Overlays */}
                   <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
-                    {/* Gold Rating badge */}
-                    <div className="flex items-center gap-1 bg-[#FFFDF5] border border-amber-200/80 text-amber-700 px-2.5 py-0.5 rounded-full text-xs font-semibold shadow-sm">
-                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                      <span>{parseFloat(club.rating || "4.0").toFixed(1)}</span>
-                    </div>
+                    {/* No star rating: KKF has no club ratings. */}
+                    <span />
                     
                     {/* Active/Inactive Badge */}
                     <div className={`badge-premium ${

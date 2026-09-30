@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done — built and committed (168843e4, 2026-09-30); walk-through fixes 2026-09-30 not committed yet |
+| **Status** | Done — built and committed 168843e4; walk-through fixes committed 867e04e6 (2026-09-30, pushed) |
 | **Jira** | n/a |
 | **Feature** | events.md, matches-results.md, fighters.md, officer-run-program.md |
 | **Requested by** | vannak070 (2026-09-30: "improve Program Function for more user friendly and professional. Especially, Officer is limited on tech") |

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) |
+| **Status** | Done — committed 78093294 (2026-09-30, pushed) |
 | **Jira** | n/a |
 | **Feature** | events.md, matches-results.md, program-officer-friendly.md |
 | **Requested by** | vannak070 (2026-09-30, "Go ahead with your plan" — item 1 of the next-improvements list) |
