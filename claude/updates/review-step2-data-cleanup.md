@@ -47,3 +47,5 @@ Dev data only — the live site needs the same corrections (or a fresh copy of t
   Bird Sengkem province "Phnom Penh, Cambodia", Pich Singhak none; both news without English (authors "Vannak",
   "System Administrator" — the site hides system names); video without fighter; International Partners without
   "partner since". Nothing changed by me.
+- Staff hand-off page (owner-private until shared): "KKF Launch Checklist" https://claude.ai/artifact/WtCYeqYeK8aoniN1uEVDF6
+  — the 11 items above, the About the Federation content to collect, launch content and the Khmer review list.

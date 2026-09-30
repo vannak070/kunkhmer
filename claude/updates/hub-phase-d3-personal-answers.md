@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) — waiting for owner review; no live model test (owner skipped it) |
+| **Status** | Done — committed 57c49d39 (2026-09-30, pushed); no live model test (owner skipped it) |
 | **Jira** | n/a |
 | **Feature** | claude/features/ai-assistant.md, claude/features/fan-accounts.md |
 | **Requested by** | vannak070 (2026-09-29: "start Hub Phase D3") |

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) — waiting for owner review (2026-09-29) |
+| **Status** | Done — committed 57c49d39 (2026-09-30, pushed) |
 | **Jira** | n/a |
 | **Figma** | n/a |
 | **Owner** | vannak070 |

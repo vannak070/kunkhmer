@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-09-30), not committed — live model answer not tested yet (optional, paid) |
+| **Status** | Done — committed 57c49d39 (2026-09-30, pushed); live model answer not tested yet (optional, paid) |
 | **Jira** | n/a |
 | **Feature** | claude/features/ai-assistant.md, claude/features/about-federation.md |
 | **Requested by** | vannak070 (2026-09-30: "let Hub answer from the federation page") |

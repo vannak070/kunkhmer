@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built 2026-09-30, not committed — waiting for owner review; content to come from KKF |
+| **Status** | Done — committed 57c49d39 (2026-09-30, pushed); content to come from KKF (staff enter it in the admin) |
 | **Jira** | n/a |
 | **Figma** | n/a — light site style (`public-site.md`) |
 | **Owner** | vannak070 |

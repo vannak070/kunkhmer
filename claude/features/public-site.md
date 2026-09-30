@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress — everything up to website-review steps 1 + 4 committed and pushed (501063af, 2026-09-29); step 2 text fixes done in dev + staff checklist (`updates/review-step2-data-cleanup.md`); step 5 club logos built, not committed (`features/club-logos.md`); step 3 About the Federation page built 2026-09-30, not committed (`features/about-federation.md`, content from KKF via the admin); next: staff clean-up, launch content, go-live |
+| **Status** | In progress — everything up to website-review steps 1, 3 (About the Federation), 4 and 5 (club logos) committed and pushed (57c49d39, 2026-09-30); step 2 text fixes done in dev + staff checklist (`updates/review-step2-data-cleanup.md`, hand-off page "KKF Launch Checklist"); next: staff clean-up, KKF federation content, launch content, go-live |
 | **Jira** | TBD |
 | **Figma** | TBD — brand guideline: design system artifact "Kun Khmer Brand" (https://claude.ai/artifact/5dHcDztT7toqRYCFrcKFLT, owner-private) |
 

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | D1 done — committed 7691de40; D2 done — committed f4b4010f; D3 built 2026-09-29, not committed (`hub-phase-d3-personal-answers.md`) |
+| **Status** | D1 done — committed 7691de40; D2 done — committed f4b4010f; D3 done — committed 57c49d39 (2026-09-30, pushed) (`hub-phase-d3-personal-answers.md`) |
 | **Jira** | n/a |
 | **Feature** | claude/features/ai-assistant.md |
 | **Requested by** | vannak070 (2026-09-28: "Start Hub Phase D") |
