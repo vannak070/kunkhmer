@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-09-30, uncommitted) — brand guideline page still to be republished (see Log) |
+| **Status** | Done (2026-09-30, committed 6c28ffa1) — brand guideline page still to be republished (see Log) |
 | **Jira** | n/a |
 | **Feature** | claude/features/public-site.md, claude/updates/admin-khmer-font.md |
 | **Requested by** | vannak070 (2026-09-30: "switch the fan site Khmer font to Kantumruy Pro") |

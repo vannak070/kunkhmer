@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-09-30, uncommitted); KKF to review the Khmer wording |
+| **Status** | Done (2026-09-30, committed 6c28ffa1); KKF to review the Khmer wording |
 | **Jira** | n/a |
 | **Feature** | claude/updates/hub-phase-d2-staff-assistant.md, claude/updates/admin-menu-khmer.md |
 | **Requested by** | vannak070 (2026-09-30: "translate the Staff assistant page to Khmer") |

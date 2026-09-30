@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-09-30, uncommitted); KKF to review the Khmer wording |
+| **Status** | Done (2026-09-30, committed 6c28ffa1); KKF to review the Khmer wording |
 | **Jira** | n/a |
 | **Feature** | claude/updates/admin-menu-khmer.md, claude/updates/users-khmer.md, claude/updates/profile-khmer.md |
 | **Requested by** | vannak070 (2026-09-30: "show the role name in the side menu in Khmer"; chose "All roles in Khmer") |
