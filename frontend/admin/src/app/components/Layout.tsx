@@ -8,7 +8,7 @@ import { api } from "../utils/api";
 import { useAdminOverview } from "../hooks/useAdminOverview";
 import { HeaderSearch } from "./HeaderSearch";
 import { LangSwitch } from "./program/shared";
-import { useT, type TextKey } from "../i18n/program";
+import { roleNameKey, useT, type TextKey } from "../i18n/program";
 import logoImg from "../../assets/modern_logo.png";
 
 function cn(...inputs: ClassValue[]) {
@@ -292,7 +292,7 @@ export function Layout() {
             <span className="w-9 h-9 rounded-full bg-[#0A3D91] text-white flex items-center justify-center font-bold text-sm shrink-0">{initial}</span>
             <span className="min-w-0">
               <span className="block text-sm font-semibold text-slate-900 truncate">{fullName}</span>
-              <span className="block text-xs text-slate-500 truncate">{apiRole()}</span>
+              <span className="block text-xs text-slate-500 truncate">{roleNameKey(apiRole()) ? t(roleNameKey(apiRole())!) : apiRole()}</span>
             </span>
           </Link>
           <button type="button" onClick={handleLogout} title={t("frame.signOut")} aria-label={t("frame.signOut")} className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50">
@@ -392,7 +392,7 @@ export function Layout() {
             <div className="max-w-lg mx-auto mt-10 rounded-2xl border border-slate-200 bg-white p-8 text-center">
               <Lock className="w-8 h-8 text-slate-400 mx-auto mb-3" aria-hidden />
               <h1 className="text-lg font-semibold text-slate-900 mb-1">{t("frame.blockedTitle")}</h1>
-              <p className="text-sm text-slate-600 mb-5">{t("frame.blockedText", { role: apiRole() || "—" })}</p>
+              <p className="text-sm text-slate-600 mb-5">{t("frame.blockedText", { role: roleNameKey(apiRole()) ? t(roleNameKey(apiRole())!) : apiRole() || "—" })}</p>
               <Link to="/home" className="inline-flex items-center h-10 px-4 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-[#083073]">{t("frame.home")}</Link>
             </div>
           )}

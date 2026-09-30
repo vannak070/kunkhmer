@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-09-30, uncommitted) — waiting for owner review; KKF to review the Khmer wording |
+| **Status** | Done (2026-09-30, committed 4f9a2665); KKF to review the Khmer wording |
 | **Jira** | n/a |
 | **Feature** | claude/features/settings.md, claude/updates/admin-menu-khmer.md |
 | **Requested by** | vannak070 (2026-09-30: "translate the Settings page to Khmer") |

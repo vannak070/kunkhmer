@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built 2026-09-30 (uncommitted); staff still to fill in the existing fighters |
+| **Status** | Built 2026-09-30 (committed 1e1bf0d9); staff still to fill in the existing fighters |
 | **Jira** | n/a |
 | **Figma** | n/a |
 | **Owner** | vannak070 |

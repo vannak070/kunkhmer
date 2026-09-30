@@ -37,6 +37,9 @@ federation's records.
    `/matches` (`?tab=results|events`), `/clubs/:slug`, `/partners/sponsors/:slug`, `/partners/broadcasters/:slug`, `/about`, `/hub` (`?q=` asks a question), `/account` (`/rankings` was removed and redirects to `/fighters`). Back/Forward must work.
 5. **Brand**: tokens in `src/styles/brand.css` mirror the brand guideline
    (colours measured from the KKF emblem). Red corner left, blue right, always.
+   Fonts: Barlow / Barlow Condensed for Latin, **Kantumruy Pro** for all Khmer
+   (body and headlines, 700 for headlines), the same Khmer face as the admin
+   (`updates/fan-site-khmer-font.md`).
 
 ## Frontend (`frontend/public/src/app/`)
 | Area | Files | Notes |

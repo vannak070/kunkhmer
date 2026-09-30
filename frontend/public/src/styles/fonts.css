@@ -1,11 +1,14 @@
 /*
- * Khmer script support. Noto Sans Khmer is loaded in index.html and listed after the Latin
- * fonts, so English text keeps the system font while Khmer glyphs render in Noto.
+ * Khmer script support. Kantumruy Pro (the admin's Khmer face too) is loaded in index.html and
+ * listed after the Latin fonts: Barlow has no Khmer glyphs, so English text keeps Barlow while
+ * Khmer glyphs render in Kantumruy Pro.
  */
 :root {
-  /* Brand text face Barlow first (see brand guideline), Khmer glyphs fall through to Noto Sans Khmer. */
-  --font-sans-stack: "Barlow", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    "Noto Sans Khmer", "Khmer OS Battambang", sans-serif;
+  /* Brand text face Barlow first (see brand guideline), Khmer glyphs fall through to Kantumruy Pro.
+     Kantumruy Pro sits before the system fonts: Segoe UI and Roboto have no Khmer either, but some
+     system stacks do, and they would win for Khmer if listed first. */
+  --font-sans-stack: "Barlow", "Kantumruy Pro", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Khmer OS Battambang", sans-serif;
 }
 
 html,

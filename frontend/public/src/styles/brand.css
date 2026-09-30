@@ -20,8 +20,8 @@
   --kk-night-red-text: #f07c82;
   --kk-corner-blue-night: #2f5fc4;
 
-  --kk-font-display: "Barlow Condensed", "Koulen", "Arial Narrow", sans-serif;
-  --kk-font-khmer-display: "Koulen", "Noto Sans Khmer", sans-serif;
+  --kk-font-display: "Barlow Condensed", "Kantumruy Pro", "Arial Narrow", sans-serif;
+  --kk-font-khmer-display: "Kantumruy Pro", sans-serif;
 }
 
 /* Display type: condensed, athletic, poster-like. */
@@ -47,11 +47,11 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-/* Khmer headlines use Koulen and need room for subscript consonants. */
+/* Khmer headlines use Kantumruy Pro bold (its heaviest weight is 700) and need room for subscript consonants. */
 .kk-display:lang(km),
 .kk-heading:lang(km) {
   font-family: var(--kk-font-khmer-display);
-  font-weight: 400;
+  font-weight: 700;
   line-height: 1.35;
 }
 

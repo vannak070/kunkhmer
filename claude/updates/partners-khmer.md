@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-09-30, uncommitted) — waiting for owner review; KKF to review the Khmer wording |
+| **Status** | Done (2026-09-30, committed 4f9a2665); KKF to review the Khmer wording |
 | **Jira** | n/a |
 | **Feature** | claude/features/partners.md, claude/features/international-partners.md, claude/updates/media-khmer.md |
 | **Requested by** | vannak070 (2026-09-30: "translate the Partners pages to Khmer") |

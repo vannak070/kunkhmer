@@ -32,15 +32,15 @@ interface Club { id: string; name: string }
 /** Roles the API accepts, with a plain-language description for the picker and the guide. */
 /** `text` = the description in the dictionary; roles whose wording only applies with approvals on stay English. */
 const ROLES: { value: string; description: string; text?: TextKey; label?: TextKey; tone: string }[] = [
-  { value: "Super Admin", description: "Full access, including staff accounts and system settings.", text: "users.desc.admin", tone: "bg-violet-50 text-violet-700 border-violet-200" },
-  { value: "KKF Officer", description: APPROVALS_ENABLED ? "Federation staff: verify fighters, record results and titles, manage news and partners." : "Federation staff: run events, fight cards, bouts, fighters, results and titles; manage news and partners.", text: APPROVALS_ENABLED ? undefined : "users.desc.officer", tone: "bg-blue-50 text-blue-700 border-blue-200" },
+  { value: "Super Admin", description: "Full access, including staff accounts and system settings.", text: "users.desc.admin", label: "users.role.Super Admin", tone: "bg-violet-50 text-violet-700 border-violet-200" },
+  { value: "KKF Officer", description: APPROVALS_ENABLED ? "Federation staff: verify fighters, record results and titles, manage news and partners." : "Federation staff: run events, fight cards, bouts, fighters, results and titles; manage news and partners.", text: APPROVALS_ENABLED ? undefined : "users.desc.officer", label: "users.role.KKF Officer", tone: "bg-blue-50 text-blue-700 border-blue-200" },
   { value: "Organizer", description: APPROVALS_ENABLED ? "Creates and runs events, fight cards and matches." : "Read-only for now: sees events, fight cards and fighters (KKF staff run the program).", text: APPROVALS_ENABLED ? undefined : "users.desc.organizer", label: "users.role.Organizer", tone: "bg-amber-50 text-amber-800 border-amber-200" },
   { value: "Club/Gym", description: APPROVALS_ENABLED ? "Tied to one club: manages that club's fighters and responds to its matches." : "Tied to one club. Read-only for now: sees events, fight cards and fighters.", text: APPROVALS_ENABLED ? undefined : "users.desc.club", label: "users.role.Club/Gym", tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   { value: "Referee", description: "Match official account (no editing access yet).", text: "users.desc.official", label: "off.role.Referee", tone: "bg-slate-100 text-slate-700 border-slate-200" },
   { value: "Judge", description: "Match official account (no editing access yet).", text: "users.desc.official", label: "off.role.Judge", tone: "bg-slate-100 text-slate-700 border-slate-200" },
 ];
 type T = ReturnType<typeof useT>["t"];
-/** Role name and description in the chosen language ("Super Admin" and "KKF Officer" stay as they are). */
+/** Role name and description in the chosen language. */
 const roleLabel = (role: string, t: T) => { const r = ROLES.find((x) => x.value === role); return r?.label ? t(r.label) : role; };
 const roleText = (role: string, t: T) => { const r = ROLES.find((x) => x.value === role); return r?.text ? t(r.text) : r?.description; };
 const roleTone = (role: string) => ROLES.find((r) => r.value === role)?.tone ?? "bg-slate-100 text-slate-700 border-slate-200";

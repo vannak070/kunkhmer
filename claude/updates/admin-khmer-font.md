@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-09-30, uncommitted) — waiting for owner review |
+| **Status** | Done (2026-09-30, committed 4f9a2665) |
 | **Jira** | n/a |
 | **Feature** | claude/updates/admin-menu-khmer.md |
 | **Requested by** | vannak070 (2026-09-30: "change font khmer to Kantumruy Pro for all function") |
@@ -17,8 +17,8 @@ Khmer text on every admin page uses **Kantumruy Pro**.
 ## Scope
 In scope: the whole admin (`frontend/admin`).
 Out of scope: Latin text (still Outfit / Inter); the decorative Moul heading on the share poster; the fan site
-(`frontend/public`), whose fonts follow the brand guideline (Barlow, Koulen, Noto Sans Khmer) — not changed,
-the owner decides.
+(`frontend/public`), whose fonts followed the brand guideline (Barlow, Koulen, Noto Sans Khmer) — not changed
+here. The owner switched the fan site to Kantumruy Pro later the same day: `updates/fan-site-khmer-font.md`.
 
 ## Impact
 API / database: none. Frontend: `frontend/admin/index.html` (Google Fonts link: Kantumruy Pro 400–700 instead

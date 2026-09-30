@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-09-30, uncommitted) |
+| **Status** | Done (2026-09-30, committed 1e1bf0d9) |
 | **Jira** | n/a |
 | **Feature** | admin dashboard (`pages/Home.tsx`) |
 | **Requested by** | vannak070 (2026-09-30, "Please improve dashboard"; chose "Simpler, next job first" + "Better numbers and look") |

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-09-30, uncommitted) |
+| **Status** | Done (2026-09-30, committed 1e1bf0d9) |
 | **Feature** | public-site.md (Matches & Events › All fight nights) |
 | **Requested by** | vannak070 ("it is not correct, please improve more") |
 

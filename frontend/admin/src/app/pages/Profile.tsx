@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Eye, EyeOff, KeyRound, LogOut, Mail, ShieldCheck, UserRound } from "lucide-react";
 import { api } from "../utils/api";
 import { APPROVALS_ENABLED } from "../config/features";
-import { type Lang, type TextKey, formatDay, khmerDigits, useT } from "../i18n/program";
+import { type Lang, type TextKey, formatDay, khmerDigits, roleNameKey, useT } from "../i18n/program";
 
 interface Me {
   id: string;
@@ -40,13 +40,6 @@ const ROLE_HELP_TEXT: Record<string, TextKey | undefined> = {
   "Club/Gym": APPROVALS_ENABLED ? undefined : "prof.desc.readOnly",
   Referee: "prof.desc.official",
   Judge: "prof.desc.official",
-};
-/** Role names shown in Khmer ("Super Admin" and "KKF Officer" keep their Latin names, as on the Users page). */
-const ROLE_LABEL: Record<string, TextKey> = {
-  Organizer: "users.role.Organizer",
-  "Club/Gym": "users.role.Club/Gym",
-  Referee: "off.role.Referee",
-  Judge: "off.role.Judge",
 };
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -156,7 +149,7 @@ export function Profile() {
           <p className="text-xl font-bold text-slate-900 truncate">{me.fullName}</p>
           <p className="text-sm text-slate-600 truncate">@{me.username} · {me.email}</p>
           <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-md bg-white border border-[#d5e0f3] text-primary">
-            <ShieldCheck className="w-3.5 h-3.5" aria-hidden /> {ROLE_LABEL[me.role] ? t(ROLE_LABEL[me.role]) : me.role}
+            <ShieldCheck className="w-3.5 h-3.5" aria-hidden /> {roleNameKey(me.role) ? t(roleNameKey(me.role)!) : me.role}
           </p>
           {ROLE_HELP[me.role] && <p className="mt-1.5 text-sm text-slate-600">{ROLE_HELP_TEXT[me.role] ? t(ROLE_HELP_TEXT[me.role]!) : ROLE_HELP[me.role]}</p>}
         </div>

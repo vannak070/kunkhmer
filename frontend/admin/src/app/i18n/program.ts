@@ -1372,6 +1372,33 @@ const EN = {
   "hub.prev": "Previous page",
   "hub.next": "Next page",
   "hub.page": "Page {page} of {pages}",
+  // Staff assistant page
+  "sa.intro": "Ask about missing results, fighter data, fight nights and drafts. It reads the federation's records and links to the page where you act — it never changes anything.",
+  "sa.newConversation": "New conversation",
+  "sa.offBefore": "The assistant is off: KUNKHMER HUB isn't set up on this server (no ",
+  "sa.offMiddle": ", or ",
+  "sa.offAfter": ").",
+  "sa.tryAsking": "Try asking",
+  "sa.s1": "What data problems should I fix first?",
+  "sa.s2": "Which past fight cards still need results?",
+  "sa.s3": "Are there likely duplicate fighters?",
+  "sa.s4": "Which fighters are missing a photo or a club?",
+  "sa.s5": "Which upcoming bouts have no referee yet?",
+  "sa.s6": "What drafts haven't been published?",
+  "sa.s7": "តើមានកម្មវិធីប្រកួតអ្វីខ្លះនៅខាងមុខ?",
+  "sa.looking": "Looking through the records…",
+  "sa.helpfulQ": "Helpful?",
+  "sa.helpful": "Helpful",
+  "sa.notHelpful": "Not helpful",
+  "sa.yourQuestion": "Your question",
+  "sa.offPlaceholder": "The assistant is off",
+  "sa.placeholder": "Ask in English or Khmer…",
+  "sa.answering": "Answering…",
+  "sa.ask": "Ask",
+  "sa.footer": "AI-generated from KKF records — check before acting. Your questions are saved with your name for review in Hub answers and count toward the monthly AI budget.",
+  "sa.error": "The assistant couldn't answer. Please try again.",
+  "users.role.Super Admin": "Super Admin",
+  "users.role.KKF Officer": "KKF Officer",
 } as const;
 
 export type TextKey = keyof typeof EN;
@@ -1856,7 +1883,7 @@ const KM: Record<TextKey, string> = {
   "frame.todoOne": "មានកិច្ចការ ១ ត្រូវយកចិត្តទុកដាក់",
   "frame.todoMany": "មានកិច្ចការ {n} ត្រូវយកចិត្តទុកដាក់",
   "frame.blockedTitle": "មិនអាចប្រើបានសម្រាប់តួនាទីរបស់អ្នក",
-  "frame.blockedText": "គណនីរបស់អ្នក ({role}) មិនអាចប្រើទំព័រនេះបានទេ។ សូមស្នើ Super Admin របស់ KKF ប្រសិនបើអ្នកត្រូវការសិទ្ធិ។",
+  "frame.blockedText": "គណនីរបស់អ្នក ({role}) មិនអាចប្រើទំព័រនេះបានទេ។ សូមស្នើ អ្នកគ្រប់គ្រងកំពូល របស់ KKF ប្រសិនបើអ្នកត្រូវការសិទ្ធិ។",
   "frame.home": "ទៅទំព័រដើមរបស់អ្នក",
   "dash.morning": "អរុណសួស្តី",
   "dash.afternoon": "ទិវាសួស្តី",
@@ -2102,7 +2129,7 @@ const KM: Record<TextKey, string> = {
   "users.col.actions": "សកម្មភាព",
   "users.noClub": "មិនទាន់កំណត់ក្លឹប",
   "users.lastSignIn": "ចូលប្រព័ន្ធចុងក្រោយ៖ {when}",
-  "users.showing": "បង្ហាញ {n} នៃ {total} គណនី។ មានតែ Super Admin ប៉ុណ្ណោះដែលអាចមើលទំព័រនេះ។",
+  "users.showing": "បង្ហាញ {n} នៃ {total} គណនី។ មានតែ អ្នកគ្រប់គ្រងកំពូល ប៉ុណ្ណោះដែលអាចមើលទំព័រនេះ។",
   "users.deactivateTitle": "ផ្អាក {name}?",
   "users.deactivate1": "គាត់នឹងត្រូវចេញពីប្រព័ន្ធភ្លាមៗ ហើយមិនអាចចូលបានទេ។",
   "users.deactivate2": "ប្រវត្តិរបស់គាត់នៅរក្សាទុក ហើយអ្នកអាចបើកគណនីឡើងវិញបានគ្រប់ពេល។",
@@ -2132,7 +2159,7 @@ const KM: Record<TextKey, string> = {
   "prof.passwordError": "មិនអាចប្តូរពាក្យសម្ងាត់របស់អ្នកបានទេ។",
   "prof.intro": "ព័ត៌មានគណនី និងពាក្យសម្ងាត់របស់អ្នក។",
   "prof.details": "ព័ត៌មានរបស់អ្នក",
-  "prof.askAdmin": "ដើម្បីប្តូរឈ្មោះគណនី ឬតួនាទី សូមស្នើ Super Admin។",
+  "prof.askAdmin": "ដើម្បីប្តូរឈ្មោះគណនី ឬតួនាទី សូមស្នើ អ្នកគ្រប់គ្រងកំពូល។",
   "prof.saveDetails": "រក្សាទុកព័ត៌មាន",
   "prof.changePassword": "ប្តូរពាក្យសម្ងាត់",
   "prof.currentPassword": "ពាក្យសម្ងាត់បច្ចុប្បន្ន",
@@ -2142,7 +2169,7 @@ const KM: Record<TextKey, string> = {
 
   // System Settings page
   "set.intro": "បញ្ជីដែលគ្រប់ទម្រង់បែបបទប្រើ។ ការកែប្រែមានប្រសិទ្ធភាពភ្លាមៗសម្រាប់គ្រប់គ្នា។ ព្រឹត្តិការណ៍ និងគូប្រកួតដែលបានរក្សាទុករួចនៅរក្សាតម្លៃដដែល។",
-  "set.readOnly": "អ្នកអាចមើលបញ្ជីទាំងនេះបាន។ មានតែ Super Admin ប៉ុណ្ណោះដែលអាចកែប្រែ។",
+  "set.readOnly": "អ្នកអាចមើលបញ្ជីទាំងនេះបាន។ មានតែ អ្នកគ្រប់គ្រងកំពូល ប៉ុណ្ណោះដែលអាចកែប្រែ។",
   "set.lists": "បញ្ជី",
   "set.tab.weight-classes": "ប្រភេទទម្ងន់",
   "set.tab.venues": "ទីកន្លែងប្រកួត",
@@ -2507,7 +2534,7 @@ const KM: Record<TextKey, string> = {
   "fed.intro2": "អំពីសហព័ន្ធ",
   "fed.intro3": " លើគេហទំព័រអ្នកគាំទ្រ។ ផ្នែកដែលអ្នកទុកទទេ មិនបង្ហាញលើគេហទំព័រទេ។",
   "fed.introSuper": " អ្នកជាអ្នកពិនិត្យ និងផ្សព្វផ្សាយការកែប្រែ។",
-  "fed.introOfficer": " Super Admin ជាអ្នកពិនិត្យ និងផ្សព្វផ្សាយការកែប្រែរបស់អ្នក។",
+  "fed.introOfficer": " អ្នកគ្រប់គ្រងកំពូល ជាអ្នកពិនិត្យ និងផ្សព្វផ្សាយការកែប្រែរបស់អ្នក។",
   "fed.publishedAt": "បានផ្សព្វផ្សាយ {when}",
   "fed.publishedAtBy": "បានផ្សព្វផ្សាយ {when} ដោយ {who}",
   "fed.notPublished": "មិនទាន់ផ្សព្វផ្សាយ",
@@ -2594,8 +2621,8 @@ const KM: Record<TextKey, string> = {
   "kb.publish": "ផ្សព្វផ្សាយ",
   "kb.unpublishedMsg": "បានដកការផ្សព្វផ្សាយ — Hub លែងប្រើអត្ថបទនេះហើយ។",
   "kb.unpublish": "ដកការផ្សព្វផ្សាយ",
-  "kb.locked": "អត្ថបទនេះបានផ្សព្វផ្សាយហើយ ដូច្នេះមានតែ Super Admin ប៉ុណ្ណោះដែលអាចកែប្រែបាន។ សូមស្នើ Super Admin ឲ្យកែប្រែ ឬដកការផ្សព្វផ្សាយជូនអ្នក។",
-  "kb.draftNote": "KUNKHMER HUB មិនប្រើសេចក្តីព្រាងទេ។ ពេលរួចរាល់ សូមស្នើ Super Admin ឲ្យពិនិត្យ និងផ្សព្វផ្សាយ។",
+  "kb.locked": "អត្ថបទនេះបានផ្សព្វផ្សាយហើយ ដូច្នេះមានតែ អ្នកគ្រប់គ្រងកំពូល ប៉ុណ្ណោះដែលអាចកែប្រែបាន។ សូមស្នើ អ្នកគ្រប់គ្រងកំពូល ឲ្យកែប្រែ ឬដកការផ្សព្វផ្សាយជូនអ្នក។",
+  "kb.draftNote": "KUNKHMER HUB មិនប្រើសេចក្តីព្រាងទេ។ ពេលរួចរាល់ សូមស្នើ អ្នកគ្រប់គ្រងកំពូល ឲ្យពិនិត្យ និងផ្សព្វផ្សាយ។",
   "kb.topic": "ប្រធានបទ",
   "kb.order": "លំដាប់ក្នុងប្រធានបទ",
   "kb.language": "ភាសា",
@@ -2622,7 +2649,7 @@ const KM: Record<TextKey, string> = {
   "kb.intro2": "បានផ្សព្វផ្សាយ",
   "kb.intro3": "ប៉ុណ្ណោះ។",
   "kb.introSuper": " អ្នកជាអ្នកពិនិត្យ និងផ្សព្វផ្សាយ។",
-  "kb.introOfficer": " Super Admin ជាអ្នកពិនិត្យ និងផ្សព្វផ្សាយ។",
+  "kb.introOfficer": " អ្នកគ្រប់គ្រងកំពូល ជាអ្នកពិនិត្យ និងផ្សព្វផ្សាយ។",
   "kb.all": "ទាំងអស់",
   "kb.drafts": "សេចក្តីព្រាង",
   "kb.published": "បានផ្សព្វផ្សាយ",
@@ -2696,6 +2723,32 @@ const KM: Record<TextKey, string> = {
   "hub.prev": "ទំព័រមុន",
   "hub.next": "ទំព័របន្ទាប់",
   "hub.page": "ទំព័រ {page} នៃ {pages}",
+  "sa.intro": "សួរអំពីលទ្ធផលដែលនៅខ្វះ ទិន្នន័យកីឡាករ កម្មវិធីប្រកួត និងសេចក្ដីព្រាង។ វាអានកំណត់ត្រារបស់សហព័ន្ធ ហើយភ្ជាប់ទៅទំព័រដែលអ្នកត្រូវធ្វើការ — វាមិនកែប្រែអ្វីទាំងអស់។",
+  "sa.newConversation": "ការសន្ទនាថ្មី",
+  "sa.offBefore": "ជំនួយការត្រូវបានបិទ៖ KUNKHMER HUB មិនទាន់បានរៀបចំនៅលើម៉ាស៊ីនមេនេះទេ (គ្មាន ",
+  "sa.offMiddle": " ឬ ",
+  "sa.offAfter": ")។",
+  "sa.tryAsking": "សាកសួរ",
+  "sa.s1": "តើមានបញ្ហាទិន្នន័យអ្វីខ្លះ ដែលខ្ញុំគួរកែមុនគេ?",
+  "sa.s2": "តើកម្មវិធីប្រកួតកន្លងមកណាខ្លះ ដែលនៅខ្វះលទ្ធផល?",
+  "sa.s3": "តើមានកីឡាករដែលទំនងជាចុះឈ្មោះស្ទួនគ្នាទេ?",
+  "sa.s4": "តើកីឡាករណាខ្លះ ដែលខ្វះរូបថត ឬក្លឹប?",
+  "sa.s5": "តើគូប្រកួតខាងមុខណាខ្លះ ដែលមិនទាន់មានអាជ្ញាកណ្ដាល?",
+  "sa.s6": "តើសេចក្ដីព្រាងណាខ្លះ ដែលមិនទាន់ផ្សព្វផ្សាយ?",
+  "sa.s7": "តើមានកម្មវិធីប្រកួតអ្វីខ្លះនៅខាងមុខ?",
+  "sa.looking": "កំពុងពិនិត្យកំណត់ត្រា…",
+  "sa.helpfulQ": "មានប្រយោជន៍ទេ?",
+  "sa.helpful": "មានប្រយោជន៍",
+  "sa.notHelpful": "មិនមានប្រយោជន៍",
+  "sa.yourQuestion": "សំណួររបស់អ្នក",
+  "sa.offPlaceholder": "ជំនួយការត្រូវបានបិទ",
+  "sa.placeholder": "សួរជាភាសាអង់គ្លេស ឬខ្មែរ…",
+  "sa.answering": "កំពុងឆ្លើយ…",
+  "sa.ask": "សួរ",
+  "sa.footer": "បង្កើតដោយ AI ពីកំណត់ត្រា KKF — សូមពិនិត្យមុនធ្វើសកម្មភាព។ សំណួររបស់អ្នកត្រូវបានរក្សាទុកជាមួយឈ្មោះរបស់អ្នក ដើម្បីពិនិត្យនៅក្នុង ចម្លើយរបស់ Hub ហើយរាប់បញ្ចូលក្នុងថវិកា AI ប្រចាំខែ។",
+  "sa.error": "ជំនួយការមិនអាចឆ្លើយបានទេ។ សូមព្យាយាមម្ដងទៀត។",
+  "users.role.Super Admin": "អ្នកគ្រប់គ្រងកំពូល",
+  "users.role.KKF Officer": "មន្ត្រី KKF",
 };
 
 const KM_DIGITS = "០១២៣៤៥៦៧៨៩";
@@ -2710,6 +2763,17 @@ export function formatDay(value: string | null | undefined, lang: Lang, withWeek
   if (lang === "km") return `${khmerDigits(d.getUTCDate())} ${KM_MONTHS[d.getUTCMonth()]} ${khmerDigits(d.getUTCFullYear())}`;
   return d.toLocaleDateString("en-GB", { ...(withWeekday ? { weekday: "short" } : {}), day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 }
+
+/** Dictionary key for a role's display name (roles are stored in English; shown in the chosen language). */
+const ROLE_NAME: Record<string, TextKey> = {
+  "Super Admin": "users.role.Super Admin",
+  "KKF Officer": "users.role.KKF Officer",
+  Organizer: "users.role.Organizer",
+  "Club/Gym": "users.role.Club/Gym",
+  Referee: "off.role.Referee",
+  Judge: "off.role.Judge",
+};
+export const roleNameKey = (role: string | null | undefined): TextKey | undefined => (role ? ROLE_NAME[role] : undefined);
 
 export function useT() {
   const lang = useLang();

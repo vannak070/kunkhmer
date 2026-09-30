@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { Bot, Eraser, Send, ThumbsDown, ThumbsUp } from "lucide-react";
 import { api } from "../utils/api";
 import { AssistantMarkdown } from "../components/AssistantMarkdown";
+import { useT, type TextKey } from "../i18n/program";
 
 type Message = { role: "user" | "assistant"; content: string; logId?: string | null; feedback?: 1 | -1; streaming?: boolean };
 
@@ -18,15 +19,8 @@ const HISTORY = 11;
 const STORAGE_KEY = "kk-staff-assistant";
 const CONVERSATION_KEY = "kk-staff-assistant-conversation";
 
-const SAMPLES = [
-  "What is waiting for my approval?",
-  "Which past fight cards still need results?",
-  "Are there likely duplicate fighters?",
-  "Which fighters are missing a photo or a club?",
-  "Which upcoming bouts have no referee yet?",
-  "What drafts haven't been published?",
-  "តើមានកីឡាករប៉ុន្មាននាក់កំពុងរង់ចាំការផ្ទៀងផ្ទាត់?",
-];
+/** Sample questions; in Khmer they are asked in Khmer, so the assistant answers in Khmer. */
+const SAMPLES: TextKey[] = ["sa.s1", "sa.s2", "sa.s3", "sa.s4", "sa.s5", "sa.s6", "sa.s7"];
 
 function conversationId(): string {
   try {
@@ -51,6 +45,7 @@ function loadMessages(): Message[] {
 }
 
 export function StaffAssistant() {
+  const { t } = useT();
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [messages, setMessages] = useState<Message[]>(loadMessages);
   const [input, setInput] = useState("");
@@ -98,7 +93,7 @@ export function StaffAssistant() {
       // Drop the unanswered question (and any half-written answer) and give the text back.
       setMessages((m) => (m[m.length - 1]?.streaming ? m.slice(0, -2) : m.slice(0, -1)));
       setInput(content);
-      setError(e instanceof Error && e.message ? e.message : "The assistant couldn't answer. Please try again.");
+      setError(e instanceof Error && e.message ? e.message : t("sa.error"));
     } finally {
       sending.current = false;
       setBusy(false);
@@ -127,11 +122,9 @@ export function StaffAssistant() {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
-            <Bot className="w-7 h-7 text-primary" aria-hidden /> Staff assistant
+            <Bot className="w-7 h-7 text-primary" aria-hidden /> {t("menu.assistant")}
           </h1>
-          <p className="text-slate-600 mt-1">
-            Ask about approvals, missing results, fighter data and drafts. It reads the federation's records and links to the page where you act — it never changes anything.
-          </p>
+          <p className="text-slate-600 mt-1">{t("sa.intro")}</p>
         </div>
         {messages.length > 0 && (
           <button
@@ -140,22 +133,22 @@ export function StaffAssistant() {
             disabled={busy}
             className="h-10 px-4 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-700 inline-flex items-center gap-2 hover:border-slate-300 disabled:opacity-50"
           >
-            <Eraser className="w-4 h-4" aria-hidden /> New conversation
+            <Eraser className="w-4 h-4" aria-hidden /> {t("sa.newConversation")}
           </button>
         )}
       </header>
 
       {off && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          The assistant is off: KUNKHMER HUB isn't set up on this server (no <code>ANTHROPIC_API_KEY</code>, or <code>AI_ENABLED=false</code>).
+          {t("sa.offBefore")}<code>ANTHROPIC_API_KEY</code>{t("sa.offMiddle")}<code>AI_ENABLED=false</code>{t("sa.offAfter")}
         </div>
       )}
 
       {messages.length === 0 ? (
         <section className="rounded-2xl border border-slate-200 bg-white p-5">
-          <p className="text-sm font-medium text-slate-600 mb-3">Try asking</p>
+          <p className="text-sm font-medium text-slate-600 mb-3">{t("sa.tryAsking")}</p>
           <div className="flex flex-wrap gap-2">
-            {SAMPLES.map((q) => (
+            {SAMPLES.map((key) => t(key)).map((q) => (
               <button
                 key={q}
                 type="button"
@@ -177,14 +170,14 @@ export function StaffAssistant() {
               </div>
             ) : (
               <div key={i} className="rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 space-y-1 break-words">
-                {m.content ? <AssistantMarkdown text={m.content} /> : <p className="text-slate-500">Looking through the records…</p>}
+                {m.content ? <AssistantMarkdown text={m.content} /> : <p className="text-slate-500">{t("sa.looking")}</p>}
                 {!m.streaming && m.logId && (
                   <div className="pt-2 flex items-center gap-2 text-xs text-slate-500">
-                    <span>Helpful?</span>
-                    <button type="button" onClick={() => rate(i, 1)} aria-pressed={m.feedback === 1} aria-label="Helpful" className={`p-1.5 rounded-lg hover:bg-slate-100 ${m.feedback === 1 ? "text-emerald-600" : ""}`}>
+                    <span>{t("sa.helpfulQ")}</span>
+                    <button type="button" onClick={() => rate(i, 1)} aria-pressed={m.feedback === 1} aria-label={t("sa.helpful")} className={`p-1.5 rounded-lg hover:bg-slate-100 ${m.feedback === 1 ? "text-emerald-600" : ""}`}>
                       <ThumbsUp className="w-4 h-4" />
                     </button>
-                    <button type="button" onClick={() => rate(i, -1)} aria-pressed={m.feedback === -1} aria-label="Not helpful" className={`p-1.5 rounded-lg hover:bg-slate-100 ${m.feedback === -1 ? "text-red-600" : ""}`}>
+                    <button type="button" onClick={() => rate(i, -1)} aria-pressed={m.feedback === -1} aria-label={t("sa.notHelpful")} className={`p-1.5 rounded-lg hover:bg-slate-100 ${m.feedback === -1 ? "text-red-600" : ""}`}>
                       <ThumbsDown className="w-4 h-4" />
                     </button>
                   </div>
@@ -205,7 +198,7 @@ export function StaffAssistant() {
         }}
         className="sticky bottom-4 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm flex items-end gap-2"
       >
-        <label htmlFor="assistant-question" className="sr-only">Your question</label>
+        <label htmlFor="assistant-question" className="sr-only">{t("sa.yourQuestion")}</label>
         <textarea
           id="assistant-question"
           value={input}
@@ -218,7 +211,7 @@ export function StaffAssistant() {
           }}
           rows={1}
           disabled={off}
-          placeholder={off ? "The assistant is off" : "Ask in English or Khmer…"}
+          placeholder={off ? t("sa.offPlaceholder") : t("sa.placeholder")}
           className="flex-1 resize-none max-h-40 min-h-[44px] px-3 py-2.5 text-sm outline-none bg-transparent disabled:opacity-50"
         />
         <button
@@ -226,12 +219,10 @@ export function StaffAssistant() {
           disabled={off || busy || !input.trim()}
           className="h-11 px-4 rounded-xl bg-primary text-white text-sm font-medium inline-flex items-center gap-2 disabled:opacity-40"
         >
-          <Send className="w-4 h-4" aria-hidden /> {busy ? "Answering…" : "Ask"}
+          <Send className="w-4 h-4" aria-hidden /> {busy ? t("sa.answering") : t("sa.ask")}
         </button>
       </form>
-      <p className="text-xs text-slate-500 -mt-3">
-        AI-generated from KKF records — check before acting. Your questions are saved with your name for review in Hub answers and count toward the monthly AI budget.
-      </p>
+      <p className="text-xs text-slate-500 -mt-3">{t("sa.footer")}</p>
     </div>
   );
 }
