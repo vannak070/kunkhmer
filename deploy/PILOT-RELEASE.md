@@ -4,7 +4,7 @@
 |---|---|
 | **Release** | `v1.0.0-pilot.1` (pilot with real data, closed group) — **starts empty: no data from the dev computer** (owner decision 2026-10-01) |
 | **Prepared** | 2026-10-01, from `dev` at `d926b7e7` plus this guide (see "Git" below) |
-| **Server** | Pilot server reached by its **IP address** (no domain yet); the owner sends the IP, then the access method is chosen (see "Reaching the server without a domain") |
+| **Server** | **Live since 2026-10-01** on DigitalOcean 104.248.149.103: fan site `https://kkf.yarvorax.com`, admin `https://admin.kkf.yarvorax.com` (moved from the sslip.io names on 2026-10-01; those no longer work) (running commit `c53c43d3`; see `claude/updates/go-live-setup.md`) |
 
 ## What is in this release
 
@@ -96,12 +96,10 @@ Moving to a real domain later = change `SITE_DOMAIN` / `ADMIN_DOMAIN` in `.env` 
 
 ## Git (the owner runs these)
 
-This guide and the (unused for now) clean-copy scripts are not committed yet. To cut the release:
+The release files were committed and pushed to `dev` in `c53c43d3` (2026-10-01). Still to do — publish
+`main` and tag the release:
 
 ```bash
-git add deploy/export-clean.sh deploy/pilot-cleanup.sql deploy/README.md deploy/PILOT-RELEASE.md claude/updates/pilot-clean-data-move.md claude/updates/pilot-admin-password-and-router.md claude/updates/go-live-setup.md
-git commit -m "Prepare pilot release 1"
-git push origin dev
 git checkout main && git merge --ff-only dev && git push -u origin main
 git tag -a v1.0.0-pilot.1 -m "Pilot release 1" && git push origin v1.0.0-pilot.1
 git checkout dev

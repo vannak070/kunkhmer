@@ -74,4 +74,25 @@ image target but nothing runs the built sites, handles HTTPS, routes `/api` / `/
 - Empty-start rehearsal (production bundle, ports 8480/8943): 21 migrations, admin from SEED_ADMIN_PASSWORD
   (admin123 refused), all content 0, settings lists 14/7/2/8, fan site + admin pages 200 over HTTPS, robots
   Disallow. Torn down afterwards.
+### 2026-10-01 — pilot server live
+- Server: DigitalOcean droplet "KUNKHMER-Digital" (SGP1, 1 GB RAM + existing 2 GB swap, 25 GB disk), IP
+  104.248.149.103, Ubuntu 24.04, Docker 29. It ran the owner's LiveStock Fattening ERP: backed up first
+  (database dump restore-tested, full project, nginx/certificates/site files; on the owner's Mac in
+  `~/Backups/LiveStock-server-2026-10-01/`, also `/root/server-backup-2026-10-01` on the server), then pm2,
+  nginx and the server's own PostgreSQL 16 stopped and disabled — files and database kept on disk.
+- Addresses (owner choice, no domain yet): `https://104-248-149-103.sslip.io` (fan site) and
+  `https://admin.104-248-149-103.sslip.io` (admin); Let's Encrypt certificates issued on first start.
+- Code: `/root/kunkhmer` cloned at `c53c43d3` (`main` / tag `v1.0.0-pilot.1` not pushed yet). `deploy/.env`
+  written on the server (fresh secrets, `SITE_INDEXING=false`, `ANTHROPIC_API_KEY` empty, chmod 600); the first
+  admin password is on the owner's Mac only. First image build failed on an npm network reset; rebuilt one image
+  at a time.
+- Empty start (owner decision): 21 migrations, admin seeded from `SEED_ADMIN_PASSWORD`, settings lists 14/7/2/8,
+  everything else empty. Checked from outside: fan site, `/fighters`, `/federation`, admin (login page, deep
+  link), API, valid certificates, HTTP → HTTPS, HSTS, robots "Disallow". First backup by hand (76 KB) copied to
+  the owner's Mac (`~/Backups/kunkhmer-pilot-server/`). Memory: stack ≈ 230 MB, 370 MB available.
+- Known: the bare IP `http://104.248.149.103` now redirects to `https://104.248.149.103`, which has no
+  certificate — testers must use the sslip.io addresses.
 
+
+## 2026-10-01 — temporary domain
+Owner pointed `kkf.yarvorax.com` and `admin.kkf.yarvorax.com` (A records) at 104.248.149.103. On the server `deploy/.env` now has `SITE_DOMAIN=kkf.yarvorax.com`, `ADMIN_DOMAIN=admin.kkf.yarvorax.com` (old file kept as `.env.bak-sslip`, chmod 600); `docker compose -f docker-compose.prod.yml up -d` recreated backend + web; Caddy got new Let's Encrypt certificates. The sslip.io names were dropped on purpose. No data moved.

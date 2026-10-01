@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built 2026-10-01 (uncommitted) — **not used for pilot 1**: the owner decided the pilot server starts empty, with no dev data. Kept for a later move; the generated copy files were deleted |
+| **Status** | Built 2026-10-01 (committed c53c43d3) — **not used for pilot 1**: the owner decided the pilot server starts empty, with no dev data. Kept for a later move; the generated copy files were deleted |
 | **Jira** | n/a |
 | **Feature** | claude/updates/go-live-setup.md, claude/updates/pilot-admin-password-and-router.md |
 | **Requested by** | vannak070 (2026-10-01: "go ahead with the clean data move") |
