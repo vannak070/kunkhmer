@@ -102,6 +102,29 @@ sh restore.sh transfer/db_<date>.dump transfer/uploads_<date>.tar.gz
 rm -r transfer
 ```
 
+#### Clean copy for the pilot
+
+For the pilot use `export-clean.sh` instead of `export-local.sh`. It makes the same kind of copy but first
+leaves out the demo and test records (the 3 and 10 Oct 2026 demo fight nights with their bouts, the 9 demo
+officials, deleted QA/demo fighters, the test fan account and the half-filled private fighter record — see
+`pilot-cleanup.sql`), and it packs only the pictures and PDFs the remaining data still uses. Your computer's
+database is not changed: the clean-up runs on a temporary copy.
+
+```bash
+# On your computer, in the kunkhmer folder, with the local system running:
+sh deploy/export-clean.sh
+scp -r deploy/transfer root@SERVER_IP:kunkhmer/deploy/
+
+# On the server, after the first start (step 2):
+cd kunkhmer/deploy
+sh restore.sh transfer/db_clean_<date>.dump transfer/uploads_clean_<date>.tar.gz
+rm -r transfer
+```
+
+The copy keeps only the `admin` account, with its password from your computer (`admin123`): sign in at once
+and change it under My profile. If the script stops with "expected … found …", the data on your computer has
+changed since the clean-up was agreed — nothing was exported; update `pilot-cleanup.sql` first.
+
 ## 6. Useful commands
 
 ```bash

@@ -61,3 +61,17 @@ image target but nothing runs the built sites, handles HTTPS, routes `/api` / `/
   5 fighters, 2 clubs, 67 published articles, the (empty) federation row; sessions and Hub logs empty; a dev
   picture served through Caddy. Stack, volumes, images, `.env` and transfer files removed afterwards.
 - Still open: the owner's VPS + domain (see `deploy/README.md`).
+### 2026-10-01 — pilot release 1 prepared (`deploy/PILOT-RELEASE.md`)
+- Backend type check clean; contract suite 275/275.
+- Dress rehearsal with the production bundle on the owner's Mac (ports 8480/8943): fresh start applied all 21
+  migrations; the clean pilot copy (`export-clean.sh`, `updates/pilot-clean-data-move.md`) restored with
+  `restore.sh`; fan site, `/federation`, admin + deep links through HTTPS; 27 fighters, 5 clubs, 1 event,
+  2 news, 3 videos, 2 sponsors, 3 international partners from the API; picture served; admin login; robots
+  still "Disallow"; manual backup 168 KB + 6 MB. Stack, volumes, images, `.env` and backups removed.
+- Release tag proposed: `v1.0.0-pilot.1` on `main` (fast-forward from `dev`); the owner commits, merges and tags.
+- Owner decisions the same day: the pilot server starts **empty** (no dev data) and is reached by its IP until a
+  domain is chosen; access method (free sslip.io name with real HTTPS suggested) decided once the IP is known.
+- Empty-start rehearsal (production bundle, ports 8480/8943): 21 migrations, admin from SEED_ADMIN_PASSWORD
+  (admin123 refused), all content 0, settings lists 14/7/2/8, fan site + admin pages 200 over HTTPS, robots
+  Disallow. Torn down afterwards.
+

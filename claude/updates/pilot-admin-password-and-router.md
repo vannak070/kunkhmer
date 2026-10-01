@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-09-30, uncommitted) |
+| **Status** | Done (2026-09-30, committed d926b7e7) |
 | **Jira** | n/a |
 | **Feature** | claude/updates/go-live-setup.md, claude/features/public-site.md |
 | **Requested by** | vannak070 (2026-09-30: production-readiness review for pilot testing → "do fixes 2 and 5 now") |
