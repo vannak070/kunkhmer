@@ -17,7 +17,7 @@ Keep the registry of Kun Khmer clubs/gyms and their fighters.
 | PUT | `/clubs/:id` | STAFF | only given fields |
 | DELETE | `/clubs/:id` | STAFF | fighters/users/videos keep existing with `club_id` set to null |
 
-Shape: snake_case row (`name_khmer`, `head_coach`, `rating` number, `logo_url`, …). Club logos: `features/club-logos.md` (`logoUrl` input, `""` clears).
+Shape: snake_case row (`name_khmer`, `head_coach`, `latitude` / `longitude` (map pin, both or neither, `updates/club-map-picker.md`), `association` (free text, optional: the association the club registers under, `updates/club-association.md`), `rating` number, `logo_url`, …). Club logos: `features/club-logos.md` (`logoUrl` input, `""` clears).
 
 ## Frontend
 - Admin: `Clubs.tsx`, `AddClub.tsx` (new/edit, has a location map picker), `ClubDetail.tsx`.

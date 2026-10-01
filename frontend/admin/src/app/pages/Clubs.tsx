@@ -44,7 +44,8 @@ export function Clubs() {
   const filteredClubs = clubs.filter(club => {
     const matchesSearch = 
       (club.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (club.location || "").toLowerCase().includes(searchTerm.toLowerCase());
+      (club.location || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (club.association || "").toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = 
       statusFilter === "all" || 
@@ -77,7 +78,7 @@ export function Clubs() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <input
             type="text"
-            placeholder="Search clubs by name or location..."
+            placeholder="Search clubs by name, location or association..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-white border border-border/80 rounded-xl pl-11 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all"
@@ -170,6 +171,7 @@ export function Clubs() {
                       <MapPin className="w-3.5 h-3.5 text-secondary shrink-0" />
                       <span className="text-xs font-medium">{club.location}</span>
                     </div>
+                    {club.association && <p lang="km" className="-mt-2 mb-4 text-xs font-medium text-slate-600 line-clamp-1">{club.association}</p>}
 
                     <div className="grid grid-cols-2 gap-3 mb-5">
                       <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px]">

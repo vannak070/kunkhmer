@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, Box, Gavel, Loader2, MapPin, Pencil, Plus, Scale, Settings, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Box, Gavel, Landmark, Loader2, MapPin, Pencil, Plus, Scale, Settings, Trash2 } from "lucide-react";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { GLOVE_SIZES } from "../data/masterData";
@@ -106,6 +106,17 @@ const TABS: ListTab[] = [
       { key: "brand", column: "brand", label: "set.f.brand", required: true },
       { key: "model", column: "model", label: "set.f.model" },
     ],
+  },
+  {
+    key: "associations",
+    label: "set.tab.associations",
+    add: "set.add.associations",
+    added: "set.added.associations",
+    icon: Landmark,
+    hint: "set.hint.associations",
+    title: (r) => r.name,
+    detail: () => "",
+    fields: [{ key: "name", column: "name", label: "set.f.name", required: true, placeholder: "set.ph.association" }],
   },
 ];
 

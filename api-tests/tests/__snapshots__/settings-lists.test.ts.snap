@@ -1,5 +1,22 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`settings list: associations > lets the Super Admin add, edit, deactivate and delete an entry 1`] = `
+{
+  "body": {
+    "data": {
+      "active": "boolean",
+      "created_at": "datetime(.000000Z)",
+      "id": "uuid",
+      "name": "string",
+      "sort_order": "number",
+      "updated_at": "datetime(.000000Z)",
+    },
+    "success": "boolean",
+  },
+  "status": 201,
+}
+`;
+
 exports[`settings list: bout-rules > comes with the starting entries, readable by anyone 1`] = `
 {
   "active": "boolean",

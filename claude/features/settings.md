@@ -9,7 +9,7 @@
 
 ## Goal
 The lists every form uses — weight classes, venues, bout rule presets, glove
-brands — are shared by everyone (database, not the browser), edited in one
+brands, club associations — are shared by everyone (database, not the browser), edited in one
 place by the Super Admin, and read by the fan site. A Help page explains the
 system to each role in English and Khmer.
 
@@ -25,12 +25,13 @@ system to each role in English and Khmer.
 | `venues` | name, region, description, latitude, longitude (both or neither) |
 | `bout_rules` | name, name_khmer, rounds (1–12), round_time (minutes, 1–5), knockdown_limit (0–10), glove_size |
 | `glove_brands` | brand, model |
+| `associations` | name (migration `20261001000002`; starts empty; the Add/Edit club dropdown, `updates/club-association.md`) |
 All have `sort_order`, `active`, timestamps. The migration seeds the lists the
 admin kept in the browser before (14 weight ranges, 7 venues, 2 presets, 8
 gloves). Events and bouts copy the values, so edits never change past records.
 
 ## API (`backend/src/modules/settings/lists.ts`)
-`/settings/{weight-classes,venues,bout-rules,glove-brands}`:
+`/settings/{weight-classes,venues,bout-rules,glove-brands,associations}`:
 GET public (active, in order; `?all=1` with a KKF staff token adds inactive),
 POST / PUT `/:id` / DELETE `/:id` Super Admin. Snake_case rows with numbers
 as numbers; `sortOrder` and `active` on PUT.

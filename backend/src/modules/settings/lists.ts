@@ -1,5 +1,5 @@
 /**
- * Settings lists (admin Phase 5)  →  /api/settings/{weight-classes,venues,bout-rules,glove-brands}
+ * Settings lists (admin Phase 5)  →  /api/settings/{weight-classes,venues,bout-rules,glove-brands,associations}
  *
  *   GET    /settings/<list>        public: active entries in order; ?all=1 with a KKF staff token adds inactive ones
  *   POST   /settings/<list>        Super Admin → 201
@@ -140,6 +140,19 @@ export const LISTS: ListConfig[] = [
       return data;
     },
     toRow: (r) => ({ id: r.id, brand: r.brand, model: r.model, ...common(r) }),
+  },
+  {
+    path: "associations",
+    label: "Association",
+    delegate: () => prisma.association,
+    required: ["name"],
+    notNull: ["name"],
+    fields: (input) => {
+      const data: Fields = {};
+      text(input, data, "name", "name", 255);
+      return data;
+    },
+    toRow: (r) => ({ id: r.id, name: r.name, ...common(r) }),
   },
 ];
 

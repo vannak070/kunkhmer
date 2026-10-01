@@ -4,6 +4,7 @@ exports[`clubs CRUD > creates a club with all fields 1`] = `
 {
   "body": {
     "data": {
+      "association": "string",
       "created_at": "datetime(.000000Z)",
       "description": "string",
       "email": "string",
@@ -11,8 +12,10 @@ exports[`clubs CRUD > creates a club with all fields 1`] = `
       "head_coach": "string",
       "id": "uuid",
       "image": "string",
+      "latitude": "null",
       "location": "string",
       "logo_url": "string",
+      "longitude": "null",
       "name": "string",
       "name_khmer": "string",
       "phone": "string",
@@ -30,6 +33,7 @@ exports[`clubs CRUD > deletes a club 1`] = `
 {
   "body": {
     "data": {
+      "association": "string",
       "created_at": "datetime(.000000Z)",
       "description": "string",
       "email": "string",
@@ -37,8 +41,10 @@ exports[`clubs CRUD > deletes a club 1`] = `
       "head_coach": "string",
       "id": "uuid",
       "image": "string",
+      "latitude": "null",
       "location": "string",
       "logo_url": "string",
+      "longitude": "null",
       "name": "string",
       "name_khmer": "string",
       "phone": "string",
@@ -55,6 +61,7 @@ exports[`clubs CRUD > deletes a club 1`] = `
 
 exports[`clubs CRUD > lists and shows clubs publicly, with a fighter count > list item 1`] = `
 {
+  "association": "string",
   "created_at": "datetime(.000000Z)",
   "description": "string",
   "email": "string",
@@ -63,8 +70,10 @@ exports[`clubs CRUD > lists and shows clubs publicly, with a fighter count > lis
   "head_coach": "string",
   "id": "uuid",
   "image": "string",
+  "latitude": "null",
   "location": "string",
   "logo_url": "string",
+  "longitude": "null",
   "name": "string",
   "name_khmer": "string",
   "phone": "string",
@@ -78,6 +87,7 @@ exports[`clubs CRUD > lists and shows clubs publicly, with a fighter count > sho
 {
   "body": {
     "data": {
+      "association": "string",
       "created_at": "datetime(.000000Z)",
       "description": "string",
       "email": "string",
@@ -86,8 +96,10 @@ exports[`clubs CRUD > lists and shows clubs publicly, with a fighter count > sho
       "head_coach": "string",
       "id": "uuid",
       "image": "string",
+      "latitude": "null",
       "location": "string",
       "logo_url": "string",
+      "longitude": "null",
       "name": "string",
       "name_khmer": "string",
       "phone": "string",
@@ -115,6 +127,7 @@ exports[`clubs CRUD > updates only the given fields 1`] = `
 {
   "body": {
     "data": {
+      "association": "string",
       "created_at": "datetime(.000000Z)",
       "description": "string",
       "email": "string",
@@ -122,8 +135,10 @@ exports[`clubs CRUD > updates only the given fields 1`] = `
       "head_coach": "string",
       "id": "uuid",
       "image": "string",
+      "latitude": "null",
       "location": "string",
       "logo_url": "string",
+      "longitude": "null",
       "name": "string",
       "name_khmer": "string",
       "phone": "string",

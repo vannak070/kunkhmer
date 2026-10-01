@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import {
-  ArrowLeft, ArrowRight, Building2, CalendarDays, Crown, ExternalLink, Globe, Mail, MapPin, Phone, PlayCircle, Radio,
+  ArrowLeft, ArrowRight, Building2, CalendarDays, Crown, ExternalLink, Globe, Landmark, Mail, MapPin, Phone, PlayCircle, Radio,
   Swords, Trophy, Tv, UserRound, Users,
 } from "lucide-react";
 import { SiteHeader } from "../components/layout/SiteHeader";
@@ -171,7 +171,11 @@ function Empty({ text }: { text: string }) {
   return <p className="rounded-2xl border border-dashed border-gray-300 bg-white p-5 text-sm text-gray-600">{text}</p>;
 }
 
-const mapsUrl = (place: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`;
+const mapsUrl = (place: string, pin?: { latitude?: number | null; longitude?: number | null }) =>
+  `https://www.google.com/maps/search/?api=1&query=${pin?.latitude != null && pin?.longitude != null ? `${pin.latitude},${pin.longitude}` : encodeURIComponent(place)}`;
+
+/** OpenStreetMap embed centred on a club's pin (only rendered for clubs that have one). */
+const mapEmbedUrl = (lat: number, lng: number) => `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.006},${lat - 0.004},${lng + 0.006},${lat + 0.004}&layer=mapnik&marker=${lat},${lng}`;
 
 /** Month + year of the earliest event, e.g. "Jul 2026" (derived from the records, never entered). */
 function useSince() {
@@ -227,6 +231,7 @@ function ClubView({ club }: { club: any }) {
   const facts = [
     club.location && { icon: <MapPin className={`${iconCls} text-[var(--kk-red)]`} aria-hidden />, text: <span lang={textLang(club.location)}>{club.location}</span> },
     club.head_coach && { icon: <UserRound className={`${iconCls} text-[var(--kk-blue)]`} aria-hidden />, text: <span lang={textLang(club.head_coach)}>{t("club.headCoach", { name: club.head_coach })}</span> },
+    club.association && { icon: <Landmark className={`${iconCls} text-[var(--kk-blue)]`} aria-hidden />, text: <span lang={textLang(club.association)}>{t("club.associationLine", { name: club.association })}</span> },
     club.established && { icon: <CalendarDays className={`${iconCls} text-[var(--kk-blue)]`} aria-hidden />, text: t("club.established", { year: club.established }) },
   ].filter(Boolean) as { icon: ReactNode; text: ReactNode }[];
 
@@ -340,16 +345,25 @@ function ClubView({ club }: { club: any }) {
             )}
             <SideCard title={t("club.details")}>
               {club.head_coach && <DetailRow icon={<UserRound className={iconCls} />} label={t("partners.headCoach")}><span lang={textLang(club.head_coach)}>{club.head_coach}</span></DetailRow>}
+              {club.association && <DetailRow icon={<Landmark className={iconCls} />} label={t("club.associationLabel")}><span lang={textLang(club.association)}>{club.association}</span></DetailRow>}
               {club.established && <DetailRow icon={<CalendarDays className={iconCls} />} label={t("club.foundedLabel")}>{club.established}</DetailRow>}
               {classes > 0 && <DetailRow icon={<Trophy className={iconCls} />} label={t("club.weightClasses")}>{tn("club.classesCount", classes)}</DetailRow>}
               {club.location && (
                 <DetailRow icon={<MapPin className={iconCls} />} label={t("club.location")}>
                   <span lang={textLang(club.location)}>{club.location}</span>{" "}
-                  <a href={mapsUrl(club.location)} target="_blank" rel="noopener noreferrer" className="kk-focus text-[var(--kk-blue)] font-semibold hover:underline underline-offset-4 whitespace-nowrap">{t("club.map")}</a>
+                  <a href={mapsUrl(club.location, { latitude: club.latitude, longitude: club.longitude })} target="_blank" rel="noopener noreferrer" className="kk-focus text-[var(--kk-blue)] font-semibold hover:underline underline-offset-4 whitespace-nowrap">{t("club.map")}</a>
                 </DetailRow>
               )}
               {club.phone && <DetailRow icon={<Phone className={iconCls} />} label={t("club.phone")}><a href={`tel:${String(club.phone).replace(/\s+/g, "")}`} className="kk-focus hover:underline">{club.phone}</a></DetailRow>}
               {club.email && <DetailRow icon={<Mail className={iconCls} />} label={t("club.email")}><a href={`mailto:${club.email}`} className="kk-focus hover:underline break-all">{club.email}</a></DetailRow>}
+              {club.latitude != null && club.longitude != null && (
+                <iframe
+                  title={t("club.mapTitle", { club: club.name })}
+                  src={mapEmbedUrl(Number(club.latitude), Number(club.longitude))}
+                  loading="lazy"
+                  className="mt-3 w-full h-44 rounded-xl border border-gray-200"
+                />
+              )}
             </SideCard>
             <HubAskAbout questions={[t("hub.askFighterClub", { club: club.name }), t("hub.askClubContact", { club: club.name })]} />
           </aside>

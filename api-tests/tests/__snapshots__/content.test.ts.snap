@@ -131,6 +131,7 @@ exports[`videos > creates a video with related fighter and club 1`] = `
     "data": {
       "category": "string",
       "club": {
+        "association": "null",
         "created_at": "datetime(.000000Z)",
         "description": "null",
         "email": "null",
@@ -138,8 +139,10 @@ exports[`videos > creates a video with related fighter and club 1`] = `
         "head_coach": "null",
         "id": "uuid",
         "image": "null",
+        "latitude": "null",
         "location": "null",
         "logo_url": "null",
+        "longitude": "null",
         "name": "string",
         "name_khmer": "null",
         "phone": "null",
@@ -232,6 +235,7 @@ exports[`videos > lists and shows videos publicly > list item 1`] = `
 {
   "category": "string",
   "club": {
+    "association": "null",
     "created_at": "datetime(.000000Z)",
     "description": "null",
     "email": "null",
@@ -239,8 +243,10 @@ exports[`videos > lists and shows videos publicly > list item 1`] = `
     "head_coach": "null",
     "id": "uuid",
     "image": "null",
+    "latitude": "null",
     "location": "null",
     "logo_url": "null",
+    "longitude": "null",
     "name": "string",
     "name_khmer": "null",
     "phone": "null",
@@ -312,6 +318,7 @@ exports[`videos > updates a video 1`] = `
     "data": {
       "category": "string",
       "club": {
+        "association": "null",
         "created_at": "datetime(.000000Z)",
         "description": "null",
         "email": "null",
@@ -319,8 +326,10 @@ exports[`videos > updates a video 1`] = `
         "head_coach": "null",
         "id": "uuid",
         "image": "null",
+        "latitude": "null",
         "location": "null",
         "logo_url": "null",
+        "longitude": "null",
         "name": "string",
         "name_khmer": "null",
         "phone": "null",

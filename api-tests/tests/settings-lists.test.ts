@@ -13,6 +13,7 @@ const LISTS = {
   venues: () => ({ name: `Venue ${uniq()}`, region: "Kampot", description: "Riverside arena", latitude: 10.61, longitude: 104.18 }),
   "bout-rules": () => ({ name: `Rule ${uniq()}`, nameKhmer: "ច្បាប់", rounds: 3, roundTime: 3, knockdownLimit: 2, gloveSize: "10oz" }),
   "glove-brands": () => ({ brand: `Brand ${uniq()}`, model: "Pro" }),
+  associations: () => ({ name: `សមាគម ${uniq()}` }),
 } as const;
 type List = keyof typeof LISTS;
 
@@ -22,8 +23,10 @@ describe.each(Object.keys(LISTS) as List[])("settings list: %s", (list) => {
   it("comes with the starting entries, readable by anyone", async () => {
     const res = await get(path);
     expect(res.status).toBe(200);
-    expect(res.body.data.length).toBeGreaterThan(0);
     expect(res.body.data.every((r: any) => r.active)).toBe(true);
+    // Associations start empty: the Super Admin adds KKF's own list.
+    if (list === "associations") return expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.data.length).toBeGreaterThan(0);
     expect(shape(res.body.data[0])).toMatchSnapshot();
   });
 
@@ -64,6 +67,7 @@ describe("settings list rules", () => {
   it("needs a name", async () => {
     expect((await post("/settings/weight-classes", { minKg: 1, maxKg: 2 }, a.admin.token)).status).toBe(422);
     expect((await post("/settings/glove-brands", { model: "x" }, a.admin.token)).status).toBe(422);
+    expect((await post("/settings/associations", {}, a.admin.token)).status).toBe(422);
     const id = (await post("/settings/venues", LISTS.venues(), a.admin.token)).body.data.id;
     expect((await put(`/settings/venues/${id}`, { name: "" }, a.admin.token)).status).toBe(422);
   });

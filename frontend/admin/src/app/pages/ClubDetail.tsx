@@ -7,7 +7,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { ArrowLeft, CalendarDays, Crown, Mail, MapPin, Pencil, Phone, Plus, User } from "lucide-react";
+import { ArrowLeft, CalendarDays, Crown, Landmark, Mail, MapPin, Pencil, Phone, Plus, User } from "lucide-react";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { formatDay, useT } from "../i18n/program";
@@ -70,8 +70,9 @@ export function ClubDetail() {
   const register = `/home/fighters/kunkhmer/new?clubId=${club.id}`;
   const canRegister = permissions.hasPermission("fighters.create");
   const facts = [
-    club.location ? <span key="l" className="inline-flex items-center gap-1.5"><MapPin className="w-4 h-4" aria-hidden /> {club.location}</span> : null,
+    club.location ? <span key="l" className="inline-flex items-center gap-1.5"><MapPin className="w-4 h-4" aria-hidden /> {club.location}{" "}<a href={`https://www.google.com/maps/search/?api=1&query=${club.latitude != null && club.longitude != null ? `${club.latitude},${club.longitude}` : encodeURIComponent(club.location)}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">{t("club.openMap")}</a></span> : null,
     club.head_coach ? <span key="c" className="inline-flex items-center gap-1.5"><User className="w-4 h-4" aria-hidden /> {t("club.coach", { name: club.head_coach })}</span> : null,
+    club.association ? <span key="a" lang="km" className="inline-flex items-center gap-1.5"><Landmark className="w-4 h-4" aria-hidden /> {t("club.association", { name: club.association })}</span> : null,
     club.established ? <span key="e" className="inline-flex items-center gap-1.5"><CalendarDays className="w-4 h-4" aria-hidden /> {t("club.since", { year: club.established })}</span> : null,
   ].filter(Boolean);
   const boutLine = (b: any) => `${b.fighter_a_name || "—"} ${t("club.vs")} ${b.fighter_b_name || "—"}`;

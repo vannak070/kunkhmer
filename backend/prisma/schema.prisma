@@ -100,6 +100,11 @@ model Club {
   name_khmer  String?   @db.VarChar(255)
   location    String?   @db.VarChar(255)
   head_coach  String?   @db.VarChar(255)
+  /// The association the club is registered under (free text, optional); see claude/updates/club-association.md.
+  association String?   @db.VarChar(255)
+  /// Pin chosen on the map when the club was added (both or neither); see claude/updates/club-map-picker.md.
+  latitude    Decimal?  @db.Decimal(9, 6)
+  longitude   Decimal?  @db.Decimal(9, 6)
   status      String    @default("active") @db.VarChar(255)
   rating      Decimal   @default(4) @db.Decimal(3, 2)
   image       String?
@@ -614,6 +619,18 @@ model Venue {
   updated_at  DateTime? @db.Timestamp(0)
 
   @@map("venues")
+}
+
+/// Associations a club can be registered under (System Settings list; clubs copy the name into clubs.association).
+model Association {
+  id         String    @id @db.Uuid
+  name       String    @db.VarChar(255)
+  sort_order Int       @default(0)
+  active     Boolean   @default(true)
+  created_at DateTime? @db.Timestamp(0)
+  updated_at DateTime? @db.Timestamp(0)
+
+  @@map("associations")
 }
 
 /// Bout rule presets: picking one on "Create match" fills rounds, round time

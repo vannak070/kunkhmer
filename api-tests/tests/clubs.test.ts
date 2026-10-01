@@ -12,6 +12,7 @@ const fullClub = () => ({
   nameKhmer: "ក្លឹប",
   location: "Phnom Penh",
   headCoach: "Coach Sok",
+  association: "សមាគមកីឡាសាកល្បង",
   status: "active",
   rating: 4.5,
   image: "https://example.com/club.png",
@@ -32,6 +33,7 @@ describe("clubs CRUD", () => {
       name_khmer: input.nameKhmer,
       location: input.location,
       head_coach: input.headCoach,
+      association: input.association,
       rating: 4.5,
       logo_url: input.logoUrl,
     });
@@ -42,6 +44,37 @@ describe("clubs CRUD", () => {
     const res = await post("/clubs", { name: `Club ${uniq()}` }, a.admin.token);
     expect(res.status).toBe(201);
     expect(res.body.data).toMatchObject({ status: "active", rating: 4 });
+  });
+
+  it("keeps the association optional, and an empty value clears it", async () => {
+    const created = await post("/clubs", { name: `Club ${uniq()}` }, a.officer.token);
+    expect(created.body.data.association).toBeNull();
+    const set = await put(`/clubs/${created.body.data.id}`, { association: "សមាគមកីឡាសាកល្បង" }, a.officer.token);
+    expect(set.body.data.association).toBe("សមាគមកីឡាសាកល្បង");
+    expect((await get(`/clubs/${created.body.data.id}`)).body.data.association).toBe("សមាគមកីឡាសាកល្បង");
+    const cleared = await put(`/clubs/${created.body.data.id}`, { association: "" }, a.officer.token);
+    expect(cleared.body.data.association).toBeNull();
+  });
+
+  it("saves the map pin, keeps both coordinates together, and clears them", async () => {
+    const created = await post("/clubs", { name: `Club ${uniq()}`, latitude: 11.5564, longitude: 104.9282 }, a.officer.token);
+    expect(created.status).toBe(201);
+    expect(created.body.data).toMatchObject({ latitude: 11.5564, longitude: 104.9282 });
+    const id = created.body.data.id;
+    expect((await get(`/clubs/${id}`)).body.data).toMatchObject({ latitude: 11.5564, longitude: 104.9282 });
+    // Changing one value keeps the other.
+    expect((await put(`/clubs/${id}`, { latitude: 10.61 }, a.officer.token)).body.data).toMatchObject({ latitude: 10.61, longitude: 104.9282 });
+    // Other edits don't touch the pin.
+    expect((await put(`/clubs/${id}`, { headCoach: "New Coach" }, a.officer.token)).body.data).toMatchObject({ latitude: 10.61, longitude: 104.9282 });
+    // Invalid values.
+    for (const body of [{ latitude: 95 }, { longitude: 200 }, { latitude: "far" }, { latitude: null }]) {
+      expect((await put(`/clubs/${id}`, body, a.officer.token)).status).toBe(422);
+    }
+    expect((await post("/clubs", { name: `Club ${uniq()}`, latitude: 11.5 }, a.officer.token)).status).toBe(422);
+    // Both empty clears the pin.
+    const cleared = await put(`/clubs/${id}`, { latitude: "", longitude: "" }, a.officer.token);
+    expect(cleared.body.data).toMatchObject({ latitude: null, longitude: null });
+    expect((await post("/clubs", { name: `Club ${uniq()}` }, a.admin.token)).body.data).toMatchObject({ latitude: null, longitude: null });
   });
 
   it("lists and shows clubs publicly, with a fighter count", async () => {

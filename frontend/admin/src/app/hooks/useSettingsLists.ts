@@ -1,18 +1,19 @@
 /**
  * Settings lists from the API (Phase 5): weight classes, venues, bout rule presets and
- * glove brands. Edited by the Super Admin on System Settings; every form reads them here.
+ * glove brands and associations. Edited by the Super Admin on System Settings; every form reads them here.
  * Active entries are cached per list; call `refreshSettingsList` after an edit.
  */
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../utils/api";
 
-export type SettingsListName = "weight-classes" | "venues" | "bout-rules" | "glove-brands";
+export type SettingsListName = "weight-classes" | "venues" | "bout-rules" | "glove-brands" | "associations";
 
 interface Base { id: string; sort_order: number; active: boolean }
 export interface WeightClass extends Base { name: string; name_khmer: string | null; min_kg: number | null; max_kg: number | null }
 export interface Venue extends Base { name: string; region: string | null; description: string | null; latitude: number | null; longitude: number | null }
 export interface BoutRule extends Base { name: string; name_khmer: string | null; rounds: number; round_time: number; knockdown_limit: number; glove_size: string | null }
 export interface GloveBrand extends Base { brand: string; model: string | null }
+export interface Association extends Base { name: string }
 
 const cache = new Map<SettingsListName, Promise<any[]>>();
 const listeners = new Map<SettingsListName, Set<(rows: any[]) => void>>();
