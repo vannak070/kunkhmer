@@ -85,7 +85,7 @@ export function FightNightFields({ form, setForm, autoFocus = false }: { form: F
         <label className="block">
           <span className="text-sm font-semibold text-slate-800">{t("night.venue")} *</span>
           <input list="fight-night-venues" className={`${fieldCls} mt-1`} value={form.location} placeholder={t("form.venuePlaceholder")} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-          <datalist id="fight-night-venues">{venues.map((v) => <option key={v.id} value={v.name} />)}</datalist>
+          <datalist id="fight-night-venues">{venues.map((v) => <option key={v.id} value={v.name} label={v.name_khmer || undefined} />)}</datalist>
         </label>
       </div>
       <div className="grid sm:grid-cols-2 gap-5">

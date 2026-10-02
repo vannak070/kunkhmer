@@ -22,10 +22,10 @@ system to each role in English and Khmer.
 | Table | Columns |
 |---|---|
 | `weight_classes` | name, name_khmer, min_kg, max_kg (either may be null for "Under …"/"Over …") |
-| `venues` | name, region, description, latitude, longitude (both or neither) |
+| `venues` | name, name_khmer, region, region_khmer, description, latitude, longitude (both or neither) |
 | `bout_rules` | name, name_khmer, rounds (1–12), round_time (minutes, 1–5), knockdown_limit (0–10), glove_size |
 | `glove_brands` | brand, model |
-| `associations` | name (migration `20261001000002`; starts empty; the Add/Edit club dropdown, `updates/club-association.md`) |
+| `associations` | name, name_khmer (migration `20261001000002`, Khmer name `20261002000001`; starts empty; the Add/Edit club dropdown, `updates/club-association.md`) |
 All have `sort_order`, `active`, timestamps. The migration seeds the lists the
 admin kept in the browser before (14 weight ranges, 7 venues, 2 presets, 8
 gloves). Events and bouts copy the values, so edits never change past records.

@@ -3,7 +3,8 @@ import { ArrowLeft, Save, Upload, Building2, MapPin, X, ChevronDown } from "luci
 import { Link, useNavigate, useParams } from "react-router";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
-import { type Association, useSettingsList } from "../hooks/useSettingsLists";
+import { type Association, listName, useSettingsList } from "../hooks/useSettingsLists";
+import { useLang } from "../i18n/program";
 import { toast } from "sonner";
 import { ClubMapPicker, type Pin } from "../components/clubs/ClubMapPicker";
 
@@ -19,6 +20,7 @@ export function AddClub() {
     location: "",
     headCoach: "",
     association: "",
+    associationKhmer: "",
     phone: "",
     email: "",
     established: "",
@@ -30,7 +32,18 @@ export function AddClub() {
 
   // The association dropdown comes from System Settings; a club saved with a name no longer in the list keeps it as an extra option.
   const { rows: associationList } = useSettingsList<Association>("associations");
-  const associationOptions = [...new Set([...associationList.map((x) => x.name), formData.association].filter(Boolean))];
+  const lang = useLang();
+  // A club saved with an association that is no longer in the list keeps it as an extra option.
+  const associationOptions: Association[] = [
+    ...associationList,
+    ...(formData.association && !associationList.some((x) => x.name === formData.association)
+      ? [{ id: "saved", name: formData.association, name_khmer: formData.associationKhmer || null } as Association]
+      : []),
+  ];
+  const pickAssociation = (name: string) => {
+    const entry = associationOptions.find((x) => x.name === name);
+    setFormData((prev) => ({ ...prev, association: name, associationKhmer: entry?.name_khmer ?? "" }));
+  };
 
   useEffect(() => {
     if (isEditMode && id) {
@@ -43,6 +56,7 @@ export function AddClub() {
               location: clubData.location || "",
               headCoach: clubData.head_coach || clubData.headCoach || "",
               association: clubData.association || "",
+              associationKhmer: clubData.association_khmer || "",
               phone: clubData.phone || "",
               email: clubData.email || "",
               established: clubData.established || "",
@@ -74,6 +88,7 @@ export function AddClub() {
         headCoach: formData.headCoach,
         // Optional; "" clears it.
         association: formData.association.trim(),
+        associationKhmer: formData.association ? formData.associationKhmer.trim() : "",
         // The map pin; null for both clears it.
         latitude: pin ? Number(pin.lat.toFixed(6)) : null,
         longitude: pin ? Number(pin.lng.toFixed(6)) : null,
@@ -182,12 +197,11 @@ export function AddClub() {
                 <select
                   name="association"
                   value={formData.association}
-                  onChange={handleChange}
-                  lang="km"
+                  onChange={(e) => pickAssociation(e.target.value)}
                   className="input-premium font-semibold text-slate-800"
                 >
                   <option value="">— No association —</option>
-                  {associationOptions.map((name) => <option key={name} value={name}>{name}</option>)}
+                  {associationOptions.map((x) => <option key={x.id} value={x.name}>{listName(x, lang)}</option>)}
                 </select>
                 {associationList.length === 0 && (
                   <p className="mt-1.5 text-xs text-muted-foreground">

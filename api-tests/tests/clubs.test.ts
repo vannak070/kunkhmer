@@ -12,7 +12,8 @@ const fullClub = () => ({
   nameKhmer: "ក្លឹប",
   location: "Phnom Penh",
   headCoach: "Coach Sok",
-  association: "សមាគមកីឡាសាកល្បង",
+  association: "Test Association",
+  associationKhmer: "សមាគមកីឡាសាកល្បង",
   status: "active",
   rating: 4.5,
   image: "https://example.com/club.png",
@@ -34,6 +35,7 @@ describe("clubs CRUD", () => {
       location: input.location,
       head_coach: input.headCoach,
       association: input.association,
+      association_khmer: input.associationKhmer,
       rating: 4.5,
       logo_url: input.logoUrl,
     });
@@ -49,11 +51,11 @@ describe("clubs CRUD", () => {
   it("keeps the association optional, and an empty value clears it", async () => {
     const created = await post("/clubs", { name: `Club ${uniq()}` }, a.officer.token);
     expect(created.body.data.association).toBeNull();
-    const set = await put(`/clubs/${created.body.data.id}`, { association: "សមាគមកីឡាសាកល្បង" }, a.officer.token);
-    expect(set.body.data.association).toBe("សមាគមកីឡាសាកល្បង");
-    expect((await get(`/clubs/${created.body.data.id}`)).body.data.association).toBe("សមាគមកីឡាសាកល្បង");
-    const cleared = await put(`/clubs/${created.body.data.id}`, { association: "" }, a.officer.token);
-    expect(cleared.body.data.association).toBeNull();
+    const set = await put(`/clubs/${created.body.data.id}`, { association: "Test Association", associationKhmer: "សមាគមកីឡាសាកល្បង" }, a.officer.token);
+    expect(set.body.data).toMatchObject({ association: "Test Association", association_khmer: "សមាគមកីឡាសាកល្បង" });
+    expect((await get(`/clubs/${created.body.data.id}`)).body.data.association_khmer).toBe("សមាគមកីឡាសាកល្បង");
+    const cleared = await put(`/clubs/${created.body.data.id}`, { association: "", associationKhmer: "" }, a.officer.token);
+    expect(cleared.body.data).toMatchObject({ association: null, association_khmer: null });
   });
 
   it("saves the map pin, keeps both coordinates together, and clears them", async () => {

@@ -102,6 +102,7 @@ model Club {
   head_coach  String?   @db.VarChar(255)
   /// The association the club is registered under (free text, optional); see claude/updates/club-association.md.
   association String?   @db.VarChar(255)
+  association_khmer String? @db.VarChar(255)
   /// Pin chosen on the map when the club was added (both or neither); see claude/updates/club-map-picker.md.
   latitude    Decimal?  @db.Decimal(9, 6)
   longitude   Decimal?  @db.Decimal(9, 6)
@@ -609,7 +610,9 @@ model WeightClass {
 model Venue {
   id          String    @id @db.Uuid
   name        String    @db.VarChar(255)
+  name_khmer  String?   @db.VarChar(255)
   region      String?   @db.VarChar(255)
+  region_khmer String?  @db.VarChar(255)
   description String?
   latitude    Decimal?  @db.Decimal(9, 6)
   longitude   Decimal?  @db.Decimal(9, 6)
@@ -625,6 +628,7 @@ model Venue {
 model Association {
   id         String    @id @db.Uuid
   name       String    @db.VarChar(255)
+  name_khmer String?   @db.VarChar(255)
   sort_order Int       @default(0)
   active     Boolean   @default(true)
   created_at DateTime? @db.Timestamp(0)

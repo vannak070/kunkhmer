@@ -256,6 +256,7 @@ exports[`match proposals (club confirmation) > confirms a new bout at once and s
         "career_record": "null",
         "club": {
           "association": "null",
+          "association_khmer": "null",
           "created_at": "datetime(.000000Z)",
           "description": "null",
           "email": "null",
@@ -309,6 +310,7 @@ exports[`match proposals (club confirmation) > confirms a new bout at once and s
         "career_record": "null",
         "club": {
           "association": "null",
+          "association_khmer": "null",
           "created_at": "datetime(.000000Z)",
           "description": "null",
           "email": "null",
@@ -449,6 +451,7 @@ exports[`match proposals (club confirmation) > lists proposals: a club sees bout
     "career_record": "null",
     "club": {
       "association": "null",
+      "association_khmer": "null",
       "created_at": "datetime(.000000Z)",
       "description": "null",
       "email": "null",
@@ -502,6 +505,7 @@ exports[`match proposals (club confirmation) > lists proposals: a club sees bout
     "career_record": "null",
     "club": {
       "association": "null",
+      "association_khmer": "null",
       "created_at": "datetime(.000000Z)",
       "description": "null",
       "email": "null",
@@ -648,6 +652,7 @@ exports[`match results > records a win and recalculates both fighters' records 1
         "career_record": "null",
         "club": {
           "association": "null",
+          "association_khmer": "null",
           "created_at": "datetime(.000000Z)",
           "description": "null",
           "email": "null",
@@ -701,6 +706,7 @@ exports[`match results > records a win and recalculates both fighters' records 1
         "career_record": "null",
         "club": {
           "association": "null",
+          "association_khmer": "null",
           "created_at": "datetime(.000000Z)",
           "description": "null",
           "email": "null",
@@ -846,6 +852,7 @@ exports[`matches > creates a match, deriving the event from the batch 1`] = `
     "career_record": "null",
     "club": {
       "association": "null",
+      "association_khmer": "null",
       "created_at": "datetime(.000000Z)",
       "description": "null",
       "email": "null",
@@ -899,6 +906,7 @@ exports[`matches > creates a match, deriving the event from the batch 1`] = `
     "career_record": "null",
     "club": {
       "association": "null",
+      "association_khmer": "null",
       "created_at": "datetime(.000000Z)",
       "description": "null",
       "email": "null",
@@ -1107,6 +1115,7 @@ exports[`matches > shows a match 1`] = `
         "career_record": "null",
         "club": {
           "association": "null",
+          "association_khmer": "null",
           "created_at": "datetime(.000000Z)",
           "description": "null",
           "email": "null",
@@ -1160,6 +1169,7 @@ exports[`matches > shows a match 1`] = `
         "career_record": "null",
         "club": {
           "association": "null",
+          "association_khmer": "null",
           "created_at": "datetime(.000000Z)",
           "description": "null",
           "email": "null",
@@ -1286,6 +1296,7 @@ exports[`matches > updates a match, accepting sortOrder or sort_order 1`] = `
         "career_record": "null",
         "club": {
           "association": "null",
+          "association_khmer": "null",
           "created_at": "datetime(.000000Z)",
           "description": "null",
           "email": "null",
@@ -1339,6 +1350,7 @@ exports[`matches > updates a match, accepting sortOrder or sort_order 1`] = `
         "career_record": "null",
         "club": {
           "association": "null",
+          "association_khmer": "null",
           "created_at": "datetime(.000000Z)",
           "description": "null",
           "email": "null",

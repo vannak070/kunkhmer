@@ -4,8 +4,10 @@ import { Link } from "react-router";
 import { api } from "../utils/api";
 import { toast } from "sonner";
 import { usePermissions } from "../hooks/usePermissions";
+import { useLang } from "../i18n/program";
 
 export function Clubs() {
+  const lang = useLang();
   // Only KKF staff add, edit or remove clubs (the API refuses other roles).
   const permissions = usePermissions();
   const [clubs, setClubs] = useState<any[]>([]);
@@ -45,7 +47,8 @@ export function Clubs() {
     const matchesSearch = 
       (club.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (club.location || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (club.association || "").toLowerCase().includes(searchTerm.toLowerCase());
+      (club.association || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (club.association_khmer || "").toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = 
       statusFilter === "all" || 
@@ -171,7 +174,7 @@ export function Clubs() {
                       <MapPin className="w-3.5 h-3.5 text-secondary shrink-0" />
                       <span className="text-xs font-medium">{club.location}</span>
                     </div>
-                    {club.association && <p lang="km" className="-mt-2 mb-4 text-xs font-medium text-slate-600 line-clamp-1">{club.association}</p>}
+                    {club.association && <p lang={lang} className="-mt-2 mb-4 text-xs font-medium text-slate-600 line-clamp-1">{lang === "km" && club.association_khmer ? club.association_khmer : club.association}</p>}
 
                     <div className="grid grid-cols-2 gap-3 mb-5">
                       <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px]">

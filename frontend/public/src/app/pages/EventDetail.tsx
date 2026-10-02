@@ -5,6 +5,7 @@
  * without results says so. Events store a calendar day only, so the countdown is in days.
  * See claude/updates/event-compare-articles.md.
  */
+import { usePlaceName } from "../data/venues";
 import { LoadError } from "../components/LoadError";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
@@ -49,6 +50,7 @@ function groupByCard(bouts: Bout[]): CardGroup[] {
 export function EventDetail() {
   const { id: key } = useParams();
   const { t, tn, formatDate } = useI18n();
+  const placeName = usePlaceName();
   const data = useFanData();
   const [params, setParams] = useSearchParams();
   const [widePoster, setWidePoster] = useState(false);
@@ -181,7 +183,7 @@ export function EventDetail() {
                           : formatDate(event.date, "long")}
                       </FactRow>
                       <FactRow icon={<MapPin className="w-4 h-4" />} label={t("matches.venue")} tone="red">
-                        <span lang={textLang(event.location)}>{event.location || t("matches.venueTba")}</span>
+                        <span lang={textLang(placeName(event.location))}>{event.location ? placeName(event.location) : t("matches.venueTba")}</span>
                         {event.location && (
                           <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`} target="_blank" rel="noopener noreferrer" className="kk-focus ml-2 text-sm font-semibold text-[var(--kk-blue)] hover:underline underline-offset-4 whitespace-nowrap">{t("club.map")}</a>
                         )}

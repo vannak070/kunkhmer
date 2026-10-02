@@ -67,6 +67,7 @@ exports[`weigh-in on the bout > saves each corner's weight on the bout without t
         "career_record": "null",
         "club": {
           "association": "null",
+          "association_khmer": "null",
           "created_at": "datetime(.000000Z)",
           "description": "null",
           "email": "null",
@@ -120,6 +121,7 @@ exports[`weigh-in on the bout > saves each corner's weight on the bout without t
         "career_record": "null",
         "club": {
           "association": "null",
+          "association_khmer": "null",
           "created_at": "datetime(.000000Z)",
           "description": "null",
           "email": "null",

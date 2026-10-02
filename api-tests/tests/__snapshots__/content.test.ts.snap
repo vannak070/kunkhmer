@@ -132,6 +132,7 @@ exports[`videos > creates a video with related fighter and club 1`] = `
       "category": "string",
       "club": {
         "association": "null",
+        "association_khmer": "null",
         "created_at": "datetime(.000000Z)",
         "description": "null",
         "email": "null",
@@ -236,6 +237,7 @@ exports[`videos > lists and shows videos publicly > list item 1`] = `
   "category": "string",
   "club": {
     "association": "null",
+    "association_khmer": "null",
     "created_at": "datetime(.000000Z)",
     "description": "null",
     "email": "null",
@@ -319,6 +321,7 @@ exports[`videos > updates a video 1`] = `
       "category": "string",
       "club": {
         "association": "null",
+        "association_khmer": "null",
         "created_at": "datetime(.000000Z)",
         "description": "null",
         "email": "null",

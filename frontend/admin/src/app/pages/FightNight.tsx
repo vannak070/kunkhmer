@@ -14,6 +14,7 @@ import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { APPROVALS_ENABLED } from "../config/features";
 import { formatDay, useT } from "../i18n/program";
+import { usePlaceName } from "../hooks/useSettingsLists";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { EventNextSteps } from "../components/EventNextSteps";
 import { FightNightSteps } from "../components/program/FightNightSteps";
@@ -29,6 +30,7 @@ export function FightNight() {
   const navigate = useNavigate();
   const location = useLocation();
   const { t, lang } = useT();
+  const placeName = usePlaceName();
   const permissions = usePermissions();
   const me = api.auth.getCurrentUser();
   const isStaff = me?.role === "Super Admin" || me?.role === "KKF Officer";
@@ -138,7 +140,7 @@ export function FightNight() {
               <h1 className="text-2xl md:text-3xl font-bold text-slate-900 break-words">{event.name}</h1>
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600">
                 <span className="inline-flex items-center gap-1.5"><CalendarDays className="w-4 h-4 text-slate-400" aria-hidden /> {formatDay(event.date, lang)}</span>
-                <span className="inline-flex items-center gap-1.5"><MapPin className="w-4 h-4 text-slate-400" aria-hidden /> {event.location || t("common.notSet")}</span>
+                <span className="inline-flex items-center gap-1.5"><MapPin className="w-4 h-4 text-slate-400" aria-hidden /> {event.location ? placeName(event.location) : t("common.notSet")}</span>
                 <StatusChip status={status} />
               </div>
             </div>
@@ -266,6 +268,7 @@ function FightCardSection({ card, bouts, showDate, canEdit, isStaff, isSuper, on
   card: any; bouts: any[]; showDate: boolean; canEdit: boolean; isStaff: boolean; isSuper: boolean; onDelete: () => void;
 }) {
   const { t, lang } = useT();
+  const placeName = usePlaceName();
   const navigate = useNavigate();
   const action = "inline-flex items-center gap-2 h-11 px-4 rounded-xl text-sm font-semibold border transition";
   return (
@@ -274,7 +277,7 @@ function FightCardSection({ card, bouts, showDate, canEdit, isStaff, isSuper, on
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 id={`card-title-${card.id}`} className="text-lg font-bold text-slate-900">{card.name}</h2>
-            {showDate && <p className="text-sm text-slate-500">{formatDay(card.date, lang)}{card.location ? ` · ${card.location}` : ""}</p>}
+            {showDate && <p className="text-sm text-slate-500">{formatDay(card.date, lang)}{card.location ? ` · ${placeName(card.location)}` : ""}</p>}
           </div>
           {isSuper && (
             <button type="button" onClick={onDelete} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-red-700">

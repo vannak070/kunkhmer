@@ -92,7 +92,9 @@ export const LISTS: ListConfig[] = [
     fields: (input) => {
       const data: Fields = {};
       text(input, data, "name", "name", 255);
+      text(input, data, "nameKhmer", "name_khmer", 255);
       text(input, data, "region", "region", 255);
+      text(input, data, "regionKhmer", "region_khmer", 255);
       text(input, data, "description", "description", 2000);
       number(input, data, "latitude", "latitude", -90, 90);
       number(input, data, "longitude", "longitude", -180, 180);
@@ -102,7 +104,7 @@ export const LISTS: ListConfig[] = [
       if ((row.latitude == null) !== (row.longitude == null)) throw new HttpError(422, "Give both latitude and longitude, or neither");
     },
     toRow: (r) => ({
-      id: r.id, name: r.name, region: r.region, description: r.description,
+      id: r.id, name: r.name, name_khmer: r.name_khmer, region: r.region, region_khmer: r.region_khmer, description: r.description,
       latitude: num(r.latitude), longitude: num(r.longitude), ...common(r),
     }),
   },
@@ -150,9 +152,10 @@ export const LISTS: ListConfig[] = [
     fields: (input) => {
       const data: Fields = {};
       text(input, data, "name", "name", 255);
+      text(input, data, "nameKhmer", "name_khmer", 255);
       return data;
     },
-    toRow: (r) => ({ id: r.id, name: r.name, ...common(r) }),
+    toRow: (r) => ({ id: r.id, name: r.name, name_khmer: r.name_khmer, ...common(r) }),
   },
 ];
 

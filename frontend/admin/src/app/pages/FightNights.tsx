@@ -9,12 +9,14 @@ import { ChevronRight, MapPin, Plus, Search } from "lucide-react";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { formatDay, khmerDigits, useT } from "../i18n/program";
+import { usePlaceName } from "../hooks/useSettingsLists";
 import { StatusChip, dayOf, displayStatus, nextStepText, todayUtc } from "../components/program/shared";
 
 type Filter = "upcoming" | "past" | "all";
 
 export function FightNights() {
   const { t, lang } = useT();
+  const placeName = usePlaceName();
   const permissions = usePermissions();
   const [events, setEvents] = useState<any[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -101,7 +103,7 @@ export function FightNights() {
                       <StatusChip status={displayStatus(e, evBouts)} />
                     </div>
                     <p className="text-sm text-slate-600 flex flex-wrap items-center gap-x-3">
-                      <span className="inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-slate-400" aria-hidden />{e.location || t("common.notSet")}</span>
+                      <span className="inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-slate-400" aria-hidden />{e.location ? placeName(e.location) : t("common.notSet")}</span>
                       <span>{evBouts.length === 0 ? t("list.noBouts") : evBouts.length === 1 ? t("list.bout") : t("list.bouts", { n: evBouts.length })}</span>
                     </p>
                     <p className={`text-sm font-semibold ${next ? "text-primary" : "text-emerald-700"}`}>{next ? t("list.next", { step: next }) : e.status === "Cancelled" ? "" : t("list.done")}</p>

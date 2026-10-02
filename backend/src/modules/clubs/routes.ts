@@ -30,6 +30,7 @@ export function clubArray(club: Club) {
     location: club.location,
     head_coach: club.head_coach,
     association: club.association,
+    association_khmer: club.association_khmer,
     latitude: club.latitude === null ? null : Number(club.latitude),
     longitude: club.longitude === null ? null : Number(club.longitude),
     status: club.status,
@@ -122,6 +123,7 @@ export default async function clubRoutes(app: FastifyInstance) {
           location: input.get("location"),
           head_coach: input.get("headCoach"),
           association: input.get("association"),
+          association_khmer: input.get("associationKhmer"),
           ...coordinates(input),
           status: input.get("status", "active"),
           rating: input.get("rating", 4.0),
@@ -149,6 +151,7 @@ export default async function clubRoutes(app: FastifyInstance) {
       if (input.present("logoUrl")) data.logo_url = input.get("logoUrl");
       // Same for the association: "" clears it.
       if (input.present("association")) data.association = input.get("association");
+      if (input.present("associationKhmer")) data.association_khmer = input.get("associationKhmer");
       if (Object.keys(data).length > 0) data.updated_at = now();
       return ok(reply, clubArray(await prisma.club.update({ where: { id }, data })));
     });

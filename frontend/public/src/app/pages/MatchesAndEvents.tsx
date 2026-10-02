@@ -5,6 +5,7 @@
  * (old ?tab=matches / previous links still work). See claude/updates/public-matches-page.md and
  * public-matches-page-2.md (latest-night spotlight, tab icons, months + year filter, Hub questions).
  */
+import { usePlaceName } from "../data/venues";
 import { LoadError } from "../components/LoadError";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
@@ -336,6 +337,7 @@ function Stat({ icon, value, label }: { icon: React.ReactNode; value: number; la
 /** The next fight night, or with `past` the latest one (shown when nothing is scheduled). */
 function NextFightNight({ data, event, past = false }: { data: FanData; event: any; past?: boolean }) {
   const { t, tn, formatDate } = useI18n();
+  const placeName = usePlaceName();
   const bouts = data.bouts.filter((b) => b.eventId === event.id).sort((a, b) => time(a.date) - time(b.date) || a.sortOrder - b.sortOrder);
   const main = mainEventBout(bouts);
   const station = broadcasterForEvent(data, event);
@@ -363,7 +365,7 @@ function NextFightNight({ data, event, past = false }: { data: FanData; event: a
           </div>
           <ul className="space-y-2 text-sm text-gray-700">
             {event.location && (
-              <li className="flex items-start gap-2"><MapPin className="w-4 h-4 mt-0.5 text-[var(--kk-red)] shrink-0" aria-hidden /><span lang={textLang(event.location)}>{event.location}</span></li>
+              <li className="flex items-start gap-2"><MapPin className="w-4 h-4 mt-0.5 text-[var(--kk-red)] shrink-0" aria-hidden /><span lang={textLang(placeName(event.location))}>{placeName(event.location)}</span></li>
             )}
             {station && (
               <li className="flex items-center gap-2"><Tv className="w-4 h-4 text-[var(--kk-blue)] shrink-0" aria-hidden />{past ? station.name : t("fights.liveOn", { station: station.name })}</li>
@@ -524,6 +526,7 @@ function PastEvents({ events, data, years, year, onYear }: { events: any[]; data
 
 function EventTile({ e, data }: { e: any; data: FanData }) {
   const { t, tn, formatDate } = useI18n();
+  const placeName = usePlaceName();
   const bouts = data.bouts.filter((b) => b.eventId === e.id).length;
   const station = broadcasterForEvent(data, e);
   return (
@@ -546,7 +549,7 @@ function EventTile({ e, data }: { e: any; data: FanData }) {
             {isRealImage(e.image) && <CountdownChip date={e.date} />}
           </div>
           <p lang={textLang(e.name)} className="font-bold text-gray-900 leading-snug group-hover:text-[var(--kk-blue)] break-words">{e.name}</p>
-          {e.location && <p lang={textLang(e.location)} className="text-sm text-gray-600 flex items-start gap-1.5"><MapPin className="w-3.5 h-3.5 mt-0.5 text-[var(--kk-red)] shrink-0" aria-hidden />{e.location}</p>}
+          {e.location && <p lang={textLang(placeName(e.location))} className="text-sm text-gray-600 flex items-start gap-1.5"><MapPin className="w-3.5 h-3.5 mt-0.5 text-[var(--kk-red)] shrink-0" aria-hidden />{placeName(e.location)}</p>}
           {station && <p className="text-sm text-gray-600 flex items-center gap-1.5"><Tv className="w-3.5 h-3.5 text-[var(--kk-blue)] shrink-0" aria-hidden />{station.name}</p>}
           <p className="mt-auto pt-2 text-sm font-semibold text-[var(--kk-blue)] flex items-center justify-between">
             <span>{bouts > 0 ? tn("common.bouts", bouts) : t("fights.cardSoonShort")}</span>

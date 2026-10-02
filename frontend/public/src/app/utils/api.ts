@@ -378,6 +378,11 @@ export const api = {
       const res = await request("/settings/weight-classes");
       return res.data;
     },
+    /** Venues (System Settings); the Khmer names show on event places. */
+    async listVenues() {
+      const res = await request("/settings/venues");
+      return res.data;
+    },
     async listSponsors() {
       const res = await request("/settings/sponsors");
       return res.data;

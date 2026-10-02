@@ -5,6 +5,7 @@ exports[`clubs CRUD > creates a club with all fields 1`] = `
   "body": {
     "data": {
       "association": "string",
+      "association_khmer": "string",
       "created_at": "datetime(.000000Z)",
       "description": "string",
       "email": "string",
@@ -34,6 +35,7 @@ exports[`clubs CRUD > deletes a club 1`] = `
   "body": {
     "data": {
       "association": "string",
+      "association_khmer": "string",
       "created_at": "datetime(.000000Z)",
       "description": "string",
       "email": "string",
@@ -62,6 +64,7 @@ exports[`clubs CRUD > deletes a club 1`] = `
 exports[`clubs CRUD > lists and shows clubs publicly, with a fighter count > list item 1`] = `
 {
   "association": "string",
+  "association_khmer": "string",
   "created_at": "datetime(.000000Z)",
   "description": "string",
   "email": "string",
@@ -88,6 +91,7 @@ exports[`clubs CRUD > lists and shows clubs publicly, with a fighter count > sho
   "body": {
     "data": {
       "association": "string",
+      "association_khmer": "string",
       "created_at": "datetime(.000000Z)",
       "description": "string",
       "email": "string",
@@ -128,6 +132,7 @@ exports[`clubs CRUD > updates only the given fields 1`] = `
   "body": {
     "data": {
       "association": "string",
+      "association_khmer": "string",
       "created_at": "datetime(.000000Z)",
       "description": "string",
       "email": "string",

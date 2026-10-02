@@ -10,10 +10,10 @@ beforeAll(async () => {
 
 const LISTS = {
   "weight-classes": () => ({ name: `Class ${uniq()}`, nameKhmer: "ថ្នាក់", minKg: 90, maxKg: 95 }),
-  venues: () => ({ name: `Venue ${uniq()}`, region: "Kampot", description: "Riverside arena", latitude: 10.61, longitude: 104.18 }),
+  venues: () => ({ name: `Venue ${uniq()}`, nameKhmer: "ពហុកីឡដ្ឋាន", region: "Kampot", regionKhmer: "កំពត", description: "Riverside arena", latitude: 10.61, longitude: 104.18 }),
   "bout-rules": () => ({ name: `Rule ${uniq()}`, nameKhmer: "ច្បាប់", rounds: 3, roundTime: 3, knockdownLimit: 2, gloveSize: "10oz" }),
   "glove-brands": () => ({ brand: `Brand ${uniq()}`, model: "Pro" }),
-  associations: () => ({ name: `សមាគម ${uniq()}` }),
+  associations: () => ({ name: `Association ${uniq()}`, nameKhmer: `សមាគម ${uniq()}` }),
 } as const;
 type List = keyof typeof LISTS;
 
@@ -82,6 +82,16 @@ describe("settings list rules", () => {
     expect(await bad({ maxKg: 40 })).toBe(201);
     const id = (await post("/settings/weight-classes", { name: `W ${uniq()}`, minKg: 50, maxKg: 55 }, a.admin.token)).body.data.id;
     expect((await put(`/settings/weight-classes/${id}`, { minKg: 60 }, a.admin.token)).status).toBe(422);
+  });
+
+  it("keeps Khmer names on venues and associations, and clears them", async () => {
+    const v = (await post("/settings/venues", LISTS.venues(), a.admin.token)).body.data;
+    expect(v).toMatchObject({ name_khmer: "ពហុកីឡដ្ឋាន", region_khmer: "កំពត" });
+    const cleared = await put(`/settings/venues/${v.id}`, { nameKhmer: "", regionKhmer: "" }, a.admin.token);
+    expect(cleared.body.data).toMatchObject({ name_khmer: null, region_khmer: null });
+    const x = (await post("/settings/associations", LISTS.associations(), a.admin.token)).body.data;
+    expect(x.name_khmer).toMatch(/^សមាគម /);
+    expect((await put(`/settings/associations/${x.id}`, { nameKhmer: "" }, a.admin.token)).body.data.name_khmer).toBeNull();
   });
 
   it("checks bout rule numbers and venue coordinates", async () => {

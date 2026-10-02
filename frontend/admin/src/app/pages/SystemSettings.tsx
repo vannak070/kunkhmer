@@ -66,10 +66,12 @@ const TABS: ListTab[] = [
     icon: MapPin,
     hint: "set.hint.venues",
     title: (r) => r.name,
-    detail: (r) => [r.region, r.description].filter(Boolean).join(" · "),
+    detail: (r) => [r.name_khmer, r.region, r.region_khmer, r.description].filter(Boolean).join(" · "),
     fields: [
-      { key: "name", column: "name", label: "set.f.name", required: true },
+      { key: "name", column: "name", label: "set.f.nameEn", required: true },
+      { key: "nameKhmer", column: "name_khmer", label: "set.f.nameKm" },
       { key: "region", column: "region", label: "set.f.region", placeholder: "set.ph.region" },
+      { key: "regionKhmer", column: "region_khmer", label: "set.f.regionKm" },
       { key: "description", column: "description", label: "set.f.notes", type: "textarea" },
       { key: "latitude", column: "latitude", label: "set.f.latitude", type: "number", placeholder: "set.ph.lat" },
       { key: "longitude", column: "longitude", label: "set.f.longitude", type: "number", placeholder: "set.ph.lng" },
@@ -115,8 +117,11 @@ const TABS: ListTab[] = [
     icon: Landmark,
     hint: "set.hint.associations",
     title: (r) => r.name,
-    detail: () => "",
-    fields: [{ key: "name", column: "name", label: "set.f.name", required: true, placeholder: "set.ph.association" }],
+    detail: (r) => r.name_khmer ?? "",
+    fields: [
+      { key: "name", column: "name", label: "set.f.nameEn", required: true, placeholder: "set.ph.associationEn" },
+      { key: "nameKhmer", column: "name_khmer", label: "set.f.nameKm", placeholder: "set.ph.association" },
+    ],
   },
 ];
 

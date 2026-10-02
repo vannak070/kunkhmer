@@ -14,6 +14,7 @@ import { api } from "../../utils/api";
 import { usePermissions } from "../../hooks/usePermissions";
 import { useAdminOverview, type TodoKind } from "../../hooks/useAdminOverview";
 import { formatDay, khmerDigits, useT } from "../../i18n/program";
+import { usePlaceName } from "../../hooks/useSettingsLists";
 import { FightNightSteps } from "./FightNightSteps";
 import { StatusChip, dayOf, displayStatus, hasResult, nextStepText, todayUtc } from "./shared";
 
@@ -28,6 +29,7 @@ interface Data {
 
 export function ProgramOverview() {
   const { t, lang } = useT();
+  const placeName = usePlaceName();
   const navigate = useNavigate();
   const permissions = usePermissions();
   const me = api.auth.getCurrentUser();
@@ -88,7 +90,7 @@ export function ProgramOverview() {
               <h2 id="focus-night" className="text-2xl font-bold text-slate-900 break-words">{focus.name}</h2>
               <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-base text-slate-600">
                 <span className="inline-flex items-center gap-1.5"><CalendarDays className="w-4 h-4" aria-hidden /> {formatDay(focus.date, lang)}</span>
-                {focus.location && <span className="inline-flex items-center gap-1.5"><MapPin className="w-4 h-4" aria-hidden /> {focus.location}</span>}
+                {focus.location && <span className="inline-flex items-center gap-1.5"><MapPin className="w-4 h-4" aria-hidden /> {placeName(focus.location)}</span>}
                 <StatusChip status={displayStatus(focus, boutsOf(focus))} />
               </p>
             </div>

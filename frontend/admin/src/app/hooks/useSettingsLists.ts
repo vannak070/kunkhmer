@@ -5,15 +5,16 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../utils/api";
+import { useLang } from "../i18n/program";
 
 export type SettingsListName = "weight-classes" | "venues" | "bout-rules" | "glove-brands" | "associations";
 
 interface Base { id: string; sort_order: number; active: boolean }
 export interface WeightClass extends Base { name: string; name_khmer: string | null; min_kg: number | null; max_kg: number | null }
-export interface Venue extends Base { name: string; region: string | null; description: string | null; latitude: number | null; longitude: number | null }
+export interface Venue extends Base { name: string; name_khmer: string | null; region: string | null; region_khmer: string | null; description: string | null; latitude: number | null; longitude: number | null }
 export interface BoutRule extends Base { name: string; name_khmer: string | null; rounds: number; round_time: number; knockdown_limit: number; glove_size: string | null }
 export interface GloveBrand extends Base { brand: string; model: string | null }
-export interface Association extends Base { name: string }
+export interface Association extends Base { name: string; name_khmer: string | null }
 
 const cache = new Map<SettingsListName, Promise<any[]>>();
 const listeners = new Map<SettingsListName, Set<(rows: any[]) => void>>();
@@ -77,4 +78,20 @@ export function venuePin(v: Pick<Venue, "latitude" | "longitude">): { x: number;
   if (v.latitude == null || v.longitude == null) return null;
   const clamp = (n: number) => Math.min(95, Math.max(5, n));
   return { x: clamp(25 + (v.longitude - 103.2022) * 15.79), y: clamp(35 + (13.0957 - v.latitude) * 16.44) };
+}
+
+/** A list entry's name in the chosen language: the Khmer name when Khmer is on and one is set, else the English name. */
+export const listName = (row: { name: string; name_khmer?: string | null }, lang: "en" | "km") => (lang === "km" && row.name_khmer ? row.name_khmer : row.name);
+
+/** The venue list entry for an event's saved place text (events save the English name). */
+export const venueFor = <V extends { name: string }>(venues: V[], place: string | null | undefined) => (place ? venues.find((v) => v.name === place) : undefined);
+
+/** `placeName(text)`: an event's saved place in the chosen language (its Khmer name when it is a listed venue). */
+export function usePlaceName() {
+  const { rows } = useSettingsList<Venue>("venues");
+  const lang = useLang();
+  return (place: string | null | undefined) => {
+    const venue = venueFor(rows, place);
+    return venue ? listName(venue, lang) : (place ?? "");
+  };
 }

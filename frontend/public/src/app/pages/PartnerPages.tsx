@@ -198,7 +198,8 @@ export function ClubPage() {
 }
 
 function ClubView({ club }: { club: any }) {
-  const { t, tn, localName, formatWeight } = useI18n();
+  const { t, tn, localName, formatWeight, lang } = useI18n();
+  const association = lang === "km" && club.association_khmer ? club.association_khmer : club.association;
   const data = useFanData();
   const [showAll, setShowAll] = useState(false);
   const name = localName(club.name, club.name_khmer);
@@ -231,7 +232,7 @@ function ClubView({ club }: { club: any }) {
   const facts = [
     club.location && { icon: <MapPin className={`${iconCls} text-[var(--kk-red)]`} aria-hidden />, text: <span lang={textLang(club.location)}>{club.location}</span> },
     club.head_coach && { icon: <UserRound className={`${iconCls} text-[var(--kk-blue)]`} aria-hidden />, text: <span lang={textLang(club.head_coach)}>{t("club.headCoach", { name: club.head_coach })}</span> },
-    club.association && { icon: <Landmark className={`${iconCls} text-[var(--kk-blue)]`} aria-hidden />, text: <span lang={textLang(club.association)}>{t("club.associationLine", { name: club.association })}</span> },
+    association && { icon: <Landmark className={`${iconCls} text-[var(--kk-blue)]`} aria-hidden />, text: <span lang={textLang(association)}>{t("club.associationLine", { name: association })}</span> },
     club.established && { icon: <CalendarDays className={`${iconCls} text-[var(--kk-blue)]`} aria-hidden />, text: t("club.established", { year: club.established }) },
   ].filter(Boolean) as { icon: ReactNode; text: ReactNode }[];
 
@@ -345,7 +346,7 @@ function ClubView({ club }: { club: any }) {
             )}
             <SideCard title={t("club.details")}>
               {club.head_coach && <DetailRow icon={<UserRound className={iconCls} />} label={t("partners.headCoach")}><span lang={textLang(club.head_coach)}>{club.head_coach}</span></DetailRow>}
-              {club.association && <DetailRow icon={<Landmark className={iconCls} />} label={t("club.associationLabel")}><span lang={textLang(club.association)}>{club.association}</span></DetailRow>}
+              {association && <DetailRow icon={<Landmark className={iconCls} />} label={t("club.associationLabel")}><span lang={textLang(association)}>{association}</span></DetailRow>}
               {club.established && <DetailRow icon={<CalendarDays className={iconCls} />} label={t("club.foundedLabel")}>{club.established}</DetailRow>}
               {classes > 0 && <DetailRow icon={<Trophy className={iconCls} />} label={t("club.weightClasses")}>{tn("club.classesCount", classes)}</DetailRow>}
               {club.location && (
