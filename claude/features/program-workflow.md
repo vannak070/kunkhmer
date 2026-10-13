@@ -101,5 +101,30 @@ does not hold yet: rows 3 and 4 need a screen to enter them (`features/fighter-p
 ## Still TBD
 The matching-rule values above; what the settlement step records; what "licence/permit" records (number, date, file).
 
+## Build plan (proposal — nothing built; uses the placeholder rules until the owner corrects them)
+Design choice: the matching rules are **data, not code** — a Settings list "Matching rules" (like weight classes
+and venues, `features/settings.md`), so KKF changes a limit or switches Block ↔ Warn without a developer. The
+placeholder table above is the seed.
+
+| Phase | What | Migration / API |
+|---|---|---|
+| 1 | **Matching rules engine**: `matching_rules` (key, enabled, action block/warn, value). `POST /matches` and fighter swap run the enabled rules; Block → 422 listing every broken rule; Warn → bout created, warnings returned in the response (additive field). `POST /matches/check` previews a pairing without saving. Admin Add bout shows the check live. | new table + `modules/matches/rules.ts` |
+| 2 | **Fighter medical + suspension screen** (rows 3–4) on the fighter page; staff only. | uses existing columns |
+| 3 | **Broadcaster = Organizer account**: `users.broadcast_station_id`; KKF "Enable organizer" on a broadcast station; Organizer sees only its station's events; event organizer and station always agree; one station per event. | migration + settings/auth routes |
+| 4 | **Offline agreements log**: each recorded item (event, sponsors, title selection, bout) stores recorded-by, confirmed-by, date, note by role permission; event licence/permit fields. | audit table or columns (TBD with item 3 of Still TBD) |
+| 5 | **Belts**: KKF creates the belt; Organizer selects it for its event; KKF confirms. | `champions` + event link |
+| 6 | **Withdrawal / replacement / postponement / cancellation** with reason; replacement re-runs the rules. | status + log |
+| 7 | **After-event sign-off** and settlement record. | TBD |
+
+Each phase: update doc in `claude/updates/`, contract tests, snapshots only for deliberate additive fields.
+Phase 1 is the first to build; phases 3–7 change who can do what, so each needs the owner's go-ahead.
+
 ## Acceptance criteria
-- [ ] TBD after the open questions.
+- [ ] Phase 1: a bout breaking any enabled Block rule returns 422 naming every broken rule; Warn rules do not
+      block and are returned; disabling a rule or changing its limit takes effect at once; swaps are checked too.
+- [ ] Phase 1: staff can edit the rules in Settings (Super Admin / KKF Officer only); Organizer cannot.
+- [ ] Phase 2: staff can set medical status and suspension end date; rules 3 and 4 use them.
+- [ ] Phase 3: an Organizer account is tied to one broadcast station and only sees/manages its events; an event
+      has one broadcaster.
+- [ ] Phases 4–7: acceptance criteria written when each is approved.
+- [ ] Contract tests for every rule (pass and fail), role checks, and a `claude/tests/test-program-workflow.md`.
