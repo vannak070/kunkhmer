@@ -1,442 +1,183 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
-import {
-  ArrowLeft, Crown, Trophy, Save, Calendar, MapPin, Shield,
-  Weight, Award, Star, AlertCircle, Info
-} from "lucide-react";
+/**
+ * Add / edit a title (/home/champion/new, /home/champion/:id/edit): one short form — title name, type, weight, who
+ * sanctions it, the current champion (optional: for belts that already have a holder before this system), a belt
+ * picture and an internal note. No fight-card step any more (a belt doesn't belong to one). The status follows the
+ * champion: a holder = active, none = vacant. English + Khmer. See claude/updates/admin-step3-simple-pages.md.
+ */
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
-import {
-  CHAMPION_TYPE_CONFIG,
-  WEIGHT_CLASSES,
-  type ChampionType,
-  type ChampionStatus,
-  getWeightClassName
-} from "../data/champion";
-import { usePermissions } from "../hooks/usePermissions";
-import { clsx } from "clsx";
+import { ArrowLeft, Crown, ImagePlus } from "lucide-react";
 import { api } from "../utils/api";
+import { useT } from "../i18n/program";
+import { WEIGHT_CLASSES } from "../data/champion";
+import { LangSwitch } from "../components/program/shared";
+import { fieldCls } from "../components/program/FightNightFields";
+import { ORGANIZATIONS, TITLE_TYPES, typeLabel } from "../components/titles/titleUtils";
+import { isRealPhoto } from "../components/fighters/fighterUtils";
+
+interface Form { titleName: string; championType: string; weightClass: string; organization: string; holderId: string; beltImageUrl: string; notes: string }
+const empty: Form = { titleName: "", championType: "KKF National", weightClass: "60", organization: "KKF", holderId: "", beltImageUrl: "", notes: "" };
 
 export function CreateChampion() {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const permissions = usePermissions();
-  const [formData, setFormData] = useState({
-    titleName: "",
-    championType: "KKF National" as ChampionType,
-    weightClass: 60,
-    organization: "KKF" as "KKF" | "WBC" | "WBA" | "WMC" | "Other",
-    batchId: "",
-    status: "Vacant" as ChampionStatus,
-    notes: ""
-  });
-
-  const [batches, setBatches] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { t } = useT();
+  const editing = Boolean(id);
+  const [form, setForm] = useState<Form>(empty);
+  const [fighters, setFighters] = useState<any[]>([]);
+  const [loaded, setLoaded] = useState(!editing);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const file = useRef<HTMLInputElement>(null);
 
+  const load = () => {
+    setLoadFailed(false);
+    api.champions.get(id!).then((c: any) => {
+      setForm({
+        titleName: c.title_name ?? "", championType: c.champion_type ?? "KKF National", weightClass: String(Number(c.weight_class) || 0),
+        organization: c.organization ?? "KKF", holderId: c.status !== "Vacant" ? c.current_holder_id ?? "" : "", beltImageUrl: c.belt_image_url ?? "", notes: c.notes ?? "",
+      });
+      setLoaded(true);
+    }).catch(() => setLoadFailed(true));
+  };
+  useEffect(() => { if (editing) load(); }, [id]);
   useEffect(() => {
-    const loadBatches = async () => {
-      try {
-        const data = await api.batches.list();
-        setBatches(data || []);
-      } catch (err) {
-        console.error(err);
-        toast.error("Failed to load events/fight cards");
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadBatches();
+    api.fighters.list().then((f: any[]) => setFighters((f || []).sort((a, b) => a.name.localeCompare(b.name)))).catch(() => {});
   }, []);
+  // Active fighters, plus the current champion even if he or she is not active any more.
+  const candidates = fighters.filter((x) => (x.status ?? "Active") === "Active" || x.id === form.holderId);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validation
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.titleName.trim()) {
-      newErrors.titleName = "Title name is required";
-    }
-    
-    if (!formData.batchId) {
-      newErrors.batchId = "Please select an event/fight card";
-    }
+  const set = (patch: Partial<Form>) => setForm((f) => ({ ...f, ...patch }));
+  const weights = [...new Set([...WEIGHT_CLASSES, Number(form.weightClass) || 0])].filter((w) => w > 0).sort((a, b) => a - b);
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      toast.error("Please fill in all required fields");
-      return;
-    }
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!form.titleName.trim()) e.titleName = t("ff.required");
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
-    const selectedBatch = batches.find(b => b.id === formData.batchId);
-    const newChamp = {
-      titleName: formData.titleName,
-      championType: formData.championType,
-      weightClass: formData.weightClass,
-      organization: formData.organization,
-      batchId: formData.batchId,
-      eventName: selectedBatch?.event_name || selectedBatch?.name || "Championship Event",
-      status: "Vacant" as ChampionStatus,
-      defenseCount: 0,
-      notes: formData.notes
+  const save = async () => {
+    if (!validate()) { toast.error(t("ff.fix")); return; }
+    setBusy(true);
+    const holder = fighters.find((f) => f.id === form.holderId);
+    const body: Record<string, unknown> = {
+      titleName: form.titleName.trim(),
+      championType: form.championType,
+      weightClass: Number(form.weightClass),
+      organization: form.organization,
+      beltImageUrl: form.beltImageUrl || null,
+      notes: form.notes.trim() || null,
+      // The status follows the champion: a holder = active, none = vacant.
+      currentHolderId: holder ? holder.id : null,
+      currentHolderName: holder ? holder.name : null,
+      nationality: holder ? holder.nationality ?? null : null,
+      status: holder ? "Active" : "Vacant",
     };
-
     try {
-      await api.champions.create(newChamp);
-      toast.success("Championship created successfully!");
-      navigate("/home/champion");
+      const saved = editing ? await api.champions.update(id!, body) : await api.champions.create(body);
+      toast.success(editing ? t("tf.saved") : t("tf.created", { name: form.titleName.trim() }));
+      navigate(`/home/champion/${saved?.id ?? id}`);
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to create championship belt");
+      toast.error(err instanceof Error ? err.message : t("common.error"));
+      setBusy(false);
     }
   };
 
-  const selectedBatch = batches.find(b => b.id === formData.batchId);
-  const activeFiltersCount = 0; // Not applicable for creation page
+  const pickImage = (f?: File) => {
+    if (!f) return;
+    if (f.size > 5 * 1024 * 1024) { toast.error(t("ff.photoTooBig")); return; }
+    const reader = new FileReader();
+    reader.onloadend = () => set({ beltImageUrl: reader.result as string });
+    reader.readAsDataURL(f);
+  };
+
+  if (loadFailed)
+    return (
+      <div className="max-w-3xl mx-auto p-8 text-center space-y-4">
+        <p className="text-slate-700">{t("td.loadFailed")}</p>
+        <div className="flex justify-center gap-3">
+          <button type="button" onClick={load} className="h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90">{t("common.tryAgain")}</button>
+          <Link to="/home/program?tab=champions" className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700 inline-flex items-center">{t("td.back")}</Link>
+        </div>
+      </div>
+    );
+  if (!loaded) return <div className="p-10 flex justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" aria-label={t("common.loading")} /></div>;
+
+  const back = editing ? `/home/champion/${id}` : "/home/program?tab=champions";
+  const label = (text: string, required = false) => <span className="text-sm font-semibold text-slate-800">{text}{required && " *"}</span>;
 
   return (
-    <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-6 animate-fadeIn">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate("/home/champion")}
-            className="p-2.5 bg-white hover:bg-muted text-primary border border-border/80 rounded-xl transition-all active:scale-95 shadow-sm"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Create Championship</h1>
-            <p className="text-sm text-muted-foreground mt-0.5 font-medium">
-              Sanction a new championship title or tournament belt for an event
-            </p>
-          </div>
+    <div className="max-w-3xl mx-auto p-4 md:p-8 space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <Link to={back} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-primary">
+          <ArrowLeft className="w-4 h-4" aria-hidden /> {t("common.back")}
+        </Link>
+        <LangSwitch />
+      </div>
+
+      <header className="flex items-start gap-3">
+        <span className="w-12 h-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0" aria-hidden><Crown className="w-6 h-6" /></span>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{editing ? t("tf.editTitle") : t("ov.newTitle")}</h1>
+          <p className="text-base text-slate-600 mt-1">{editing ? t("ff.editLead") : t("tf.lead")}</p>
         </div>
       </header>
 
-      {/* Info Box */}
-      <div className="bg-primary/5 border border-primary/10 rounded-xl p-5">
-        <div className="flex gap-3">
-          <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-          <div className="space-y-1.5">
-            <h3 className="font-semibold text-primary text-sm uppercase tracking-wide">How Championships Work</h3>
-            <ul className="text-xs font-medium text-muted-foreground/90 space-y-1.5">
-              <li>• <strong className="font-semibold text-foreground">Championship is a TITLE</strong>, not a fighter assignment</li>
-              <li>• The title belongs to an <strong className="font-semibold text-foreground">Event / Fight Card</strong></li>
-              <li>• Fighters <strong className="font-semibold text-foreground">compete FOR</strong> the championship in matches</li>
-              <li>• Mark matches as <strong className="font-semibold text-foreground">"Title Fight"</strong> to award the championship</li>
-              <li>• The match <strong className="font-semibold text-foreground">winner</strong> becomes the champion</li>
-            </ul>
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-7 space-y-6 shadow-sm">
+        <label className="block">{label(t("tf.name"), true)}<input className={`${fieldCls} mt-1`} value={form.titleName} onChange={(e) => set({ titleName: e.target.value })} placeholder="KKF National Championship 60 kg" />{errors.titleName && <span className="block text-sm text-red-700 mt-1">{errors.titleName}</span>}</label>
+
+        <div className="grid sm:grid-cols-3 gap-5">
+          <label className="block">{label(t("tf.type"))}
+            <select className={`${fieldCls} mt-1`} value={form.championType} onChange={(e) => set({ championType: e.target.value })}>
+              {[...new Set([...TITLE_TYPES, form.championType])].map((x) => <option key={x} value={x}>{typeLabel(t, x)}</option>)}
+            </select>
+          </label>
+          <label className="block">{label(t("tf.weight"))}
+            <select className={`${fieldCls} mt-1`} value={form.weightClass} onChange={(e) => set({ weightClass: e.target.value })}>
+              <option value="0">{t("tf.noWeight")}</option>
+              {weights.map((w) => <option key={w} value={w}>{t("common.kg", { n: w })}</option>)}
+            </select>
+          </label>
+          <label className="block">{label(t("tf.organization"))}
+            <select className={`${fieldCls} mt-1`} value={form.organization} onChange={(e) => set({ organization: e.target.value })}>
+              {[...new Set([...ORGANIZATIONS, form.organization])].map((x) => <option key={x} value={x}>{x === "Other" ? t("tf.other") : x}</option>)}
+            </select>
+          </label>
+        </div>
+
+        <label className="block">{label(t("tf.champion"))}
+          <select className={`${fieldCls} mt-1`} value={form.holderId} onChange={(e) => set({ holderId: e.target.value })}>
+            <option value="">{t("tf.noChampion")}</option>
+            {candidates.map((f) => <option key={f.id} value={f.id}>{f.name}{f.clubName ? ` — ${f.clubName}` : ""}</option>)}
+          </select>
+          <span className="block text-xs text-slate-500 mt-1">{t("tf.championHint")}</span>
+        </label>
+
+        <div className="flex items-start gap-4">
+          {isRealPhoto(form.beltImageUrl) ? <img src={form.beltImageUrl} alt="" className="w-24 h-24 rounded-xl object-contain bg-white border border-slate-200 shrink-0" /> : <span className="w-24 h-24 rounded-xl bg-slate-100 inline-flex items-center justify-center text-slate-400 shrink-0"><ImagePlus className="w-7 h-7" aria-hidden /></span>}
+          <div className="space-y-2">
+            {label(t("tf.belt"))}
+            <p className="text-xs text-slate-500">{t("tf.beltHint")}</p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => file.current?.click()} className="h-10 px-4 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 hover:border-primary">{form.beltImageUrl ? t("common.change") : t("cf.addPicture")}</button>
+              {form.beltImageUrl && <button type="button" onClick={() => set({ beltImageUrl: "" })} className="h-10 px-3 text-sm text-slate-500 hover:text-red-700">{t("form.removePoster")}</button>}
+            </div>
+            <input ref={file} type="file" accept="image/*" className="hidden" onChange={(e) => pickImage(e.target.files?.[0])} />
           </div>
         </div>
+
+        <label className="block">{label(t("td.notes"))}<textarea rows={3} className={`${fieldCls} mt-1`} value={form.notes} onChange={(e) => set({ notes: e.target.value })} /><span className="block text-xs text-slate-500 mt-1">{t("tf.notesHint")}</span></label>
+      </section>
+
+      <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+        <Link to={back} className="h-12 px-6 rounded-xl border border-slate-300 bg-white text-base font-semibold text-slate-700 hover:bg-slate-50 inline-flex items-center justify-center">{t("common.cancel")}</Link>
+        <button type="button" disabled={busy} onClick={save} className="h-12 px-6 rounded-xl bg-primary text-white text-base font-semibold hover:opacity-90 disabled:opacity-60">
+          {busy ? t("common.saving") : editing ? t("common.save") : t("tf.create")}
+        </button>
       </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Championship Type Selection */}
-        <div className="card-premium p-6 sm:p-8 space-y-6">
-          <div className="flex items-center gap-3 pb-4 border-b border-border/60">
-            <div className="w-10 h-10 bg-accent/10 text-accent-foreground rounded-xl flex items-center justify-center">
-              <Trophy className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-foreground uppercase tracking-tight">
-                Championship Type
-              </h2>
-              <p className="text-xs text-muted-foreground">Select the championship sanction category</p>
-            </div>
-          </div>
-          
-          {/* Belt Titles */}
-          <div>
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-3">
-              Belt Titles
-            </span>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                "KKF National",
-                "ISKA Cambodia",
-                "IPCC International",
-                "International Belt",
-                "Interim Belt",
-                "Super Fight Belt",
-                "Sponsor Belt"
-              ].map((type) => {
-                const config = CHAMPION_TYPE_CONFIG[type as ChampionType];
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, championType: type as ChampionType })}
-                    className={clsx(
-                      "p-4 rounded-xl border transition-all text-center flex flex-col items-center justify-center hover:-translate-y-0.5 duration-200 cursor-pointer",
-                      formData.championType === type
-                        ? "bg-primary/5 text-primary border-primary font-bold scale-[1.02] ring-2 ring-primary/10 shadow-sm"
-                        : "bg-white text-muted-foreground border-border hover:border-slate-300 hover:text-foreground hover:bg-muted/20"
-                    )}
-                  >
-                    <div className="text-2xl mb-1.5">{config.icon}</div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider leading-tight">
-                      {config.label.replace(" Champion", "").replace(" Belt", "")}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="border-t border-border/60"></div>
-
-          {/* Non-Belt Awards */}
-          <div>
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-3">
-              Non-Belt Awards
-            </span>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {[
-                "Trophy",
-                "Tournament Winner",
-                "Honorary Award"
-              ].map((type) => {
-                const config = CHAMPION_TYPE_CONFIG[type as ChampionType];
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, championType: type as ChampionType })}
-                    className={clsx(
-                      "p-4 rounded-xl border transition-all text-center flex flex-col items-center justify-center hover:-translate-y-0.5 duration-200 cursor-pointer",
-                      formData.championType === type
-                        ? "bg-primary/5 text-primary border-primary font-bold scale-[1.02] ring-2 ring-primary/10 shadow-sm"
-                        : "bg-white text-muted-foreground border-border hover:border-slate-300 hover:text-foreground hover:bg-muted/20"
-                    )}
-                  >
-                    <div className="text-2xl mb-1.5">{config.icon}</div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider leading-tight">
-                      {config.label}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Title Details */}
-        <div className="card-premium p-6 sm:p-8 space-y-6">
-          <div className="flex items-center gap-3 pb-4 border-b border-border/60">
-            <div className="w-10 h-10 bg-accent/10 text-accent-foreground rounded-xl flex items-center justify-center">
-              <Award className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-foreground uppercase tracking-tight">
-                Championship Title Details
-              </h2>
-              <p className="text-xs text-muted-foreground">Configure the title name, weight class, and sanction organization</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2 tracking-wide">
-                Championship Title Name *
-              </label>
-              <input
-                type="text"
-                value={formData.titleName}
-                onChange={(e) => {
-                  setFormData({ ...formData, titleName: e.target.value });
-                  setErrors({ ...errors, titleName: "" });
-                }}
-                placeholder="e.g., KKF National Championship 65kg, WMC World Title 70kg"
-                className={clsx(
-                  "input-premium py-2.5",
-                  errors.titleName && "border-destructive focus:border-destructive focus:ring-destructive/10"
-                )}
-              />
-              {errors.titleName && (
-                <p className="mt-1.5 text-[10px] font-semibold text-destructive flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  {errors.titleName}
-                </p>
-              )}
-              <p className="mt-2 text-[10px] font-semibold text-muted-foreground">
-                💡 This is the official name of the championship belt/title
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2 tracking-wide">
-                Weight Class (kg) *
-              </label>
-              <select
-                value={formData.weightClass}
-                onChange={(e) => setFormData({ ...formData, weightClass: parseFloat(e.target.value) })}
-                className="input-premium cursor-pointer py-2.5"
-              >
-                {WEIGHT_CLASSES.map(weight => (
-                  <option key={weight} value={weight}>
-                    {getWeightClassName(weight)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2 tracking-wide">
-                Organization *
-              </label>
-              <select
-                value={formData.organization}
-                onChange={(e) => setFormData({ ...formData, organization: e.target.value as any })}
-                className="input-premium cursor-pointer py-2.5"
-              >
-                <option value="KKF">KKF</option>
-                <option value="WBC">WBC</option>
-                <option value="WBA">WBA</option>
-                <option value="WMC">WMC</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2 tracking-wide">
-                Initial Status *
-              </label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as ChampionStatus })}
-                className="input-premium cursor-pointer py-2.5"
-              >
-                <option value="Vacant">Vacant - No current holder (up for grabs)</option>
-                <option value="Active">Active - Has current holder</option>
-                <option value="Title Defense Scheduled">Title Defense Scheduled - Upcoming defense</option>
-                <option value="Inactive">Inactive - Holder unavailable</option>
-              </select>
-              <p className="mt-2 text-[10px] font-semibold text-muted-foreground">
-                💡 Most new championships start as "Vacant" until a title fight determines the first champion
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Event/Batch Association */}
-        <div className="card-premium p-6 sm:p-8 space-y-6">
-          <div className="flex items-center gap-3 pb-4 border-b border-border/60">
-            <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
-              <MapPin className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-foreground uppercase tracking-tight">
-                Event Association
-              </h2>
-              <p className="text-xs text-muted-foreground">Link this title to the host fight event card</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2 tracking-wide">
-                Select Event / Fight Card *
-              </label>
-              <select
-                value={formData.batchId}
-                onChange={(e) => {
-                  setFormData({ ...formData, batchId: e.target.value });
-                  setErrors({ ...errors, batchId: "" });
-                }}
-                className={clsx(
-                  "input-premium cursor-pointer py-2.5",
-                  errors.batchId && "border-destructive focus:border-destructive focus:ring-destructive/10"
-                )}
-              >
-                <option value="">-- Select Event / Fight Card --</option>
-                {batches.map(batch => (
-                  <option key={batch.id} value={batch.id}>
-                    {batch.event_name || batch.name} - {new Date(batch.date).toLocaleDateString()}
-                  </option>
-                ))}
-              </select>
-              {errors.batchId && (
-                <p className="mt-1.5 text-[10px] font-semibold text-destructive flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  {errors.batchId}
-                </p>
-              )}
-              <p className="mt-2 text-[10px] font-semibold text-muted-foreground">
-                💡 This championship will belong to the selected event
-              </p>
-            </div>
-
-            {selectedBatch && (
-              <div className="bg-muted/30 border border-border/60 rounded-xl p-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs">
-                  <div>
-                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Event Name</div>
-                    <div className="font-semibold text-foreground text-sm">{selectedBatch.event_name || selectedBatch.name}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Date</div>
-                    <div className="font-semibold text-foreground text-sm">
-                      {new Date(selectedBatch.date).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Location</div>
-                    <div className="font-semibold text-foreground text-sm truncate">{selectedBatch.location}</div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Additional Notes */}
-        <div className="card-premium p-6 sm:p-8 space-y-6">
-          <div className="flex items-center gap-3 pb-4 border-b border-border/60">
-            <div className="w-10 h-10 bg-muted text-muted-foreground rounded-xl flex items-center justify-center">
-              <Star className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-foreground uppercase tracking-tight">
-                Additional Information
-              </h2>
-              <p className="text-xs text-muted-foreground">Provide additional guidelines or requirements for this title</p>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2 tracking-wide">
-              Notes (Optional)
-            </label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Add any additional notes about this championship..."
-              rows={4}
-              className="input-premium py-2.5 resize-none"
-            />
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4">
-          <button
-            type="button"
-            onClick={() => navigate("/home/champion")}
-            className="w-full sm:w-auto btn-outline py-2.5 px-6 uppercase text-xs tracking-wider"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="w-full sm:w-auto btn-primary py-2.5 px-6 uppercase text-xs tracking-wider"
-          >
-            <Save className="w-4 h-4" />
-            Create Championship
-          </button>
-        </div>
-      </form>
     </div>
   );
 }

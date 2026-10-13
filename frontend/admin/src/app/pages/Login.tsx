@@ -1,9 +1,26 @@
+/**
+ * Sign in (/login). Light, one short form, plain words, English + Khmer (switch at the top), made for officers
+ * who aren't comfortable with technology:
+ *  - phone-friendly: 48 px fields, 16 px text (no zoom on iPhone), the username is not auto-capitalised and
+ *    stray spaces around it are ignored;
+ *  - "Show" / "Hide" with a word instead of an eye icon, and a Caps Lock warning;
+ *  - errors say what to do (wrong details / too many tries + how long to wait / no connection);
+ *  - says what to do when the password is forgotten (a Super Admin sets a new one) and that one account is signed in
+ *    on one device at a time;
+ *  - shows the "no internet" / "new version" notices, and no outside pictures or invented version numbers.
+ * See claude/updates/admin-login-page.md.
+ */
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { LogIn, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { AlertCircle, Info, LogIn } from "lucide-react";
 import { api } from "../utils/api";
 import { useT } from "../i18n/program";
-import logoImg from "../../assets/modern_logo.png";
+import { LangSwitch } from "../components/program/shared";
+import { PwaBar } from "../components/pwa/PwaBar";
+import logoImg from "../../assets/modern_logo-small.webp";
+
+const input =
+  "w-full h-12 rounded-xl border border-slate-300 bg-white px-4 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary";
 
 export function Login() {
   const navigate = useNavigate();
@@ -13,6 +30,7 @@ export function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -20,131 +38,133 @@ export function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
-
     try {
-      await api.auth.login(username, password);
+      await api.auth.login(username.trim(), password);
       navigate("/");
     } catch (err: any) {
-      setError(err.message || "Invalid username or password");
+      if (err?.status === 429) setError(t("login.tooMany", { n: Math.max(1, Math.ceil((err.retryAfter ?? 60) / 60)) }));
+      else if (err?.status === 401 || err?.status === 422) setError(t("login.wrong"));
+      else if (!err?.status) setError(t("login.network"));
+      else setError(err.message || t("login.wrong"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0A3D91] via-[#051C42] to-[#0A3D91] flex items-center justify-center p-4 relative overflow-hidden animate-fadeIn">
-      {/* Background decorations */}
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none" />
-      <div className="absolute top-0 left-0 w-96 h-96 bg-[#C8102E] rounded-full blur-3xl opacity-20 -translate-x-1/2 -translate-y-1/2" />
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#F2C94C] rounded-full blur-3xl opacity-20 translate-x-1/2 translate-y-1/2" />
-      <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-white rounded-full blur-3xl opacity-5 -translate-x-1/2 -translate-y-1/2" />
+    <div className="min-h-dvh bg-gradient-to-b from-[#eef3fb] to-white flex flex-col">
+      <PwaBar />
+      <div className="flex justify-end px-4 pt-4 sm:px-6">
+        <LangSwitch />
+      </div>
 
-      <div className="w-full max-w-md relative z-10 animate-fadeIn">
-        {/* ── Login Card ── */}
-        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border-4 border-white/20">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-[#C8102E] to-[#A00D24] px-8 py-10 text-center">
-            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg overflow-hidden p-1.5">
-              <img src={logoImg} alt="DIGITAL KUNKHMER" className="w-full h-full object-contain animate-fadeIn" />
-            </div>
-            <h1 className="text-3xl font-black text-white uppercase tracking-tight mb-1">
-              DIGITAL KUNKHMER
-            </h1>
-            <p className="text-white/80 font-bold text-sm">Management System</p>
-          </div>
+      <main className="flex-1 flex items-start sm:items-center justify-center px-4 pt-4 pb-10">
+        <div className="w-full max-w-md">
+          <header className="text-center mb-6">
+            <img src={logoImg} alt="" width={96} height={96} className="w-24 h-24 mx-auto mb-4 rounded-full object-contain bg-white shadow-sm border border-slate-200 p-1" />
+            <h1 className="text-3xl font-bold text-[#0A3D91]">KKF Admin</h1>
+            <p className="text-base text-slate-600 mt-1">{t("login.org")}</p>
+          </header>
 
-          {/* Form */}
-          <div className="p-8">
-            <h2 className="text-2xl font-black text-[#0A3D91] uppercase tracking-tight mb-1 text-center">
-              Sign In
-            </h2>
-            <p className="text-[#707070] text-sm text-center mb-8">Enter your credentials to continue</p>
+          <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+            <h2 className="text-xl font-bold text-slate-900">{t("login.title")}</h2>
+            <p className="text-base text-slate-600 mt-1 mb-6">{t("login.lead")}</p>
 
             {expired && !error && (
-              <div role="status" className="mb-6 p-4 bg-amber-50 border-2 border-amber-200 rounded-xl flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                <p className="text-sm font-bold text-amber-800">{t("login.expired")}</p>
+              <div role="status" className="mb-5 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" aria-hidden />
+                <p className="text-sm text-amber-900">{t("login.expired")}</p>
               </div>
             )}
 
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-xl flex items-start gap-3 animate-pulse">
-                <AlertCircle className="w-5 h-5 text-[#C8102E] shrink-0 mt-0.5" />
-                <p className="text-sm font-bold text-[#C8102E]">{error}</p>
+              <div role="alert" className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" aria-hidden />
+                <p className="text-sm text-red-800">{error}</p>
               </div>
             )}
 
             <form onSubmit={handleLogin} className="space-y-5">
-              {/* Username */}
               <div>
-                <label className="block text-xs font-black text-[#707070] uppercase tracking-wider mb-2">
-                  Username
-                </label>
+                <label htmlFor="login-username" className="block text-sm font-semibold text-slate-800 mb-1.5">{t("login.username")}</label>
                 <input
                   id="login-username"
                   type="text"
                   value={username}
-                  onChange={(e) => { setUsername(e.target.value); }}
-                  className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3.5 text-[#1A1A24] font-semibold focus:outline-none focus:ring-2 focus:ring-[#0A3D91] focus:border-[#0A3D91] transition-all"
-                  placeholder="Enter username"
+                  onChange={(e) => setUsername(e.target.value)}
+                  className={input}
                   required
+                  autoFocus
                   autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  enterKeyHint="next"
                 />
               </div>
 
-              {/* Password */}
               <div>
-                <label className="block text-xs font-black text-[#707070] uppercase tracking-wider mb-2">
-                  Password
-                </label>
+                <label htmlFor="login-password" className="block text-sm font-semibold text-slate-800 mb-1.5">{t("login.password")}</label>
                 <div className="relative">
                   <input
                     id="login-password"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[#F4F5F8] border-2 border-[#E0E0E0] rounded-xl px-4 py-3.5 pr-12 text-[#1A1A24] font-semibold focus:outline-none focus:ring-2 focus:ring-[#0A3D91] focus:border-[#0A3D91] transition-all"
-                    placeholder="Enter password"
+                    onKeyDown={(e) => setCapsLock(e.getModifierState?.("CapsLock") ?? false)}
+                    onKeyUp={(e) => setCapsLock(e.getModifierState?.("CapsLock") ?? false)}
+                    className={`${input} pr-24`}
                     required
                     autoComplete="current-password"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    enterKeyHint="go"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#707070] hover:text-[#0A3D91] transition-colors"
+                    onClick={() => setShowPassword((s) => !s)}
+                    aria-pressed={showPassword}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 h-9 px-3 rounded-lg text-sm font-semibold text-primary hover:bg-primary/10"
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? t("login.hide") : t("login.show")}
                   </button>
                 </div>
+                {capsLock && <p role="status" className="mt-2 text-sm text-amber-800">{t("login.capsLock")}</p>}
               </div>
 
               <button
                 id="login-submit-btn"
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-[#C8102E] to-[#A00D24] hover:from-[#A00D24] hover:to-[#8A0B20] text-white px-6 py-4 rounded-xl font-black text-lg uppercase tracking-wide transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full h-12 rounded-xl bg-primary hover:bg-[#083073] text-white text-base font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Signing In...
+                    <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" aria-hidden />
+                    {t("login.submitting")}
                   </>
                 ) : (
                   <>
-                    <LogIn className="w-5 h-5" />
-                    Sign In
+                    <LogIn className="w-5 h-5" aria-hidden />
+                    {t("login.submit")}
                   </>
                 )}
               </button>
             </form>
-          </div>
-        </div>
 
-        {/* Footer */}
-        <p className="text-center text-white/60 text-sm mt-6 font-medium">
-          © 2026 Kun Khmer Federation. All rights reserved. | Platform v3.0.0
-        </p>
-      </div>
+            <div className="mt-6 pt-5 border-t border-slate-100 space-y-3 text-sm text-slate-600">
+              <p>{t("login.forgot")}</p>
+              <p className="flex items-start gap-2 text-slate-500">
+                <Info className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />
+                <span>{t("login.oneDevice")}</span>
+              </p>
+            </div>
+          </section>
+
+          <p className="text-center text-slate-500 text-sm mt-6">© 2026 {t("login.org")}</p>
+        </div>
+      </main>
     </div>
   );
 }

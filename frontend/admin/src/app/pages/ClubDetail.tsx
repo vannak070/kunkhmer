@@ -106,7 +106,7 @@ export function ClubDetail() {
             {view.upcoming.length > 0 && <span><strong className="text-slate-900">{view.upcoming.length}</strong> {t("club.upcomingBouts")}</span>}
           </p>
         </div>
-        {permissions.hasPermission("clubs.edit") && (
+        {permissions.hasPermission("clubs.manage") && (
           <Link to={`/home/clubs/${club.id}/edit`} className="shrink-0 inline-flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-800 hover:border-primary hover:text-primary">
             <Pencil className="w-4 h-4" aria-hidden /> {t("club.edit")}
           </Link>

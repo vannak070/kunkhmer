@@ -124,7 +124,7 @@ export function ProgramDashboard() {
             {activeTab === "events" && <FightNights />}
 
 
-            {activeTab === "champions" && <Champion embedded={true} />}
+            {activeTab === "champions" && <Champion />}
           </>
         )}
       </div>

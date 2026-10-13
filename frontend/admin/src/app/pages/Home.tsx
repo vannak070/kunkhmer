@@ -17,6 +17,7 @@ import { FighterReviewActions } from "../components/FighterReview";
 import { todoDetail, todoTitle } from "../components/program/todoText";
 import { APPROVALS_ENABLED } from "../config/features";
 import { formatDay, khmerDigits, useT, type Lang, type TextKey } from "../i18n/program";
+import { InstallCard } from "../components/pwa/InstallCard";
 
 type T = (key: TextKey, vars?: Record<string, string | number>) => string;
 
@@ -146,7 +147,7 @@ export function Home() {
   const quick = [
     { label: isClub ? t("dash.q.registerFighter") : t("dash.q.addFighter"), href: "/home/fighters/kunkhmer/new", icon: UserPlus, show: permissions.hasPermission("fighters.create") },
     { label: t("dash.q.event"), href: "/home/events/new", icon: CalendarPlus, show: permissions.hasPermission("events.create") },
-    { label: t("dash.q.card"), href: "/home/matches/new", icon: Layers, show: permissions.hasPermission("events.create") },
+    { label: t("dash.q.card"), href: "/home/program?tab=events", icon: Layers, show: permissions.hasPermission("events.create") },
     { label: t("dash.q.news"), href: "/home/media/news", icon: Newspaper, show: canApprove },
     { label: t("dash.q.staff"), href: "/home/user-management", icon: Users, show: permissions.hasPermission("users.view") },
   ].filter((q) => q.show);
@@ -183,6 +184,8 @@ export function Home() {
           <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} aria-hidden /> {t("dash.refresh")}
         </button>
       </header>
+
+      <InstallCard />
 
       {error ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">{error}</div>

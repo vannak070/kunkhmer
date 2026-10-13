@@ -1,54 +1,38 @@
+import type { ComponentType } from "react";
 import { createBrowserRouter } from "react-router";
-import { ScheduleTitleBout } from "./pages/ScheduleTitleBout";
+import { PageSpinner } from "./components/PageSpinner";
 import { getRouterBasename } from "./utils/basePath";
 import { Layout } from "./components/Layout";
-import { Home } from "./pages/Home";
-import { Fighters } from "./pages/Fighters";
-import { FighterDetail } from "./pages/FighterDetail";
-import { AddFighter } from "./pages/AddFighter";
-import { MatchDetail } from "./pages/MatchDetail";
-import { NewFightNight } from "./pages/NewFightNight";
-import { FightNight } from "./pages/FightNight";
-import { FightCardWeighIn } from "./pages/FightCardWeighIn";
-import { FightCardResults } from "./pages/FightCardResults";
-import { FightCardRedirect } from "./components/program/FightCardRedirect";
-import { AddBout } from "./pages/AddBout";
-import { MatchCreatedSuccess } from "./pages/MatchCreatedSuccess";
-import { CreateBatch } from "./pages/CreateBatch";
-import { CreateChampion } from "./pages/CreateChampion";
-import { ChampionDetail } from "./pages/ChampionDetail";
-import { ChampionHistory } from "./pages/ChampionHistory";
-import { Profile } from "./pages/Profile";
-import { MatchProposals } from "./pages/MatchProposals";
 import { RedirectToHomeEvents } from "./pages/RedirectToHomeEvents";
 import { RedirectToFighters } from "./pages/RedirectToFighters";
-import { SystemSettings } from "./pages/SystemSettings";
-import { Help } from "./pages/Help";
 import { NotFound } from "./pages/NotFound";
 import { Login } from "./pages/Login";
-import { Clubs } from "./pages/Clubs";
-import { ClubDetail } from "./pages/ClubDetail";
-import { AddClub } from "./pages/AddClub";
-import AssignOfficials from "./pages/AssignOfficials";
-import { ShareFightCard } from "./pages/ShareFightCard";
-import { UserManagement } from "./pages/UserManagement";
 import { Navigate, useParams } from "react-router";
-import { Officials } from "./pages/Officials";
-import { MyBouts } from "./pages/MyBouts";
-import { News } from "./pages/News";
-import { Video } from "./pages/Video";
-import { StrategicPartners } from "./pages/StrategicPartners";
-import { PartnerOrganizations } from "./pages/PartnerOrganizations";
-import { ProgramDashboard } from "./pages/ProgramDashboard";
-import { HubAnswers } from "./pages/HubAnswers";
-import { StaffAssistant } from "./pages/StaffAssistant";
-import { KnowledgeBase } from "./pages/KnowledgeBase";
-import { FederationPage } from "./pages/FederationPage";
+
+
+/**
+ * Every page loads on demand, so a phone downloads only the code of the screens it opens (the shell, login and
+ * "not found" stay in the first file). Fast first load, small updates. See claude/updates/admin-pwa-performance.md.
+ */
+const page = (load: () => Promise<Record<string, any>>, name: string) => ({
+  lazy: async () => {
+    const m = await load();
+    return { Component: (m[name] ?? m.default) as ComponentType };
+  },
+});
 
 /** Old or removed admin URLs → the page that does that job now (Phase 2). */
 function ToFightCard() {
   const { subEventId } = useParams();
   return <Navigate to={`/home/matches/${subEventId}`} replace />;
+}
+function ToFightCardPage() {
+  const { batchId } = useParams();
+  return <Navigate to={`/home/matches/${batchId}`} replace />;
+}
+function ToTitle() {
+  const { id } = useParams();
+  return <Navigate to={`/home/champion/${id}`} replace />;
 }
 function ToEvent() {
   const { eventId } = useParams();
@@ -64,6 +48,7 @@ export const router = createBrowserRouter(
   {
     path: "/login",
     element: <Login />,
+    HydrateFallback: PageSpinner,
   },
   {
     path: "/",
@@ -180,81 +165,85 @@ export const router = createBrowserRouter(
   {
     path: "/home",
     element: <Layout />,
+    HydrateFallback: PageSpinner,
     errorElement: <NotFound />,
     children: [
-      { index: true, element: <Home /> },
-      { path: "fighters", element: <Fighters /> },
-      { path: "fighters/kunkhmer", element: <Fighters /> },
-      { path: "fighters/foreigner", element: <Fighters /> },
-      { path: "fighters/kunkhmer/new", element: <AddFighter /> },
-      { path: "fighters/foreigner/new", element: <AddFighter /> },
-      { path: "fighters/:id/edit", element: <AddFighter /> },
-      { path: "fighters/:id", element: <FighterDetail /> },
-      { path: "clubs/:id", element: <ClubDetail /> },
-      { path: "clubs/:id/edit", element: <AddClub /> },
-      { path: "clubs/new", element: <AddClub /> },
-      { path: "clubs", element: <Clubs /> },
-      { path: "matches/new", element: <CreateBatch /> },
-      { path: "matches/:batchId/edit", element: <CreateBatch /> },
-      { path: "matches/:batchId/create-match", element: <AddBout /> },
-      { path: "matches/:batchId/assign-officials", element: <AssignOfficials /> },
-      { path: "matches/created", element: <MatchCreatedSuccess /> },
+      { index: true, ...page(() => import("./pages/Home"), "Home") },
+      { path: "fighters", ...page(() => import("./pages/Fighters"), "Fighters") },
+      { path: "fighters/kunkhmer", ...page(() => import("./pages/Fighters"), "Fighters") },
+      { path: "fighters/foreigner", ...page(() => import("./pages/Fighters"), "Fighters") },
+      { path: "fighters/kunkhmer/new", ...page(() => import("./pages/AddFighter"), "AddFighter") },
+      { path: "fighters/foreigner/new", ...page(() => import("./pages/AddFighter"), "AddFighter") },
+      { path: "fighters/:id/edit", ...page(() => import("./pages/AddFighter"), "AddFighter") },
+      { path: "fighters/:id", ...page(() => import("./pages/FighterDetail"), "FighterDetail") },
+      { path: "clubs/:id", ...page(() => import("./pages/ClubDetail"), "ClubDetail") },
+      { path: "clubs/:id/edit", ...page(() => import("./pages/AddClub"), "AddClub") },
+      { path: "clubs/new", ...page(() => import("./pages/AddClub"), "AddClub") },
+      { path: "clubs", ...page(() => import("./pages/Clubs"), "Clubs") },
+      // The old "create fight card" form is gone: fight cards are added on their fight night page.
+      { path: "matches/new", element: <Navigate to="/home/program?tab=events" replace /> },
+      { path: "matches/:batchId/edit", element: <ToFightCardPage /> },
+      { path: "matches/:batchId/create-match", ...page(() => import("./pages/AddBout"), "AddBout") },
+      { path: "matches/:batchId/assign-officials", ...page(() => import("./pages/AssignOfficials"), "AssignOfficials") },
+      { path: "matches/created", element: <Navigate to="/home/program?tab=events" replace /> },
       // The fight card lives on its fight night page now (claude/updates/program-officer-friendly.md).
-      { path: "matches/:batchId", element: <FightCardRedirect /> },
-      { path: "batches/:batchId", element: <FightCardRedirect /> },
-      { path: "fight-cards/:cardId/weigh-in", element: <FightCardWeighIn /> },
-      { path: "fight-cards/:cardId/results", element: <FightCardResults /> },
-      { path: "batches/:batchId/share", element: <ShareFightCard /> },
-      { path: "program", element: <ProgramDashboard /> },
+      { path: "matches/:batchId", ...page(() => import("./components/program/FightCardRedirect"), "FightCardRedirect") },
+      { path: "batches/:batchId", ...page(() => import("./components/program/FightCardRedirect"), "FightCardRedirect") },
+      { path: "fight-cards/:cardId/weigh-in", ...page(() => import("./pages/FightCardWeighIn"), "FightCardWeighIn") },
+      { path: "fight-cards/:cardId/results", ...page(() => import("./pages/FightCardResults"), "FightCardResults") },
+      { path: "batches/:batchId/share", ...page(() => import("./pages/ShareFightCard"), "ShareFightCard") },
+      { path: "program", ...page(() => import("./pages/ProgramDashboard"), "ProgramDashboard") },
       { path: "matches", element: <Navigate to="/home/program?tab=events" replace /> },
       { path: "matches-old", element: <Navigate to="/home/program?tab=events" replace /> },
-      { path: "match/new", element: <ScheduleTitleBout /> },
-      { path: "match/:id", element: <MatchDetail /> },
+      { path: "match/new", ...page(() => import("./pages/ScheduleTitleBout"), "ScheduleTitleBout") },
+      { path: "match/:id", ...page(() => import("./pages/MatchDetail"), "MatchDetail") },
       { path: "match/:id/update-result", element: <ToMatch /> },
-      { path: "events/new", element: <NewFightNight /> },
+      { path: "events/new", ...page(() => import("./pages/NewFightNight"), "NewFightNight") },
       { path: "events/:eventId/assign-fighters", element: <ToEvent /> },
-      { path: "events/:id", element: <FightNight /> },
+      { path: "events/:id", ...page(() => import("./pages/FightNight"), "FightNight") },
       { path: "events/:eventId/sub-events/:subEventId", element: <ToFightCard /> },
       { path: "events/:eventId/sub-events/:subEventId/add-match", element: <ToFightCard /> },
       { path: "events/:eventId/add-match", element: <ToEvent /> },
       { path: "events", element: <Navigate to="/home/program?tab=events" replace /> },
       { path: "champion", element: <Navigate to="/home/program?tab=champions" replace /> },
-      { path: "champion/new", element: <CreateChampion /> },
-      { path: "champion/:id", element: <ChampionDetail /> },
-      { path: "champion/:id/schedule-defense", element: <ScheduleTitleBout /> },
-      { path: "champion/:id/history", element: <ChampionHistory /> },
+      { path: "champion/new", ...page(() => import("./pages/CreateChampion"), "CreateChampion") },
+      { path: "champion/:id", ...page(() => import("./pages/ChampionDetail"), "ChampionDetail") },
+      { path: "champion/:id/schedule-defense", ...page(() => import("./pages/ScheduleTitleBout"), "ScheduleTitleBout") },
+      { path: "champion/:id/edit", ...page(() => import("./pages/CreateChampion"), "CreateChampion") },
+      // The history is on the title page now.
+      { path: "champion/:id/history", element: <ToTitle /> },
       { path: "kkf-workflow", element: <Navigate to="/home" replace /> },
       { path: "kkf-workflow/:requestId", element: <Navigate to="/home" replace /> },
-      { path: "profile", element: <Profile /> },
-      { path: "match-proposals", element: <MatchProposals /> },
-      { path: "officials", element: <Officials /> },
+      { path: "profile", ...page(() => import("./pages/Profile"), "Profile") },
+      { path: "match-proposals", ...page(() => import("./pages/MatchProposals"), "MatchProposals") },
+      { path: "officials", ...page(() => import("./pages/Officials"), "Officials") },
       { path: "kkf-officers", element: <Navigate to="/home/officials" replace /> },
-      { path: "my-bouts", element: <MyBouts /> },
-      { path: "hub-answers", element: <HubAnswers /> },
-      { path: "assistant", element: <StaffAssistant /> },
-      { path: "knowledge", element: <KnowledgeBase /> },
-      { path: "federation", element: <FederationPage /> },
-      { path: "user-management", element: <UserManagement /> },
-      { path: "user-management/new", element: <UserManagement /> },
-      { path: "user-management/:userId/edit", element: <UserManagement /> },
-      { path: "user-management/:userId", element: <UserManagement /> },
+      { path: "my-bouts", ...page(() => import("./pages/MyBouts"), "MyBouts") },
+      { path: "hub-answers", ...page(() => import("./pages/HubAnswers"), "HubAnswers") },
+      { path: "assistant", ...page(() => import("./pages/StaffAssistant"), "StaffAssistant") },
+      { path: "knowledge", ...page(() => import("./pages/KnowledgeBase"), "KnowledgeBase") },
+      { path: "federation", ...page(() => import("./pages/FederationPage"), "FederationPage") },
+      { path: "user-management", ...page(() => import("./pages/UserManagement"), "UserManagement") },
+      { path: "user-management/new", ...page(() => import("./pages/UserManagement"), "UserManagement") },
+      { path: "user-management/:userId/edit", ...page(() => import("./pages/UserManagement"), "UserManagement") },
+      { path: "user-management/:userId", ...page(() => import("./pages/UserManagement"), "UserManagement") },
       { path: "rankings", element: <RedirectToFighters /> },
       { path: "workflow-demo", element: <Navigate to="/home" replace /> },
-      { path: "settings", element: <SystemSettings /> },
-      { path: "help", element: <Help /> },
+      { path: "settings", ...page(() => import("./pages/SystemSettings"), "SystemSettings") },
+      { path: "help", ...page(() => import("./pages/Help"), "Help") },
       { path: "process-flow", element: <Navigate to="/home/help" replace /> },
       { path: "assign-officials", element: <Navigate to="/home/program?tab=events" replace /> },
       { path: "product-management", element: <Navigate to="/home" replace /> },
       { path: "categories-setting", element: <Navigate to="/home" replace /> },
       { path: "store-settings", element: <Navigate to="/home" replace /> },
-      { path: "media/news", element: <News /> },
-      { path: "media/video", element: <Video /> },
-      { path: "strategic-partners/organizations/new", element: <PartnerOrganizations /> },
-      { path: "strategic-partners/organizations/:orgId/edit", element: <PartnerOrganizations /> },
-      { path: "strategic-partners/organizations", element: <PartnerOrganizations /> },
-      { path: "strategic-partners/:partnerType/new", element: <StrategicPartners /> },
-      { path: "strategic-partners/:partnerType/:partnerId/edit", element: <StrategicPartners /> },
-      { path: "strategic-partners/:partnerType", element: <StrategicPartners /> },
+      { path: "media/news", ...page(() => import("./pages/News"), "News") },
+      { path: "media/video", ...page(() => import("./pages/Video"), "Video") },
+      { path: "strategic-partners/organizations/new", ...page(() => import("./pages/PartnerOrganizations"), "PartnerOrganizations") },
+      { path: "strategic-partners/organizations/:orgId/edit", ...page(() => import("./pages/PartnerOrganizations"), "PartnerOrganizations") },
+      { path: "strategic-partners/organizations", ...page(() => import("./pages/PartnerOrganizations"), "PartnerOrganizations") },
+      { path: "strategic-partners/:partnerType/new", ...page(() => import("./pages/StrategicPartners"), "StrategicPartners") },
+      { path: "strategic-partners/:partnerType/:partnerId/edit", ...page(() => import("./pages/StrategicPartners"), "StrategicPartners") },
+      { path: "strategic-partners/:partnerType", ...page(() => import("./pages/StrategicPartners"), "StrategicPartners") },
       { path: "strategic-partners", element: <Navigate to="/home/strategic-partners/broadcasters" replace /> },
       { path: "*", element: <NotFound /> },
     ],

@@ -50,7 +50,11 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}): Pr
 
   if (!response.ok) {
     // `status` lets a page tell "not found" (404) from a failed load.
-    throw Object.assign(new Error(data.error || `HTTP ${response.status}: ${response.statusText}`), { status: response.status });
+    throw Object.assign(new Error(data.error || `HTTP ${response.status}: ${response.statusText}`), {
+      status: response.status,
+      // Throttled sign-in: seconds to wait (Retry-After).
+      retryAfter: Number(response.headers.get("Retry-After")) || undefined,
+    });
   }
 
   return data;

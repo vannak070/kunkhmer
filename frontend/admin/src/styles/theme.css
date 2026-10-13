@@ -110,9 +110,10 @@
 }
 
 @theme inline {
-  /* Khmer has no glyphs in Outfit / Inter, so Khmer text falls through to Kantumruy Pro on every page. */
-  --font-sans: "Outfit", "Inter", "Kantumruy Pro", sans-serif;
-  --font-mono: "Fira Code", ui-monospace, "SFMono-Regular", Menlo, Consolas, "Kantumruy Pro", monospace;
+  /* Khmer has no glyphs in Outfit, so Khmer text falls through to Kantumruy Pro on every page; Noto Sans Khmer
+     (installed on Android) and the system font only show while it loads. Fonts are served from this site (styles/fonts.css). */
+  --font-sans: "Outfit", "Kantumruy Pro", "Noto Sans Khmer", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Kantumruy Pro", "Noto Sans Khmer", monospace;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);

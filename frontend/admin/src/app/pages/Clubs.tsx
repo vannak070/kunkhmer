@@ -1,220 +1,180 @@
-import { useState, useEffect } from "react";
-import { Plus, Search, MapPin, Dumbbell, Edit2, Trash2 } from "lucide-react";
+/**
+ * Clubs (/home/clubs): the federation's gyms and training camps in one compact list — logo or initials, name (and
+ * Khmer name), association, place, head coach, number of fighters, status — with search, an Active / Inactive filter,
+ * a visible "Edit" button, and Delete (only for a club without fighters) behind a confirmation. English + Khmer.
+ * See claude/updates/admin-step3-simple-pages.md.
+ */
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { api } from "../utils/api";
 import { toast } from "sonner";
+import { Building2, MapPin, MoreHorizontal, Pencil, Plus, Search, Trash2, User } from "lucide-react";
+import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
-import { useLang } from "../i18n/program";
+import { useT } from "../i18n/program";
+import { ConfirmDialog, Initials, LangSwitch } from "../components/program/shared";
+import { isRealPhoto } from "../components/fighters/fighterUtils";
+
+type Filter = "all" | "active" | "inactive";
 
 export function Clubs() {
-  const lang = useLang();
-  // Only KKF staff add, edit or remove clubs (the API refuses other roles).
+  const { t, lang } = useT();
   const permissions = usePermissions();
-  const [clubs, setClubs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const manage = permissions.hasPermission("clubs.manage");
+  const [clubs, setClubs] = useState<any[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
+  const [menu, setMenu] = useState<string | null>(null);
+  const [toDelete, setToDelete] = useState<any | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    fetchClubs();
-  }, []);
+  const load = () => {
+    setFailed(false);
+    api.clubs.list().then(setClubs).catch(() => setFailed(true));
+  };
+  useEffect(load, []);
 
-  const fetchClubs = async () => {
-    setLoading(true);
+  const rows = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return (clubs ?? [])
+      .filter((c) => filter === "all" || (c.status || "active").toLowerCase() === filter)
+      .filter((c) => !s || [c.name, c.name_khmer, c.location, c.association, c.association_khmer, c.head_coach].some((x) => x && String(x).toLowerCase().includes(s)))
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  }, [clubs, q, filter]);
+
+  const remove = async () => {
+    if (!toDelete) return;
+    setBusy(true);
     try {
-      const data = await api.clubs.list();
-      setClubs(data);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to load clubs");
+      await api.clubs.delete(toDelete.id);
+      toast.success(t("cl.deleted", { name: toDelete.name }));
+      setClubs((prev) => (prev ?? []).filter((c) => c.id !== toDelete.id));
+      setToDelete(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("common.error"));
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   };
 
-  const handleDeleteClub = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this club?")) return;
-
-    try {
-      await api.clubs.delete(id);
-      toast.success("Club deleted successfully");
-      setClubs(prev => prev.filter(c => c.id !== id));
-    } catch (err: any) {
-      toast.error(err.message || "Failed to delete club");
-    }
-  };
-
-  const filteredClubs = clubs.filter(club => {
-    const matchesSearch = 
-      (club.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (club.location || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (club.association || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (club.association_khmer || "").toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = 
-      statusFilter === "all" || 
-      (club.status || "").toLowerCase() === statusFilter.toLowerCase();
-
-    return matchesSearch && matchesStatus;
-  });
+  const tab = (key: Filter, label: string) => (
+    <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)} className={`h-10 px-4 rounded-xl text-sm font-semibold border ${filter === key ? "bg-primary text-white border-primary" : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"}`}>
+      {label}
+    </button>
+  );
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 flex flex-col min-h-full animate-fadeIn">
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Clubs Directory</h1>
-          <p className="text-sm text-muted-foreground mt-1 font-medium">Manage Kun Khmer training camps and gyms</p>
+    <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-6">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <span className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0" aria-hidden><Building2 className="w-6 h-6" /></span>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{t("cl.title")}</h1>
+            <p className="text-base text-slate-600 mt-1">{t("cl.lead")}</p>
+          </div>
         </div>
-        {permissions.hasPermission("clubs.manage") && (
-          <Link 
-            to="/home/clubs/new" 
-            className="btn-secondary py-2.5 px-5"
-          >
-            <Plus className="w-4 h-4" />
-            Add Club
-          </Link>
-        )}
+        <div className="flex items-center gap-3">
+          <LangSwitch />
+          {manage && (
+            <Link to="/home/clubs/new" className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90">
+              <Plus className="w-4 h-4" aria-hidden /> {t("cl.add")}
+            </Link>
+          )}
+        </div>
       </header>
 
-      {/* Search & Filter Bar */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1 group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-          <input
-            type="text"
-            placeholder="Search clubs by name, location or association..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-white border border-border/80 rounded-xl pl-11 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all"
-          />
+      {failed ? (
+        <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center space-y-4">
+          <p className="text-amber-900">{t("cl.loadFailed")}</p>
+          <button type="button" onClick={load} className="h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90">{t("common.tryAgain")}</button>
         </div>
-        <div className="flex gap-3">
-          <select 
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2.5 bg-white border border-border/80 rounded-xl text-sm font-medium text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm hover:border-slate-300 transition-all cursor-pointer min-w-[140px]"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="text-center py-16">
-          <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground font-semibold">Loading clubs from database...</p>
+      ) : !clubs ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-10 flex justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" aria-label={t("common.loading")} /></div>
+      ) : clubs.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center space-y-3">
+          <p className="text-base text-slate-700">{t("cl.none")}</p>
+          {manage && <Link to="/home/clubs/new" className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold"><Plus className="w-4 h-4" aria-hidden /> {t("cl.add")}</Link>}
         </div>
       ) : (
         <>
-          {/* Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredClubs.map((club) => (
-              <div 
-                key={club.id} 
-                className="bg-white rounded-2xl border border-border/75 overflow-hidden shadow-sm hover:shadow-xl hover:border-primary/20 hover:-translate-y-1.5 transition-all duration-300 group flex flex-col"
-              >
-                {/* Image Banner Section */}
-                <div className="h-44 relative overflow-hidden bg-muted">
-                  {/* The club's own picture or logo; no stock photo of strangers. */}
-                  {club.image || club.logo_url ? (
-                    <img
-                      src={club.image || club.logo_url}
-                      alt={club.name}
-                      className={`w-full h-full ${club.image ? "object-cover" : "object-contain p-6 bg-white"} group-hover:scale-105 transition-transform duration-700 ease-out`}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#eef3fb] to-white">
-                      <span className="text-4xl font-bold text-primary/70">{club.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w: string) => w[0]).join("").toUpperCase()}</span>
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
-                  
-                  {/* Badge Overlays */}
-                  <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
-                    {/* No star rating: KKF has no club ratings. */}
-                    <span />
-                    
-                    {/* Active/Inactive Badge */}
-                    <div className={`badge-premium ${
-                      (club.status || "").toLowerCase() === 'active' 
-                        ? 'badge-emerald' 
-                        : 'badge-red'
-                    }`}>
-                      <span className={`badge-dot ${(club.status || "").toLowerCase() === 'active' ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                      {club.status}
-                    </div>
-                  </div>
-                  
-                  {/* Action Overlays on Hover */}
-                  {permissions.hasPermission("clubs.manage") && <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-200 flex gap-2 translate-y-[-5px] group-hover:translate-y-0">
-                    <Link 
-                      to={`/home/clubs/${club.id}/edit`}
-                      className="p-2 bg-white/95 hover:bg-white text-primary border border-border/40 rounded-xl shadow-md backdrop-blur-md transition-all duration-150 hover:scale-105 active:scale-95"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </Link>
-                    <button 
-                      onClick={() => handleDeleteClub(club.id)}
-                      className="p-2 bg-red-50/95 hover:bg-red-500 hover:text-white text-secondary border border-red-100 rounded-xl shadow-md backdrop-blur-md transition-all duration-150 hover:scale-105 active:scale-95"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>}
-                </div>
-                
-                {/* Card Content Section */}
-                <div className="p-5 flex-1 flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors duration-200 tracking-tight leading-tight line-clamp-1 mb-1 flex items-center gap-2">
-                      {club.logo_url && <img src={club.logo_url} alt="" className="w-7 h-7 rounded-lg object-contain bg-white ring-1 ring-black/5 shrink-0" />}
-                      <span className="truncate">{club.name}</span>
-                    </h3>
-                    <div className="flex items-center gap-1.5 text-muted-foreground mb-4">
-                      <MapPin className="w-3.5 h-3.5 text-secondary shrink-0" />
-                      <span className="text-xs font-medium">{club.location}</span>
-                    </div>
-                    {club.association && <p lang={lang} className="-mt-2 mb-4 text-xs font-medium text-slate-600 line-clamp-1">{lang === "km" && club.association_khmer ? club.association_khmer : club.association}</p>}
+          <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
+            <div className="flex gap-2">{[tab("all", t("f.origin.all")), tab("active", t("cl.active")), tab("inactive", t("cl.inactive"))]}</div>
+            <label className="relative block flex-1">
+              <span className="sr-only">{t("cl.search")}</span>
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("cl.search")} className="w-full h-11 rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-base text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            </label>
+          </div>
+          <p className="text-sm text-slate-600">{t("cl.count", { n: rows.length })}</p>
 
-                    <div className="grid grid-cols-2 gap-3 mb-5">
-                      <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px]">
-                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Head Coach</div>
-                        <div className="text-sm font-semibold text-slate-800 line-clamp-1">{club.head_coach || "N/A"}</div>
-                      </div>
-                      <div className="bg-muted/15 p-3 rounded-xl border border-border/40 hover:bg-muted/20 hover:border-border/60 transition-all duration-200 flex flex-col justify-between h-[65px]">
-                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Status</div>
-                        <div className="flex items-center gap-1 text-primary">
-                          <Dumbbell className="w-3.5 h-3.5 shrink-0" />
-                          <span className="text-sm font-bold capitalize">{club.status}</span>
+          {rows.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-slate-600">{t("cl.noResults")}</p>
+          ) : (
+            <ul className="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100">
+              {rows.map((c) => {
+                const logo = isRealPhoto(c.logo_url) ? c.logo_url : null;
+                const association = lang === "km" && c.association_khmer ? c.association_khmer : c.association;
+                const inactive = (c.status || "active").toLowerCase() === "inactive";
+                const n = Number(c.fighters_count ?? 0);
+                return (
+                  <li key={c.id} className="flex items-center gap-3 p-4 hover:bg-slate-50">
+                    <Link to={`/home/clubs/${c.id}`} className="flex flex-1 min-w-0 items-center gap-4">
+                      {logo ? <img src={logo} alt="" className="w-14 h-14 rounded-xl object-contain bg-white border border-slate-200 shrink-0" /> : <Initials name={c.name} size="w-14 h-14 text-lg" tone="bg-primary/10 text-primary" />}
+                      <span className="min-w-0 space-y-0.5">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="text-base font-semibold text-slate-900 break-words">{c.name}</span>
+                          {inactive && <span className="rounded-full bg-slate-100 text-slate-600 px-2.5 py-0.5 text-xs font-semibold">{t("cl.inactive")}</span>}
+                        </span>
+                        {c.name_khmer && c.name_khmer !== c.name && <span lang="km" className="block text-sm text-slate-600 break-words">{c.name_khmer}</span>}
+                        {association && <span lang={lang} className="block text-sm text-slate-600 break-words">{association}</span>}
+                        <span className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-slate-600">
+                          {c.location && <span className="inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5 shrink-0" aria-hidden /><span className="break-words">{c.location}</span></span>}
+                          {c.head_coach && <span className="inline-flex items-center gap-1"><User className="w-3.5 h-3.5 shrink-0" aria-hidden />{c.head_coach}</span>}
+                          <span className="font-medium text-slate-700">{t("cl.fighters", { n })}</span>
+                        </span>
+                      </span>
+                    </Link>
+                    {manage && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Link to={`/home/clubs/${c.id}/edit`} aria-label={`${t("common.edit")} — ${c.name}`} className="inline-flex items-center gap-1.5 h-10 px-3 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:border-primary hover:text-primary">
+                          <Pencil className="w-4 h-4" aria-hidden /> <span className="hidden sm:inline">{t("common.edit")}</span>
+                        </Link>
+                        <div className="relative">
+                          <button type="button" onClick={() => setMenu(menu === c.id ? null : c.id)} aria-expanded={menu === c.id} aria-label={t("common.more")} className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-primary">
+                            <MoreHorizontal className="w-5 h-5" aria-hidden />
+                          </button>
+                          {menu === c.id && (
+                            <div className="absolute right-0 mt-2 w-60 rounded-xl border border-slate-200 bg-white shadow-lg z-20 py-1" onMouseLeave={() => setMenu(null)}>
+                              {n > 0 ? (
+                                <p className="px-4 py-3 text-sm text-slate-600">{t("cl.hasFighters", { n })}</p>
+                              ) : (
+                                <button type="button" onClick={() => { setMenu(null); setToDelete(c); }} className="w-full text-left px-4 py-2.5 text-sm text-red-700 hover:bg-red-50 inline-flex items-center gap-2">
+                                  <Trash2 className="w-4 h-4" aria-hidden /> {t("cl.delete")}
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  </div>
-
-                  <Link 
-                    to={`/home/clubs/${club.id}`} 
-                    className="btn-outline w-full py-2"
-                  >
-                    View Details
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {filteredClubs.length === 0 && (
-            <div className="text-center py-16 bg-white rounded-2xl border border-border/60 shadow-sm">
-              <div className="w-16 h-16 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Dumbbell className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-bold text-foreground tracking-tight mb-1">No Clubs Found</h3>
-              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                We couldn't find any clubs matching your search. Try adjusting your filters or search term.
-              </p>
-            </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={Boolean(toDelete)}
+        title={t("cl.deleteTitle", { name: toDelete?.name ?? "" })}
+        text={t("cl.deleteText")}
+        confirmLabel={t("cl.delete")}
+        danger
+        busy={busy}
+        onConfirm={remove}
+        onClose={() => setToDelete(null)}
+      />
     </div>
   );
 }

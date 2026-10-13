@@ -8,8 +8,9 @@ import { api } from "../utils/api";
 import { useAdminOverview } from "../hooks/useAdminOverview";
 import { HeaderSearch } from "./HeaderSearch";
 import { LangSwitch } from "./program/shared";
+import { PwaBar } from "./pwa/PwaBar";
 import { roleNameKey, useT, type TextKey } from "../i18n/program";
-import logoImg from "../../assets/modern_logo.png";
+import logoImg from "../../assets/modern_logo-small.webp";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -109,6 +110,16 @@ const navGroups: { title: string | null; items: NavItem[] }[] = [
 
 const navItems = navGroups.flatMap((g) => g.items);
 
+/** Phone bottom bar: referees and judges see "My bouts"; staff see Home, Fight nights, Fighters, Clubs. The 4 first allowed ones show. */
+const quickItems: { icon: NavIcon; label: string; path: string; permission: string | null; match?: RegExp }[] = [
+  { icon: Gavel, label: "My bouts", path: "/home/my-bouts", permission: "bouts.view_own" },
+  { icon: Home, label: "Dashboard", path: "/home", permission: "dashboard.view", match: /^\/home(#.*)?$/ },
+  { icon: CalendarDays, label: "Fight nights", path: "/home/program?tab=events", permission: "events.view", match: /^\/home\/(program|events|fight-cards|matches|batches|match\/)/ },
+  { icon: Dumbbell, label: "Fighters", path: "/home/fighters", permission: "fighters.view", match: /^\/home\/fighters/ },
+  { icon: Building2, label: "Clubs", path: "/home/clubs", permission: "fighters.view", match: /^\/home\/clubs/ },
+  { icon: HelpCircle, label: "Help", path: "/home/help", permission: null, match: /^\/home\/help/ },
+];
+
 /**
  * English / Khmer text for each menu label and group title above (the English label stays the item's id).
  * See claude/updates/admin-menu-khmer.md.
@@ -153,8 +164,8 @@ const PAGE_GUARDS: { match: RegExp; permission: string }[] = [
   { match: /^\/home\/fighters\/(kunkhmer|foreigner)\/new$/, permission: "fighters.create" },
   { match: /^\/home\/fighters\/[^/]+\/edit$/, permission: "fighters.edit" },
   { match: /^\/home\/matches\/[^/]+\/assign-officials$/, permission: "officials.assign" },
-  { match: /^\/home\/matches\/(new|[^/]+\/(edit|create-match))$/, permission: "matches.create" },
-  { match: /^\/home\/(events\/new|match\/new)$/, permission: "events.create" },
+  { match: /^\/home\/matches\/[^/]+\/create-match$/, permission: "matches.create" },
+  { match: /^\/home\/(events\/new|match\/new|champion\/new|champion\/[^/]+\/(edit|schedule-defense))$/, permission: "events.create" },
   { match: /^\/home\/clubs\/(new|[^/]+\/edit)$/, permission: "clubs.manage" },
 ];
 
@@ -304,7 +315,7 @@ export function Layout() {
   );
 
   return (
-    <div className="flex h-screen bg-background text-foreground font-sans selection:bg-accent/30 overflow-hidden">
+    <div className="flex h-dvh bg-background text-foreground font-sans selection:bg-accent/30 overflow-hidden">
       {/* Desktop sidebar (light) */}
       <aside className="hidden md:flex w-[260px] flex-col bg-white border-r border-slate-200 shrink-0">{sidebar}</aside>
 
@@ -318,8 +329,9 @@ export function Layout() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 bg-[#F8FAFC]">
+        <PwaBar />
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between gap-3 px-4 md:px-6 shrink-0 z-30">
-          <button type="button" onClick={() => setMobileMenu(true)} aria-label={t("frame.openMenu")} className="md:hidden w-10 h-10 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+          <button type="button" onClick={() => setMobileMenu(true)} aria-label={t("frame.openMenu")} className="md:hidden w-11 h-11 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
             <Menu className="w-5 h-5" />
           </button>
           {hasDashboard ? <HeaderSearch /> : <div className="flex-1" />}
@@ -380,7 +392,7 @@ export function Layout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8">
           {!permissions.currentUser ? (
             // Signed out (or the session expired): sign in first.
             <Navigate to="/login" replace />
@@ -399,22 +411,27 @@ export function Layout() {
         </main>
       </div>
 
-      {/* Phone bottom navigation */}
-      <nav aria-label="Quick" className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-border flex items-center justify-around px-2 z-50">
-        {navItems.filter((i) => allowed(i.permission)).slice(0, 4).map((item) => {
-          const isActive = item.path === "/home" ? location.pathname === "/home" : location.pathname.startsWith(item.path);
-          const Icon = item.icon;
-          return (
-            <NavLink key={item.path} to={item.path} className={cn("flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors", isActive ? "text-primary" : "text-muted-foreground")}>
-              <Icon className="w-5 h-5" />
-              <span className="text-[10px] font-medium">{label(item.label)}</span>
-            </NavLink>
-          );
-        })}
-        <button type="button" onClick={() => setMobileMenu(true)} className="flex flex-col items-center justify-center w-full h-full space-y-1 text-muted-foreground">
-          <Menu className="w-5 h-5" />
-          <span className="text-[10px] font-medium">{t("frame.menu")}</span>
-        </button>
+      {/* Phone bottom navigation: the four jobs officers use most, then the full menu. 56 px tall, 12 px labels,
+          and clear of the iPhone home bar (viewport-fit=cover). */}
+      <nav aria-label="Quick" className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-border z-50 pb-[env(safe-area-inset-bottom)]">
+        <div className="h-16 flex items-stretch justify-around px-1">
+          {quickItems.filter((i) => allowed(i.permission)).slice(0, 4).map((item) => {
+            const here = location.pathname + (location.search || "");
+            const isActive = item.match ? item.match.test(here) : location.pathname.startsWith(item.path);
+            const Icon = item.icon;
+            return (
+              <NavLink key={item.path} to={item.path} aria-current={isActive ? "page" : undefined} className={cn("relative flex-1 flex flex-col items-center justify-center gap-1 transition-colors", isActive ? "text-primary" : "text-slate-500")}>
+                {isActive && <span className="absolute top-0 h-0.5 w-10 rounded-full bg-primary" aria-hidden />}
+                <Icon className="w-6 h-6" aria-hidden />
+                <span className="text-xs font-medium leading-none">{label(item.label)}</span>
+              </NavLink>
+            );
+          })}
+          <button type="button" onClick={() => setMobileMenu(true)} className="flex-1 flex flex-col items-center justify-center gap-1 text-slate-500">
+            <Menu className="w-6 h-6" aria-hidden />
+            <span className="text-xs font-medium leading-none">{t("frame.menu")}</span>
+          </button>
+        </div>
       </nav>
     </div>
   );

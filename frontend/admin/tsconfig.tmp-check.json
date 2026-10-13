@@ -1,0 +1,1 @@
+{ "compilerOptions": { "noEmit": true, "jsx": "react-jsx", "module": "esnext", "moduleResolution": "bundler", "target": "es2022", "skipLibCheck": true, "strict": false, "allowImportingTsExtensions": true, "lib": ["es2022","dom","dom.iterable"], "types": ["vite/client"] }, "include": ["src"] }

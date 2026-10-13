@@ -38,7 +38,7 @@
 	}
 }
 
-# Staff admin
+# Staff admin (an installable app: claude/features/admin-pwa.md)
 {$ADMIN_DOMAIN} {
 	import common
 	header X-Robots-Tag "noindex, nofollow"
@@ -46,9 +46,16 @@
 		root * /srv/admin
 		@assets path /assets/*
 		header @assets Cache-Control "public, max-age=31536000, immutable"
+		# Everything else is checked for a new version on each visit. This includes sw.js (the service worker) and
+		# index.html: a browser must never keep an old copy of those.
 		@pages not path /assets/*
 		header @pages Cache-Control "no-cache"
+		@manifest path /manifest.webmanifest
+		header @manifest Content-Type "application/manifest+json"
 		try_files {path} /index.html
-		file_server
+		# The build writes a Brotli copy (.br) of every text file; browsers that accept it get the smaller one.
+		file_server {
+			precompressed br
+		}
 	}
 }

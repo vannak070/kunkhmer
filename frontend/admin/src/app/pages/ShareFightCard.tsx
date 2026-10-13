@@ -7,7 +7,7 @@ import { getBatchById, formatDisplayDate } from "../data/batches";
 import type { BatchStatus } from "../data/batches";
 import { toast } from "sonner";
 import html2canvas from "html2canvas-pro";
-import kkfLogo from "../../assets/modern_logo.png";
+import kkfLogo from "../../assets/modern_logo.webp";
 import { api } from "../utils/api";
 
 const getSponsorLogoSvg = (sponsorName: string) => {

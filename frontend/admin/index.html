@@ -1,29 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- viewport-fit=cover: the app uses the whole phone screen; the layout keeps clear of the notch / home bar. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>KKF Admin — Kun Khmer Federation</title>
+    <meta name="description" content="Staff system of the Kun Khmer Federation: fight nights, fighters, clubs, results and titles." />
+    <meta name="robots" content="noindex, nofollow" />
 
-  <!DOCTYPE html>
-  <html lang="en">
-    <head>
-      
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <link rel="icon" type="image/png" href="favicon.png" />
-      
-      <!-- Fonts: Outfit and Inter for Latin text, Kantumruy Pro for Khmer (Moul only on the share poster) -->
-      <link rel="preconnect" href="https://fonts.googleapis.com">
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Moul&family=Kantumruy+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
-      
-      <title>KUN KHMER Management System</title>
-      <meta name="description" content="Streamline management tasks for KUN KHMER, enhancing efficiency and collaboration for teams with user-friendly tools and centralized data access." />
-      <meta name="robots" content="noindex, nofollow" />
-      <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
-      
-    </head>
+    <!-- App: installable (manifest + icons); colours match the brand blue and the light page. -->
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <meta name="theme-color" content="#0A3D91" />
+    <meta name="application-name" content="KKF Admin" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="KKF Admin" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="icon" type="image/png" sizes="64x64" href="%BASE_URL%favicon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="%BASE_URL%icons/apple-touch-icon.png" />
 
-    <body>
-      
-      <div id="root"></div>
-      <script type="module" src="/src/main.tsx"></script>
-      
-    </body>
-  </html>
-  
+    <!-- Fonts are served from this site. The build adds a preload for the English font (vite.config.ts) and fills in
+         the Khmer font's file name below; a browser set to Khmer starts that download at once (same keys as i18n/program.ts). -->
+    <script>
+      try {
+        var khmerFont = "__KHMER_FONT__";
+        var lang = localStorage.getItem("kkf_admin_lang") || localStorage.getItem("kkf_help_lang");
+        if (khmerFont.charAt(0) !== "_" && lang === "km") {
+          var l = document.createElement("link");
+          l.rel = "preload"; l.as = "font"; l.type = "font/woff2"; l.crossOrigin = ""; l.href = khmerFont;
+          document.head.appendChild(l);
+        }
+      } catch (e) {}
+    </script>
+    <style>
+      html, body { height: 100%; margin: 0; }
+      #root { height: 100%; }
+      /* Shown by the browser before the app code has loaded. */
+      #boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #f8fafc; }
+      #boot i { width: 34px; height: 34px; border-radius: 50%; border: 3px solid #cbd5e1; border-top-color: #0a3d91; animation: boot-spin .8s linear infinite; }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+
+  <body>
+    <div id="root"><div id="boot" role="status" aria-label="Loading"><i></i></div></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
