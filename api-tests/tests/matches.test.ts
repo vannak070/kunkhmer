@@ -610,3 +610,35 @@ describe("referees and judges", () => {
     await put(`/officials/${judges[1]}`, { status: "Active" }, a.admin.token);
   });
 });
+
+describe("result and bout validation (updates/program-validation.md)", () => {
+  it("needs two different fighters", async () => {
+    const f = await newFighter();
+    const res = await post("/matches", { subEventId: await newBatch(), fighterAId: f, fighterBId: f, rounds: 3, roundTime: 180, knockdownLimit: 3, agreedWeight: 60, gloveSize: "10oz", gloveBrand: "Twins" }, a.admin.token);
+    expect(res.status).toBe(422);
+    const m = await newMatch();
+    const swap = await put(`/matches/${m.id}`, { fighterBId: m.fighter_a_id }, a.officer.token);
+    expect(swap.status).toBe(422);
+  });
+
+  it("accepts a result only from the two fighters, a known method and a round within the bout", async () => {
+    const m = await newMatch({ rounds: 3 });
+    const outsider = await newFighter();
+    const record = (body: Record<string, unknown>) => post(`/matches/${m.id}/result`, body, a.officer.token);
+    expect((await record({ winnerId: outsider, method: "KO", round: 1 })).status).toBe(422);
+    expect((await record({ winnerId: m.fighter_a_id, method: "banana", round: 1 })).status).toBe(422);
+    expect((await record({ winnerId: m.fighter_a_id, method: "KO", round: 4 })).status).toBe(422);
+    expect((await record({ winnerId: m.fighter_a_id, method: "KO", round: -1 })).status).toBe(422);
+    expect((await record({ winnerId: m.fighter_a_id, method: "KO", round: 3 })).status).toBe(200);
+    expect((await record({ winnerId: "", method: "No Contest", round: 0 })).status).toBe(200);
+  });
+
+  it("takes a deleted bout out of the fighters' records", async () => {
+    const m = await newMatch();
+    await post(`/matches/${m.id}/result`, { winnerId: m.fighter_a_id, method: "KO", round: 1 }, a.officer.token);
+    const win = (await get(`/fighters/${m.fighter_a_id}`, a.admin.token)).body.data.record;
+    expect(win).toMatch(/^1-0-0$/);
+    expect((await del(`/matches/${m.id}`, a.admin.token)).status).toBe(200);
+    expect((await get(`/fighters/${m.fighter_a_id}`, a.admin.token)).body.data.record).toBe("0-0-0");
+  });
+});

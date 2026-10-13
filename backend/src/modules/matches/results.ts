@@ -15,7 +15,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "../../db.ts";
 import type { Champion, ChampionshipChange, Match, Prisma } from "../../generated/prisma/client.ts";
 import { now } from "../../lib/dates.ts";
-import { notFound } from "../../lib/http.ts";
+import { HttpError, notFound } from "../../lib/http.ts";
 import { ZERO, addRecords, formatRecord, parseRecord, recordedResults } from "../../lib/record.ts";
 import { NOT_DELETED } from "../fighters/routes.ts";
 
@@ -28,10 +28,21 @@ export interface ResultInput {
   duration: string | null;
 }
 
+export const RESULT_METHODS = ["KO", "TKO", "Decision", "Submission", "Disqualification", "Draw", "No Contest"] as const;
+
 export async function recordMatchResult(matchId: string, result: ResultInput) {
   await prisma.$transaction(async (tx) => {
     const match = await tx.match.findUnique({ where: { id: matchId } });
     if (!match) throw notFound("Match");
+    if (result.winnerId && result.winnerId !== match.fighter_a_id && result.winnerId !== match.fighter_b_id) {
+      throw new HttpError(422, "The winner must be one of the two fighters in this bout");
+    }
+    if (!(RESULT_METHODS as readonly string[]).includes(result.method)) {
+      throw new HttpError(422, `The method must be one of: ${RESULT_METHODS.join(", ")}`);
+    }
+    if (!Number.isInteger(result.round) || result.round < 0 || result.round > match.rounds) {
+      throw new HttpError(422, `The round must be between 0 and ${match.rounds} for this bout`);
+    }
     const at = now();
 
     const bout = { winner_id: result.winnerId, method: result.method, round: result.round, duration: result.duration, recorded_at: at };
@@ -185,7 +196,7 @@ async function applyTitleResult(tx: Tx, match: TitleFight) {
 }
 
 /** A fighter's record = career before this system + results recorded here. */
-async function recalculateRecord(tx: Tx, fighterId: string) {
+export async function recalculateRecord(tx: Tx, fighterId: string) {
   const fighter = await tx.fighter.findUnique({ where: { id: fighterId }, select: { career_record: true } });
   if (!fighter) return;
   const total = addRecords(parseRecord(fighter.career_record) ?? ZERO, await recordedResults(tx, fighterId));

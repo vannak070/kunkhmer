@@ -24,7 +24,7 @@ fighter records and championship titles.
 | PUT | `/matches/:id` | STAFF, Organizer (own events) | only STAFF change `refereeId` / `judgeIds` (active officials, see `officials.md`); accepts `sortOrder` or `sort_order`; proposal fields ignored; swapping a fighter (must be verified) resets that side's club answer |
 | POST | `/matches/:id/respond` | Club/Gym own side, STAFF | accept / decline (reason required), see `match-proposals.md` |
 | DELETE | `/matches/:id` | Super Admin | |
-| POST | `/matches/:id/result` | STAFF | `{winnerId ("" = draw), method, round, duration}` |
+| POST | `/matches/:id/result` | STAFF | `{winnerId ("" = draw), method, round, duration}`; 422 for a winner outside the bout, unknown method, round > rounds |
 
 Match response: snake_case row + nested `sub_event`, `fighter_a`/`fighter_b`
 (with `club`), `referee`, `result`, `championship` + flat display fields
@@ -43,6 +43,11 @@ Match response: snake_case row + nested `sub_event`, `fighter_a`/`fighter_b`
   history of this and every later title fight for the belt and applies them again in order — a changed
   winner moves the title; the same result changes nothing (`updates/title-result-corrections.md`).
   Manual holder edits made in between are replaced. The admin match page asks to confirm a winner change.
+
+## Validation (2026-10-13)
+A bout needs two different fighters; a result needs a winner from the bout (or empty), a method from KO / TKO /
+Decision / Submission / Disqualification / Draw / No Contest and a round 0…rounds; deleting a bout recalculates
+both records — `updates/program-validation.md`.
 
 ## Officer flow (2026-09-30)
 Approvals are off (`updates/officer-run-program.md`): bouts are confirmed when KKF staff create them, the event

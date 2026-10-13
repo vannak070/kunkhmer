@@ -30,7 +30,7 @@ import { type Input, inputOf, parseBool } from "../../lib/input.ts";
 import { UNVERIFIED } from "../fighters/routes.ts";
 import { UNAPPROVED } from "../events/routes.ts";
 import { formatMatch, formatSubEvent, matchArray, matchRelations, subEventArray, subEventRelations, withoutWeighIn } from "./format.ts";
-import { recordMatchResult } from "./results.ts";
+import { recalculateRecord, recordMatchResult } from "./results.ts";
 import { PUBLIC_BOUT, RESPONSES, openSide, proposalStatus, sidesFor } from "./proposals.ts";
 import { notifyFollowers } from "../fans/notify.ts";
 import { assertOfficials, officialsOf } from "../officials/routes.ts";
@@ -239,6 +239,7 @@ export default async function matchRoutes(app: FastifyInstance) {
 
       const fighterAId = input.required<string>("fighterAId");
       const fighterBId = input.required<string>("fighterBId");
+      if (fighterAId === fighterBId) throw new HttpError(422, "A bout needs two different fighters");
       await requireVerified([fighterAId, fighterBId]);
 
       // A new bout goes to both clubs; a side without a club is accepted already.
@@ -309,6 +310,9 @@ export default async function matchRoutes(app: FastifyInstance) {
         const next = data[`fighter_${s}_id`];
         return typeof next === "string" && next !== match[`fighter_${s}_id`];
       });
+      const nextA = (data.fighter_a_id as string | undefined) ?? match.fighter_a_id;
+      const nextB = (data.fighter_b_id as string | undefined) ?? match.fighter_b_id;
+      if (nextA === nextB) throw new HttpError(422, "A bout needs two different fighters");
       if (swapped.length) {
         await requireVerified(swapped.map((s) => data[`fighter_${s}_id`] as string));
         for (const s of swapped) {
@@ -390,7 +394,12 @@ export default async function matchRoutes(app: FastifyInstance) {
       const id = idParam(request.params, "Match");
       const match = await prisma.match.findUnique({ where: { id } });
       if (!match) throw notFound("Match");
-      await prisma.match.delete({ where: { id } });
+      // A deleted bout no longer counts towards the fighters' records.
+      await prisma.$transaction(async (tx) => {
+        await tx.match.delete({ where: { id } });
+        await recalculateRecord(tx, match.fighter_a_id);
+        await recalculateRecord(tx, match.fighter_b_id);
+      });
       return deleted(reply, "Match deleted successfully", matchArray(match));
     });
 
