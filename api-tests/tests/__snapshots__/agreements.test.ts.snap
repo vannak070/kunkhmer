@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`recording and confirming > Organizer records the details (licence first), KKF confirms 1`] = `
+exports[`recording and confirming > Organizer records the details, KKF confirms 1`] = `
 {
   "body": {
     "data": {
@@ -34,7 +34,7 @@ exports[`recording and confirming > Organizer records the details (licence first
 }
 `;
 
-exports[`recording and confirming > Organizer records the details (licence first), KKF confirms 2`] = `
+exports[`recording and confirming > Organizer records the details, KKF confirms 2`] = `
 {
   "body": {
     "data": {

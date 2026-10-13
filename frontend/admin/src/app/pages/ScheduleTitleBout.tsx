@@ -36,7 +36,7 @@ export function ScheduleTitleBout() {
   }, [cards]);
 
   const addBoutUrl = (cardId: string) => `/home/matches/${cardId}/create-match${championId ? `?championId=${championId}` : ""}`;
-  const back = championId ? `/home/champion/${championId}` : "/home/program?tab=champions";
+  const back = championId ? `/home/champion/${championId}` : "/home/titles";
 
   return (
     <div className="max-w-3xl mx-auto p-4 md:p-8 space-y-6">

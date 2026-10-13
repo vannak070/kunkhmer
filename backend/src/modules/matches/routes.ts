@@ -36,6 +36,7 @@ import { recalculateRecord, recordMatchResult } from "./results.ts";
 import { PUBLIC_BOUT, RESPONSES, openSide, proposalStatus, sidesFor } from "./proposals.ts";
 import { notifyFollowers } from "../fans/notify.ts";
 import { assertOfficials, officialsOf } from "../officials/routes.ts";
+import { assertNotSignedOff, signedOffLock } from "../events/signoff.ts";
 
 const ORGANIZERS = [...STAFF, Role.Organizer];
 
@@ -103,6 +104,15 @@ async function checkOfficials(user: User, next: { refereeId: string | null; judg
   if (!changed) return;
   if (!hasRole(user, STAFF)) throw new HttpError(403, "Forbidden: Only KKF assigns referees and judges");
   await assertOfficials(next.refereeId, next.judgeIds);
+}
+
+/** A cancelled bout, or one waiting for a replacement (phase 6), takes no weigh-in or result. */
+async function requireLiveBout(id: string) {
+  const bout = await prisma.match.findUnique({ where: { id }, select: { status: true, replacement_side: true, event_id: true } });
+  if (!bout) throw notFound("Match");
+  if (bout.status === "Cancelled") throw new HttpError(422, "This bout is cancelled");
+  if (bout.replacement_side) throw new HttpError(422, "This bout needs a replacement fighter first");
+  return bout;
 }
 
 /** Only KKF-verified fighters can be matched. */
@@ -241,6 +251,7 @@ export default async function matchRoutes(app: FastifyInstance) {
       }
       if (!eventId) throw new HttpError(422, "The eventId field is required");
       await requireOwnEvent(user, eventId);
+      await assertNotSignedOff(eventId);
       await checkOfficials(user, { refereeId: input.get("refereeId"), judgeIds: judgeList(input.get("judgeIds")) });
 
       const fighterAId = input.required<string>("fighterAId");
@@ -298,6 +309,7 @@ export default async function matchRoutes(app: FastifyInstance) {
       const id = idParam(request.params, "Match");
       const match = await prisma.match.findUnique({ where: { id } });
       if (!match) throw notFound("Match");
+      await assertNotSignedOff(match.event_id);
 
       const input = inputOf(request.body);
       await requireOwnEvent(user, match.event_id);
@@ -419,6 +431,7 @@ export default async function matchRoutes(app: FastifyInstance) {
       const id = idParam(request.params, "Match");
       const match = await prisma.match.findUnique({ where: { id } });
       if (!match) throw notFound("Match");
+      await assertNotSignedOff(match.event_id);
       // A deleted bout no longer counts towards the fighters' records.
       await prisma.$transaction(async (tx) => {
         await tx.match.delete({ where: { id } });
@@ -429,15 +442,19 @@ export default async function matchRoutes(app: FastifyInstance) {
     });
 
     protectedRoutes.post("/matches/:id/result", async (request, reply) => {
-      requireRole(request, STAFF);
+      const user = requireRole(request, STAFF);
       const id = idParam(request.params, "Match");
+      const bout = await requireLiveBout(id);
       const input = inputOf(request.body);
+      // Signed-off match: only a Super Admin, with a reason, and it is logged.
+      const correction = await signedOffLock(bout.event_id, user, input.get<string>("correctionReason"));
       await recordMatchResult(id, {
         winnerId: input.get("winnerId"),
         method: input.required("method"),
         round: int(input.required("round"))!,
         duration: input.get("duration"),
       });
+      if (correction) await prisma.matchChange.create({ data: { id: randomUUID(), event_id: bout.event_id, match_id: id, kind: "correct_result", note: correction, created_by: user.id, created_at: now() } });
       await notifyFollowers(id, "bout_result", request.log);
       return ok(reply, await loadMatch(id));
     });
@@ -451,7 +468,9 @@ export default async function matchRoutes(app: FastifyInstance) {
       const id = idParam(request.params, "Match");
       const match = await prisma.match.findUnique({ where: { id } });
       if (!match) throw notFound("Match");
+      await requireLiveBout(id);
       const input = inputOf(request.body);
+      const correction = await signedOffLock(match.event_id, user, input.get<string>("correctionReason"));
       if (!input.present("a") && !input.present("b")) throw new HttpError(422, "Send the weight for a (red corner) or b (blue corner)");
 
       const kg = (side: "a" | "b") => {
@@ -470,6 +489,7 @@ export default async function matchRoutes(app: FastifyInstance) {
         data[`fighter_${side}_confirmed`] = w !== null;
       }
       await prisma.match.update({ where: { id }, data });
+      if (correction) await prisma.matchChange.create({ data: { id: randomUUID(), event_id: match.event_id, match_id: id, kind: "correct_weigh_in", note: correction, created_by: user.id, created_at: now() } });
       return ok(reply, await loadMatch(id));
     });
   });

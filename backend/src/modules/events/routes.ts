@@ -84,6 +84,10 @@ export function eventArray(e: EventRow) {
     name: e.name,
     date: micro(e.date),
     end_date: micro(e.end_date),
+    // The date it had before it was postponed (null = never postponed): fans see "Postponed to {date}".
+    // KKF signed the match off: the results are official and locked (claude/updates/match-signoff-settlement.md).
+    signed_off_at: micro(e.signed_off_at),
+    postponed_from: e.original_date && e.original_date.getTime() !== e.date.getTime() ? micro(e.original_date) : null,
     location: e.location,
     status: e.status,
     organizer_id: e.organizer_id,
@@ -220,6 +224,8 @@ export default async function eventRoutes(app: FastifyInstance) {
       if (!staff && !canSeeEvent(user, existing)) throw forbidden();
 
       const input = inputOf(request.body);
+      // A signed-off match keeps its date and status (Super Admin can reopen it first).
+      if (existing.signed_off_at && (input.has("status") || input.has("date"))) throw new HttpError(422, "This match is signed off — only a Super Admin can reopen it");
       if (!staff) {
         // After publishing only KKF changes a fight night (the Organizer may still cancel / publish in approvals mode).
         const changesMore = Object.keys((request.body ?? {}) as object).some((k) => k !== "status");

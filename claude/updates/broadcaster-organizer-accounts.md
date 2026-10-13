@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-10-13; not committed, not on the live pilot) |
+| **Status** | Done (2026-10-13; committed 399e58f8, not on the live pilot yet) |
 | **Jira** | n/a |
 | **Feature** | claude/features/program-workflow.md (phase 3), claude/features/auth-users.md, claude/features/partners.md |
 | **Requested by** | vannak070 (2026-10-13: "go ahead with phase 3") |

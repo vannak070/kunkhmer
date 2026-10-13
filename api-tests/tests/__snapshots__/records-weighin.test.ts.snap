@@ -183,6 +183,7 @@ exports[`weigh-in on the bout > saves each corner's weight on the bout without t
       "referee_confirmed": "boolean",
       "referee_id": "null",
       "referee_name": "null",
+      "replacement_side": "null",
       "result": "null",
       "round_time": "number",
       "rounds": "number",

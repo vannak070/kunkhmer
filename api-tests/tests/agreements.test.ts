@@ -53,14 +53,12 @@ beforeAll(async () => {
 });
 
 describe("recording and confirming", () => {
-  it("Organizer records the details (licence first), KKF confirms", async () => {
+  it("Organizer records the details, KKF confirms", async () => {
     const id = await newNight();
     const empty = await agreements(id, org.token);
     expect(empty).toMatchObject({ licence: { number: null, date: null, hasDocument: false }, items: { details: { state: "none" }, sponsors: { state: "none" } }, log: [] });
 
-    const noLicence = await post(`/events/${id}/agreements`, { item: "details" }, org.token);
-    expect(noLicence.status).toBe(422);
-
+    // The licence is optional (owner, 2026-10-13: not important): the details can be recorded without it.
     const licence = await put(`/events/${id}/licence`, { number: "KKF-2026-114", date: "2026-11-30", document: PDF }, org.token);
     expect(licence.status).toBe(200);
     expect(licence.body.data).toEqual({ number: "KKF-2026-114", date: "2026-11-30", hasDocument: true });
@@ -130,7 +128,7 @@ describe("publish gate", () => {
     const id = await newNight();
     await addBout(id);
     const blocked = await put(`/events/${id}`, { status: "Published" }, a.officer.token);
-    expect(blocked.body).toEqual({ success: false, error: "KKF must confirm the fight night details and licence before publishing" });
+    expect(blocked.body).toEqual({ success: false, error: "KKF must confirm the fight night details before publishing" });
 
     await put(`/events/${id}/licence`, { number: "KKF-1", date: "2026-11-30" }, a.officer.token);
     await post(`/events/${id}/agreements`, { item: "details" }, a.officer.token);

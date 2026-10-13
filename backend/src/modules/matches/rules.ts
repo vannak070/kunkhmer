@@ -25,7 +25,12 @@ export interface RuleHit {
   key: string;
   label: string;
   action: "block" | "warn";
+  /** English sentence (also the 422 text); the admin builds its own English / Khmer sentence from `params`. */
   message: string;
+  /** The fighter the problem is about (null when it concerns the pairing or the bout). */
+  fighter_id: string | null;
+  /** Plain values for the sentence: names, dates, kg, limits (claude/updates/rule-messages.md). */
+  params: Record<string, string | number | null>;
 }
 
 export interface PairingInput {
@@ -36,6 +41,8 @@ export interface PairingInput {
   agreedWeight?: number | null;
   /** the bout being changed (ignored by the schedule rules) */
   matchId?: string | null;
+  /** Check as if the fight were on this date (a postponement) instead of the fight card's date. */
+  fightDate?: Date | null;
 }
 
 const ruleRow = (r: { key: string; label: string; description: string | null; enabled: boolean; action: string; value: unknown; unit: string | null; sort_order: number }) => ({
@@ -70,13 +77,16 @@ export async function checkPairing(input: PairingInput): Promise<RuleHit[]> {
   const a = fighters.find((f) => f.id === input.fighterAId);
   const b = fighters.find((f) => f.id === input.fighterBId);
   if (!subEvent || !a || !b) return []; // missing records are reported by the caller's own checks
-  const fightDate = subEvent.date;
+  const fightDate = input.fightDate ?? subEvent.date;
 
   // Other bouts of either fighter (not cancelled events), for the schedule rules.
   const others = await prisma.match.findMany({
     where: {
       id: input.matchId ? { not: input.matchId } : undefined,
       event: { status: { not: "Cancelled" } },
+      // A cancelled bout, or one waiting for a replacement (phase 6), doesn't book anybody.
+      status: { not: "Cancelled" },
+      replacement_side: null,
       OR: [{ fighter_a_id: { in: [a.id, b.id] } }, { fighter_b_id: { in: [a.id, b.id] } }],
     },
     include: { subEvent: { select: { date: true, id: true } } },
@@ -85,57 +95,59 @@ export async function checkPairing(input: PairingInput): Promise<RuleHit[]> {
 
   const hits: RuleHit[] = [];
   for (const r of rules) {
-    const hit = (message: string) => hits.push({ key: r.key, label: r.label, action: r.action === "warn" ? "warn" : "block", message });
+    const hit = (message: string, fighter_id: string | null, params: RuleHit["params"]) =>
+      hits.push({ key: r.key, label: r.label, action: r.action === "warn" ? "warn" : "block", message, fighter_id, params });
+    const pair = { a_id: a.id, a_name: a.name, b_id: b.id, b_name: b.name };
     const limit = r.value ?? 0;
     switch (r.key) {
       case "medical":
         for (const f of [a, b]) {
-          if (f.medical_status !== "Cleared") hit(`${f.name} is not medically cleared (${f.medical_status})`);
-          else if (f.status === "Injured") hit(`${f.name} is marked Injured`);
+          if (f.medical_status !== "Cleared") hit(`${f.name} is not medically cleared (${f.medical_status})`, f.id, { name: f.name, reason: "not_cleared", status: f.medical_status });
+          else if (f.status === "Injured") hit(`${f.name} is marked Injured`, f.id, { name: f.name, reason: "injured" });
         }
         break;
       case "suspension":
         for (const f of [a, b]) {
-          if (f.suspension_end_date && f.suspension_end_date >= fightDate) hit(`${f.name} is suspended until ${day(f.suspension_end_date)}`);
-          else if (f.status === "Suspended") hit(`${f.name} is marked Suspended`);
+          if (f.suspension_end_date && f.suspension_end_date >= fightDate) hit(`${f.name} is suspended until ${day(f.suspension_end_date)}`, f.id, { name: f.name, reason: "until", date: day(f.suspension_end_date) });
+          else if (f.status === "Suspended") hit(`${f.name} is marked Suspended`, f.id, { name: f.name, reason: "marked" });
         }
         break;
       case "same_gender":
-        if (a.gender !== b.gender) hit(`${a.name} (${a.gender}) and ${b.name} (${b.gender}) are not the same gender`);
+        if (a.gender !== b.gender) hit(`${a.name} (${a.gender}) and ${b.name} (${b.gender}) are not the same gender`, null, pair);
         break;
       case "min_age":
-        for (const f of [a, b]) if (years(f.date_of_birth, fightDate) < limit) hit(`${f.name} will be under ${limit} on the fight date`);
+        for (const f of [a, b]) if (years(f.date_of_birth, fightDate) < limit) hit(`${f.name} will be under ${limit} on the fight date`, f.id, { name: f.name, limit });
         break;
       case "weight_gap":
         if (input.agreedWeight != null) {
           for (const f of [a, b]) {
             const gap = Math.abs(Number(f.current_weight) - input.agreedWeight);
-            if (gap > limit) hit(`${f.name} weighs ${Number(f.current_weight)} kg, ${Math.round(gap * 10) / 10} kg from the agreed ${input.agreedWeight} kg (limit ${limit} kg)`);
+            if (gap > limit) hit(`${f.name} weighs ${Number(f.current_weight)} kg, ${Math.round(gap * 10) / 10} kg from the agreed ${input.agreedWeight} kg (limit ${limit} kg)`, f.id, { name: f.name, kg: Number(f.current_weight), gap: Math.round(gap * 10) / 10, agreed: input.agreedWeight, limit });
           }
         }
         break;
       case "grade_gap": {
         const gap = Math.abs(gradeNo(a.grade) - gradeNo(b.grade));
-        if (gap > limit) hit(`Grades ${a.grade} and ${b.grade} are ${gap} steps apart (limit ${limit})`);
+        if (gap > limit) hit(`Grades ${a.grade} and ${b.grade} are ${gap} steps apart (limit ${limit})`, null, { ...pair, grade_a: a.grade, grade_b: b.grade, gap, limit });
         break;
       }
       case "record_gap": {
         const wa = parseRecord(a.record)?.w;
         const wb = parseRecord(b.record)?.w;
-        if (wa !== undefined && wb !== undefined && Math.abs(wa - wb) > limit) hit(`${a.name} has ${wa} wins and ${b.name} has ${wb} (limit ${limit} apart)`);
+        if (wa !== undefined && wb !== undefined && Math.abs(wa - wb) > limit) hit(`${a.name} has ${wa} wins and ${b.name} has ${wb} (limit ${limit} apart)`, null, { ...pair, wins_a: wa, wins_b: wb, limit });
         break;
       }
       case "rest_days":
         for (const f of [a, b]) {
           const near = bouts(f.id).find((m) => m.subEvent.id !== input.subEventId && Math.abs(m.subEvent.date.getTime() - fightDate.getTime()) / DAY < limit);
-          if (near) hit(`${f.name} has another bout on ${day(near.subEvent.date)}, less than ${limit} days apart`);
+          if (near) hit(`${f.name} has another bout on ${day(near.subEvent.date)}, less than ${limit} days apart`, f.id, { name: f.name, date: day(near.subEvent.date), limit });
         }
         break;
       case "same_club":
-        if (a.club_id && a.club_id === b.club_id) hit(`${a.name} and ${b.name} are from the same club`);
+        if (a.club_id && a.club_id === b.club_id) hit(`${a.name} and ${b.name} are from the same club`, null, pair);
         break;
       case "already_booked":
-        for (const f of [a, b]) if (bouts(f.id).some((m) => m.sub_event_id === subEvent.id || m.subEvent.date.getTime() === fightDate.getTime())) hit(`${f.name} is already in a bout on this fight card or day`);
+        for (const f of [a, b]) if (bouts(f.id).some((m) => m.sub_event_id === subEvent.id || m.subEvent.date.getTime() === fightDate.getTime())) hit(`${f.name} is already in a bout on this fight card or day`, f.id, { name: f.name });
         break;
     }
   }

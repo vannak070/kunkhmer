@@ -766,4 +766,23 @@ describe("KKF matching rules (updates/matching-rules.md)", () => {
     expect((await post("/matches/check", {}, a.officer.token)).status).toBe(422);
     expect((await post("/matches/check", body, a.club.token)).status).toBe(403);
   });
+
+  it("gives every hit its fighter and plain values, so the admin can write its own sentence (updates/rule-messages.md)", async () => {
+    const hurt = await newFighterWith({});
+    await put(`/fighters/${hurt}/private`, { medicalStatus: "Injured" }, a.officer.token);
+    const female = await newFighterWith({ gender: "Female" });
+    const medical = await post("/matches/check", await pair({ fighterBId: hurt }), a.officer.token);
+    expect(medical.body.data.blocked).toEqual([
+      expect.objectContaining({ key: "medical", fighter_id: hurt, params: { name: expect.any(String), reason: "not_cleared", status: "Injured" } }),
+    ]);
+    const gender = await pair({ fighterBId: female });
+    const sameGender = (await post("/matches/check", gender, a.officer.token)).body.data.blocked[0];
+    expect(sameGender).toMatchObject({ key: "same_gender", fighter_id: null, params: { a_id: gender.fighterAId, b_id: female } });
+
+    const far = await post("/matches/check", await pair({ agreedWeight: 70 }), a.officer.token);
+    const gap = far.body.data.warnings.find((w: any) => w.key === "weight_gap");
+    expect(gap.params).toMatchObject({ kg: 60, gap: 10, agreed: 70, limit: 2 });
+    expect(typeof gap.fighter_id).toBe("string");
+    expect(shapeOf(far)).toMatchSnapshot();
+  });
 });

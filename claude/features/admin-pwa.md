@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Steps 1 + part of 2 built 2026-10-13 (committed 6ef8e62, not deployed) — `updates/admin-pwa-performance.md`; real-phone check, login-on-several-devices and steps 3–4 still open |
+| **Status** | Steps 1 + part of 2 built 2026-10-13 (committed 6ef8e62, not deployed) — `updates/admin-pwa-performance.md`; step 3 (simple pages) in progress 2026-10-13 — Clubs, Titles and the Match page done (`updates/admin-step3-simple-pages.md`); Help, ShareFightCard chrome and Not found left; real-phone check, login-on-several-devices and step 4 still open |
 | **Jira** | n/a |
 | **Figma** | n/a |
 | **Owner** | vannak070 |
@@ -31,7 +31,7 @@ Admin first; the fan site later.
    Tool: `vite-plugin-pwa` (Workbox, update prompt). Caddy: check `sw.js` / manifest headers.
 2. **Phone-friendly shell.** Bottom bar on phones (Home · Fight nights · Fighters · Clubs · More), 48 px touch
    targets, Khmer side menu, session-expired → login page with a clear message, language switch kept per device.
-3. **Convert the 16 old pages**, most-used first: Clubs + AddClub → Champions (list, create, detail, history,
+3. **Convert the old pages** (in progress; see `updates/admin-step3-simple-pages.md`), most-used first: Clubs + AddClub → Champions (list, create, detail, history,
    schedule) → MatchDetail → Help → ShareFightCard.
 4. **Later, only if wanted:** offline weigh-in / results queue for fight night, push notifications, fan-site PWA.
 
@@ -49,7 +49,7 @@ Admin first; the fan site later.
 ## Open questions (defaults used where the owner said "go ahead")
 1. Which phones do the officers use (Android / iPhone / both)? Decides the install help.
 2. Should one account stay signed in on phone + computer at the same time? (Today the last sign-in wins.)
-3. Do officers need to work **offline on fight night** (weigh-in, results saved later)? Or is "needs internet" fine?
+3. Do officers need to work **offline on fight night** (weigh-in, results saved later)? **Owner, 2026-10-13: skip for now ("more complicated, I will arrange later"); "needs internet" stays.** If it comes back: the design notes are in the Match day update (`updates/match-day-mode.md`) — save a narrow match snapshot on the phone, queue weigh-ins and first results, never overwrite silently on conflict.
 4. App name and icon: "KKF Admin" with the emblem OK?
 5. Start with steps 1 + 2 together?
 

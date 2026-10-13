@@ -1,16 +1,16 @@
 /**
- * Fight-night page (/home/events/:id) — the one place an officer runs a fight night: the step-by-step
- * checklist, each fight card with its bouts (officials, weigh-in and result per bout) and four clear actions
- * per card: Add bout, Assign officials, Weigh-in, Results. English / Khmer. Replaces the old event page and
- * fight card page. See claude/updates/program-officer-friendly.md.
- * Agreements panel (licence, what was agreed with the broadcaster, KKF confirmation) and Organizer access:
- * claude/updates/offline-agreements-log.md.
+ * Fight-night page (/home/events/:id) — the one place an officer runs a fight night: the guided flow
+ * (Agree → Build the card → Go public → Fight night, NightFlow.tsx), then the bouts with officials, weigh-in and
+ * result per bout and four clear actions: Add bout, Assign officials, Weigh-in, Results. English / Khmer.
+ * See claude/updates/program-officer-friendly.md and claude/updates/program-guided-fight-night.md (the fight card
+ * level is hidden when there is one card; an Organizer gets a simpler "Your part / KKF's part" view).
+ * Agreements (what was agreed with the broadcaster, KKF confirmation): claude/updates/offline-agreements-log.md.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import {
-  ArrowLeft, CalendarDays, ChevronRight, ClipboardCheck, Gavel, ImagePlus, MapPin, MoreHorizontal, Pencil, Plus, Scale, Share2, ShieldCheck, Trash2, Trophy, Tv, Ban,
+  ArrowLeft, CalendarClock, CalendarDays, ChevronRight, ClipboardCheck, Gavel, ImagePlus, MapPin, MoreHorizontal, Pencil, Plus, Scale, Share2, ShieldCheck, Swords, Trash2, Trophy, Tv, Ban,
 } from "lucide-react";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
@@ -19,11 +19,14 @@ import { formatDay, useT } from "../i18n/program";
 import { usePlaceName } from "../hooks/useSettingsLists";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { EventNextSteps } from "../components/EventNextSteps";
-import { FightNightSteps } from "../components/program/FightNightSteps";
+import { NightFlow } from "../components/program/NightFlow";
+import { MatchDayBanner } from "../components/program/MatchDayBanner";
+import { DisputeDialog, DisputesPanel, ReopenDialog, SettlementPanel, SignOffDialog } from "../components/program/AfterMatch";
+import { CancelMatchDialog, ChangesHistory, PostponeDialog, canChangeMatch } from "../components/program/MatchChanges";
 import { FightNightFields, fightNightForm, fightNightPayload, fightNightReady } from "../components/program/FightNightFields";
-import { type Agreements, AgreementsPanel, LOCKED_FOR_ORGANIZER, agreementsReady } from "../components/program/AgreementsPanel";
+import { type Agreements, AgreementLog, LOCKED_FOR_ORGANIZER } from "../components/program/AgreementsPanel";
 import {
-  ConfirmDialog, FighterAvatar, LangSwitch, StatusChip, byCardOrder, displayStatus, hasResult, officialsComplete, resultText, weighState,
+  ConfirmDialog, FighterAvatar, LangSwitch, StatusChip, byCardOrder, dayOf, displayStatus, hasResult, officialsComplete, resultText, todayUtc, weighState,
 } from "../components/program/shared";
 
 const field = "w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary";
@@ -47,10 +50,17 @@ export function FightNight() {
   const [bouts, setBouts] = useState<any[]>([]);
   // null = this account can't see the agreements (club, officials).
   const [agreements, setAgreements] = useState<Agreements | null>(null);
+  // After the match (KKF staff): disputes, the settlement checklist and who signed off (claude/updates/match-signoff-settlement.md).
+  const [disputes, setDisputes] = useState<any[]>([]);
+  const [parties, setParties] = useState<any[]>([]);
+  const [signedOffBy, setSignedOffBy] = useState<string | null>(null);
+  const [afterDialog, setAfterDialog] = useState<null | "signoff" | "reopen" | "dispute">(null);
   const [editing, setEditing] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [confirm, setConfirm] = useState<null | "cancel" | "delete" | { card: any }>(null);
+  const [confirm, setConfirm] = useState<null | "delete" | { card: any }>(null);
+  // Postpone / cancel the match, with a reason (claude/updates/withdrawals-postponement.md).
+  const [matchDialog, setMatchDialog] = useState<null | "postpone" | "cancel">(null);
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
@@ -64,6 +74,12 @@ export function FightNight() {
       ]);
       setEvent(ev);
       setAgreements(agreed);
+      if (isStaff) {
+        const [d, p, ch] = await Promise.all([api.events.disputes(id!).catch(() => []), api.events.settlement(id!).catch(() => []), api.events.changes(id!).catch(() => [])]);
+        setDisputes(d);
+        setParties(p);
+        setSignedOffBy(ev.signed_off_at ? (ch as any[]).find((r) => r.kind === "sign_off")?.by_name ?? null : null);
+      }
       setLoadFailed(false);
       setCards(
         (nightCards as any[])
@@ -89,6 +105,9 @@ export function FightNight() {
   const status = useMemo(() => (event ? displayStatus(event, bouts) : "Draft"), [event, bouts]);
   // Organizers edit their broadcaster's fight night details (and record them) until it is published.
   const canEditDetails = Boolean(event) && (canEdit || (permissions.hasPermission("events.record") && !LOCKED_FOR_ORGANIZER.includes(event.status)));
+
+  const matchPassed = Boolean(event) && dayOf(event.date) <= todayUtc();
+  const canChangeNow = Boolean(event) && (isStaff || me?.role === "Organizer") && canChangeMatch(event.date);
 
   const run = async (action: () => Promise<unknown>, message: string, after?: () => void) => {
     setBusy(true);
@@ -119,7 +138,7 @@ export function FightNight() {
     return (
       <div className="max-w-3xl mx-auto p-8 text-center space-y-3">
         <p className="text-lg font-semibold text-slate-900">{t("night.notFound")}</p>
-        <Link to="/home/program?tab=events" className="text-primary font-semibold hover:underline">{t("night.back")}</Link>
+        <Link to="/home/matches" className="text-primary font-semibold hover:underline">{t("night.back")}</Link>
       </div>
     );
   }
@@ -134,7 +153,7 @@ export function FightNight() {
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-6">
-      <Link to="/home/program?tab=events" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-primary">
+      <Link to="/home/matches" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-primary">
         <ArrowLeft className="w-4 h-4" aria-hidden /> {t("night.back")}
       </Link>
       {loadFailed && (
@@ -164,19 +183,34 @@ export function FightNight() {
                   <Pencil className="w-4 h-4" aria-hidden /> {t("night.editDetails")}
                 </button>
               )}
-              {canEdit && (
+              {(canEdit || canChangeNow) && (
                 <div className="relative">
                   <button type="button" onClick={() => setMoreOpen((o) => !o)} aria-expanded={moreOpen} aria-label={t("common.more")} className="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-primary">
                     <MoreHorizontal className="w-5 h-5" aria-hidden />
                   </button>
                   {moreOpen && (
                     <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 bg-white shadow-lg z-20 py-1" onMouseLeave={() => setMoreOpen(false)}>
-                      {event.status !== "Cancelled" && (
-                        <button type="button" onClick={() => { setMoreOpen(false); setConfirm("cancel"); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 inline-flex items-center gap-2">
+                      {canChangeNow && event.status !== "Cancelled" && (
+                        <button type="button" onClick={() => { setMoreOpen(false); setMatchDialog("postpone"); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 inline-flex items-center gap-2">
+                          <CalendarClock className="w-4 h-4" aria-hidden /> {t("ch.menu.postpone")}
+                        </button>
+                      )}
+                      {canChangeNow && event.status !== "Cancelled" && (
+                        <button type="button" onClick={() => { setMoreOpen(false); setMatchDialog("cancel"); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 inline-flex items-center gap-2">
                           <Ban className="w-4 h-4" aria-hidden /> {t("night.cancel")}
                         </button>
                       )}
-                      {isSuper && (
+                      {isStaff && bouts.length > 0 && event.status !== "Cancelled" && (
+                        <Link to={`/home/events/${event.id}/match-day`} onClick={() => setMoreOpen(false)} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 inline-flex items-center gap-2">
+                          <Swords className="w-4 h-4" aria-hidden /> {t("md.open")}
+                        </Link>
+                      )}
+                      {canEdit && event.status !== "Cancelled" && (
+                        <button type="button" onClick={() => { setMoreOpen(false); setAddingCard(true); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 inline-flex items-center gap-2">
+                          <Plus className="w-4 h-4" aria-hidden /> {t("night.addSecondCard")}
+                        </button>
+                      )}
+                      {canEdit && isSuper && (
                         <button type="button" onClick={() => { setMoreOpen(false); setConfirm("delete"); }} className="w-full text-left px-4 py-2.5 text-sm text-red-700 hover:bg-red-50 inline-flex items-center gap-2">
                           <Trash2 className="w-4 h-4" aria-hidden /> {t("night.delete")}
                         </button>
@@ -200,31 +234,49 @@ export function FightNight() {
         </div>
       )}
 
+      {isStaff && <MatchDayBanner event={event} bouts={bouts} />}
+
+      {event.signed_off_at && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900 flex items-center gap-2">
+          <ShieldCheck className="w-5 h-5" aria-hidden /> {t("so.lockedNote")}
+        </div>
+      )}
+
+      {event.postponed_from && event.status !== "Cancelled" && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900 flex items-center gap-2">
+          <CalendarClock className="w-5 h-5" aria-hidden /> {t("ch.postponedFrom", { date: formatDay(event.postponed_from, lang, false) })}
+        </div>
+      )}
+
       {APPROVALS_ENABLED ? (
         <EventNextSteps event={{ ...event, kkfStatus: event.status }} cards={legacyCards} canEdit={canEdit} onEditDetails={() => setEditing(true)} onAddFightCard={() => setAddingCard(true)} onChanged={load} />
       ) : (
-        <FightNightSteps event={event} cards={cards} bouts={bouts} canEdit={canEdit} canEditDetails={canEditDetails} isStaff={isStaff} detailsConfirmed={agreements ? agreementsReady(agreements) : undefined} onEditDetails={() => setEditing(true)} onAddFightCard={() => setAddingCard(true)} onChanged={load} />
+        (isStaff || me?.role === "Organizer") && (
+          <NightFlow event={event} cards={cards} bouts={bouts.filter((b) => b.status !== "Cancelled")} agreements={agreements} mode={isStaff ? "staff" : "organizer"} canEdit={canEdit} canEditDetails={canEditDetails} onEditDetails={() => setEditing(true)} onChanged={load}
+            after={isStaff ? { disputes, parties, signedOffAt: event.signed_off_at ?? null, signedOffBy, isSuper, onSignOff: () => setAfterDialog("signoff"), onRecordDispute: () => setAfterDialog("dispute"), onReopen: () => setAfterDialog("reopen") } : undefined} />
+        )
       )}
 
-      {agreements && <AgreementsPanel event={event} data={agreements} isStaff={isStaff} onChanged={load} />}
+      {isStaff && matchPassed && (
+        <>
+          <DisputesPanel disputes={disputes} onRecord={() => setAfterDialog("dispute")} onChanged={load} />
+          <SettlementPanel eventId={event.id} parties={parties} enabled={event.status !== "Cancelled"} onChanged={load} />
+        </>
+      )}
 
-      {/* Fight cards */}
+      {agreements && <AgreementLog log={agreements.log} />}
+      {(isStaff || me?.role === "Organizer") && <ChangesHistory eventId={event.id} refreshKey={event.updated_at} />}
+
+      {/* Bouts: the fight card level only shows when there is more than one card. */}
       {cards.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center space-y-3">
-          <p className="text-slate-600">{t("night.noCards")}</p>
-          {canEdit && (
-            <button type="button" onClick={() => setAddingCard(true)} className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90">
-              <Plus className="w-4 h-4" aria-hidden /> {t("night.addCard")}
-            </button>
-          )}
-        </div>
+        <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-slate-600">{t("night.noBoutsYet")}</p>
       ) : (
         cards.map((card) => (
           <FightCardSection
             key={card.id}
             card={card}
             bouts={bouts.filter((b) => b.sub_event_id === card.id)}
-            showDate={cards.length > 1}
+            single={cards.length === 1}
             canEdit={canEdit}
             isStaff={isStaff}
             isSuper={isSuper}
@@ -233,28 +285,14 @@ export function FightNight() {
         ))
       )}
 
-      {cards.length > 0 && canEdit && event.status !== "Cancelled" && (
-        <div className="flex flex-wrap items-center gap-3">
-          <button type="button" onClick={() => setAddingCard(true)} className="inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-dashed border-slate-300 text-sm font-semibold text-primary hover:border-primary">
-            <Plus className="w-4 h-4" aria-hidden /> {t("night.addCard")}
-          </button>
-          <span className="text-sm text-slate-500">{t("night.addCardHint")}</span>
-        </div>
-      )}
-
+      {afterDialog === "signoff" && <SignOffDialog event={event} onClose={() => setAfterDialog(null)} onDone={() => { setAfterDialog(null); load(); }} />}
+      {afterDialog === "reopen" && <ReopenDialog event={event} onClose={() => setAfterDialog(null)} onDone={() => { setAfterDialog(null); load(); }} />}
+      {afterDialog === "dispute" && <DisputeDialog bouts={bouts.filter((b) => b.status !== "Cancelled")} onClose={() => setAfterDialog(null)} onDone={() => { setAfterDialog(null); load(); }} />}
+      {matchDialog === "postpone" && <PostponeDialog event={event} onClose={() => setMatchDialog(null)} onDone={() => { setMatchDialog(null); load(); }} />}
+      {matchDialog === "cancel" && <CancelMatchDialog event={event} onClose={() => setMatchDialog(null)} onDone={() => { setMatchDialog(null); load(); }} />}
       {editing && <EditDetailsDialog event={event} isStaff={isStaff} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); load(); }} />}
       {addingCard && <AddCardDialog event={event} count={cards.length} onClose={() => setAddingCard(false)} onSaved={() => { setAddingCard(false); load(); }} />}
 
-      <ConfirmDialog
-        open={confirm === "cancel"}
-        title={t("night.cancelTitle")}
-        text={t("night.cancelText")}
-        confirmLabel={t("night.cancel")}
-        danger
-        busy={busy}
-        onClose={() => setConfirm(null)}
-        onConfirm={() => run(() => api.events.update(event.id, { status: "Cancelled" }), t("night.cancelled"))}
-      />
       <ConfirmDialog
         open={confirm === "delete"}
         title={t("night.deleteTitle")}
@@ -263,7 +301,7 @@ export function FightNight() {
         danger
         busy={busy}
         onClose={() => setConfirm(null)}
-        onConfirm={() => run(() => api.events.delete(event.id), t("night.deleted"), () => navigate("/home/program?tab=events"))}
+        onConfirm={() => run(() => api.events.delete(event.id), t("night.deleted"), () => navigate("/home/matches"))}
       />
       <ConfirmDialog
         open={typeof confirm === "object" && confirm !== null}
@@ -279,8 +317,8 @@ export function FightNight() {
   );
 }
 
-function FightCardSection({ card, bouts, showDate, canEdit, isStaff, isSuper, onDelete }: {
-  card: any; bouts: any[]; showDate: boolean; canEdit: boolean; isStaff: boolean; isSuper: boolean; onDelete: () => void;
+function FightCardSection({ card, bouts, single, canEdit, isStaff, isSuper, onDelete }: {
+  card: any; bouts: any[]; single: boolean; canEdit: boolean; isStaff: boolean; isSuper: boolean; onDelete: () => void;
 }) {
   const { t, lang } = useT();
   const placeName = usePlaceName();
@@ -291,10 +329,10 @@ function FightCardSection({ card, bouts, showDate, canEdit, isStaff, isSuper, on
       <div className="p-5 md:p-6 border-b border-slate-100 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 id={`card-title-${card.id}`} className="text-lg font-bold text-slate-900">{card.name}</h2>
-            {showDate && <p className="text-sm text-slate-500">{formatDay(card.date, lang)}{card.location ? ` · ${placeName(card.location)}` : ""}</p>}
+            <h2 id={`card-title-${card.id}`} className="text-lg font-bold text-slate-900">{single ? t("night.boutsTitle") : card.name}</h2>
+            {!single && <p className="text-sm text-slate-500">{formatDay(card.date, lang)}{card.location ? ` · ${placeName(card.location)}` : ""}</p>}
           </div>
-          {isSuper && (
+          {isSuper && !single && (
             <button type="button" onClick={onDelete} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-red-700">
               <Trash2 className="w-4 h-4" aria-hidden /> {t("card.delete")}
             </button>
@@ -351,6 +389,8 @@ function FightCardSection({ card, bouts, showDate, canEdit, isStaff, isSuper, on
                       <p className="font-semibold text-slate-700">{t("common.kg", { n: Number(b.agreed_weight) })}</p>
                       <p>{t("common.rounds", { n: b.rounds })}</p>
                       {(b.is_title_match || b.isTitleMatch) && <p className="inline-flex items-center gap-1 text-amber-700 font-semibold"><Trophy className="w-3 h-3" aria-hidden />{t("common.titleFight")}</p>}
+                      {b.status === "Cancelled" && <p><span className="rounded-full bg-slate-200 text-slate-700 px-2 py-0.5 font-semibold">{t("ch.chip.cancelled")}</span></p>}
+                      {b.replacement_side && b.status !== "Cancelled" && <p><span className="rounded-full bg-red-100 text-red-800 px-2 py-0.5 font-semibold">{t("ch.chip.replacement")}</span></p>}
                     </div>
                   </div>
                   <Pill ok={officialsComplete(b)} okText={t("card.officialsOk")} badText={t("card.officialsMissing")} icon={<ClipboardCheck className="w-3.5 h-3.5" aria-hidden />} hide={hasResult(b) && !officialsComplete(b)} />

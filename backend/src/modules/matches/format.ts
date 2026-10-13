@@ -80,6 +80,7 @@ export function matchArray(m: Match) {
     is_title_match: m.is_title_match,
     championship_id: m.championship_id,
     sort_order: m.sort_order,
+    replacement_side: m.replacement_side,
   };
 }
 

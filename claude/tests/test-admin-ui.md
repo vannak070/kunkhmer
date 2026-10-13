@@ -16,7 +16,7 @@
 ## Steps
 1. Open `http://localhost:5175`, log out if signed in, sign in as admin.
 2. Visit: Dashboard `/home`, Fighters `/home/fighters`, a fighter
-   `/home/fighters/<id>`, Clubs `/home/clubs`, Program/Events
+   `/home/fighters/<id>`, Clubs `/home/clubs`, Matches (`/home/matches`) / Titles (`/home/titles`)
    `/home/program?tab=events`, an event `/home/events/<id>`, Champions
    `/home/program?tab=champions`, a title `/home/champion/<id>`, News `/home/media/news`, Videos `/home/media/video`,
    Partners `/home/strategic-partners`.

@@ -42,7 +42,7 @@ export function FightCardResults() {
       const [ev, list] = await Promise.all([api.events.get(c.event_id), api.matches.list(cardId)]);
       setCard(c);
       setEvent(ev);
-      const sorted = (list as any[]).sort(byCardOrder);
+      const sorted = (list as any[]).filter((m) => m.status !== "Cancelled").sort(byCardOrder);
       setBouts(sorted);
       setDrafts(Object.fromEntries(sorted.map((m) => [m.id, draftOf(m)])));
     } catch {

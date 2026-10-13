@@ -1,0 +1,59 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`disputes > are recorded and resolved by KKF staff, validated, and listed 1`] = `
+{
+  "body": {
+    "data": {
+      "bout": "string",
+      "created_at": "datetime(.000000Z)",
+      "created_by_name": "string",
+      "event_id": "uuid",
+      "id": "uuid",
+      "match_id": "uuid",
+      "raised_by": "string",
+      "reason": "string",
+      "resolution_note": "null",
+      "resolved_at": "null",
+      "resolved_by_name": "null",
+      "status": "string",
+    },
+    "success": "boolean",
+  },
+  "status": 201,
+}
+`;
+
+exports[`settlement > lists the broadcaster and sponsors, ticks them from match day on, staff only 1`] = `
+{
+  "body": {
+    "data": {
+      "parties": [
+        {
+          "kind": "string",
+          "name": "string",
+          "note": "null",
+          "party_id": "uuid",
+          "settled": "boolean",
+          "settled_at": "null",
+          "settled_by_name": "null",
+        },
+      ],
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`sign-off > needs the match day, every result, no replacement waiting and no open dispute 1`] = `
+{
+  "body": {
+    "data": {
+      "signed_off_at": "datetime(.000000Z)",
+      "signed_off_by_name": "string",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;

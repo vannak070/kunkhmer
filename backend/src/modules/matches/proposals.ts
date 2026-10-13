@@ -18,9 +18,14 @@ export type Side = "a" | "b";
 export const SIDES: Side[] = ["a", "b"];
 export const RESPONSES = ["accepted", "declined"] as const;
 
-/** Bouts the public may see: accepted by both clubs, or already decided. */
+/**
+ * Bouts the public may see: accepted by both clubs, or already decided — and not cancelled or waiting for a
+ * replacement (claude/updates/withdrawals-postponement.md).
+ */
 export const PUBLIC_BOUT = {
   OR: [{ proposal_status: "accepted" }, { result: { isNot: null } }],
+  status: { not: "Cancelled" },
+  replacement_side: null,
 } satisfies Prisma.MatchWhereInput;
 
 export function proposalStatus(a: string, b: string) {

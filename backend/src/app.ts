@@ -25,6 +25,8 @@ import officialRoutes from "./modules/officials/routes.ts";
 import settingsRoutes from "./modules/settings/routes.ts";
 import seoRoutes from "./modules/seo/routes.ts";
 import matchingRuleRoutes from "./modules/matches/rules.ts";
+import matchChangeRoutes from "./modules/matches/changes.ts";
+import signoffRoutes from "./modules/events/signoff.ts";
 import settingsListRoutes from "./modules/settings/lists.ts";
 import videoRoutes from "./modules/videos/routes.ts";
 
@@ -117,6 +119,8 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
       await api.register(eventRoutes);
       await api.register(agreementRoutes);
       await api.register(matchingRuleRoutes);
+      await api.register(matchChangeRoutes);
+      await api.register(signoffRoutes);
       await api.register(matchRoutes);
       await api.register(officialRoutes);
       await api.register(championRoutes);

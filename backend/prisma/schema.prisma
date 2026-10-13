@@ -39,6 +39,11 @@ model User {
   approvedEvents   Event[]    @relation("EventApprover")
   recordedAgreements  EventAgreement[] @relation("AgreementRecorder")
   confirmedAgreements EventAgreement[] @relation("AgreementConfirmer")
+  matchChanges        MatchChange[]    @relation("MatchChangeBy")
+  signedOffEvents     Event[]          @relation("EventSignedOff")
+  raisedDisputes      BoutDispute[]    @relation("DisputeRaisedBy")
+  resolvedDisputes    BoutDispute[]    @relation("DisputeResolvedBy")
+  settledParties      EventSettlement[] @relation("SettledBy")
   verifiedFighters Fighter[]  @relation("FighterVerifier")
   refereedMatches  Match[]    @relation("MatchReferee")
   clubAResponses   Match[]    @relation("MatchClubAResponder")
@@ -248,6 +253,11 @@ model Event {
   name                    String    @db.VarChar(255)
   date                    DateTime  @db.Date
   end_date                DateTime? @db.Date
+  /// The first date this match was set to before it was postponed (null = never postponed).
+  original_date           DateTime? @db.Date
+  /// Program workflow phase 7 (claude/updates/match-signoff-settlement.md): KKF signed the match off — results are locked.
+  signed_off_at           DateTime? @db.Timestamp(0)
+  signed_off_by           String?   @db.Uuid
   location                String    @db.VarChar(255)
   status                  String    @default("Draft") @db.VarChar(255)
   organizer_id            String    @db.Uuid
@@ -282,6 +292,10 @@ model Event {
   matches          Match[]
   championDefenses ChampionDefense[]
   agreements       EventAgreement[]
+  matchChanges     MatchChange[]
+  disputes         BoutDispute[]
+  settlements      EventSettlement[]
+  signedOffByUser  User?            @relation("EventSignedOff", fields: [signed_off_by], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "events_signed_off_by_foreign")
   titleLinks       EventTitle[]
 
   @@map("events")
@@ -328,6 +342,84 @@ model EventAgreement {
   @@index([event_id, item], map: "event_agreements_event_id_item_index")
   @@index([status], map: "event_agreements_status_index")
   @@map("event_agreements")
+}
+
+/// Withdrawals, replacements, bout cancellations, postponements and match cancellations (Program workflow phase 6,
+/// claude/updates/withdrawals-postponement.md): the history shown on the match page. Rows are only added.
+model MatchChange {
+  id             String    @id @db.Uuid
+  seq            Int       @default(autoincrement())
+  event_id       String    @db.Uuid
+  /// The bout, if any (no foreign key: the history outlives a deleted bout).
+  match_id       String?   @db.Uuid
+  /// withdraw | replace | cancel_bout | postpone | cancel_event
+  kind           String    @db.VarChar(20)
+  /// "a" / "b" for withdraw and replace.
+  side           String?   @db.VarChar(1)
+  /// The fighter concerned: the one who withdrew, or the replacement.
+  fighter_id     String?   @db.Uuid
+  fighter_name   String?   @db.VarChar(255)
+  /// For a replacement: the fighter who was replaced; for a bout cancellation: "A vs B".
+  other_name     String?   @db.VarChar(255)
+  /// A short key (injured, overweight, … / weather, venue, …).
+  reason         String?   @db.VarChar(30)
+  note           String?
+  from_date      DateTime? @db.Date
+  to_date        DateTime? @db.Date
+  /// The withdrawal also marked the fighter Injured / Not Cleared.
+  marked_fighter Boolean   @default(false)
+  created_by     String?   @db.Uuid
+  created_at     DateTime  @db.Timestamp(0)
+
+  event Event @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "match_changes_event_id_foreign")
+  user  User? @relation("MatchChangeBy", fields: [created_by], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "match_changes_created_by_foreign")
+
+  @@index([event_id, seq], map: "match_changes_event_id_seq_index")
+  @@map("match_changes")
+}
+
+/// A dispute about a bout's result (Program workflow phase 7): open until KKF resolves it; open ones block sign-off.
+model BoutDispute {
+  id              String    @id @db.Uuid
+  match_id        String    @db.Uuid
+  event_id        String    @db.Uuid
+  /// Who disputes it (a club, a fighter, an official …), as typed by staff.
+  raised_by_text  String    @db.VarChar(255)
+  reason          String
+  /// open | upheld | dismissed | corrected
+  status          String    @default("open") @db.VarChar(20)
+  resolution_note String?
+  created_by      String?   @db.Uuid
+  created_at      DateTime  @db.Timestamp(0)
+  resolved_by     String?   @db.Uuid
+  resolved_at     DateTime? @db.Timestamp(0)
+
+  match    Match @relation(fields: [match_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "bout_disputes_match_id_foreign")
+  event    Event @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "bout_disputes_event_id_foreign")
+  creator  User? @relation("DisputeRaisedBy", fields: [created_by], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "bout_disputes_created_by_foreign")
+  resolver User? @relation("DisputeResolvedBy", fields: [resolved_by], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "bout_disputes_resolved_by_foreign")
+
+  @@index([event_id, status], map: "bout_disputes_event_id_status_index")
+  @@index([match_id], map: "bout_disputes_match_id_index")
+  @@map("bout_disputes")
+}
+
+/// Settlement checklist (Program workflow phase 7): one row per party once ticked; no amounts.
+model EventSettlement {
+  event_id   String    @db.Uuid
+  /// broadcaster | sponsor
+  party_kind String    @db.VarChar(20)
+  party_id   String    @db.Uuid
+  party_name String    @db.VarChar(255)
+  settled_at DateTime? @db.Timestamp(0)
+  settled_by String?   @db.Uuid
+  note       String?
+
+  event   Event @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "event_settlements_event_id_foreign")
+  settler User? @relation("SettledBy", fields: [settled_by], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "event_settlements_settled_by_foreign")
+
+  @@id([event_id, party_kind, party_id])
+  @@map("event_settlements")
 }
 
 model EventSponsor {
@@ -404,7 +496,11 @@ model Match {
   is_title_match       Boolean   @default(false)
   championship_id      String?   @db.Uuid
   sort_order           Int       @default(0)
+  /// Program workflow phase 6 (claude/updates/withdrawals-postponement.md): the corner ("a" / "b") whose fighter
+  /// withdrew and still needs a replacement; null otherwise. A cancelled bout has status "Cancelled".
+  replacement_side     String?   @db.VarChar(1)
 
+  disputes     BoutDispute[]
   event        Event     @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "matches_event_id_foreign")
   subEvent     SubEvent  @relation(fields: [sub_event_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "matches_sub_event_id_foreign")
   fighterA     Fighter   @relation("MatchFighterA", fields: [fighter_a_id], references: [id], onUpdate: NoAction, map: "matches_fighter_a_id_foreign")

@@ -164,9 +164,15 @@ export function EventDetail() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="kk-label text-[var(--kk-red)] mr-1">{t("event.fightNight")}</span>
                       <PublicStatusBadge status={event.status} />
+                      {event.postponed_from && event.status !== "Cancelled" && (
+                        <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">{t("event.postponed", { date: formatDate(event.postponed_from, "long") })}</span>
+                      )}
                       {upcoming && <CountdownChip date={event.date} />}
                       {completed.length > 0 && (
                         <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">{t("event.resultsIn")}</span>
+                      )}
+                      {event.signed_off_at && (
+                        <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-emerald-800 border border-emerald-300">{t("event.official")}</span>
                       )}
                       {!upcoming && completed.length === 0 && bouts.length > 0 && (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-gray-200 text-gray-700"><Clock className="w-3.5 h-3.5" aria-hidden />{t("fights.pendingTitle")}</span>

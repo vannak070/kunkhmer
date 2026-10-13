@@ -1,4 +1,4 @@
-import { Home, CalendarDays, Dumbbell, ChevronDown, Shield, LogOut, User as UserIcon, ClipboardCheck, Settings, Building2, Users, Newspaper, Bell, Handshake, Menu, X, Gavel, Lock, HelpCircle, Sparkles, BookOpen, Bot, Landmark } from "lucide-react";
+import { Home, CalendarDays, Dumbbell, ChevronDown, Shield, LogOut, User as UserIcon, ClipboardCheck, Settings, Building2, Users, Newspaper, Bell, Handshake, Menu, X, Gavel, Lock, HelpCircle, Sparkles, BookOpen, Bot, Landmark, Trophy } from "lucide-react";
 import { Outlet, NavLink, Navigate, useLocation, useNavigate, Link } from "react-router";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { usePermissions } from "../hooks/usePermissions";
 import { api } from "../utils/api";
 import { useAdminOverview } from "../hooks/useAdminOverview";
+import { APPROVALS_ENABLED } from "../config/features";
 import { HeaderSearch } from "./HeaderSearch";
 import { LangSwitch } from "./program/shared";
 import { PwaBar } from "./pwa/PwaBar";
@@ -23,6 +24,8 @@ interface NavItem {
   path: string;
   permission: string | null;
   submenu?: { label: string; path: string; permission: string | null }[];
+  /** Other addresses that belong to this item (a match's page, a title's page) so it stays highlighted. */
+  active?: RegExp;
 }
 
 /** Menu grouped by job, so staff can find things quickly. Each item shows only for roles with its permission. */
@@ -39,17 +42,7 @@ const navGroups: { title: string | null; items: NavItem[] }[] = [
   {
     title: "Competition",
     items: [
-      {
-        icon: CalendarDays,
-        label: "Program",
-        path: "/home/program",
-        permission: "events.view",
-        submenu: [
-          { label: "Overview", path: "/home/program?tab=overview", permission: "events.view" },
-          { label: "Fight nights", path: "/home/program?tab=events", permission: "events.view" },
-          { label: "Champions", path: "/home/program?tab=champions", permission: "events.view" },
-        ],
-      },
+      { icon: CalendarDays, label: "Matches", path: "/home/matches", permission: "events.view", active: /^\/home\/(matches|events|fight-cards|batches|match\/)/ },
       {
         icon: Dumbbell,
         label: "Fighters",
@@ -61,11 +54,20 @@ const navGroups: { title: string | null; items: NavItem[] }[] = [
         ],
       },
       { icon: Building2, label: "Clubs", path: "/home/clubs", permission: "fighters.view" },
-      { icon: ClipboardCheck, label: "Match Proposals", path: "/home/match-proposals", permission: "matches.view_proposals" },
+      { icon: Trophy, label: "Titles", path: "/home/titles", permission: "events.view", active: /^\/home\/(titles|champion)/ },
+      // Club answers on bouts exist only while approvals are switched on (config/features.ts).
+      ...(APPROVALS_ENABLED ? [{ icon: ClipboardCheck, label: "Match Proposals", path: "/home/match-proposals", permission: "matches.view_proposals" }] : []),
     ],
   },
   {
-    title: "Content & partners",
+    title: "People",
+    items: [
+      { icon: Shield, label: "Officials", path: "/home/officials", permission: "officials.manage" },
+      { icon: Users, label: "Users", path: "/home/user-management", permission: "users.view" },
+    ],
+  },
+  {
+    title: "Content",
     items: [
       {
         icon: Newspaper,
@@ -77,6 +79,14 @@ const navGroups: { title: string | null; items: NavItem[] }[] = [
           { label: "Video", path: "/home/media/video", permission: "content.manage" },
         ],
       },
+      { icon: Sparkles, label: "Hub answers", path: "/home/hub-answers", permission: "hub.review" },
+      { icon: BookOpen, label: "Knowledge base", path: "/home/knowledge", permission: "knowledge.manage" },
+      { icon: Landmark, label: "About the Federation", path: "/home/federation", permission: "federation.manage" },
+    ],
+  },
+  {
+    title: "Partners",
+    items: [
       {
         icon: Handshake,
         label: "Strategic Partners",
@@ -88,23 +98,15 @@ const navGroups: { title: string | null; items: NavItem[] }[] = [
           { label: "International Partners", path: "/home/strategic-partners/organizations", permission: "partners.manage" },
         ],
       },
-      { icon: Sparkles, label: "Hub answers", path: "/home/hub-answers", permission: "hub.review" },
-      { icon: BookOpen, label: "Knowledge base", path: "/home/knowledge", permission: "knowledge.manage" },
-      { icon: Landmark, label: "About the Federation", path: "/home/federation", permission: "federation.manage" },
     ],
   },
   {
-    title: "Administration",
-    items: [
-      { icon: Users, label: "Users", path: "/home/user-management", permission: "users.view" },
-      { icon: Shield, label: "Officials", path: "/home/officials", permission: "officials.manage" },
-      { icon: Settings, label: "System Settings", path: "/home/settings", permission: "settings.view" },
-    ],
-  },
-  {
-    // Every signed-in role, including referees and judges.
+    // Settings and Help: every signed-in role sees Help, including referees and judges.
     title: null,
-    items: [{ icon: HelpCircle, label: "Help", path: "/home/help", permission: null }],
+    items: [
+      { icon: Settings, label: "System Settings", path: "/home/settings", permission: "settings.view" },
+      { icon: HelpCircle, label: "Help", path: "/home/help", permission: null },
+    ],
   },
 ];
 
@@ -114,7 +116,7 @@ const navItems = navGroups.flatMap((g) => g.items);
 const quickItems: { icon: NavIcon; label: string; path: string; permission: string | null; match?: RegExp }[] = [
   { icon: Gavel, label: "My bouts", path: "/home/my-bouts", permission: "bouts.view_own" },
   { icon: Home, label: "Dashboard", path: "/home", permission: "dashboard.view", match: /^\/home(#.*)?$/ },
-  { icon: CalendarDays, label: "Fight nights", path: "/home/program?tab=events", permission: "events.view", match: /^\/home\/(program|events|fight-cards|matches|batches|match\/)/ },
+  { icon: CalendarDays, label: "Matches", path: "/home/matches", permission: "events.view", match: /^\/home\/(matches|events|fight-cards|batches|match\/)/ },
   { icon: Dumbbell, label: "Fighters", path: "/home/fighters", permission: "fighters.view", match: /^\/home\/fighters/ },
   { icon: Building2, label: "Clubs", path: "/home/clubs", permission: "fighters.view", match: /^\/home\/clubs/ },
   { icon: HelpCircle, label: "Help", path: "/home/help", permission: null, match: /^\/home\/help/ },
@@ -129,16 +131,16 @@ const MENU_TEXT: Record<string, TextKey> = {
   "Staff assistant": "menu.assistant",
   "My bouts": "menu.myBouts",
   Competition: "menu.group.competition",
-  Program: "program.title",
-  Overview: "program.tab.overview",
-  "Fight nights": "program.tab.fightNights",
-  Champions: "program.tab.champions",
+  Matches: "program.tab.fightNights",
+  Titles: "program.tab.champions",
+  People: "menu.group.people",
+  Content: "menu.group.content",
+  Partners: "menu.group.partners",
   Fighters: "menu.fighters",
   "Kun Khmer": "menu.fighters.local",
   Foreigner: "menu.fighters.foreign",
   Clubs: "menu.clubs",
   "Match Proposals": "menu.proposals",
-  "Content & partners": "menu.group.content",
   Media: "menu.media",
   News: "menu.media.news",
   Video: "menu.media.video",
@@ -149,7 +151,6 @@ const MENU_TEXT: Record<string, TextKey> = {
   "Hub answers": "menu.hubAnswers",
   "Knowledge base": "menu.knowledge",
   "About the Federation": "menu.federation",
-  Administration: "menu.group.admin",
   Users: "menu.users",
   Officials: "menu.officials",
   "System Settings": "menu.settings",
@@ -163,6 +164,7 @@ const MENU_TEXT: Record<string, TextKey> = {
 const PAGE_GUARDS: { match: RegExp; permission: string }[] = [
   // Organizers record their broadcaster's fight nights (claude/updates/offline-agreements-log.md).
   { match: /^\/home\/events\/new$/, permission: "events.create|events.record" },
+  { match: /^\/home\/events\/[^/]+\/match-day$/, permission: "events.edit" },
   { match: /^\/home\/fighters\/(kunkhmer|foreigner)\/new$/, permission: "fighters.create" },
   { match: /^\/home\/fighters\/[^/]+\/edit$/, permission: "fighters.edit" },
   { match: /^\/home\/matches\/[^/]+\/assign-officials$/, permission: "officials.assign" },
@@ -190,7 +192,7 @@ export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const permissions = usePermissions();
-  const [openSubmenu, setOpenSubmenu] = useState<string | null>("Program");
+  const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const todoCount = useAdminOverview().data?.todos.length ?? 0;
@@ -244,7 +246,7 @@ export function Layout() {
               {group.title && <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label(group.title)}</p>}
               <div className="space-y-0.5">
                 {items.map((item) => {
-                  const isActive = item.path === "/home" ? location.pathname === "/home" : location.pathname.startsWith(item.path);
+                  const isActive = item.path === "/home" ? location.pathname === "/home" : item.active ? item.active.test(location.pathname) : location.pathname.startsWith(item.path);
                   const Icon = item.icon;
                   const rowClass = cn(
                     "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
@@ -272,7 +274,7 @@ export function Layout() {
                           {item.submenu.filter((sub) => allowed(sub.permission)).map((sub) => {
                             const here = location.pathname + (location.search || "");
                             const subActive = sub.path.includes("?")
-                              ? here === sub.path || (sub.path.endsWith("overview") && here === "/home/program")
+                              ? here === sub.path
                               : location.pathname === sub.path || location.pathname.startsWith(sub.path + "/");
                             return (
                               <NavLink

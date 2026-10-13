@@ -1,5 +1,6 @@
 /**
- * Offline agreements log + fight night licence (Program workflow phase 4, claude/updates/offline-agreements-log.md)
+ * Offline agreements log + fight night licence (Program workflow phase 4; the licence is optional and no longer
+ * asked for in the admin since 2026-10-13, claude/updates/program-guided-fight-night.md; claude/updates/offline-agreements-log.md)
  *
  *   GET  /events/:id/agreements                       STAFF or an Organizer who can see the event: licence, item states, log
  *   POST /events/:id/agreements                       { item: details|sponsors, note? } — Organizer → waiting, STAFF → confirmed at once
@@ -107,13 +108,13 @@ async function stateOf(event: EventForSnapshot, item: Item) {
 }
 
 /**
- * The publish gate: why this fight night can't be published yet, or null. Details (licence included) must be
+ * The publish gate: why this fight night can't be published yet, or null. Details must be
  * confirmed; titles too when any are selected.
  */
 export async function publishBlocker(eventId: string): Promise<string | null> {
   const event = await prisma.event.findUnique({ where: { id: eventId }, include: forSnapshot });
   if (!event) return null;
-  if ((await stateOf(event, "details")) !== "confirmed") return "KKF must confirm the fight night details and licence before publishing";
+  if ((await stateOf(event, "details")) !== "confirmed") return "KKF must confirm the fight night details before publishing";
   if (event.titleLinks.length && (await stateOf(event, "titles")) !== "confirmed") return "KKF must confirm the titles on this fight night before publishing";
   return null;
 }
@@ -128,10 +129,10 @@ export async function titleListWarning(eventId: string | null | undefined, champ
   if (!event) return null;
   const label = "Title on the fight night's list";
   if (!event.titleLinks.some((l) => l.champion_id === championshipId)) {
-    return { key: "title_list", label, action: "warn", message: "This title is not on the fight night's title list" };
+    return { key: "title_list", label, action: "warn", message: "This title is not on the fight night's title list", fighter_id: null, params: { reason: "not_listed" } };
   }
   if ((await stateOf(event, "titles")) !== "confirmed") {
-    return { key: "title_list", label, action: "warn", message: "KKF has not confirmed the titles on this fight night yet" };
+    return { key: "title_list", label, action: "warn", message: "KKF has not confirmed the titles on this fight night yet", fighter_id: null, params: { reason: "unconfirmed" } };
   }
   return null;
 }
@@ -187,9 +188,6 @@ export default async function agreementRoutes(app: FastifyInstance) {
       const item = String(input.required("item")) as Item;
       if (!ITEMS.includes(item)) throw new HttpError(422, "The item must be details, sponsors or titles");
       if (item === "titles" && !event.titleLinks.length) throw new HttpError(422, "Choose the titles on this fight night first");
-      if (item === "details" && !(event.licence_number && event.licence_date)) {
-        throw new HttpError(422, "Add the licence number and date before recording the fight night details");
-      }
       const staff = hasRole(user, STAFF);
       const at = now();
       const row = await prisma.eventAgreement.create({

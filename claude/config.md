@@ -143,7 +143,10 @@ and phone width in both languages.
 - Settings lists (weight classes, venues, bout rules, gloves) are on the API
   since Phase 5 (`features/settings.md`). Create Match / titles keep a
   separate agreed-weight list (51, 54, 57 … kg) by decision. UI says "Fight card"; code/API
-  still say batch / sub_event.
+  still say batch / sub_event. **Words (2026-10-13, `updates/matches-menu.md`):** the admin says **Match** for one day of
+  fights (code/API: event; admin address `/home/events/:id`, list `/home/matches`), **Bout** for one fight (code/API:
+  match), **Titles** for belts (`/home/titles`). Program is now Matches + Titles; `/home/program` redirects. The
+  fan site and the Help page still say "fight night" until KKF agrees the Khmer wording.
 - KKF approval steps (event approval, club answers on bouts, fighter verification) are **switched off**
   (2026-09-30): KKF staff run the whole Program flow; Organizer / Club/Gym are read-only in the admin. Turning
   them back on = `APPROVALS_ENABLED=true` (backend) + `config/features.ts` in the admin
