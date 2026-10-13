@@ -30,7 +30,8 @@
 - Show a map on the public club page (step 6)? Default: yes, small, only for clubs with a pin.
 - Remove the Quick select hubs? Default: yes.
 
-## Built (2026-10-01)
+## Log
+### 2026-10-01 (built)
 - DB: `clubs.latitude` / `clubs.longitude` DECIMAL(9,6) NULL, migration `20261001000003_club_coordinates`. API: `POST/PUT /clubs` accept both (numbers, ranges −90..90 / −180..180, both or neither, `null` / `""` clears, a PUT with one value keeps the other); club rows return them as numbers or null.
 - Admin: new `components/clubs/ClubMapPicker.tsx` (Leaflet from npm, `leaflet@1.9.4` added to `frontend/admin/package.json`; no CDN). Edit starts on the saved pin and keeps the saved Location; New starts empty with no pin. Search list (5 places, Khmer + English), click / drag, "Use my location", "Remove pin", tile-failure note, one reverse lookup at a time (stale answers dropped); the address fills Location only while it is empty, otherwise "Use as the location" button. The card is not a `<form>` (it sits in the club form; Enter searches instead of saving). The fake "Quick select hubs", the CDN loaders and the demo-PNG fallback are gone from AddClub.
 - Admin club detail: "Open map" link (uses the pin when there is one). Public club page: "Open map" uses the pin, and a small OpenStreetMap embed shows in the Details card for clubs with a pin (EN + KM title).

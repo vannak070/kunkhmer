@@ -32,7 +32,8 @@
 2. **Venue text saved on an event**: events keep one text for the place. Default: save the English name; the public site and admin show the venue's Khmer name in Khmer when it matches a list entry. (Alternative: save both names on the event.)
 3. Associations on clubs: default = copy both names onto the club (rename in Settings does not change saved clubs, as today).
 
-## Built (2026-10-02)
+## Log
+### 2026-10-02 (built)
 - DB (migration `20261002000001_settings_khmer_names`): `venues.name_khmer`, `venues.region_khmer`, `associations.name_khmer`, `clubs.association_khmer`.
 - API: `/settings/venues` and `/settings/associations` accept / return `nameKhmer` (+ `regionKhmer` for venues); clubs accept `associationKhmer` and return `association_khmer`. Contract tests (set, clear, club copy); suite 281/281, snapshots only gained the new fields.
 - Admin Settings: venues and associations forms have "Name (English)" + "Name (Khmer)" (+ "Region (Khmer)"), rows show the Khmer name in the detail line.

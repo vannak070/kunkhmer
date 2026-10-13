@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Steps 1 + part of 2 built 2026-10-13 (uncommitted, not deployed) — `updates/admin-pwa-performance.md`; real-phone check, login-on-several-devices and steps 3–4 still open |
+| **Status** | Steps 1 + part of 2 built 2026-10-13 (committed 6ef8e62, not deployed) — `updates/admin-pwa-performance.md`; real-phone check, login-on-several-devices and steps 3–4 still open |
 | **Jira** | n/a |
 | **Figma** | n/a |
 | **Owner** | vannak070 |

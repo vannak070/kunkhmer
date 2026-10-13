@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress — everything up to website-review steps 1, 3 (About the Federation), 4 and 5 (club logos) committed and pushed (57c49d39, 2026-09-30); step 2 text fixes done in dev + staff checklist (`updates/review-step2-data-cleanup.md`, hand-off page "KKF Launch Checklist"); next: staff clean-up, KKF federation content, launch content, go-live |
+| **Status** | In progress — website-review steps 1, 3 (About the Federation), 4 and 5 (club logos) committed and pushed (57c49d39, 2026-09-30); step 2 text fixes done in dev. Next steps are in the list below |
 | **Jira** | TBD |
 | **Figma** | TBD — brand guideline: design system artifact "Kun Khmer Brand" (https://claude.ai/artifact/5dHcDztT7toqRYCFrcKFLT, owner-private) |
 
@@ -110,6 +110,7 @@ one server, Caddy with automatic HTTPS, fan site + admin subdomain, daily backup
   (chat apps don't run JavaScript).
 
 ## Open questions / next steps
+- **Before go-live (status detail)**: staff clean-up of data (`updates/review-step2-data-cleanup.md`, hand-off page "KKF Launch Checklist"), KKF federation content, launch content, then go-live.
 - **Next**: public statistics (`features/statistics.md`) and the KUNKHMER HUB
   plan (knowledge base etc., `features/ai-assistant.md`) — both wait on open questions.
 - **Step 3**: dark header for Fight Night pages, menu consolidation
