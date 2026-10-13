@@ -194,7 +194,9 @@ describe("matches", () => {
     expect(res.body.data.map((m: any) => m.id)).toEqual([second.id, first.id]);
     // Visitors don't get the weigh-in (admin only); otherwise the same shape as the staff response.
     const { weigh_in_a_kg, weigh_in_b_kg, weigh_in_at, weigh_in_by, ...publicShape } = shape(first) as Record<string, unknown>;
-    expect(shape(findById(res, first.id))).toEqual(publicShape);
+    // (and without the fighters' medical status / suspension date, which only staff see)
+    const dropStaffOnly = (v: unknown) => JSON.parse(JSON.stringify(v, (k, x) => (k === "medical_status" || k === "suspension_end_date" ? undefined : x)));
+    expect(shape(findById(res, first.id))).toEqual(dropStaffOnly(publicShape));
   });
 
   it("shows a match", async () => {

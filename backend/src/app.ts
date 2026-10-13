@@ -1,7 +1,8 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { config } from "./config.ts";
 import { Prisma } from "./generated/prisma/client.ts";
-import { resolveUser } from "./lib/auth.ts";
+import { STAFF, hasRole, resolveUser } from "./lib/auth.ts";
+import { withoutStaffOnlyFields } from "./lib/staffOnlyFields.ts";
 import { BadInput } from "./lib/dates.ts";
 import { HttpError } from "./lib/http.ts";
 import { normalizeBody } from "./lib/input.ts";
@@ -58,6 +59,8 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
     if (request.staleToken) reply.header("X-Session-Expired", "1");
     return payload;
   });
+  // Medical status and suspension date are for KKF staff only (claude/updates/hide-fighter-medical-from-public.md).
+  app.addHook("preSerialization", async (request, _reply, payload) => (hasRole(request.user ?? null, STAFF) ? payload : withoutStaffOnlyFields(payload)));
   app.addHook("preHandler", async (request) => {
     request.body = normalizeBody(request.body ?? {});
     // Pictures arrive as base64 data URIs; keep them as files, not as text in the database.
