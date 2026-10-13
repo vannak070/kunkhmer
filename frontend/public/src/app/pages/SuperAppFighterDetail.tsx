@@ -28,6 +28,7 @@ import { api } from "../utils/api";
 import { usePageMeta } from "../hooks/usePageTitle";
 import { formatVideoDuration, textLang } from "../utils/publicDisplay";
 import { useI18n } from "../i18n/LanguageContext";
+import { DEFAULT_FIGHTER_AVATAR } from "../data/fighterAvatar";
 import { championPath, eventPathById } from "../data/links";
 import { nationalityLabel, styleLabel } from "../data/fighterLabels";
 
@@ -65,7 +66,7 @@ export function SuperAppFighterDetail() {
   const [attempt, setAttempt] = useState(0);
   const [videos, setVideos] = useState<Video[]>([]);
   const [playing, setPlaying] = useState<Video | null>(null);
-  // A photo link that no longer works falls back to the initials.
+  // A photo link that no longer works falls back to the KKF default avatar.
   const [photoFailed, setPhotoFailed] = useState(false);
 
   useEffect(() => {
@@ -178,7 +179,7 @@ export function SuperAppFighterDetail() {
                     {isRealImage(fighter.image) && !photoFailed ? (
                       <img src={fighter.image} alt={name} onError={() => setPhotoFailed(true)} className="w-full h-full object-cover object-top" />
                     ) : (
-                      <NoPhoto name={fighter.name} />
+                      <NoPhoto />
                     )}
                     {view.titles.length > 0 && (
                       <Link
@@ -403,12 +404,7 @@ export function SuperAppFighterDetail() {
   );
 }
 
-/** No photo from the federation: the fighter's initials on a brand background (never someone else's photo). */
-function NoPhoto({ name }: { name?: string }) {
-  const initials = (name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
-  return (
-    <div aria-hidden className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1a4797] to-[#24336f] text-white/80 font-black text-7xl">
-      {initials}
-    </div>
-  );
+/** No photo from the federation: the KKF default fighter avatar (never someone else's photo). */
+function NoPhoto() {
+  return <img src={DEFAULT_FIGHTER_AVATAR} alt="" aria-hidden className="w-full h-full object-contain bg-[#eef3fb]" />;
 }

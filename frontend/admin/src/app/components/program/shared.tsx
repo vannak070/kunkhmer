@@ -7,6 +7,11 @@ import type { ReactNode } from "react";
 import { Languages } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
 import { setLang, useT } from "../../i18n/program";
+import defaultFighterAvatar from "../../../assets/fighter-default-avatar.webp";
+
+/** KKF default fighter avatar (the kneeling fighter from the emblem) for fighters without a photo. Render-time only, never saved. */
+export const DEFAULT_FIGHTER_AVATAR = defaultFighterAvatar;
+const isRealFighterPhoto = (url?: string | null) => Boolean(url) && !String(url).includes("unsplash.com");
 
 /** A fighter may be at most this much over the agreed weight (kg). */
 export const WEIGH_TOLERANCE_KG = 1;
@@ -53,9 +58,15 @@ export function Initials({ name, size = "w-9 h-9 text-xs", tone = "bg-slate-100 
   );
 }
 
-/** A small photo when there is one, otherwise the initials — never a stock picture. */
+/**
+ * A small photo when there is one, otherwise the KKF default avatar (claude/updates/fighter-default-avatar.md) —
+ * never a stock picture. No fighter yet (empty corner) keeps the "?" placeholder; a corner tone becomes a ring.
+ */
 export function FighterAvatar({ name, image, tone }: { name?: string | null; image?: string | null; tone?: string }) {
-  return image ? <img src={image} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 bg-slate-100" /> : <Initials name={name} tone={tone} />;
+  if (isRealFighterPhoto(image)) return <img src={image!} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 bg-slate-100" />;
+  if (!name?.trim()) return <Initials name={name} tone={tone} />;
+  const ring = tone?.includes("red") ? "ring-2 ring-red-300" : tone?.includes("blue") ? "ring-2 ring-blue-300" : "ring-1 ring-slate-200";
+  return <img src={DEFAULT_FIGHTER_AVATAR} alt="" className={`w-9 h-9 rounded-full object-cover shrink-0 bg-[#eef3fb] ${ring}`} />;
 }
 
 export function ConfirmDialog({ open, title, text, confirmLabel, danger = false, busy = false, onConfirm, onClose, children }: {

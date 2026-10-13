@@ -94,7 +94,8 @@ export function AddClub() {
         longitude: pin ? Number(pin.lng.toFixed(6)) : null,
         status: formData.status || "active",
         rating: 5.0,
-        image: formData.image || "https://images.unsplash.com/photo-1540206351-d6465b3ac5c1?q=80&w=2940&auto=format&fit=crop",
+        // No banner = no picture ("" clears it on edit); never a stock photo (claude/updates/club-photo-no-stock-default.md).
+        image: formData.image,
         phone: formData.phone || null,
         email: formData.email || null,
         established: formData.established || null,

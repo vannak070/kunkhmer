@@ -7,6 +7,7 @@ import { useI18n } from "../../i18n/LanguageContext";
 import type { MessageKey } from "../../i18n/messages";
 import { articlePath, eventPath } from "../../data/links";
 import { isRealImage, partnerPath } from "../../data/partners";
+import { DEFAULT_FIGHTER_AVATAR } from "../../data/fighterAvatar";
 
 type ResultKind = "fighter" | "event" | "article" | "club" | "partner";
 type Scope = "all" | ResultKind;
@@ -68,7 +69,7 @@ function loadIndex(): Promise<SearchItem[]> {
               titleKm: f.nameKhmer,
               detail: f.record,
               club: f.clubName,
-              image: f.image,
+              image: picture(f.image) || DEFAULT_FIGHTER_AVATAR,
               href: `/fighters/${getFighterSlug(f)}`,
               haystack: [f.name, f.nameKhmer, f.alias, f.clubName].filter(Boolean).join(" ").toLowerCase(),
             });

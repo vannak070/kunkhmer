@@ -127,3 +127,7 @@ one server, Caddy with automatic HTTPS, fan site + admin subdomain, daily backup
 - Link previews per page need server-side meta tags (chat apps don't run JS).
 - Before launch: remove `noindex` from `index.html`, set `SITE_URL`.
 - Fighter "Verified" badge currently means status Active, not federation-verified.
+
+## Fighter pictures
+A fighter without a real photo shows the KKF default avatar (the kneeling fighter from the emblem), never a stock photo
+or someone else's picture; an empty corner shows "?" — `updates/fighter-default-avatar.md` (owner decision 2026-10-02).

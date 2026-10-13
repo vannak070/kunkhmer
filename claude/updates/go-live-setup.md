@@ -96,3 +96,10 @@ image target but nothing runs the built sites, handles HTTPS, routes `/api` / `/
 
 ## 2026-10-01 — temporary domain
 Owner pointed `kkf.yarvorax.com` and `admin.kkf.yarvorax.com` (A records) at 104.248.149.103. On the server `deploy/.env` now has `SITE_DOMAIN=kkf.yarvorax.com`, `ADMIN_DOMAIN=admin.kkf.yarvorax.com` (old file kept as `.env.bak-sslip`, chmod 600); `docker compose -f docker-compose.prod.yml up -d` recreated backend + web; Caddy got new Let's Encrypt certificates. The sslip.io names were dropped on purpose. No data moved.
+### 2026-10-02 — deploy 03a5f440
+- Pre-deploy backup `db_2026-10-02_0522.dump`; server code moved with `git fetch origin dev && git checkout
+  --detach 03a5f440` (the server clone has no branch, so `git pull` doesn't work there); images rebuilt one at a
+  time; migration `20261002000001_settings_khmer_names` applied (25 migrations). Fan site, `/clubs`, venues and
+  associations API, admin and `/home/settings` answer 200; venue Khmer names empty until the Super Admin types
+  them. Old images pruned (disk 49 %).
+

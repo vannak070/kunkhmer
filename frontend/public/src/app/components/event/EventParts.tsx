@@ -8,6 +8,8 @@ import { useI18n } from "../../i18n/LanguageContext";
 import { getFighterSlug } from "../../data/masterData";
 import type { Bout, FighterRef } from "../../data/fanData";
 import { outcomeFor } from "../../data/fanData";
+import { DEFAULT_FIGHTER_AVATAR } from "../../data/fighterAvatar";
+import { isRealImage } from "../../data/partners";
 import { OutcomeBadge, useResultText } from "../fan/FanWidgets";
 import { PublicStatusBadge } from "../PublicStatusBadge";
 import { textLang } from "../../utils/publicDisplay";
@@ -34,9 +36,12 @@ export function FighterAvatar({ f, corner, size = "md", className = "" }: { f: F
   const initials = hasFighter(f)
     ? f.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase()
     : "?";
-  return f.image ? (
-    <img src={f.image} alt="" className={`${dims} ${CORNER_BORDER[corner]} rounded-full object-cover object-top shrink-0 bg-gray-100 ${className}`} />
-  ) : (
+  // A real photo, else the KKF default avatar; an empty corner (no fighter yet) keeps "?".
+  if (isRealImage(f.image) || hasFighter(f)) {
+    const src = isRealImage(f.image) ? f.image : DEFAULT_FIGHTER_AVATAR;
+    return <img src={src} alt="" className={`${dims} ${CORNER_BORDER[corner]} rounded-full object-cover object-top shrink-0 ${src === DEFAULT_FIGHTER_AVATAR ? "bg-[#eef3fb]" : "bg-gray-100"} ${className}`} />;
+  }
+  return (
     <span aria-hidden className={`${dims} ${CORNER_BORDER[corner]} rounded-full shrink-0 inline-flex items-center justify-center kk-heading bg-gray-100 text-gray-500 ${className}`}>
       {initials}
     </span>

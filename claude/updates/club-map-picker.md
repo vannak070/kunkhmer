@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-10-01, uncommitted); owner said "go ahead as your plan" (defaults: save the pin, map on the public club page, remove the quick hubs) |
+| **Status** | Done (2026-10-01, committed 0cb73916, live on the pilot since 2026-10-01 14:20 UTC); owner said "go ahead as your plan" (defaults: save the pin, map on the public club page, remove the quick hubs) |
 | **Feature** | claude/features/clubs.md |
 | **Requested by** | vannak070 ("review on map when add new club, it is not working properly, plan to improve") |
 

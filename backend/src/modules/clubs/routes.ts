@@ -149,6 +149,8 @@ export default async function clubRoutes(app: FastifyInstance) {
       Object.assign(data, coordinates(input, existing));
       // An empty logo removes it (pick() skips empty values).
       if (input.present("logoUrl")) data.logo_url = input.get("logoUrl");
+      // Same for the banner picture: "" removes it.
+      if (input.present("image")) data.image = input.get("image");
       // Same for the association: "" clears it.
       if (input.present("association")) data.association = input.get("association");
       if (input.present("associationKhmer")) data.association_khmer = input.get("associationKhmer");

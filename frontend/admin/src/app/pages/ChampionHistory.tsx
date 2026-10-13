@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, Trophy, Calendar, Swords, CheckCircle, XCircle, Crown } from "lucide-react";
 import { api } from "../utils/api";
+import { DEFAULT_FIGHTER_AVATAR } from "../components/program/shared";
+import { isRealPhoto } from "../components/fighters/fighterUtils";
 import { clsx } from "clsx";
 
 export function ChampionHistory() {
@@ -47,7 +49,8 @@ export function ChampionHistory() {
 
   const getFighterPhoto = (champ: any) => {
     if (!champ) return null;
-    return champ.currentHolderPhoto || "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&q=80&w=100";
+    // A real photo, else the KKF default fighter avatar — never a stock photo of someone else.
+    return isRealPhoto(champ.currentHolderPhoto) ? champ.currentHolderPhoto : DEFAULT_FIGHTER_AVATAR;
   };
 
   if (loading) {

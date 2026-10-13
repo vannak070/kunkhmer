@@ -1,5 +1,5 @@
 /**
- * Fighter page (/home/fighters/:id), real data only (owner, 2026-09-30): photo or initials, names, club,
+ * Fighter page (/home/fighters/:id), real data only (owner, 2026-09-30): photo or the KKF default avatar, names, club,
  * status, weight class, record (career before this system + results recorded here), and four tabs —
  * Overview (next bout, latest results, profile) · Fights (every bout with the real result) · Videos (linked
  * to this fighter) · Titles (titles held + title fights). Edit, Activate (a draft) and Delete (Super Admin).
@@ -13,7 +13,7 @@ import { ArrowLeft, CalendarDays, Crown, MoreHorizontal, Pencil, PlayCircle, Swo
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { formatDay, useT } from "../i18n/program";
-import { ConfirmDialog, Initials, LangSwitch } from "../components/program/shared";
+import { ConfirmDialog, DEFAULT_FIGHTER_AVATAR, LangSwitch } from "../components/program/shared";
 import { FighterReviewActions } from "../components/FighterReview";
 import { FighterStatusChip, RecordText } from "../components/fighters/FighterTable";
 import { PrivateDetailsView, issueTexts } from "../components/fighters/PrivateDetails";
@@ -128,7 +128,7 @@ export function FighterDetail() {
           {photo ? (
             <img src={photo} alt="" className="w-28 h-28 md:w-32 md:h-32 rounded-2xl object-cover object-top bg-slate-100 shrink-0" />
           ) : (
-            <Initials name={f.name} size="w-28 h-28 md:w-32 md:h-32 text-3xl" tone="bg-primary/10 text-primary" />
+            <img src={DEFAULT_FIGHTER_AVATAR} alt="" className="w-28 h-28 md:w-32 md:h-32 rounded-2xl object-cover bg-[#eef3fb] ring-1 ring-slate-200 shrink-0" />
           )}
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">

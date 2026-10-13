@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-10-01, uncommitted); revised same day: now a Settings list + dropdown |
+| **Status** | Done (2026-10-01, committed 0cb73916, live on the pilot since 2026-10-01 14:20 UTC); revised same day: now a Settings list + dropdown |
 | **Feature** | claude/features/clubs.md |
 | **Requested by** | vannak070 (clubs register under an association, e.g. សមាគមកីឡាកងយោធពលខេមរភូមិន្ទ) |
 

@@ -5,6 +5,8 @@ import {
   Trophy, Users, Shield, Edit2, Save, X, Video, Clock, AlertCircle
 } from "lucide-react";
 import { api } from "../utils/api";
+import { DEFAULT_FIGHTER_AVATAR } from "../components/program/shared";
+import { isRealPhoto } from "../components/fighters/fighterUtils";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { useOfficials } from "../hooks/useOfficials";
 import { toast } from "sonner";
@@ -48,7 +50,7 @@ export function MatchDetail() {
               weight: data.agreed_weight,
               record: data.fighter_a_record || "0-0-0",
               clubName: data.club_a_name || "Independent",
-              image: data.fighter_a_image || "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=400"
+              image: isRealPhoto(data.fighter_a_image) ? data.fighter_a_image : DEFAULT_FIGHTER_AVATAR
             },
             fighterB: {
               id: data.fighter_b_id,
@@ -57,7 +59,7 @@ export function MatchDetail() {
               weight: data.agreed_weight,
               record: data.fighter_b_record || "0-0-0",
               clubName: data.club_b_name || "Independent",
-              image: data.fighter_b_image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+              image: isRealPhoto(data.fighter_b_image) ? data.fighter_b_image : DEFAULT_FIGHTER_AVATAR
             },
             refereeName: data.referee_name || null,
             judgeNames: data.judge_names || [],

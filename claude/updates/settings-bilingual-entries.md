@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-10-02, uncommitted); owner chose Khmer names for venues and associations (+ Khmer association on clubs), defaults for the rest |
+| **Status** | Done (2026-10-02, committed 03a5f440, live on the pilot since 2026-10-02 05:35 UTC); owner chose Khmer names for venues and associations (+ Khmer association on clubs), defaults for the rest |
 | **Feature** | claude/features/settings.md, claude/updates/settings-khmer.md |
 | **Requested by** | vannak070 ("Setting, I need to have Khmer and English. Please review and provide me plan") |
 

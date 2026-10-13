@@ -20,6 +20,7 @@ import { championPath, eventPathById, findByLink } from "../data/links";
 import { isRealImage } from "../data/partners";
 import { MESSAGES, type MessageKey } from "../i18n/messages";
 import { useI18n } from "../i18n/LanguageContext";
+import { DEFAULT_FIGHTER_AVATAR } from "../data/fighterAvatar";
 import { usePageMeta } from "../hooks/usePageTitle";
 import { textLang } from "../utils/publicDisplay";
 import { api } from "../utils/api";
@@ -69,11 +70,11 @@ function holderOf(c: any, data: FanData | null): { fighter: any | null; name: st
 function HolderPhoto({ fighter, name, size = "md" }: { fighter: any | null; name: string; size?: "md" | "lg" }) {
   const dims = size === "lg" ? "w-24 h-24 md:w-28 md:h-28 text-2xl" : "w-14 h-14 text-base";
   const photo = fighter && isRealImage(fighter.image) ? fighter.image : null;
-  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+  // A real photo, else the KKF default fighter avatar (claude/updates/fighter-default-avatar.md).
   return photo ? (
     <img src={photo} alt="" className={`${dims} rounded-full object-cover object-top border-2 border-[#f2c94c] bg-gray-100 shrink-0`} />
   ) : (
-    <span aria-hidden className={`${dims} rounded-full border-2 border-[#f2c94c] bg-[#fffaf0] text-[#7A5B00] kk-heading inline-flex items-center justify-center shrink-0`}>{initials}</span>
+    <img src={DEFAULT_FIGHTER_AVATAR} alt="" aria-label={name} className={`${dims} rounded-full object-cover border-2 border-[#f2c94c] bg-[#eef3fb] shrink-0`} />
   );
 }
 

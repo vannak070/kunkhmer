@@ -11,6 +11,7 @@ import { Building2, CalendarDays, Crown, Search, Sparkles, Users, X } from "luci
 import { DemoBanner, FormGuide } from "../components/fan/FanWidgets";
 import { fightHistory, nextBout, useFanData, type FanData, retryFanData } from "../data/fanData";
 import { getFighterSlug } from "../data/masterData";
+import { DEFAULT_FIGHTER_AVATAR } from "../data/fighterAvatar";
 import { weightClassFor, type WeightClass } from "../data/weightClasses";
 import { textLang } from "../utils/publicDisplay";
 import { useI18n } from "../i18n/LanguageContext";
@@ -261,7 +262,6 @@ export function FighterCard({ f, data, titles }: { f: any; data: FanData; titles
   const kg = weightOf(f);
   const { w, l, d } = recordOf(f);
   const next = nextBout(data, f.id);
-  const initials = f.name.split(/\s+/).filter(Boolean).slice(0, 2).map((x: string) => x[0]).join("").toUpperCase();
   const facts = [
     weightClass ? (lang === "km" && weightClass.name_khmer ? weightClass.name_khmer : weightClass.name) : kg ? formatWeight(kg) : null,
     age != null ? t("common.years", { n: age }) : null,
@@ -273,7 +273,7 @@ export function FighterCard({ f, data, titles }: { f: any; data: FanData; titles
         {isRealImage(f.image) ? (
           <img src={f.image} alt="" loading="lazy" className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105 kk-motion" />
         ) : (
-          <span aria-hidden className="w-full h-full flex items-center justify-center kk-display text-5xl text-[var(--kk-navy)]/25">{initials}</span>
+          <img src={DEFAULT_FIGHTER_AVATAR} alt="" loading="lazy" className="w-full h-full object-contain bg-[#eef3fb] transition-transform duration-500 group-hover:scale-105 kk-motion" />
         )}
         {titles.length > 0 && (
           <span title={titles.join(", ")} className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-full bg-[var(--kk-gold)] text-[#3d2e00] px-2.5 py-1 text-xs font-bold shadow-sm">

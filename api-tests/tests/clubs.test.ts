@@ -120,6 +120,20 @@ describe("clubs CRUD", () => {
     expect((await get(`/fighters/${fighter.body.data.id}`, a.admin.token)).body.data.clubLogo).toBeNull();
   });
 
+  it("saves no picture without a banner, and an empty image removes the banner", async () => {
+    const png = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+    const bare = await post("/clubs", { name: `No banner ${uniq()}`, image: "" }, a.officer.token);
+    expect(bare.body.data.image).toBeNull();
+
+    const { body } = await post("/clubs", { name: `Banner ${uniq()}`, image: png }, a.officer.token);
+    expect(body.data.image).toMatch(/^\/api\/files\/[0-9a-f]{64}\.gif$/);
+    const kept = await put(`/clubs/${body.data.id}`, { headCoach: "Coach" }, a.officer.token);
+    expect(kept.body.data.image).toBe(body.data.image);
+    const cleared = await put(`/clubs/${body.data.id}`, { image: "" }, a.officer.token);
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.data.image).toBeNull();
+  });
+
   it("deletes a club", async () => {
     const { body } = await post("/clubs", fullClub(), a.officer.token);
     const res = await del(`/clubs/${body.data.id}`, a.officer.token);
