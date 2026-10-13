@@ -20,8 +20,8 @@ what. None of it is ever shown on the public site or sent to the AI.
   (since the first commit, 2026-06-25) and there are no columns for them in `fighters`.
 - So the **simplified** form (`8f7ddb54`, another session) dropped them: it now shows exactly what the system
   can store. Nothing that was saved was lost.
-- The database has `medical_status` (default "Cleared") and `suspension_end_date`, but no API or screen uses
-  them.
+- The database has `medical_status` (default "Cleared") and `suspension_end_date`; since 2026-10-13 staff set them in
+  the private details (`updates/fighter-medical-suspension.md`) and the KKF matching rules read them.
 - KKF's own Excel registration form (`docs/forms/KKF_Fighter_Registration_Form.xlsx`) still asks for ID,
   phone, emergency contact and medical details and says "the system doesn't store yet (KKF keeps them)".
 

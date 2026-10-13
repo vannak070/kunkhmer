@@ -4,6 +4,8 @@
  *   GET /fighters/private-summary                      fighters with missing / expired details
  *   GET /fighters/:id/private                          the details (documents as yes/no)
  *   PUT /fighters/:id/private                          create or update; send only what changes
+ *                                                      (also `medicalStatus` and `suspensionEndDate`, which live on the fighter
+ *                                                      row and feed the KKF matching rules — updates/fighter-medical-suspension.md)
  *   GET /fighters/:id/private/documents/:kind          the stored scan, kind = id | medical
  *
  * Nothing here is ever part of a public response, the fan site, search or the Hub. Scans are stored in a
@@ -24,6 +26,7 @@ import { HttpError, idParam, notFound, ok } from "../../lib/http.ts";
 import { inputOf } from "../../lib/input.ts";
 import { NOT_DELETED } from "./routes.ts";
 
+export const MEDICAL_STATUSES = ["Cleared", "Pending", "Not Cleared", "Injured"] as const;
 const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
 /** Text fields: input key → column and the longest value allowed. */
@@ -67,9 +70,11 @@ export function gaps(row: FighterPrivate | null, dob: Date) {
 
 const hasGap = (g: ReturnType<typeof gaps>) => g.missing.length > 0 || g.idExpired || g.medicalExpired || g.needsGuardian;
 
-function shape(fighterId: string, row: FighterPrivate | null, dob: Date) {
+function shape(fighterId: string, row: FighterPrivate | null, dob: Date, status: { medical_status: string; suspension_end_date: Date | null }) {
   return {
     fighterId,
+    medicalStatus: status.medical_status,
+    suspensionEndDate: dateOnly(status.suspension_end_date),
     idType: row?.id_type ?? null,
     idNumber: row?.id_number ?? null,
     idExpiry: dateOnly(row?.id_expiry),
@@ -95,7 +100,7 @@ function shape(fighterId: string, row: FighterPrivate | null, dob: Date) {
 }
 
 async function visibleFighter(id: string) {
-  const fighter = await prisma.fighter.findFirst({ where: { id, ...NOT_DELETED }, select: { id: true, date_of_birth: true } });
+  const fighter = await prisma.fighter.findFirst({ where: { id, ...NOT_DELETED }, select: { id: true, date_of_birth: true, medical_status: true, suspension_end_date: true } });
   if (!fighter) throw notFound("Fighter");
   return fighter;
 }
@@ -117,7 +122,7 @@ export default async function fighterPrivateRoutes(app: FastifyInstance) {
       requireRole(request, STAFF);
       const fighter = await visibleFighter(idParam(request.params, "Fighter"));
       const row = await prisma.fighterPrivate.findUnique({ where: { fighter_id: fighter.id } });
-      return ok(reply, shape(fighter.id, row, fighter.date_of_birth));
+      return ok(reply, shape(fighter.id, row, fighter.date_of_birth, fighter));
     });
 
     staffRoutes.put("/fighters/:id/private", async (request, reply) => {
@@ -150,13 +155,31 @@ export default async function fighterPrivateRoutes(app: FastifyInstance) {
         data.consent_at = input.get("consentGiven") === true || input.get("consentGiven") === "true" ? (existing?.consent_at ?? now()) : null;
       }
 
+      // Medical status and suspension live on the fighter row (the KKF matching rules read them there).
+      const status: { medical_status?: string; suspension_end_date?: Date | null } = {};
+      if (input.has("medicalStatus")) {
+        const value = input.get<string>("medicalStatus")!;
+        if (!(MEDICAL_STATUSES as readonly string[]).includes(value)) throw new HttpError(422, `The medicalStatus field must be one of: ${MEDICAL_STATUSES.join(", ")}`);
+        status.medical_status = value;
+      } else if (input.present("medicalStatus")) {
+        throw new HttpError(422, "The medicalStatus field can't be empty");
+      }
+      if (input.present("suspensionEndDate")) status.suspension_end_date = input.has("suspensionEndDate") ? toDate(input.get("suspensionEndDate")) : null;
+
       const at = now();
-      const row = await prisma.fighterPrivate.upsert({
-        where: { fighter_id: fighter.id },
-        create: { fighter_id: fighter.id, ...data, created_at: at, updated_at: at },
-        update: { ...data, updated_at: at },
-      });
-      return ok(reply, shape(fighter.id, row, fighter.date_of_birth));
+      const [row, updated] = await prisma.$transaction([
+        prisma.fighterPrivate.upsert({
+          where: { fighter_id: fighter.id },
+          create: { fighter_id: fighter.id, ...data, created_at: at, updated_at: at },
+          update: { ...data, updated_at: at },
+        }),
+        prisma.fighter.update({
+          where: { id: fighter.id },
+          data: Object.keys(status).length ? { ...status, updated_at: at } : {},
+          select: { medical_status: true, suspension_end_date: true },
+        }),
+      ]);
+      return ok(reply, shape(fighter.id, row, fighter.date_of_birth, updated));
     });
 
     staffRoutes.get("/fighters/:id/private/documents/:kind", async (request, reply) => {

@@ -16,7 +16,6 @@ interface Rule {
   unit: string | null;
 }
 
-const NOT_READY = new Set(["medical", "suspension"]);
 const inputClass = "h-10 w-24 rounded-lg border border-slate-300 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none px-3 text-sm bg-white";
 
 export function MatchingRulesPanel({ canEdit }: { canEdit: boolean }) {
@@ -54,7 +53,6 @@ export function MatchingRulesPanel({ canEdit }: { canEdit: boolean }) {
             <div className="min-w-[14rem] flex-1">
               <p className={`font-semibold ${r.enabled ? "text-slate-900" : "text-slate-500"}`}>{t(`mr.name.${r.key}` as TextKey)}</p>
               <p className="text-sm text-slate-500">{t(`mr.desc.${r.key}` as TextKey)}</p>
-              {NOT_READY.has(r.key) && <p className="text-xs text-amber-700 mt-1">{t("mr.notReady")}</p>}
             </div>
             <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
               <input type="checkbox" className="w-5 h-5" checked={r.enabled} disabled={!canEdit || busy === r.key} onChange={(e) => save(r, { enabled: e.target.checked })} />

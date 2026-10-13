@@ -19,6 +19,8 @@ export interface PrivateForm {
   phone: string; email: string; address: string;
   bloodType: string; lastMedicalCheck: string; medicalExpiry: string; medicalNotes: string; medicalDocument: string;
   guardianName: string; guardianPhone: string; consentGiven: boolean;
+  /** Cleared | Pending | Not Cleared | Injured — and the last day of a suspension ("" = none). Read by the KKF matching rules. */
+  medicalStatus: string; suspensionEndDate: string;
 }
 
 export const emptyPrivate = (): PrivateForm => ({
@@ -27,6 +29,7 @@ export const emptyPrivate = (): PrivateForm => ({
   phone: "", email: "", address: "",
   bloodType: "", lastMedicalCheck: "", medicalExpiry: "", medicalNotes: "", medicalDocument: "",
   guardianName: "", guardianPhone: "", consentGiven: false,
+  medicalStatus: "Cleared", suspensionEndDate: "",
 });
 
 /** The API's private record → form values. */
@@ -36,6 +39,7 @@ export const privateFromApi = (p: any): PrivateForm => ({
   phone: p.phone ?? "", email: p.email ?? "", address: p.address ?? "",
   bloodType: p.bloodType ?? "", lastMedicalCheck: p.lastMedicalCheck ?? "", medicalExpiry: p.medicalExpiry ?? "", medicalNotes: p.medicalNotes ?? "", medicalDocument: p.hasMedicalDocument ? "existing" : "",
   guardianName: p.guardianName ?? "", guardianPhone: p.guardianPhone ?? "", consentGiven: Boolean(p.consentGiven),
+  medicalStatus: p.medicalStatus ?? "Cleared", suspensionEndDate: p.suspensionEndDate ?? "",
 });
 
 /** Form values → PUT body. Empty text clears a field; an untouched stored scan is left out. */
@@ -46,6 +50,7 @@ export function privateBody(f: PrivateForm): Record<string, unknown> {
     phone: f.phone.trim(), email: f.email.trim(), address: f.address.trim(),
     bloodType: f.bloodType, lastMedicalCheck: f.lastMedicalCheck, medicalExpiry: f.medicalExpiry, medicalNotes: f.medicalNotes.trim(),
     guardianName: f.guardianName.trim(), guardianPhone: f.guardianPhone.trim(), consentGiven: f.consentGiven,
+    medicalStatus: f.medicalStatus || "Cleared", suspensionEndDate: f.suspensionEndDate,
   };
   if (f.idDocument !== "existing") body.idDocument = f.idDocument || null;
   if (f.medicalDocument !== "existing") body.medicalDocument = f.medicalDocument || null;
@@ -72,6 +77,8 @@ export function issueTexts(g: { missing?: string[]; idExpired?: boolean; medical
     ...(g.needsGuardian ? [t("pv.needGuardian")] : []),
   ];
 }
+
+export const MEDICAL_STATUSES = ["Cleared", "Pending", "Not Cleared", "Injured"] as const;
 
 const MAX_SCAN = 6 * 1024 * 1024;
 const SCAN_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
@@ -151,6 +158,19 @@ export function PrivateFields({ form, set, errors, minor }: { form: PrivateForm;
         </fieldset>
       )}
 
+      <fieldset className="space-y-4">
+        <legend className="text-sm font-bold text-slate-900">{t("pv.fitness")}</legend>
+        <p className="text-sm text-slate-600">{t("pv.fitnessHint")}</p>
+        <div className="grid sm:grid-cols-2 gap-5">
+          <label className="block">{label(t("pv.medStatus"))}
+            <select className={`${fieldCls} mt-1`} value={form.medicalStatus} onChange={(e) => set({ medicalStatus: e.target.value })}>
+              {MEDICAL_STATUSES.map((m) => <option key={m} value={m}>{t(`pv.ms.${m}` as TextKey)}</option>)}
+            </select>
+          </label>
+          <label className="block">{label(t("pv.suspendedUntil"))}<input type="date" className={`${fieldCls} mt-1`} value={form.suspensionEndDate} onChange={(e) => set({ suspensionEndDate: e.target.value })} /><span className="block text-xs text-slate-500 mt-1">{t("pv.suspendedHint")}</span></label>
+        </div>
+      </fieldset>
+
       <button type="button" aria-expanded={more} onClick={() => setMore(!more)} className="text-sm font-semibold text-primary hover:underline">
         {t("pv.more")} {more ? "▲" : "▼"}
       </button>
@@ -227,6 +247,8 @@ export function PrivateDetailsView({ fighterId, data, error }: { fighterId: stri
     [t("pv.address"), data.address],
     [t("pv.guardianName"), data.guardianName],
     [t("pv.guardianPhone"), data.guardianPhone],
+    [t("pv.medStatus"), data.medicalStatus ? t(`pv.ms.${data.medicalStatus}` as TextKey) : null],
+    [t("pv.suspendedUntil"), day(data.suspensionEndDate)],
     [t("pv.blood"), data.bloodType],
     [t("pv.lastCheck"), day(data.lastMedicalCheck)],
     [t("pv.medExpiry"), day(data.medicalExpiry)],

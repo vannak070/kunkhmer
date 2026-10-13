@@ -89,6 +89,21 @@ describe("private fighter details", () => {
     expect(shapeOf(summary).body).toBeTruthy();
   });
 
+  it("sets medical status and suspension on the fighter, staff only, and validates them", async () => {
+    const f = await newFighter();
+    expect((await get(`/fighters/${f.id}/private`, a.officer.token)).body.data).toMatchObject({ medicalStatus: "Cleared", suspensionEndDate: null });
+    const saved = await put(`/fighters/${f.id}/private`, { medicalStatus: "Pending", suspensionEndDate: "2030-05-01" }, a.officer.token);
+    expect(saved.status).toBe(200);
+    expect(saved.body.data).toMatchObject({ medicalStatus: "Pending", suspensionEndDate: "2030-05-01" });
+    expect((await get(`/fighters/${f.id}/private`, a.admin.token)).body.data).toMatchObject({ medicalStatus: "Pending", suspensionEndDate: "2030-05-01" });
+    // other private fields are untouched by a status-only save, and a bad value is refused
+    expect((await put(`/fighters/${f.id}/private`, { medicalStatus: "Fine" }, a.officer.token)).status).toBe(422);
+    expect((await put(`/fighters/${f.id}/private`, { medicalStatus: "" }, a.officer.token)).status).toBe(422);
+    const cleared = await put(`/fighters/${f.id}/private`, { suspensionEndDate: "" }, a.officer.token);
+    expect(cleared.body.data).toMatchObject({ medicalStatus: "Pending", suspensionEndDate: null });
+    expect((await put(`/fighters/${f.id}/private`, { medicalStatus: "Injured" }, a.club.token)).status).toBe(403);
+  });
+
   it("is for KKF staff only", async () => {
     const f = await newFighter();
     for (const path of [`/fighters/${f.id}/private`, "/fighters/private-summary", `/fighters/${f.id}/private/documents/id`]) {

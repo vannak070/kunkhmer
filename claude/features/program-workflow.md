@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress — flow and roles agreed 2026-10-13; **phase 1 (matching rules engine) built** with placeholder values (`updates/matching-rules.md`); phases 2–7 not started |
+| **Status** | In progress — flow and roles agreed 2026-10-13; **phase 1 (matching rules engine, `updates/matching-rules.md`) and phase 2 (medical / suspension, `updates/fighter-medical-suspension.md`) built**; phases 3–7 not started |
 | **Jira** | TBD |
 | **Figma** | TBD |
 | **Owner** | vannak070 |

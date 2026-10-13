@@ -721,11 +721,37 @@ describe("KKF matching rules (updates/matching-rules.md)", () => {
     expect(soon.body.error).toMatch(/days apart/);
   });
 
-  it("ships with medical and suspension switched off (nothing can set them yet)", async () => {
+  it("ships with every rule on, including medical and suspension (staff can set them on the fighter page)", async () => {
     const rules = (await get("/matches/rules", a.officer.token)).body.data as any[];
-    expect(rules.find((r) => r.key === "medical")).toMatchObject({ enabled: false, action: "block" });
-    expect(rules.find((r) => r.key === "suspension")).toMatchObject({ enabled: false, action: "block" });
+    expect(rules.find((r) => r.key === "medical")).toMatchObject({ enabled: true, action: "block" });
+    expect(rules.find((r) => r.key === "suspension")).toMatchObject({ enabled: true, action: "block" });
     expect(rules.find((r) => r.key === "min_age")).toMatchObject({ enabled: true, action: "block", value: 16, unit: "years" });
+  });
+
+  it("blocks a fighter who is not medically cleared or is suspended on the fight date", async () => {
+    const hurt = await newFighterWith({});
+    const set = await put(`/fighters/${hurt}/private`, { medicalStatus: "Injured" }, a.officer.token);
+    expect(set.status).toBe(200);
+    const blocked = await post("/matches", await pair({ fighterBId: hurt }), a.officer.token);
+    expect(blocked.status).toBe(422);
+    expect(blocked.body.error).toMatch(/not medically cleared \(Injured\)/);
+    await put(`/fighters/${hurt}/private`, { medicalStatus: "Cleared" }, a.officer.token);
+    expect((await post("/matches", await pair({ fighterBId: hurt }), a.officer.token)).status).toBe(200);
+
+    // The fighter's own status counts too (the admin's Add bout list already offers Active fighters only).
+    const marked = await newFighterWith({});
+    await put(`/fighters/${marked}`, { status: "Injured" }, a.admin.token);
+    expect((await post("/matches", await pair({ fighterBId: marked }), a.officer.token)).body.error).toMatch(/marked Injured/);
+    await put(`/fighters/${marked}`, { status: "Suspended" }, a.admin.token);
+    expect((await post("/matches", await pair({ fighterBId: marked }), a.officer.token)).body.error).toMatch(/marked Suspended/);
+
+    const banned = await newFighterWith({});
+    await put(`/fighters/${banned}/private`, { suspensionEndDate: "2099-01-01" }, a.officer.token);
+    const suspended = await post("/matches", await pair({ fighterBId: banned }), a.officer.token);
+    expect(suspended.status).toBe(422);
+    expect(suspended.body.error).toMatch(/is suspended until 2099-01-01/);
+    await put(`/fighters/${banned}/private`, { suspensionEndDate: null }, a.officer.token);
+    expect((await post("/matches", await pair({ fighterBId: banned }), a.officer.token)).status).toBe(200);
   });
 
   it("previews a pairing without saving it", async () => {

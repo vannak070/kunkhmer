@@ -36,7 +36,7 @@ days, double-booking or club.
 | same_club | — | on | warn |
 | already_booked | same fight card or same day | on | block |
 
-Medical and suspension start **off** because no API or screen sets those fields yet (phase 2).
+Medical and suspension started **off** because nothing set those fields yet; phase 2 (`updates/fighter-medical-suspension.md`) added the screen and switched them on.
 Not in this phase: title-bout class check (row 13) and the officials check (still at publish).
 
 ## Impact

@@ -88,10 +88,16 @@ export async function checkPairing(input: PairingInput): Promise<RuleHit[]> {
     const limit = r.value ?? 0;
     switch (r.key) {
       case "medical":
-        for (const f of [a, b]) if (f.medical_status !== "Cleared") hit(`${f.name} is not medically cleared (${f.medical_status})`);
+        for (const f of [a, b]) {
+          if (f.medical_status !== "Cleared") hit(`${f.name} is not medically cleared (${f.medical_status})`);
+          else if (f.status === "Injured") hit(`${f.name} is marked Injured`);
+        }
         break;
       case "suspension":
-        for (const f of [a, b]) if (f.suspension_end_date && f.suspension_end_date >= fightDate) hit(`${f.name} is suspended until ${day(f.suspension_end_date)}`);
+        for (const f of [a, b]) {
+          if (f.suspension_end_date && f.suspension_end_date >= fightDate) hit(`${f.name} is suspended until ${day(f.suspension_end_date)}`);
+          else if (f.status === "Suspended") hit(`${f.name} is marked Suspended`);
+        }
         break;
       case "same_gender":
         if (a.gender !== b.gender) hit(`${a.name} (${a.gender}) and ${b.name} (${b.gender}) are not the same gender`);
