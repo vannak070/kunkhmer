@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft — flow and roles agreed with the owner 2026-10-13; only the matching-rule values are still TBD. Nothing built |
+| **Status** | Draft — flow and roles agreed with the owner 2026-10-13; only the matching-rule values are still TBD (placeholder table drafted). Nothing built |
 | **Jira** | TBD |
 | **Figma** | TBD |
 | **Owner** | vannak070 |
@@ -72,11 +72,34 @@ Offline = people talk first, the system records later. No in-system negotiation,
 10. After the event: KKF signs off results, records and disputes; settlement with the broadcaster and sponsors.
 11. Any time: **postponement / cancellation** recorded with a reason.
 
-## Still TBD (needed before the matching check is built)
-**KKF matching rules**: which checks and which limits — weight gap, grade/record gap, age, gender, rest days since
-the last fight, suspension, medical clearance — and which block versus only warn. Please give the values; a
-suggested starting table will be prepared for the owner to correct.
-Also TBD: the settlement step's content, and what "licence/permit" records (number, date, file).
+## Draft matching rules — PLACEHOLDER values for the owner to correct
+**These numbers are my guesses, not KKF rules.** Edit the "Limit" and "Action" columns; "Data" shows what the
+system already stores (so what can be checked without new fields). Block = the bout cannot be created; Warn = shown
+to the officer, bout can still be created.
+
+| # | Check | Limit (placeholder) | Action | Data in the system |
+|---|---|---|---|---|
+| 1 | Two different fighters | not the same fighter | Block | done (`program-validation.md`) |
+| 2 | Fighter verified (Active) | status Active | Block | done |
+| 3 | Medical clearance | `medical_status` = Cleared | Block | field exists, no screen yet |
+| 4 | Suspension | no `suspension_end_date` on or after the fight date | Block | field exists, no screen yet |
+| 5 | Same gender | both Male or both Female | Block | `gender` |
+| 6 | Minimum age | 16 years on the fight date (TBD: 18?) | Block | `date_of_birth` |
+| 7 | Weight gap | agreed weight within ±2 kg of each fighter's current weight (TBD) | Warn | `current_weight`, bout `agreed_weight` |
+| 8 | Grade gap | grades differ by at most 1 step (A–D) | Warn | `grade` |
+| 9 | Record gap | win-rate gap or fight-count gap above a limit (TBD) | Warn | `record` |
+| 10 | Rest between fights | at least 21 days since either fighter's last bout (TBD) | Block | derived from past bouts' dates |
+| 11 | Same club | two fighters of the same club cannot meet | Warn | `club_id` |
+| 12 | Already booked | fighter not in another bout on the same fight night | Block | derived |
+| 13 | Title bout | both fighters in the title's weight class; champion is one of them | Block | `championship_id`, holder |
+| 14 | Officials | referee + 3 judges before publish (not before creating the bout) | Block at publish | done |
+
+Questions on the table: which rows do you want, which are Block versus Warn, and the numbers in rows 6, 7, 8, 9
+and 10. Row 9 may need a clear rule (for example "no more than 10 wins apart"). Rules that need data the system
+does not hold yet: rows 3 and 4 need a screen to enter them (`features/fighter-personal-records.md`).
+
+## Still TBD
+The matching-rule values above; what the settlement step records; what "licence/permit" records (number, date, file).
 
 ## Acceptance criteria
 - [ ] TBD after the open questions.
