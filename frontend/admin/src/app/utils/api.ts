@@ -530,6 +530,18 @@ export const api = {
     }
   },
 
+  // --- MATCHING RULES (claude/updates/matching-rules.md) ---
+  matchingRules: {
+    async list() {
+      const res = await request("/matches/rules");
+      return res.data;
+    },
+    async update(key: string, input: { enabled?: boolean; action?: "block" | "warn"; value?: number }) {
+      const res = await request(`/matches/rules/${key}`, { method: "PUT", body: JSON.stringify(input) });
+      return res.data;
+    },
+  },
+
   // --- SETTINGS LISTS (weight classes, venues, bout rules, glove brands; Phase 5) ---
   settingsLists: {
     /** Active entries in order; `all` (KKF staff) includes inactive ones. */

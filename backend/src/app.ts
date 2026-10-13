@@ -22,6 +22,7 @@ import federationRoutes from "./modules/federation/routes.ts";
 import officialRoutes from "./modules/officials/routes.ts";
 import settingsRoutes from "./modules/settings/routes.ts";
 import seoRoutes from "./modules/seo/routes.ts";
+import matchingRuleRoutes from "./modules/matches/rules.ts";
 import settingsListRoutes from "./modules/settings/lists.ts";
 import videoRoutes from "./modules/videos/routes.ts";
 
@@ -110,6 +111,7 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
       await api.register(settingsRoutes);
       await api.register(settingsListRoutes);
       await api.register(eventRoutes);
+      await api.register(matchingRuleRoutes);
       await api.register(matchRoutes);
       await api.register(officialRoutes);
       await api.register(championRoutes);

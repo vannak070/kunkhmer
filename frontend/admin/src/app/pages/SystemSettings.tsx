@@ -13,6 +13,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import { GLOVE_SIZES } from "../data/masterData";
 import { type SettingsListName, refreshSettingsList } from "../hooks/useSettingsLists";
 import { type TextKey, khmerDigits, useT } from "../i18n/program";
+import { MatchingRulesPanel } from "../components/settings/MatchingRulesPanel";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 
 type Row = Record<string, any>;
@@ -125,6 +126,8 @@ const TABS: ListTab[] = [
   },
 ];
 
+const RULES_TAB = "matching-rules";
+
 const inputClass = "w-full h-11 rounded-xl border border-slate-300 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none px-3 text-sm bg-white";
 
 export function SystemSettings() {
@@ -132,6 +135,8 @@ export function SystemSettings() {
   const permissions = usePermissions();
   const canManage = permissions.hasPermission("settings.manage");
   const [params, setParams] = useSearchParams();
+  const showRules = params.get("tab") === RULES_TAB;
+  const canEditRules = canManage || permissions.hasPermission("matches.manage_card");
   const tab = TABS.find((x) => x.key === params.get("tab")) ?? TABS[0];
   const [rows, setRows] = useState<Row[] | null>(null);
   const [editing, setEditing] = useState<Row | "new" | null>(null);
@@ -194,14 +199,14 @@ export function SystemSettings() {
             {t("set.intro")}
           </p>
         </div>
-        {canManage && (
+        {canManage && !showRules && (
           <button type="button" onClick={() => setEditing("new")} className="btn-primary py-2.5 px-5 whitespace-nowrap shrink-0">
             <Plus className="w-4 h-4" aria-hidden /> {t(tab.add)}
           </button>
         )}
       </header>
 
-      {!canManage && (
+      {!canManage && !showRules && (
         <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm text-slate-700">
           {t("set.readOnly")}
         </div>
@@ -215,23 +220,33 @@ export function SystemSettings() {
               key={x.key}
               role="tab"
               type="button"
-              aria-selected={tab.key === x.key}
+              aria-selected={!showRules && tab.key === x.key}
               onClick={() => setParams(x.key === TABS[0].key ? {} : { tab: x.key }, { replace: true })}
-              className={`flex-1 inline-flex items-center justify-center gap-1.5 h-9 px-3 whitespace-nowrap rounded-lg text-sm font-semibold transition-colors ${tab.key === x.key ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 h-9 px-3 whitespace-nowrap rounded-lg text-sm font-semibold transition-colors ${!showRules && tab.key === x.key ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
             >
               <Icon className="w-4 h-4" aria-hidden /> {t(x.label)}
             </button>
           );
         })}
+        <button
+          role="tab"
+          type="button"
+          aria-selected={showRules}
+          onClick={() => setParams({ tab: RULES_TAB }, { replace: true })}
+          className={`flex-1 inline-flex items-center justify-center gap-1.5 h-9 px-3 whitespace-nowrap rounded-lg text-sm font-semibold transition-colors ${showRules ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+        >
+          <Gavel className="w-4 h-4" aria-hidden /> {t("set.tab.matching-rules")}
+        </button>
       </div>
 
-      <p className="text-sm text-slate-600">{t(tab.hint)}</p>
+      {showRules && <MatchingRulesPanel canEdit={canEditRules} />}
+      {!showRules && <p className="text-sm text-slate-600">{t(tab.hint)}</p>}
 
-      {!rows && <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="w-4 h-4 animate-spin" aria-hidden /> {t("common.loading")}</div>}
-      {rows && rows.length === 0 && (
+      {!showRules && !rows && <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="w-4 h-4 animate-spin" aria-hidden /> {t("common.loading")}</div>}
+      {!showRules && rows && rows.length === 0 && (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">{t("set.empty")}</div>
       )}
-      {rows && rows.length > 0 && (
+      {!showRules && rows && rows.length > 0 && (
         <>
           <p className={`text-xs font-semibold text-slate-400 ${lang === "km" ? "" : "uppercase tracking-wider"}`}>{rows.length > activeCount ? t("set.inUseAnd", { n: activeCount, off: rows.length - activeCount }) : t("set.inUse", { n: activeCount })}</p>
           <ol className="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100">

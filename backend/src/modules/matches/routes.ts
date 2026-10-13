@@ -30,6 +30,7 @@ import { type Input, inputOf, parseBool } from "../../lib/input.ts";
 import { UNVERIFIED } from "../fighters/routes.ts";
 import { UNAPPROVED } from "../events/routes.ts";
 import { formatMatch, formatSubEvent, matchArray, matchRelations, subEventArray, subEventRelations, withoutWeighIn } from "./format.ts";
+import { enforceRules } from "./rules.ts";
 import { recalculateRecord, recordMatchResult } from "./results.ts";
 import { PUBLIC_BOUT, RESPONSES, openSide, proposalStatus, sidesFor } from "./proposals.ts";
 import { notifyFollowers } from "../fans/notify.ts";
@@ -241,6 +242,7 @@ export default async function matchRoutes(app: FastifyInstance) {
       const fighterBId = input.required<string>("fighterBId");
       if (fighterAId === fighterBId) throw new HttpError(422, "A bout needs two different fighters");
       await requireVerified([fighterAId, fighterBId]);
+      const warnings = await enforceRules({ subEventId, fighterAId, fighterBId, agreedWeight: Number(input.required("agreedWeight")) });
 
       // A new bout goes to both clubs; a side without a club is accepted already.
       const clubs = await prisma.fighter.findMany({ where: { id: { in: [fighterAId, fighterBId].filter(isUuid) } }, select: { id: true, club_id: true } });
@@ -279,7 +281,8 @@ export default async function matchRoutes(app: FastifyInstance) {
         },
       });
       if (match.proposal_status === "accepted") await notifyFollowers(match.id, "bout_scheduled", request.log);
-      return ok(reply, await loadMatch(match.id));
+      const created = await loadMatch(match.id);
+      return ok(reply, warnings.length ? { ...created, warnings } : created);
     });
 
     protectedRoutes.put("/matches/:id", async (request, reply) => {
@@ -313,8 +316,16 @@ export default async function matchRoutes(app: FastifyInstance) {
       const nextA = (data.fighter_a_id as string | undefined) ?? match.fighter_a_id;
       const nextB = (data.fighter_b_id as string | undefined) ?? match.fighter_b_id;
       if (nextA === nextB) throw new HttpError(422, "A bout needs two different fighters");
+      let warnings: Awaited<ReturnType<typeof enforceRules>> = [];
       if (swapped.length) {
         await requireVerified(swapped.map((s) => data[`fighter_${s}_id`] as string));
+        warnings = await enforceRules({
+          subEventId: (data.sub_event_id as string | undefined) ?? match.sub_event_id,
+          fighterAId: nextA,
+          fighterBId: nextB,
+          agreedWeight: Number(data.agreed_weight ?? match.agreed_weight),
+          matchId: id,
+        });
         for (const s of swapped) {
           const fighter = await prisma.fighter.findUnique({ where: { id: data[`fighter_${s}_id`] as string }, select: { club_id: true } });
           if (!fighter) throw new HttpError(422, "The selected fighter does not exist");
@@ -329,7 +340,8 @@ export default async function matchRoutes(app: FastifyInstance) {
       if (match.proposal_status !== "accepted" && data.proposal_status === "accepted") {
         await notifyFollowers(id, "bout_scheduled", request.log);
       }
-      return ok(reply, await loadMatch(id));
+      const updated = await loadMatch(id);
+      return ok(reply, warnings.length ? { ...updated, warnings } : updated);
     });
 
     // Bouts waiting for (or answered by) clubs. A club sees only bouts with its

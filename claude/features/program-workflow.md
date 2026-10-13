@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft — flow and roles agreed with the owner 2026-10-13; only the matching-rule values are still TBD (placeholder table drafted). Nothing built |
+| **Status** | In progress — flow and roles agreed 2026-10-13; **phase 1 (matching rules engine) built** with placeholder values (`updates/matching-rules.md`); phases 2–7 not started |
 | **Jira** | TBD |
 | **Figma** | TBD |
 | **Owner** | vannak070 |

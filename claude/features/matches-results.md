@@ -44,6 +44,11 @@ Match response: snake_case row + nested `sub_event`, `fighter_a`/`fighter_b`
   winner moves the title; the same result changes nothing (`updates/title-result-corrections.md`).
   Manual holder edits made in between are replaced. The admin match page asks to confirm a winner change.
 
+## Matching rules (2026-10-13)
+`POST /matches` and fighter swaps run the KKF matching rules (`matches/rules.ts`, table `matching_rules`, edited in
+System Settings › Matching rules): block rules → 422, warn rules → `warnings` in the response;
+`GET /matches/rules`, `PUT /matches/rules/:key`, `POST /matches/check` — `updates/matching-rules.md`.
+
 ## Validation (2026-10-13)
 A bout needs two different fighters; a result needs a winner from the bout (or empty), a method from KO / TKO /
 Decision / Submission / Disqualification / Draw / No Contest and a round 0…rounds; deleting a bout recalculates

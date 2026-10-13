@@ -759,3 +759,23 @@ model KnowledgeArticle {
   @@index([status])
   @@map("knowledge_articles")
 }
+
+/// KKF matching rules checked when a bout is created or a fighter is swapped (claude/features/program-workflow.md).
+/// Fixed keys; KKF staff change enabled / action / value in System Settings.
+model MatchingRule {
+  key         String    @id @db.VarChar(50)
+  label       String    @db.VarChar(255)
+  description String?
+  enabled     Boolean   @default(true)
+  /// "block" = the bout can't be created; "warn" = shown to the officer, bout still created.
+  action      String    @default("block") @db.VarChar(10)
+  /// Limit (years, kg, grade steps, wins, days); null for rules without a number.
+  value       Decimal?  @db.Decimal(6, 2)
+  /// Unit shown next to the value in the admin.
+  unit        String?   @db.VarChar(20)
+  sort_order  Int       @default(0)
+  updated_at  DateTime? @db.Timestamp(0)
+  updated_by  String?   @db.Uuid
+
+  @@map("matching_rules")
+}

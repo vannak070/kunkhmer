@@ -97,7 +97,7 @@ export function AddBout() {
     if (isTitle && !titleId) { toast.error(t("bout.pickTitle")); return; }
     setBusy(true);
     try {
-      await api.matches.create({
+      const created = await api.matches.create({
         eventId: card.event_id,
         subEventId: card.id,
         fighterAId: red.id,
@@ -113,6 +113,8 @@ export function AddBout() {
         championshipId: isTitle ? titleId : null,
       });
       toast.success(t("bout.added", { red: red.name, blue: blue.name }));
+      // Warn rules from the KKF matching rules: the bout is created, the officer is told why to look twice.
+      if (created?.warnings?.length) toast.warning(t("mr.warnings", { list: created.warnings.map((w: { message: string }) => w.message).join("; ") }), { duration: 15000 });
       if (another) {
         setRed(null);
         setBlue(null);

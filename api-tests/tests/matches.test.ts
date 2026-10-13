@@ -422,7 +422,7 @@ describe("correcting a title fight result", () => {
     const challenger = await newFighter();
     const championshipId = await newTitle(champ);
     const first = await newMatch({ subEventId: await batchOn("2026-10-08"), fighterAId: champ, fighterBId: challenger, isTitleMatch: true, championshipId });
-    const second = await newMatch({ subEventId: await batchOn("2026-10-15"), fighterAId: challenger, isTitleMatch: true, championshipId });
+    const second = await newMatch({ subEventId: await batchOn("2026-11-12"), fighterAId: challenger, isTitleMatch: true, championshipId });
     await result(first.id, challenger); // challenger takes the belt
     await result(second.id, challenger); // and defends it
     expect(await title(championshipId)).toMatchObject({ current_holder_id: challenger, defense_count: 1 });
@@ -640,5 +640,102 @@ describe("result and bout validation (updates/program-validation.md)", () => {
     expect(win).toMatch(/^1-0-0$/);
     expect((await del(`/matches/${m.id}`, a.admin.token)).status).toBe(200);
     expect((await get(`/fighters/${m.fighter_a_id}`, a.admin.token)).body.data.record).toBe("0-0-0");
+  });
+});
+
+describe("KKF matching rules (updates/matching-rules.md)", () => {
+  const pair = async (overrides: Record<string, unknown> = {}) => ({
+    subEventId: await newBatch(),
+    fighterAId: await newFighter(),
+    fighterBId: await newFighter(otherClubId),
+    rounds: 3,
+    roundTime: 180,
+    knockdownLimit: 3,
+    agreedWeight: 60,
+    gloveSize: "10oz",
+    gloveBrand: "Twins",
+    ...overrides,
+  });
+  const setRule = (key: string, body: Record<string, unknown>) => put(`/matches/rules/${key}`, body, a.officer.token);
+  const newFighterWith = async (fields: Record<string, unknown>) => {
+    const res = await post(
+      "/fighters",
+      { name: `Fighter ${uniq()}`, nameKhmer: "x", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, clubId: otherClubId, grade: "B", image: "https://example.com/f.png", status: "Active", ...fields },
+      a.admin.token,
+    );
+    return res.body.data.id as string;
+  };
+
+  it("lists the rules; staff and organizers read, only staff change them", async () => {
+    const list = await get("/matches/rules", a.organizer.token);
+    expect(list.status).toBe(200);
+    expect(list.body.data.map((r: any) => r.key)).toEqual(
+      expect.arrayContaining(["medical", "suspension", "same_gender", "min_age", "weight_gap", "grade_gap", "record_gap", "rest_days", "same_club", "already_booked"]),
+    );
+    expect((await get("/matches/rules", a.club.token)).status).toBe(403);
+    expect((await put("/matches/rules/min_age", { value: 18 }, a.organizer.token)).status).toBe(403);
+    expect((await setRule("nope", { enabled: false })).status).toBe(404);
+    expect((await setRule("min_age", { action: "maybe" })).status).toBe(422);
+    expect((await setRule("min_age", { value: "x" })).status).toBe(422);
+    expect((await setRule("same_club", { value: 3 })).status).toBe(422);
+  });
+
+  it("blocks a bout between different genders, naming the rule, and lets it through when the rule is off", async () => {
+    const body = await pair({ fighterBId: await newFighterWith({ gender: "Female" }) });
+    const blocked = await post("/matches", body, a.officer.token);
+    expect(blocked.status).toBe(422);
+    expect(blocked.body.error).toMatch(/not the same gender/);
+
+    expect((await setRule("same_gender", { enabled: false })).status).toBe(200);
+    expect((await post("/matches", await pair({ fighterBId: await newFighterWith({ gender: "Female" }) }), a.officer.token)).status).toBe(200);
+    await setRule("same_gender", { enabled: true });
+  });
+
+  it("applies the minimum age and its limit", async () => {
+    const young = await newFighterWith({ dateOfBirth: "2012-01-01" });
+    expect((await post("/matches", await pair({ fighterBId: young }), a.officer.token)).status).toBe(422);
+    await setRule("min_age", { value: 10 });
+    expect((await post("/matches", await pair({ fighterBId: young }), a.officer.token)).status).toBe(200);
+    await setRule("min_age", { value: 16 });
+  });
+
+  it("warns without blocking: weight gap and same club come back as warnings", async () => {
+    const club = await newFighterWith({ clubId: a.clubId });
+    const res = await post("/matches", await pair({ fighterAId: await newFighterWith({ clubId: a.clubId }), fighterBId: club, agreedWeight: 70 }), a.officer.token);
+    expect(res.status).toBe(200);
+    expect(res.body.data.warnings.map((w: any) => w.key).sort()).toEqual(["same_club", "weight_gap", "weight_gap"]);
+    const clean = await post("/matches", await pair(), a.officer.token);
+    expect(clean.body.data.warnings).toBeUndefined();
+  });
+
+  it("blocks a fighter who is already booked on the night or fights again too soon", async () => {
+    const batch = await newBatch();
+    const f = await newFighter();
+    expect((await post("/matches", await pair({ subEventId: batch, fighterAId: f }), a.officer.token)).status).toBe(200);
+    const same = await post("/matches", await pair({ subEventId: batch, fighterAId: f }), a.officer.token);
+    expect(same.status).toBe(422);
+    expect(same.body.error).toMatch(/already in a bout/);
+
+    const soon = await post("/matches", await pair({ subEventId: await newBatch(), fighterAId: f }), a.officer.token);
+    expect(soon.status).toBe(422);
+    expect(soon.body.error).toMatch(/days apart/);
+  });
+
+  it("ships with medical and suspension switched off (nothing can set them yet)", async () => {
+    const rules = (await get("/matches/rules", a.officer.token)).body.data as any[];
+    expect(rules.find((r) => r.key === "medical")).toMatchObject({ enabled: false, action: "block" });
+    expect(rules.find((r) => r.key === "suspension")).toMatchObject({ enabled: false, action: "block" });
+    expect(rules.find((r) => r.key === "min_age")).toMatchObject({ enabled: true, action: "block", value: 16, unit: "years" });
+  });
+
+  it("previews a pairing without saving it", async () => {
+    const body = await pair({ fighterBId: await newFighterWith({ gender: "Female" }), agreedWeight: 60 });
+    const before = (await get(`/matches?subEventId=${body.subEventId}`, a.admin.token)).body.data.length;
+    const check = await post("/matches/check", body, a.officer.token);
+    expect(check.status).toBe(200);
+    expect(check.body.data).toMatchObject({ allowed: false, blocked: [{ key: "same_gender", action: "block" }], warnings: [] });
+    expect((await get(`/matches?subEventId=${body.subEventId}`, a.admin.token)).body.data.length).toBe(before);
+    expect((await post("/matches/check", {}, a.officer.token)).status).toBe(422);
+    expect((await post("/matches/check", body, a.club.token)).status).toBe(403);
   });
 });
