@@ -1,7 +1,8 @@
 /**
  * The fight night's details, shared by "New fight night" (pages/NewFightNight.tsx) and the fight-night page's
- * "Edit details" dialog: name, date, venue (Settings › Venues as suggestions), TV station, main sponsor,
- * about text and poster. Name, date and venue are required. See claude/updates/program-simple-forms.md.
+ * "Edit details" dialog: name, date, venue (Settings › Venues as suggestions), TV station, main sponsor, other
+ * sponsors, about text and poster. Name, date and venue are required. See claude/updates/program-simple-forms.md.
+ * An Organizer can't pick the broadcaster: it is always its own (claude/updates/offline-agreements-log.md).
  */
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus } from "lucide-react";
@@ -17,6 +18,8 @@ export interface FightNightForm {
   location: string;
   broadcastStationId: string;
   mainSponsorId: string;
+  /** Sponsors besides the main one (the event's sponsor list = main + these). */
+  otherSponsorIds: string[];
   description: string;
   image: string;
 }
@@ -27,31 +30,43 @@ export const fightNightForm = (event?: any): FightNightForm => ({
   location: event?.location ?? "",
   broadcastStationId: event?.broadcast_station_id ?? "",
   mainSponsorId: event?.main_sponsor_id ?? "",
+  otherSponsorIds: ((event?.sponsorIds ?? []) as string[]).filter((id) => id !== event?.main_sponsor_id),
   description: event?.description ?? "",
   image: event?.image ?? "",
 });
 
 export const fightNightReady = (f: FightNightForm) => Boolean(f.name.trim() && f.date && f.location.trim());
 
-/** Body for PUT /events/:id (the sponsor list is left as it is: it may hold more sponsors than the main one). */
-export const fightNightPayload = (f: FightNightForm) => ({
+/** The sponsor list: the main sponsor first, then the others. */
+const sponsorList = (f: FightNightForm) => [...new Set([f.mainSponsorId, ...f.otherSponsorIds].filter(Boolean))];
+
+/**
+ * Body for PUT /events/:id. `station` = false leaves the broadcaster out (an Organizer may not change it).
+ */
+export const fightNightPayload = (f: FightNightForm, station = true) => ({
   name: f.name.trim(),
   date: f.date,
   location: f.location.trim(),
-  broadcastStationId: f.broadcastStationId || null,
+  ...(station ? { broadcastStationId: f.broadcastStationId || null } : {}),
   mainSponsorId: f.mainSponsorId || null,
+  sponsorIds: sponsorList(f),
   description: f.description.trim() || null,
   image: f.image || null,
 });
 
-/** Body for POST /events: a new fight night starts as a draft, its main sponsor as its sponsor list. */
-export const newFightNightPayload = (f: FightNightForm) => ({
-  ...fightNightPayload(f),
+/** Body for POST /events: a new fight night starts as a draft. */
+export const newFightNightPayload = (f: FightNightForm, station = true) => ({
+  ...fightNightPayload(f, station),
   status: "Draft",
-  sponsorIds: f.mainSponsorId ? [f.mainSponsorId] : [],
 });
 
-export function FightNightFields({ form, setForm, autoFocus = false }: { form: FightNightForm; setForm: (f: FightNightForm) => void; autoFocus?: boolean }) {
+export function FightNightFields({ form, setForm, autoFocus = false, lockStation = false }: {
+  form: FightNightForm;
+  setForm: (f: FightNightForm) => void;
+  autoFocus?: boolean;
+  /** Organizer: the broadcaster is shown but can't be changed. */
+  lockStation?: boolean;
+}) {
   const { t } = useT();
   const [stations, setStations] = useState<any[]>([]);
   const [sponsors, setSponsors] = useState<any[]>([]);
@@ -91,19 +106,40 @@ export function FightNightFields({ form, setForm, autoFocus = false }: { form: F
       <div className="grid sm:grid-cols-2 gap-5">
         <label className="block">
           <span className="text-sm font-semibold text-slate-800">{t("night.broadcaster")}</span>
-          <select className={`${fieldCls} mt-1`} value={form.broadcastStationId} onChange={(e) => setForm({ ...form, broadcastStationId: e.target.value })}>
+          <select disabled={lockStation} className={`${fieldCls} mt-1 disabled:bg-slate-50 disabled:text-slate-600`} value={form.broadcastStationId} onChange={(e) => setForm({ ...form, broadcastStationId: e.target.value })}>
             <option value="">{t("common.notSet")}</option>
             {stations.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </label>
         <label className="block">
           <span className="text-sm font-semibold text-slate-800">{t("night.sponsor")}</span>
-          <select className={`${fieldCls} mt-1`} value={form.mainSponsorId} onChange={(e) => setForm({ ...form, mainSponsorId: e.target.value })}>
+          <select className={`${fieldCls} mt-1`} value={form.mainSponsorId} onChange={(e) => setForm({ ...form, mainSponsorId: e.target.value, otherSponsorIds: form.otherSponsorIds.filter((id) => id !== e.target.value) })}>
             <option value="">{t("common.notSet")}</option>
             {sponsors.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </label>
       </div>
+      {sponsors.some((s) => s.id !== form.mainSponsorId) && (
+        <fieldset>
+          <legend className="text-sm font-semibold text-slate-800">{t("form.otherSponsors")}</legend>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {sponsors.filter((s) => s.id !== form.mainSponsorId).map((s) => {
+              const on = form.otherSponsorIds.includes(s.id);
+              return (
+                <label key={s.id} className={`inline-flex items-center gap-2 h-10 px-3 rounded-lg border text-sm cursor-pointer ${on ? "border-primary bg-primary/5 text-primary font-semibold" : "border-slate-300 text-slate-700 hover:border-primary"}`}>
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 accent-[var(--color-primary,#0A3D91)]"
+                    checked={on}
+                    onChange={() => setForm({ ...form, otherSponsorIds: on ? form.otherSponsorIds.filter((id) => id !== s.id) : [...form.otherSponsorIds, s.id] })}
+                  />
+                  {s.name}
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+      )}
       <label className="block">
         <span className="text-sm font-semibold text-slate-800">{t("form.about")}</span>
         <textarea rows={3} className={`${fieldCls} mt-1`} value={form.description} placeholder={t("form.aboutPlaceholder")} onChange={(e) => setForm({ ...form, description: e.target.value })} />

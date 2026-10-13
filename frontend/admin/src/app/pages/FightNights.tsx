@@ -64,7 +64,7 @@ export function FightNights() {
           <label htmlFor="fight-night-search" className="sr-only">{t("list.search")}</label>
           <input id="fight-night-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("list.search")} className="w-full h-10 rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
         </div>
-        {permissions.hasPermission("events.create") && (
+        {permissions.hasAnyPermission(["events.create", "events.record"]) && (
           <Link to="/home/events/new" className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90">
             <Plus className="w-4 h-4" aria-hidden /> {t("list.new")}
           </Link>

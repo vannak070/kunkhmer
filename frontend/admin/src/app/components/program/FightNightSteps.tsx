@@ -2,6 +2,7 @@
  * The fight night's step-by-step checklist for KKF officers (approvals off): details → fight card → bouts →
  * officials → publish → weigh-in → results. One highlighted "Next" step with one button to the screen for it.
  * Computed from the real fight cards and bouts. See claude/updates/program-officer-friendly.md.
+ * Publishing waits for KKF to confirm the fight night details (claude/updates/offline-agreements-log.md).
  */
 import { useState } from "react";
 import { useNavigate } from "react-router";
@@ -23,12 +24,16 @@ interface Step {
   action?: { label: string; run: () => void };
 }
 
-export function FightNightSteps({ event, cards, bouts, canEdit, isStaff, onEditDetails, onAddFightCard, onChanged }: {
+export function FightNightSteps({ event, cards, bouts, canEdit, canEditDetails = canEdit, isStaff, detailsConfirmed, onEditDetails, onAddFightCard, onChanged }: {
   event: any;
   cards: any[];
   bouts: any[];
   canEdit: boolean;
+  /** Organizer: may edit the details (not the program). */
+  canEditDetails?: boolean;
   isStaff: boolean;
+  /** KKF confirmed the details and licence, and the titles if any (agreements); undefined = not loaded, the API still checks. */
+  detailsConfirmed?: boolean;
   onEditDetails: () => void;
   onAddFightCard: () => void;
   onChanged: () => void;
@@ -59,6 +64,7 @@ export function FightNightSteps({ event, cards, bouts, canEdit, isStaff, onEditD
   const withResult = bouts.filter(hasResult);
   const nightPassed = dayOf(event.date) <= todayUtc();
   const published = ["Published", "Completed"].includes(event.status);
+  const needsConfirm = detailsConfirmed === false;
 
   const steps: Step[] = [
     {
@@ -66,7 +72,7 @@ export function FightNightSteps({ event, cards, bouts, canEdit, isStaff, onEditD
       title: t("steps.details"),
       detail: event.name && event.date && event.location ? t("steps.detailsDone") : t("steps.detailsTodo"),
       done: Boolean(event.name && event.date && event.location),
-      action: canEdit ? { label: t("night.editDetails"), run: onEditDetails } : undefined,
+      action: canEditDetails ? { label: t("night.editDetails"), run: onEditDetails } : undefined,
     },
     {
       key: "card",
@@ -96,10 +102,14 @@ export function FightNightSteps({ event, cards, bouts, canEdit, isStaff, onEditD
       key: "publish",
       title: t("steps.publish"),
       // Publish guard (claude/updates/publish-guard.md): nothing to publish before the first bout; the API refuses too.
-      detail: published ? t("steps.publishDone") : bouts.length ? t("steps.publishTodo") : t("steps.publishNeedsBout"),
+      detail: published ? t("steps.publishDone") : !bouts.length ? t("steps.publishNeedsBout") : needsConfirm ? t("steps.publishNeedsConfirm") : t("steps.publishTodo"),
       done: published,
       later: !published && !bouts.length,
-      action: canEdit && bouts.length ? { label: t("steps.publishAction"), run: publish } : undefined,
+      action: !canEdit || !bouts.length
+        ? undefined
+        : needsConfirm
+          ? { label: t("agr.open"), run: () => document.getElementById("agreements")?.scrollIntoView({ behavior: "smooth", block: "start" }) }
+          : { label: t("steps.publishAction"), run: publish },
     },
     {
       key: "weighin",

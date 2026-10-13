@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (not committed) — waiting for owner review |
+| **Status** | Done (committed 1e1bf0d9, live) |
 | **Jira** | n/a |
 | **Feature** | claude/features/auth-users.md |
 | **Requested by** | vannak070 (2026-09-30: "fix the session expiry" — open item from `program-simple-forms.md`) |

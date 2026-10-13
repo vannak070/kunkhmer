@@ -3,7 +3,7 @@
  *
  *   GET  /matches/rules        KKF staff + Organizer   the rules with their current settings
  *   PUT  /matches/rules/:key   KKF staff               { enabled?, action? ("block"|"warn"), value? }
- *   POST /matches/check        KKF staff + Organizer   { subEventId, fighterAId, fighterBId, agreedWeight?, matchId? }
+ *   POST /matches/check        KKF staff + Organizer   { subEventId, fighterAId, fighterBId, agreedWeight?, matchId?, championshipId? }
  *                                                       → { allowed, blocked: [...], warnings: [...] }; saves nothing
  *
  * `checkPairing` is also run when a bout is created or a fighter is swapped: a broken Block rule is a 422
@@ -16,6 +16,7 @@ import { now } from "../../lib/dates.ts";
 import { HttpError, isUuid, notFound, ok } from "../../lib/http.ts";
 import { inputOf, isTruthy } from "../../lib/input.ts";
 import { parseRecord } from "../../lib/record.ts";
+import { titleListWarning } from "../events/agreements.ts";
 
 const READERS = [...STAFF, Role.Organizer];
 const DAY = 86_400_000;
@@ -189,13 +190,21 @@ export default async function matchingRuleRoutes(app: FastifyInstance) {
       requireRole(request, READERS);
       const input = inputOf(request.body);
       const weight = input.get("agreedWeight");
+      const subEventId = input.required<string>("subEventId");
       const hits = await checkPairing({
-        subEventId: input.required<string>("subEventId"),
+        subEventId,
         fighterAId: input.required<string>("fighterAId"),
         fighterBId: input.required<string>("fighterBId"),
         agreedWeight: weight === null || Number.isNaN(Number(weight)) ? null : Number(weight),
         matchId: input.get<string>("matchId"),
       });
+      // A title bout: is the belt on the fight night's confirmed title list? (warning only)
+      const championshipId = input.get<string>("championshipId");
+      if (championshipId && isUuid(subEventId)) {
+        const card = await prisma.subEvent.findUnique({ where: { id: subEventId }, select: { event_id: true } });
+        const titleHit = await titleListWarning(card?.event_id, championshipId);
+        if (titleHit) hits.push(titleHit);
+      }
       return ok(reply, {
         allowed: !hits.some((h) => h.action === "block"),
         blocked: hits.filter((h) => h.action === "block"),

@@ -11,6 +11,7 @@ import aiRoutes from "./modules/ai/routes.ts";
 import authRoutes from "./modules/auth/routes.ts";
 import championRoutes from "./modules/champions/routes.ts";
 import clubRoutes from "./modules/clubs/routes.ts";
+import agreementRoutes from "./modules/events/agreements.ts";
 import eventRoutes from "./modules/events/routes.ts";
 import fanRoutes from "./modules/fans/routes.ts";
 import fighterRoutes from "./modules/fighters/routes.ts";
@@ -26,8 +27,8 @@ import matchingRuleRoutes from "./modules/matches/rules.ts";
 import settingsListRoutes from "./modules/settings/lists.ts";
 import videoRoutes from "./modules/videos/routes.ts";
 
-/** Requests whose pictures must not be turned into public files (claude/features/fighter-personal-records.md). */
-const PRIVATE_ROUTE = /\/fighters\/[^/?]+\/private(?:[/?]|$)/;
+/** Requests whose pictures must not be turned into public files: fighter private records and the fight night licence. */
+const PRIVATE_ROUTE = /\/fighters\/[^/?]+\/private(?:[/?]|$)|\/events\/[^/?]+\/licence(?:[/?]|$)/;
 
 export async function buildApp(opts: { logger?: boolean } = {}): Promise<FastifyInstance> {
   const app = Fastify({
@@ -111,6 +112,7 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
       await api.register(settingsRoutes);
       await api.register(settingsListRoutes);
       await api.register(eventRoutes);
+      await api.register(agreementRoutes);
       await api.register(matchingRuleRoutes);
       await api.register(matchRoutes);
       await api.register(officialRoutes);

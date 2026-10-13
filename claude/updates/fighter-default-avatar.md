@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-10-02, uncommitted) |
+| **Status** | Done (2026-10-02, committed f21fac21; not on the live pilot yet) |
 | **Jira** | n/a |
 | **Feature** | claude/features/fighters.md, claude/features/public-site.md |
 | **Requested by** | vannak070 (2026-10-02: "use it as the default fighter avatar") |

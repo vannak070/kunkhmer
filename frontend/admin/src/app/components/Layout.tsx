@@ -161,6 +161,8 @@ const MENU_TEXT: Record<string, TextKey> = {
  * refuses these actions anyway; the guard just avoids showing a form that can't save.
  */
 const PAGE_GUARDS: { match: RegExp; permission: string }[] = [
+  // Organizers record their broadcaster's fight nights (claude/updates/offline-agreements-log.md).
+  { match: /^\/home\/events\/new$/, permission: "events.create|events.record" },
   { match: /^\/home\/fighters\/(kunkhmer|foreigner)\/new$/, permission: "fighters.create" },
   { match: /^\/home\/fighters\/[^/]+\/edit$/, permission: "fighters.edit" },
   { match: /^\/home\/matches\/[^/]+\/assign-officials$/, permission: "officials.assign" },
@@ -205,7 +207,8 @@ export function Layout() {
     setMobileMenu(false);
   }, [location.pathname]);
 
-  const allowed = (permission: string | null) => !permission || permissions.hasPermission(permission);
+  // "a|b" = either permission is enough.
+  const allowed = (permission: string | null) => !permission || permission.split("|").some((p) => permissions.hasPermission(p));
   // Referees and judges have no dashboard: their home is "My bouts".
   const hasDashboard = allowed("dashboard.view");
   const pageAllowed = allowed(requiredPermission(location.pathname));

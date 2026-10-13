@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, Navigate, useLocation, useNavigate, Link } from "react-router";
 import { 
   Tv, Trophy, Edit, Trash2, Plus, Globe, Radio, Award,
-  Mail, ArrowLeft, Save, User, Phone, Upload, X
+  Mail, ArrowLeft, Save, User, Phone, Upload, X, UserPlus
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../utils/api";
@@ -147,9 +147,12 @@ interface GridCardProps {
   type: PartnerType;
   onEdit: (partner: any) => void;
   onDelete: (id: string) => void;
+  /** Broadcasters, Super Admin only: the broadcaster's Organizer accounts and a way to add one. */
+  organizers?: { id: string; fullName: string; status: string }[];
+  onAddOrganizer?: () => void;
 }
 
-function GridPartnerCard({ partner, type, onEdit, onDelete }: GridCardProps) {
+function GridPartnerCard({ partner, type, onEdit, onDelete, organizers, onAddOrganizer }: GridCardProps) {
   const { t } = useT();
   const isBroadcaster = type === "BROADCAST_PARTNERS";
   const imageSrc = partner.image || partner.logoUrl;
@@ -284,6 +287,28 @@ function GridPartnerCard({ partner, type, onEdit, onDelete }: GridCardProps) {
               </>
             )}
           </div>
+
+          {organizers && (
+            <div className="mb-5 text-left rounded-xl border border-border/40 p-3">
+              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("par.organizers")}</div>
+              {organizers.length === 0 ? (
+                <p className="text-xs text-slate-500 mt-1">{t("par.noOrganizers")}</p>
+              ) : (
+                <ul className="mt-1 space-y-0.5">
+                  {organizers.map((o) => (
+                    <li key={o.id} className={`text-xs font-semibold truncate ${o.status === "Active" ? "text-slate-800" : "text-slate-400 line-through"}`}>{o.fullName}</li>
+                  ))}
+                </ul>
+              )}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onAddOrganizer?.(); }}
+                className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline underline-offset-4"
+              >
+                <UserPlus className="w-3.5 h-3.5" aria-hidden /> {t("par.addOrganizer")}
+              </button>
+            </div>
+          )}
         </div>
 
         <button 
@@ -316,6 +341,9 @@ export function StrategicPartners() {
   const [sponsors, setSponsors] = useState<any[]>([]);
   const [broadcastStations, setBroadcastStations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  // Organizer accounts per broadcaster; only a Super Admin can list staff accounts.
+  const isSuperAdmin = api.auth.getCurrentUser()?.role === "Super Admin";
+  const [organizers, setOrganizers] = useState<any[]>([]);
 
   // Form states
   const [partnerName, setPartnerName] = useState("");
@@ -381,6 +409,11 @@ export function StrategicPartners() {
 
   useEffect(() => {
     loadData();
+    if (isSuperAdmin) {
+      api.auth.listUsers()
+        .then((users: any[]) => setOrganizers((users || []).filter((u) => u.role === "Organizer" && u.broadcastStationId)))
+        .catch(() => setOrganizers([]));
+    }
   }, []);
 
   // Compute metric stats
@@ -971,6 +1004,8 @@ export function StrategicPartners() {
                   type="BROADCAST_PARTNERS"
                   onEdit={(p) => navigate(`/home/strategic-partners/${partnerType}/${p.id}/edit`)}
                   onDelete={handleDelete}
+                  organizers={isSuperAdmin ? organizers.filter((o) => o.broadcastStationId === partner.id) : undefined}
+                  onAddOrganizer={() => navigate(`/home/user-management/new?role=Organizer&station=${partner.id}`)}
                 />
               ))}
             </div>

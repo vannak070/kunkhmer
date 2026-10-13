@@ -264,6 +264,9 @@ const BASE_ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'events.create',
     'events.edit',
     'events.submit',
+    // Offline agreements (Program workflow phase 4): create a fight night of its broadcaster, edit its details,
+    // licence and sponsors before publishing, and record them for KKF to confirm. Kept with approvals off.
+    'events.record',
     'matches.view',
     'matches.view_proposals', // Match Proposals: see club answers, change declined fighters
     'matches.create',

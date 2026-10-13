@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress — flow and roles agreed 2026-10-13; **phase 1 (matching rules engine, `updates/matching-rules.md`) and phase 2 (medical / suspension, `updates/fighter-medical-suspension.md`) built**; phases 3–7 not started |
+| **Status** | In progress — flow and roles agreed 2026-10-13; **phase 1 (matching rules engine, `updates/matching-rules.md`), phase 2 (medical / suspension, `updates/fighter-medical-suspension.md`) phase 3 (broadcaster = Organizer accounts, `updates/broadcaster-organizer-accounts.md`) phase 4 (offline agreements log + licence, `updates/offline-agreements-log.md`) and phase 5 (titles on a fight night, `updates/fight-night-titles.md`) built**; phases 6–7 not started |
 | **Jira** | TBD |
 | **Figma** | TBD |
 | **Owner** | vannak070 |
@@ -37,7 +37,9 @@ Offline = people talk first, the system records later. No in-system negotiation,
 - Today approvals are switched off and KKF staff do everything (`updates/officer-run-program.md`); Organizer is
   read-only. This plan gives the Organizer the right to **record** its event, sponsors and title proposal, and
   KKF the right to **confirm** them.
-- `events` has `organizer_id` and a separate `broadcast_station_id`; decision 4 links them (new `users.broadcast_station_id`, migration).
+- Decision 4 is built (phase 3): `users.broadcast_station_id` ties an Organizer to its broadcaster; an event's
+  Organizer must belong to the event's broadcaster. Organizers are still read-only in the admin (record/confirm
+  rights come with phase 4).
 - Only checks on a bout today: two different fighters, both verified (`updates/program-validation.md`).
 
 ## Business rules
@@ -99,9 +101,9 @@ and 10. Row 9 may need a clear rule (for example "no more than 10 wins apart"). 
 does not hold yet: rows 3 and 4 need a screen to enter them (`features/fighter-personal-records.md`).
 
 ## Still TBD
-The matching-rule values above; what the settlement step records; what "licence/permit" records (number, date, file).
+The matching-rule values above; what the settlement step records. (Licence/permit decided 2026-10-13: number, issue date, private scan.)
 
-## Build plan (proposal — nothing built; uses the placeholder rules until the owner corrects them)
+## Build plan (phases 1–5 built; uses the placeholder rules until the owner corrects them)
 Design choice: the matching rules are **data, not code** — a Settings list "Matching rules" (like weight classes
 and venues, `features/settings.md`), so KKF changes a limit or switches Block ↔ Warn without a developer. The
 placeholder table above is the seed.
@@ -111,8 +113,8 @@ placeholder table above is the seed.
 | 1 | **Matching rules engine**: `matching_rules` (key, enabled, action block/warn, value). `POST /matches` and fighter swap run the enabled rules; Block → 422 listing every broken rule; Warn → bout created, warnings returned in the response (additive field). `POST /matches/check` previews a pairing without saving. Admin Add bout shows the check live. | new table + `modules/matches/rules.ts` |
 | 2 | **Fighter medical + suspension screen** (rows 3–4) on the fighter page; staff only. | uses existing columns |
 | 3 | **Broadcaster = Organizer account**: `users.broadcast_station_id`; KKF "Enable organizer" on a broadcast station; Organizer sees only its station's events; event organizer and station always agree; one station per event. | migration + settings/auth routes |
-| 4 | **Offline agreements log**: each recorded item (event, sponsors, title selection, bout) stores recorded-by, confirmed-by, date, note by role permission; event licence/permit fields. | audit table or columns (TBD with item 3 of Still TBD) |
-| 5 | **Belts**: KKF creates the belt; Organizer selects it for its event; KKF confirms. | `champions` + event link |
+| 4 | **Offline agreements log** (built): fight night details + sponsors recorded by the Organizer, confirmed / sent back by KKF, with note, who and when; licence number / date / private scan; publish needs confirmed details. Title selection comes with phase 5; bouts stay KKF-only. | `event_agreements` + `events.licence_*` |
+| 5 | **Belts** (built): KKF creates the belt; the Organizer chooses the titles on its fight night (several allowed); KKF confirms through the agreements log; publishing waits for confirmed titles when any; a title bout off the confirmed list only warns. | `event_titles` |
 | 6 | **Withdrawal / replacement / postponement / cancellation** with reason; replacement re-runs the rules. | status + log |
 | 7 | **After-event sign-off** and settlement record. | TBD |
 
@@ -124,7 +126,15 @@ Phase 1 is the first to build; phases 3–7 change who can do what, so each need
       block and are returned; disabling a rule or changing its limit takes effect at once; swaps are checked too.
 - [ ] Phase 1: staff can edit the rules in Settings (Super Admin / KKF Officer only); Organizer cannot.
 - [ ] Phase 2: staff can set medical status and suspension end date; rules 3 and 4 use them.
-- [ ] Phase 3: an Organizer account is tied to one broadcast station and only sees/manages its events; an event
-      has one broadcaster.
-- [ ] Phases 4–7: acceptance criteria written when each is approved.
+- [x] Phase 3: an Organizer account is tied to one broadcast station and only sees its events (several accounts
+      per broadcaster; "manages" comes with phase 4 — owner chose "see only, for now"); an event has at most one
+      broadcaster, which stays optional.
+- [x] Phase 4: an Organizer records its broadcaster's fight night details (with licence number, date, private scan)
+      and sponsors; KKF confirms or sends back; KKF can record and confirm in one step; publishing needs confirmed,
+      unchanged details (owner choices 2026-10-13: Organizer records / KKF confirms; licence = number + date + file;
+      block publish only).
+- [x] Phase 5: titles chosen per fight night by the Organizer (or KKF), confirmed by KKF, needed for publishing when
+      any; title bouts off the list warn (owner choices 2026-10-13: several titles, warn only, publish waits, fan site
+      not now).
+- [ ] Phases 6–7: acceptance criteria written when each is approved.
 - [ ] Contract tests for every rule (pass and fail), role checks, and a `claude/tests/test-program-workflow.md`.

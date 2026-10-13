@@ -24,6 +24,9 @@ Shape: snake_case row (`weight_class` number, `defense_count`,
 `approval_status`).
 
 ## Business rules
+- A fight night lists the titles it puts on the line (`event_titles`, chosen by the Organizer or KKF, confirmed by
+  KKF through the agreements log); a title bout for a belt off that confirmed list gets a `title_list` warning —
+  `updates/fight-night-titles.md`. Deleting a belt removes it from fight nights' lists.
 - Titles change automatically through title match results; a corrected result moves the title and
   replays later title fights — see `claude/features/matches-results.md`.
 - `current_holder_name` is stored; the `*_db` fields come from the live fighter record.

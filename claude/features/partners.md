@@ -28,9 +28,13 @@ the public site.
 - Public: `pages/Partners.tsx` (`/strategic-partners`, tabs Official Sponsors · International Partners ·
   Broadcast Partners · Clubs & Gyms; sponsor / broadcaster / partner cards use the club-card layout:
   banner picture, logo on it, details), `SponsorDetailPage.tsx`, `BroadcastDetailPage.tsx`.
+- Broadcasters page, Super Admin only: each card lists the broadcaster's **Organizer accounts** and an
+  **Add organizer account** link to Users with the role and broadcaster filled in
+  (`updates/broadcaster-organizer-accounts.md`). Deleting a broadcaster unlinks its Organizers (they then see
+  only events they organize).
 
 ## Tests
-`api-tests/tests/settings.test.ts`
+`api-tests/tests/settings.test.ts`, `broadcaster-organizers.test.ts`
 
 ## Language
 The admin page follows the language button (English / Khmer); type, reach, tier and organisation type are

@@ -27,13 +27,18 @@ model User {
   official_grade String?  @db.VarChar(50)
   /// Referees and judges only: the year they started officiating.
   official_since Int?
+  /// Organizers only: the broadcaster (broadcast station) this account works for; several accounts per station.
+  broadcast_station_id String? @db.Uuid
   last_login    DateTime? @db.Timestamp(0)
   created_at    DateTime? @db.Timestamp(0)
   updated_at    DateTime? @db.Timestamp(0)
 
   club             Club?      @relation(fields: [club_id], references: [id], onUpdate: NoAction, map: "users_club_id_foreign")
+  broadcastStation BroadcastStation? @relation(fields: [broadcast_station_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "users_broadcast_station_id_foreign")
   organizedEvents  Event[]    @relation("EventOrganizer")
   approvedEvents   Event[]    @relation("EventApprover")
+  recordedAgreements  EventAgreement[] @relation("AgreementRecorder")
+  confirmedAgreements EventAgreement[] @relation("AgreementConfirmer")
   verifiedFighters Fighter[]  @relation("FighterVerifier")
   refereedMatches  Match[]    @relation("MatchReferee")
   clubAResponses   Match[]    @relation("MatchClubAResponder")
@@ -41,6 +46,7 @@ model User {
   createdSubEvents SubEvent[] @relation("SubEventCreator")
   hubLogs          HubLog[]   @relation("HubLogUser")
 
+  @@index([broadcast_station_id], map: "users_broadcast_station_id_index")
   @@map("users")
 }
 
@@ -188,7 +194,8 @@ model BroadcastStation {
   created_at     DateTime? @db.Timestamp(0)
   updated_at     DateTime? @db.Timestamp(0)
 
-  events Event[]
+  events     Event[]
+  organizers User[]
 
   @@map("broadcast_stations")
 }
@@ -259,6 +266,11 @@ model Event {
   expected_participants   Int       @default(8)
   /// KKF's comment when an event is sent back for changes; cleared on submit/approve.
   kkf_comment             String?
+  /// Licence / permit (claude/updates/offline-agreements-log.md): private, never in event responses.
+  licence_number          String?   @db.VarChar(100)
+  licence_date            DateTime? @db.Date
+  /// File name in UPLOAD_DIR/private (lib/files.ts storePrivateDocument), not a URL.
+  licence_document        String?   @db.VarChar(255)
 
   organizer        User              @relation("EventOrganizer", fields: [organizer_id], references: [id], onUpdate: NoAction, map: "events_organizer_id_foreign")
   kkfApprovedBy    User?             @relation("EventApprover", fields: [kkf_approved_by], references: [id], onUpdate: NoAction, map: "events_kkf_approved_by_foreign")
@@ -269,8 +281,53 @@ model Event {
   subEvents        SubEvent[]
   matches          Match[]
   championDefenses ChampionDefense[]
+  agreements       EventAgreement[]
+  titleLinks       EventTitle[]
 
   @@map("events")
+}
+
+/// Belts a fight night puts on the line (Program workflow phase 5, claude/updates/fight-night-titles.md).
+model EventTitle {
+  event_id    String @db.Uuid
+  champion_id String @db.Uuid
+
+  event    Event    @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "event_titles_event_id_foreign")
+  champion Champion @relation(fields: [champion_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "event_titles_champion_id_foreign")
+
+  @@id([event_id, champion_id])
+  @@index([champion_id], map: "event_titles_champion_id_index")
+  @@map("event_titles")
+}
+
+/// Offline agreements log (Program workflow phase 4, claude/updates/offline-agreements-log.md): one row each time an
+/// item of a fight night is recorded; never edited except to confirm or send back.
+model EventAgreement {
+  id           String    @id @db.Uuid
+  /// Order of recording (several rows can share a second).
+  seq          Int       @default(autoincrement())
+  event_id     String    @db.Uuid
+  /// details | sponsors
+  item         String    @db.VarChar(20)
+  /// waiting | confirmed | returned
+  status       String    @db.VarChar(20)
+  note         String?
+  /// The item's values when it was recorded; "confirmed" only counts while they still match.
+  snapshot     Json
+  recorded_by  String?   @db.Uuid
+  recorded_at  DateTime  @db.Timestamp(0)
+  confirmed_by String?   @db.Uuid
+  confirmed_at DateTime? @db.Timestamp(0)
+  /// KKF's reason when it was sent back.
+  kkf_comment  String?
+
+  event       Event @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "event_agreements_event_id_foreign")
+  recorder    User? @relation("AgreementRecorder", fields: [recorded_by], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "event_agreements_recorded_by_foreign")
+  confirmer   User? @relation("AgreementConfirmer", fields: [confirmed_by], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "event_agreements_confirmed_by_foreign")
+
+  @@index([event_id, item], map: "event_agreements_event_id_item_index")
+  @@index([status], map: "event_agreements_status_index")
+  @@map("event_agreements")
 }
 
 model EventSponsor {
@@ -415,6 +472,7 @@ model Champion {
   defenses     ChampionDefense[]
   titleMatches Match[]           @relation("MatchChampionship")
   changes      ChampionshipChange[]
+  eventLinks   EventTitle[]
 
   @@map("champions")
 }

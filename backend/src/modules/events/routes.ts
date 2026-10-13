@@ -3,10 +3,12 @@
  *
  *   GET    /events, /events/:id   public; newest date first
  *   POST   /events                Super Admin, KKF Officer, Organizer (becomes organizer; Organizer events start as Draft)
- *   PUT    /events/:id            Super Admin, KKF Officer; Organizer only their own events and
- *                                 status only → Published (once Approved) or Cancelled.
+ *   PUT    /events/:id            Super Admin, KKF Officer; Organizer only events it can see (its broadcaster's
+ *                                 or its own), only before publishing, and status only → Published (once
+ *                                 Approved) or Cancelled.
  *                                 Nobody can switch an event to Published while it has no bouts
- *                                 (claude/updates/publish-guard.md).
+ *                                 (claude/updates/publish-guard.md) or before KKF confirmed its details
+ *                                 (claude/updates/offline-agreements-log.md, agreements.ts).
  *   POST   /events/:id/submit     Organizer (own) or STAFF: Draft → Pending KKF Approval
  *   POST   /events/:id/approve    STAFF: Pending KKF Approval → Approved (records who/when)
  *   POST   /events/:id/reject     STAFF: Pending KKF Approval → Draft with a comment
@@ -21,19 +23,48 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../../db.ts";
-import type { Prisma } from "../../generated/prisma/client.ts";
+import type { Prisma, User } from "../../generated/prisma/client.ts";
 import { Role, STAFF, hasRole, requireAuth, requireRole } from "../../lib/auth.ts";
 import { micro, now, toDate } from "../../lib/dates.ts";
 import { HttpError, deleted, forbidden, idParam, notFound, ok } from "../../lib/http.ts";
 import { type Input, inputOf, parseBool } from "../../lib/input.ts";
 import { userArray } from "../auth/routes.ts";
 import { sponsorArray, stationArray } from "../settings/routes.ts";
+import { LOCKED_FOR_ORGANIZER, publishBlocker } from "./agreements.ts";
 
 const EDITORS = [...STAFF, Role.Organizer];
 
 /** Event statuses the public never sees (not yet published). */
 export const UNAPPROVED = ["Draft", "Pending KKF Approval", "Approved"];
 export const PUBLIC_EVENT = { status: { notIn: UNAPPROVED } } satisfies Prisma.EventWhereInput;
+
+/**
+ * Events a signed-in user may see (claude/updates/broadcaster-organizer-accounts.md): an Organizer sees only its
+ * broadcaster's events plus the events it organizes; everyone else signed in sees all; the public sees published ones.
+ */
+export function eventScope(user: User | null): Prisma.EventWhereInput {
+  if (!user) return PUBLIC_EVENT;
+  if (user.role !== Role.Organizer) return {};
+  return { OR: [{ organizer_id: user.id }, ...(user.broadcast_station_id ? [{ broadcast_station_id: user.broadcast_station_id }] : [])] };
+}
+
+/** Whether the user may see this event at all (an Organizer of another broadcaster may not). */
+export const canSeeEvent = (user: User | null, e: { status: string; organizer_id: string; broadcast_station_id: string | null }) =>
+  !user
+    ? !UNAPPROVED.includes(e.status)
+    : user.role !== Role.Organizer || e.organizer_id === user.id || (Boolean(user.broadcast_station_id) && e.broadcast_station_id === user.broadcast_station_id);
+
+/**
+ * An event's organizer and broadcaster always agree: an Organizer may organize only events of its own broadcaster.
+ * Returns the organizer id to save (`fallback` when the current one no longer fits after a broadcaster change).
+ */
+async function agreeingOrganizer(organizerId: string, stationId: string | null, explicit: boolean, fallback: string) {
+  const organizer = await prisma.user.findUnique({ where: { id: organizerId }, select: { role: true, broadcast_station_id: true } });
+  if (!organizer) throw new HttpError(422, "The selected organizer does not exist");
+  if (organizer.role !== Role.Organizer || organizer.broadcast_station_id === stationId) return organizerId;
+  if (explicit) throw new HttpError(422, "This organizer works for another broadcaster");
+  return fallback;
+}
 const PENDING = "Pending KKF Approval";
 
 export const eventRelations = {
@@ -128,7 +159,7 @@ async function loadEvent(id: string) {
 export default async function eventRoutes(app: FastifyInstance) {
   app.get("/events", async (request, reply) => {
     const events = await prisma.event.findMany({
-      where: request.user ? {} : PUBLIC_EVENT,
+      where: eventScope(request.user),
       include: eventRelations,
       orderBy: [{ date: "desc" }, { created_at: { sort: "desc", nulls: "last" } }],
     });
@@ -137,7 +168,7 @@ export default async function eventRoutes(app: FastifyInstance) {
 
   app.get("/events/:id", async (request, reply) => {
     const event = await loadEvent(idParam(request.params, "Event"));
-    if (!request.user && UNAPPROVED.includes(event.status)) throw notFound("Event");
+    if (!canSeeEvent(request.user, event)) throw notFound("Event");
     return ok(reply, formatEvent(event));
   });
 
@@ -161,7 +192,8 @@ export default async function eventRoutes(app: FastifyInstance) {
             // Organizers' events wait for KKF approval; staff may set any status.
             status: hasRole(user, STAFF) ? input.get("status", "Draft") : "Draft",
             organizer_id: user.id,
-            broadcast_station_id: input.get("broadcastStationId"),
+            // An Organizer's event always belongs to its own broadcaster.
+            broadcast_station_id: user.role === Role.Organizer ? user.broadcast_station_id : input.get("broadcastStationId"),
             description: input.get("description"),
             image: input.get("image"),
             main_sponsor_id: input.get("mainSponsorId"),
@@ -185,10 +217,15 @@ export default async function eventRoutes(app: FastifyInstance) {
       const id = idParam(request.params, "Event");
       const existing = await loadEvent(id);
       const staff = hasRole(user, STAFF);
-      if (!staff && existing.organizer_id !== user.id) throw forbidden();
+      if (!staff && !canSeeEvent(user, existing)) throw forbidden();
 
       const input = inputOf(request.body);
       if (!staff) {
+        // After publishing only KKF changes a fight night (the Organizer may still cancel / publish in approvals mode).
+        const changesMore = Object.keys((request.body ?? {}) as object).some((k) => k !== "status");
+        if (changesMore && LOCKED_FOR_ORGANIZER.includes(existing.status)) {
+          throw new HttpError(422, "This fight night is published — ask KKF to change it");
+        }
         const status = input.get<string>("status");
         if (status && status !== existing.status) {
           if (status === "Published" && existing.status !== "Approved") {
@@ -199,11 +236,15 @@ export default async function eventRoutes(app: FastifyInstance) {
           }
         }
         if (input.has("organizerId")) throw forbidden();
+        if (input.present("broadcastStationId") && input.get("broadcastStationId") !== existing.broadcast_station_id) throw forbidden();
       }
       // Publish guard: fans must never get an empty fight night.
       if (input.get<string>("status") === "Published" && existing.status !== "Published") {
         const bouts = await prisma.match.count({ where: { event_id: id } });
         if (bouts === 0) throw new HttpError(422, "Add at least one bout before publishing this fight night");
+        // Offline agreements log: KKF confirms the details (licence included), and the titles if any, first.
+        const blocker = await publishBlocker(id);
+        if (blocker) throw new HttpError(422, blocker);
       }
       const data: Prisma.EventUncheckedUpdateInput = input.pick({
         name: "name",
@@ -222,6 +263,13 @@ export default async function eventRoutes(app: FastifyInstance) {
       if (input.has("endDate")) data.end_date = toDate(input.get("endDate"));
       if (input.has("isTournament")) data.is_tournament = bool(input, "isTournament");
       if (input.has("expectedParticipants")) data.expected_participants = Number(input.get("expectedParticipants"));
+      // Broadcaster is optional: "" / null removes it (pick() skips empty values). The organizer must then still agree.
+      if (staff && (input.present("broadcastStationId") || input.has("organizerId"))) {
+        const station = input.present("broadcastStationId") ? (input.get<string>("broadcastStationId") ?? null) : existing.broadcast_station_id;
+        const organizerId = input.has("organizerId") ? String(input.get("organizerId")) : existing.organizer_id;
+        data.broadcast_station_id = station;
+        data.organizer_id = await agreeingOrganizer(organizerId, station, input.has("organizerId"), user.id);
+      }
       if (Object.keys(data).length > 0) data.updated_at = now();
 
       await prisma.$transaction([

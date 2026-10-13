@@ -29,8 +29,8 @@ import {
   revokeToken,
 } from "../../lib/auth.ts";
 import { iso, micro, now, sql } from "../../lib/dates.ts";
-import { HttpError, deleted, idParam, notFound, ok } from "../../lib/http.ts";
-import { inputOf } from "../../lib/input.ts";
+import { HttpError, deleted, idParam, isUuid, notFound, ok } from "../../lib/http.ts";
+import { type Input, inputOf } from "../../lib/input.ts";
 
 const BCRYPT_ROUNDS = 12;
 
@@ -43,6 +43,8 @@ export function formatUser(user: User) {
     email: user.email,
     role: user.role,
     clubId: user.club_id,
+    /** Organizers only: the broadcaster this account works for (claude/updates/broadcaster-organizer-accounts.md). */
+    broadcastStationId: user.broadcast_station_id,
     status: user.status,
     lastLogin: iso(user.last_login),
     createdAt: iso(user.created_at),
@@ -67,6 +69,19 @@ export function userArray(user: User) {
 
 export const hashPassword = (password: string) => bcrypt.hash(password, BCRYPT_ROUNDS);
 export const MIN_PASSWORD = 8;
+
+/**
+ * The broadcaster to save for a user: only an Organizer keeps one; "" / null clears it; an unknown station is a 422.
+ * Without `broadcastStationId` in the request the current one stays (while the user stays an Organizer).
+ */
+async function broadcasterFor(role: string, input: Input, current: string | null = null): Promise<string | null> {
+  if (role !== Role.Organizer) return null;
+  if (!input.present("broadcastStationId")) return current;
+  const id = input.get<string>("broadcastStationId");
+  if (!id) return null;
+  if (!isUuid(id) || !(await prisma.broadcastStation.count({ where: { id } }))) throw new HttpError(422, "The selected broadcaster does not exist");
+  return id;
+}
 
 async function findUser(id: string) {
   const user = await prisma.user.findUnique({ where: { id } });
@@ -169,6 +184,7 @@ export default async function authRoutes(app: FastifyInstance) {
           password_hash: await hashPassword(String(input.required("password"))),
           role: input.required("role"),
           club_id: input.get("clubId"),
+          broadcast_station_id: await broadcasterFor(String(input.required("role")), input),
           status: input.get("status", "Active"),
           created_at: at,
           updated_at: at,
@@ -198,6 +214,10 @@ export default async function authRoutes(app: FastifyInstance) {
         throw new HttpError(422, "You cannot remove your own Super Admin role");
       }
       if (input.has("password")) data.password_hash = await hashPassword(String(input.get("password")));
+      // Organizer ↔ broadcaster: kept, changed or cleared; any other role has none.
+      const role = String(data.role ?? existing.role);
+      const station = await broadcasterFor(role, input, existing.broadcast_station_id);
+      if (station !== existing.broadcast_station_id) data.broadcast_station_id = station;
       if (Object.keys(data).length > 0) data.updated_at = now();
 
       const user = await prisma.user.update({ where: { id }, data });

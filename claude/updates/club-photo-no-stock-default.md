@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-10-13, uncommitted) |
+| **Status** | Done (2026-10-13, committed f21fac21; not on the live pilot yet) |
 | **Jira** | n/a |
 | **Feature** | claude/features/clubs.md, claude/features/public-site.md |
 | **Requested by** | vannak070 (2026-10-13: "fix the AddClub stock photo bug") |

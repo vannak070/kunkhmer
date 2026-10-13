@@ -22,12 +22,15 @@ interface StaffUser {
   email: string;
   role: string;
   clubId: string | null;
+  /** Organizers only: the broadcaster (broadcast station) the account works for. */
+  broadcastStationId: string | null;
   status: string;
   lastLogin: string | null;
   createdAt: string | null;
 }
 
 interface Club { id: string; name: string }
+type Station = Club;
 
 /** Roles the API accepts, with a plain-language description for the picker and the guide. */
 /** `text` = the description in the dictionary; roles whose wording only applies with approvals on stay English. */
@@ -79,17 +82,21 @@ interface FormState {
   email: string;
   role: string;
   clubId: string;
+  broadcastStationId: string;
   password: string;
   active: boolean;
 }
 
-const emptyForm: FormState = { fullName: "", username: "", email: "", role: "KKF Officer", clubId: "", password: "", active: true };
+const emptyForm: FormState = { fullName: "", username: "", email: "", role: "KKF Officer", clubId: "", broadcastStationId: "", password: "", active: true };
 
-function UserDialog({ open, user, isSelf, clubs, onClose, onSaved, onDelete }: {
+function UserDialog({ open, user, prefill, isSelf, clubs, stations, onClose, onSaved, onDelete }: {
   open: boolean;
   user: StaffUser | null;
+  /** New account: role and broadcaster from the link (Broadcasters page "Add organizer account"). */
+  prefill: Partial<FormState>;
   isSelf: boolean;
   clubs: Club[];
+  stations: Station[];
   onClose: () => void;
   onSaved: (u: StaffUser) => void;
   onDelete: (u: StaffUser) => void;
@@ -106,8 +113,8 @@ function UserDialog({ open, user, isSelf, clubs, onClose, onSaved, onDelete }: {
     setErrors({});
     setShowPassword(false);
     setForm(user
-      ? { fullName: user.fullName, username: user.username, email: user.email, role: user.role, clubId: user.clubId ?? "", password: "", active: user.status === "Active" }
-      : { ...emptyForm, password: generatePassword() });
+      ? { fullName: user.fullName, username: user.username, email: user.email, role: user.role, clubId: user.clubId ?? "", broadcastStationId: user.broadcastStationId ?? "", password: "", active: user.status === "Active" }
+      : { ...emptyForm, ...prefill, password: generatePassword() });
   }, [open, user]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
@@ -119,6 +126,7 @@ function UserDialog({ open, user, isSelf, clubs, onClose, onSaved, onDelete }: {
     else if (/\s/.test(form.username.trim())) e.username = t("users.usernameSpaces");
     if (!EMAIL.test(form.email.trim())) e.email = t("users.badEmail");
     if (form.role === "Club/Gym" && !form.clubId) e.clubId = t("users.needClub");
+    if (form.role === "Organizer" && !form.broadcastStationId) e.broadcastStationId = t("users.needStation");
     if (!editing && form.password.length < MIN_PASSWORD) e.password = t("users.minPassword", { n: MIN_PASSWORD });
     if (editing && form.password && form.password.length < MIN_PASSWORD) e.password = t("users.minPassword", { n: MIN_PASSWORD });
     setErrors(e);
@@ -134,6 +142,7 @@ function UserDialog({ open, user, isSelf, clubs, onClose, onSaved, onDelete }: {
       email: form.email.trim(),
       role: form.role,
       clubId: form.role === "Club/Gym" ? form.clubId : null,
+      broadcastStationId: form.role === "Organizer" ? form.broadcastStationId : null,
     };
     try {
       let saved: StaffUser;
@@ -212,6 +221,21 @@ function UserDialog({ open, user, isSelf, clubs, onClose, onSaved, onDelete }: {
                 <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden />
               </div>
               <Err k="clubId" />
+            </div>
+          )}
+
+          {form.role === "Organizer" && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="u-station">{t("users.station")}</label>
+              <div className="relative">
+                <select id="u-station" className={`${field} ${border("broadcastStationId")} appearance-none pr-10`} value={form.broadcastStationId} onChange={(e) => set("broadcastStationId", e.target.value)}>
+                  <option value="">{t("users.pickStation")}</option>
+                  {stations.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden />
+              </div>
+              <Err k="broadcastStationId" />
+              <p className="mt-1 text-xs text-slate-500">{t("users.stationHint")}</p>
             </div>
           )}
 
@@ -305,6 +329,7 @@ export function UserManagement() {
   const { userId } = useParams();
   const [users, setUsers] = useState<StaffUser[] | null>(null);
   const [clubs, setClubs] = useState<Club[]>([]);
+  const [stations, setStations] = useState<Station[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [role, setRole] = useState("all");
@@ -322,6 +347,7 @@ export function UserManagement() {
   useEffect(() => {
     load();
     api.clubs.list().then((c: any[]) => setClubs((c || []).map((x) => ({ id: x.id, name: x.name })))).catch(() => setClubs([]));
+    api.settings.listBroadcastStations().then((s: any[]) => setStations((s || []).map((x) => ({ id: x.id, name: x.name })))).catch(() => setStations([]));
   }, []);
 
   // Old deep links (/user-management/new, /:id, /:id/edit) open the matching dialog.
@@ -355,6 +381,18 @@ export function UserManagement() {
   }, [users, query, role, status]);
 
   const clubName = (id: string | null) => (id ? clubs.find((c) => c.id === id)?.name : null);
+  const stationName = (id: string | null) => (id ? stations.find((s) => s.id === id)?.name : null);
+  // "/user-management/new?role=Organizer&station=<id>" opens Add user with these filled in.
+  const prefill = useMemo<Partial<FormState>>(() => {
+    const q = new URLSearchParams(location.search);
+    const r = q.get("role");
+    return ROLES.some((x) => x.value === r) ? { role: r!, broadcastStationId: q.get("station") ?? "" } : {};
+  }, [location.search]);
+  /** Club or broadcaster under the role badge. */
+  const RoleDetail = ({ u }: { u: StaffUser }) =>
+    u.role === "Club/Gym" ? <p className="text-xs text-slate-500 mt-1 truncate max-w-[180px]">{clubName(u.clubId) ?? t("users.noClub")}</p>
+      : u.role === "Organizer" ? <p className="text-xs text-slate-500 mt-1 truncate max-w-[180px]">{stationName(u.broadcastStationId) ?? t("users.noStation")}</p>
+      : null;
 
   const upsert = (saved: StaffUser) => {
     setUsers((list) => {
@@ -524,7 +562,7 @@ export function UserManagement() {
                     <td className="px-5 py-3.5 max-w-[320px]"><Person u={u} /></td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-md border ${roleTone(u.role)}`}>{roleLabel(u.role, t)}</span>
-                      {u.role === "Club/Gym" && <p className="text-xs text-slate-500 mt-1 truncate max-w-[180px]">{clubName(u.clubId) ?? t("users.noClub")}</p>}
+                      <RoleDetail u={u} />
                     </td>
                     <td className="px-5 py-3.5"><StatusPill u={u} /></td>
                     <td className="px-5 py-3.5 text-slate-600">{timeAgo(u.lastLogin, t, lang)}</td>
@@ -543,6 +581,7 @@ export function UserManagement() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-md border ${roleTone(u.role)}`}>{roleLabel(u.role, t)}</span>
                   <StatusPill u={u} />
+                  {(u.role === "Club/Gym" || u.role === "Organizer") && <span className="basis-full -mt-1"><RoleDetail u={u} /></span>}
                   <span className="text-xs text-slate-500">{t("users.lastSignIn", { when: timeAgo(u.lastLogin, t, lang) })}</span>
                 </div>
                 <div className="border-t border-slate-100 pt-2"><Actions u={u} /></div>
@@ -556,8 +595,10 @@ export function UserManagement() {
       <UserDialog
         open={dialog.open}
         user={dialog.user}
+        prefill={prefill}
         isSelf={dialog.user?.id === me?.id}
         clubs={clubs}
+        stations={stations}
         onClose={closeDialog}
         onSaved={upsert}
         onDelete={(u) => setConfirm({ kind: "delete", user: u })}

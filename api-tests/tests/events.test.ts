@@ -8,6 +8,8 @@ let sponsorIds: string[];
 beforeAll(async () => {
   a = await setupActors();
   stationId = (await post("/settings/broadcast-stations", { name: `Station ${uniq()}`, logoUrl: "https://example.com/s.png" }, a.admin.token)).body.data.id;
+  // The test organizer works for this broadcaster (an Organizer's events get its own broadcaster).
+  await put(`/users/${a.organizer.id}`, { broadcastStationId: stationId }, a.admin.token);
   sponsorIds = [
     (await post("/settings/sponsors", { name: `Sponsor ${uniq()}`, logoUrl: "https://example.com/a.png" }, a.admin.token)).body.data.id,
     (await post("/settings/sponsors", { name: `Sponsor ${uniq()}` }, a.admin.token)).body.data.id,
@@ -121,6 +123,7 @@ describe("event approval", () => {
     const empty = await put(`/events/${id}`, { status: "Published" }, a.organizer.token);
     expect(empty.status).toBe(422);
     await addBout(id);
+    await confirmDetails(id);
 
     const published = await put(`/events/${id}`, { status: "Published" }, a.organizer.token);
     expect(published.body.data.status).toBe("Published");
@@ -167,6 +170,12 @@ describe("events permissions", () => {
   });
 });
 
+/** KKF records and confirms the fight night details, licence included — needed before publishing. */
+async function confirmDetails(eventId: string) {
+  await put(`/events/${eventId}/licence`, { number: `L-${uniq()}`, date: "2026-10-01" }, a.admin.token);
+  expect((await post(`/events/${eventId}/agreements`, { item: "details" }, a.admin.token)).status).toBe(201);
+}
+
 /** A fight card with one bout on the event (two fresh fighters), created by the admin. */
 async function addBout(eventId: string) {
   const card = (await post("/matches/batches", { eventId, name: "Main card", weekNumber: 1, date: "2026-11-01", location: "Arena" }, a.admin.token)).body.data.id;
@@ -186,6 +195,7 @@ describe("publish guard", () => {
     expect((await get(`/events/${id}`)).status).toBe(404); // still hidden
 
     await addBout(id);
+    await confirmDetails(id);
     const published = await put(`/events/${id}`, { status: "Published" }, a.officer.token);
     expect(published.status).toBe(200);
     expect(published.body.data.status).toBe("Published");

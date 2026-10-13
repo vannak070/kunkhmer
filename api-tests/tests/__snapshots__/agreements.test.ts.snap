@@ -1,0 +1,117 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`recording and confirming > Organizer records the details (licence first), KKF confirms 1`] = `
+{
+  "body": {
+    "data": {
+      "confirmed_at": "null",
+      "confirmed_by": "null",
+      "confirmed_by_name": "null",
+      "event_id": "uuid",
+      "id": "uuid",
+      "item": "string",
+      "kkf_comment": "null",
+      "matches_current": "boolean",
+      "note": "string",
+      "recorded_at": "datetime(.000000Z)",
+      "recorded_by": "uuid",
+      "recorded_by_name": "string",
+      "snapshot": {
+        "broadcast_station_id": "uuid",
+        "date": "date",
+        "end_date": "null",
+        "licence_date": "date",
+        "licence_document": "boolean",
+        "licence_number": "string",
+        "location": "string",
+        "name": "string",
+      },
+      "status": "string",
+    },
+    "success": "boolean",
+  },
+  "status": 201,
+}
+`;
+
+exports[`recording and confirming > Organizer records the details (licence first), KKF confirms 2`] = `
+{
+  "body": {
+    "data": {
+      "items": {
+        "details": {
+          "agreement": {
+            "confirmed_at": "datetime(.000000Z)",
+            "confirmed_by": "uuid",
+            "confirmed_by_name": "string",
+            "event_id": "uuid",
+            "id": "uuid",
+            "item": "string",
+            "kkf_comment": "null",
+            "matches_current": "boolean",
+            "note": "string",
+            "recorded_at": "datetime(.000000Z)",
+            "recorded_by": "uuid",
+            "recorded_by_name": "string",
+            "snapshot": {
+              "broadcast_station_id": "uuid",
+              "date": "date",
+              "end_date": "null",
+              "licence_date": "date",
+              "licence_document": "boolean",
+              "licence_number": "string",
+              "location": "string",
+              "name": "string",
+            },
+            "status": "string",
+          },
+          "state": "string",
+        },
+        "sponsors": {
+          "agreement": "null",
+          "state": "string",
+        },
+        "titles": {
+          "agreement": "null",
+          "state": "string",
+        },
+      },
+      "licence": {
+        "date": "date",
+        "hasDocument": "boolean",
+        "number": "string",
+      },
+      "log": [
+        {
+          "confirmed_at": "datetime(.000000Z)",
+          "confirmed_by": "uuid",
+          "confirmed_by_name": "string",
+          "event_id": "uuid",
+          "id": "uuid",
+          "item": "string",
+          "kkf_comment": "null",
+          "matches_current": "null",
+          "note": "string",
+          "recorded_at": "datetime(.000000Z)",
+          "recorded_by": "uuid",
+          "recorded_by_name": "string",
+          "snapshot": {
+            "broadcast_station_id": "uuid",
+            "date": "date",
+            "end_date": "null",
+            "licence_date": "date",
+            "licence_document": "boolean",
+            "licence_number": "string",
+            "location": "string",
+            "name": "string",
+          },
+          "status": "string",
+        },
+      ],
+      "titles": [],
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;

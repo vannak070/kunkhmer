@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done in the working tree (2026-10-13), not committed |
+| **Status** | Done (2026-10-13, committed 6ef8e625; not on the live pilot yet) |
 | **Jira** | n/a |
 | **Feature** | claude/features/admin-pwa.md |
 | **Requested by** | vannak070 (2026-10-13: "improve login page") |

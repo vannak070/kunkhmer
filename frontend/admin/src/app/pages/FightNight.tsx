@@ -3,6 +3,8 @@
  * checklist, each fight card with its bouts (officials, weigh-in and result per bout) and four clear actions
  * per card: Add bout, Assign officials, Weigh-in, Results. English / Khmer. Replaces the old event page and
  * fight card page. See claude/updates/program-officer-friendly.md.
+ * Agreements panel (licence, what was agreed with the broadcaster, KKF confirmation) and Organizer access:
+ * claude/updates/offline-agreements-log.md.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
@@ -19,6 +21,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { EventNextSteps } from "../components/EventNextSteps";
 import { FightNightSteps } from "../components/program/FightNightSteps";
 import { FightNightFields, fightNightForm, fightNightPayload, fightNightReady } from "../components/program/FightNightFields";
+import { type Agreements, AgreementsPanel, LOCKED_FOR_ORGANIZER, agreementsReady } from "../components/program/AgreementsPanel";
 import {
   ConfirmDialog, FighterAvatar, LangSwitch, StatusChip, byCardOrder, displayStatus, hasResult, officialsComplete, resultText, weighState,
 } from "../components/program/shared";
@@ -42,6 +45,8 @@ export function FightNight() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [cards, setCards] = useState<any[]>([]);
   const [bouts, setBouts] = useState<any[]>([]);
+  // null = this account can't see the agreements (club, officials).
+  const [agreements, setAgreements] = useState<Agreements | null>(null);
   const [editing, setEditing] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -51,8 +56,14 @@ export function FightNight() {
   const load = async () => {
     try {
       // Only this fight night's cards and bouts, not the whole database.
-      const [ev, nightCards, nightBouts] = await Promise.all([api.events.get(id!), api.batches.list(id!), api.matches.listForEvent(id!)]);
+      const [ev, nightCards, nightBouts, agreed] = await Promise.all([
+        api.events.get(id!),
+        api.batches.list(id!),
+        api.matches.listForEvent(id!),
+        isStaff || me?.role === "Organizer" ? api.events.agreements(id!).catch(() => null) : Promise.resolve(null),
+      ]);
       setEvent(ev);
+      setAgreements(agreed);
       setLoadFailed(false);
       setCards(
         (nightCards as any[])
@@ -76,6 +87,8 @@ export function FightNight() {
   }, [event, location.hash]);
 
   const status = useMemo(() => (event ? displayStatus(event, bouts) : "Draft"), [event, bouts]);
+  // Organizers edit their broadcaster's fight night details (and record them) until it is published.
+  const canEditDetails = Boolean(event) && (canEdit || (permissions.hasPermission("events.record") && !LOCKED_FOR_ORGANIZER.includes(event.status)));
 
   const run = async (action: () => Promise<unknown>, message: string, after?: () => void) => {
     setBusy(true);
@@ -146,7 +159,7 @@ export function FightNight() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <LangSwitch />
-              {canEdit && (
+              {canEditDetails && (
                 <button type="button" onClick={() => setEditing(true)} className="inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:border-primary hover:text-primary">
                   <Pencil className="w-4 h-4" aria-hidden /> {t("night.editDetails")}
                 </button>
@@ -190,8 +203,10 @@ export function FightNight() {
       {APPROVALS_ENABLED ? (
         <EventNextSteps event={{ ...event, kkfStatus: event.status }} cards={legacyCards} canEdit={canEdit} onEditDetails={() => setEditing(true)} onAddFightCard={() => setAddingCard(true)} onChanged={load} />
       ) : (
-        <FightNightSteps event={event} cards={cards} bouts={bouts} canEdit={canEdit} isStaff={isStaff} onEditDetails={() => setEditing(true)} onAddFightCard={() => setAddingCard(true)} onChanged={load} />
+        <FightNightSteps event={event} cards={cards} bouts={bouts} canEdit={canEdit} canEditDetails={canEditDetails} isStaff={isStaff} detailsConfirmed={agreements ? agreementsReady(agreements) : undefined} onEditDetails={() => setEditing(true)} onAddFightCard={() => setAddingCard(true)} onChanged={load} />
       )}
+
+      {agreements && <AgreementsPanel event={event} data={agreements} isStaff={isStaff} onChanged={load} />}
 
       {/* Fight cards */}
       {cards.length === 0 ? (
@@ -227,7 +242,7 @@ export function FightNight() {
         </div>
       )}
 
-      {editing && <EditDetailsDialog event={event} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); load(); }} />}
+      {editing && <EditDetailsDialog event={event} isStaff={isStaff} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); load(); }} />}
       {addingCard && <AddCardDialog event={event} count={cards.length} onClose={() => setAddingCard(false)} onSaved={() => { setAddingCard(false); load(); }} />}
 
       <ConfirmDialog
@@ -395,7 +410,7 @@ function WeighPill({ m }: { m: any }) {
   );
 }
 
-function EditDetailsDialog({ event, onClose, onSaved }: { event: any; onClose: () => void; onSaved: () => void }) {
+function EditDetailsDialog({ event, isStaff, onClose, onSaved }: { event: any; isStaff: boolean; onClose: () => void; onSaved: () => void }) {
   const { t } = useT();
   const [form, setForm] = useState(() => fightNightForm(event));
   const [busy, setBusy] = useState(false);
@@ -407,7 +422,8 @@ function EditDetailsDialog({ event, onClose, onSaved }: { event: any; onClose: (
     }
     setBusy(true);
     try {
-      await api.events.update(event.id, fightNightPayload(form));
+      // Only KKF moves a fight night to another broadcaster.
+      await api.events.update(event.id, fightNightPayload(form, isStaff));
       toast.success(t("night.saved"));
       onSaved();
     } catch (e) {
@@ -423,7 +439,7 @@ function EditDetailsDialog({ event, onClose, onSaved }: { event: any; onClose: (
         <DialogHeader>
           <DialogTitle>{t("night.editDetails")}</DialogTitle>
         </DialogHeader>
-        <FightNightFields form={form} setForm={setForm} />
+        <FightNightFields form={form} setForm={setForm} lockStation={!isStaff} />
         <DialogFooter className="gap-2 sm:gap-2">
           <button type="button" onClick={onClose} className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">{t("common.cancel")}</button>
           <button type="button" disabled={busy} onClick={save} className="h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90 disabled:opacity-60">{busy ? t("common.saving") : t("common.save")}</button>

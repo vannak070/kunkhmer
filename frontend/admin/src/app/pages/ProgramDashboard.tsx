@@ -66,14 +66,14 @@ export function ProgramDashboard() {
         {/* Quick actions depending on active view */}
         <div className="flex items-center gap-3 self-end md:self-auto pl-10 md:pl-0">
           <LangSwitch />
+          {/* The Fight nights list has its own "New fight night" button. Organizers may create one too. */}
+          {activeTab === "overview" && permissions.hasAnyPermission(["events.create", "events.record"]) && (
+            <Link to="/home/events/new" className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90">
+              <Plus className="w-4 h-4" /> {t("list.new")}
+            </Link>
+          )}
           {permissions.hasPermission("events.create") && (
             <>
-              {/* The Fight nights list has its own "New fight night" button. */}
-              {activeTab === "overview" && (
-                <Link to="/home/events/new" className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90">
-                  <Plus className="w-4 h-4" /> {t("list.new")}
-                </Link>
-              )}
               {activeTab === "champions" && (
                 <Link to="/home/champion/new" className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90">
                   <Crown className="w-4 h-4" /> {t("ov.newTitle")}

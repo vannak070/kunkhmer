@@ -28,7 +28,8 @@ import { now, toDate } from "../../lib/dates.ts";
 import { HttpError, deleted, idParam, isUuid, notFound, ok } from "../../lib/http.ts";
 import { type Input, inputOf, parseBool } from "../../lib/input.ts";
 import { UNVERIFIED } from "../fighters/routes.ts";
-import { UNAPPROVED } from "../events/routes.ts";
+import { UNAPPROVED, eventScope } from "../events/routes.ts";
+import { titleListWarning } from "../events/agreements.ts";
 import { formatMatch, formatSubEvent, matchArray, matchRelations, subEventArray, subEventRelations, withoutWeighIn } from "./format.ts";
 import { enforceRules } from "./rules.ts";
 import { recalculateRecord, recordMatchResult } from "./results.ts";
@@ -124,7 +125,8 @@ export default async function matchRoutes(app: FastifyInstance) {
     const subEvents = await prisma.subEvent.findMany({
       where: {
         ...(eventId ? { event_id: eventId } : {}),
-        ...(request.user ? {} : { event: { status: { notIn: UNAPPROVED } } }),
+        // Public: published events only; an Organizer: its broadcaster's events only; other staff: all.
+        ...(request.user && request.user.role !== Role.Organizer ? {} : { event: eventScope(request.user) }),
       },
       include: subEventRelations,
       orderBy: [{ date: "desc" }, { created_at: { sort: "desc", nulls: "last" } }],
@@ -134,7 +136,7 @@ export default async function matchRoutes(app: FastifyInstance) {
 
   app.get("/matches/batches/:id", async (request, reply) => {
     const id = idParam(request.params, "Sub-event (batch)");
-    if (!request.user && (await prisma.subEvent.count({ where: { id, event: { status: { in: UNAPPROVED } } } }))) {
+    if ((request.user?.role === Role.Organizer || !request.user) && !(await prisma.subEvent.count({ where: { id, event: eventScope(request.user) } }))) {
       throw notFound("Sub-event (batch)");
     }
     return ok(reply, await loadSubEvent(id));
@@ -148,7 +150,9 @@ export default async function matchRoutes(app: FastifyInstance) {
       where: {
         ...(subEventId ? { sub_event_id: subEventId } : {}),
         ...(eventId ? { event_id: eventId } : {}),
-        ...(request.user ? {} : { event: { status: { notIn: UNAPPROVED } }, ...PUBLIC_BOUT }),
+        ...(!request.user
+          ? { event: { status: { notIn: UNAPPROVED } }, ...PUBLIC_BOUT }
+          : request.user.role === Role.Organizer ? { event: eventScope(request.user) } : {}),
       },
       include: matchRelations,
       orderBy: [{ sort_order: "asc" }, { created_at: { sort: "asc", nulls: "first" } }],
@@ -158,9 +162,10 @@ export default async function matchRoutes(app: FastifyInstance) {
 
   app.get("/matches/:id", async (request, reply) => {
     const id = idParam(request.params, "Match");
-    if (!request.user && !(await prisma.match.count({ where: { id, event: { status: { notIn: UNAPPROVED } }, ...PUBLIC_BOUT } }))) {
-      throw notFound("Match");
-    }
+    const visible = !request.user
+      ? { event: { status: { notIn: UNAPPROVED } }, ...PUBLIC_BOUT }
+      : request.user.role === Role.Organizer ? { event: eventScope(request.user) } : null;
+    if (visible && !(await prisma.match.count({ where: { id, ...visible } }))) throw notFound("Match");
     return ok(reply, withoutWeighIn(await loadMatch(id), Boolean(request.user)));
   });
 
@@ -243,6 +248,9 @@ export default async function matchRoutes(app: FastifyInstance) {
       if (fighterAId === fighterBId) throw new HttpError(422, "A bout needs two different fighters");
       await requireVerified([fighterAId, fighterBId]);
       const warnings = await enforceRules({ subEventId, fighterAId, fighterBId, agreedWeight: Number(input.required("agreedWeight")) });
+      // Title bout for a belt that isn't on the fight night's confirmed title list: warn (claude/updates/fight-night-titles.md).
+      const titleHit = await titleListWarning(eventId, input.get<string>("championshipId"));
+      if (titleHit) warnings.push(titleHit);
 
       // A new bout goes to both clubs; a side without a club is accepted already.
       const clubs = await prisma.fighter.findMany({ where: { id: { in: [fighterAId, fighterBId].filter(isUuid) } }, select: { id: true, club_id: true } });
@@ -334,6 +342,11 @@ export default async function matchRoutes(app: FastifyInstance) {
         const a = (data.club_a_response as string | undefined) ?? match.club_a_response;
         const b = (data.club_b_response as string | undefined) ?? match.club_b_response;
         data.proposal_status = proposalStatus(a, b);
+      }
+      const nextTitle = data.championship_id as string | null | undefined;
+      if (typeof nextTitle === "string" && nextTitle !== match.championship_id) {
+        const titleHit = await titleListWarning((data.event_id as string | undefined) ?? match.event_id, nextTitle);
+        if (titleHit) warnings.push(titleHit);
       }
       if (Object.keys(data).length > 0) data.updated_at = now();
       await prisma.match.update({ where: { id }, data });

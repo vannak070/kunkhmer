@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import {
-  CalendarCheck, CalendarDays, CalendarPlus, Clock, Megaphone, MessageSquareWarning, ChevronRight, ClipboardList, FilePenLine, Gavel, Layers, Newspaper,
+  CalendarCheck, CalendarDays, CalendarPlus, Clock, Handshake, Megaphone, MessageSquareWarning, ChevronRight, ClipboardList, FilePenLine, Gavel, Layers, Newspaper,
   PartyPopper, RefreshCw, ShieldCheck, Swords, Trophy, UserCheck, UserPlus, Users,
 } from "lucide-react";
 import { api } from "../utils/api";
@@ -33,6 +33,7 @@ interface Group {
 }
 
 const GROUPS: Group[] = [
+  { kind: "agreementWaiting", title: "Agreements waiting for KKF", hint: "An organizer recorded what was agreed offline. Confirm it, or send it back with a reason.", icon: Handshake, tone: "text-violet-700 bg-violet-50", action: "Review", text: { title: "todo.agreement.title", hint: "todo.agreement.hint", action: "todo.agreement.action" } },
   { kind: "eventApproval", title: "Events to approve", hint: "Organizers submitted these events. Approve them, or send them back with a comment.", icon: CalendarCheck, tone: "text-violet-700 bg-violet-50", action: "Review" },
   { kind: "eventSentBack", title: "Events sent back", hint: "KKF asked for changes. Fix them and submit again.", icon: MessageSquareWarning, tone: "text-amber-700 bg-amber-50", action: "Open event" },
   { kind: "readyToPublish", title: "Ready to publish", hint: "Approved by KKF but not visible to fans yet.", icon: Megaphone, tone: "text-emerald-700 bg-emerald-50", action: "Publish" },
@@ -146,7 +147,7 @@ export function Home() {
 
   const quick = [
     { label: isClub ? t("dash.q.registerFighter") : t("dash.q.addFighter"), href: "/home/fighters/kunkhmer/new", icon: UserPlus, show: permissions.hasPermission("fighters.create") },
-    { label: t("dash.q.event"), href: "/home/events/new", icon: CalendarPlus, show: permissions.hasPermission("events.create") },
+    { label: t("dash.q.event"), href: "/home/events/new", icon: CalendarPlus, show: permissions.hasAnyPermission(["events.create", "events.record"]) },
     { label: t("dash.q.card"), href: "/home/program?tab=events", icon: Layers, show: permissions.hasPermission("events.create") },
     { label: t("dash.q.news"), href: "/home/media/news", icon: Newspaper, show: canApprove },
     { label: t("dash.q.staff"), href: "/home/user-management", icon: Users, show: permissions.hasPermission("users.view") },

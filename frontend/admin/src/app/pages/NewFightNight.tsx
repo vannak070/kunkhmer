@@ -3,7 +3,8 @@
  * about text and poster. Saved as a draft; the main fight card can be created at the same time (on by default,
  * most fight nights have one). Then the fight-night page opens at its next step.
  * Replaces the old 2-step "Create New Event" form (categories, tournament options).
- * See claude/updates/program-simple-forms.md.
+ * See claude/updates/program-simple-forms.md. An Organizer creates its own broadcaster's fight night, without a
+ * fight card (KKF builds the program) — claude/updates/offline-agreements-log.md.
  */
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
@@ -17,8 +18,10 @@ import { FightNightFields, fightNightForm, fightNightReady, newFightNightPayload
 export function NewFightNight() {
   const { t } = useT();
   const navigate = useNavigate();
-  const [form, setForm] = useState(() => fightNightForm());
-  const [withCard, setWithCard] = useState(true);
+  const me = api.auth.getCurrentUser();
+  const isOrganizer = me?.role === "Organizer";
+  const [form, setForm] = useState(() => ({ ...fightNightForm(), broadcastStationId: isOrganizer ? me?.broadcastStationId ?? "" : "" }));
+  const [withCard, setWithCard] = useState(!isOrganizer);
   const [busy, setBusy] = useState(false);
 
   const save = async () => {
@@ -28,7 +31,7 @@ export function NewFightNight() {
     }
     setBusy(true);
     try {
-      const created = await api.events.create(newFightNightPayload(form));
+      const created = await api.events.create(newFightNightPayload(form, !isOrganizer));
       if (withCard) {
         try {
           await api.batches.create({ eventId: created.id, name: t("form.mainCard"), weekNumber: 1, date: form.date, location: form.location.trim() });
@@ -62,14 +65,14 @@ export function NewFightNight() {
       </header>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-7 space-y-6 shadow-sm">
-        <FightNightFields form={form} setForm={setForm} autoFocus />
-        <label className="flex items-start gap-3 rounded-xl bg-slate-50 border border-slate-200 p-4 cursor-pointer">
+        <FightNightFields form={form} setForm={setForm} autoFocus lockStation={isOrganizer} />
+        {!isOrganizer && <label className="flex items-start gap-3 rounded-xl bg-slate-50 border border-slate-200 p-4 cursor-pointer">
           <input type="checkbox" className="mt-1 w-5 h-5 accent-[var(--color-primary,#0A3D91)]" checked={withCard} onChange={(e) => setWithCard(e.target.checked)} />
           <span>
             <span className="block text-base font-semibold text-slate-900">{t("form.withCard")}</span>
             <span className="block text-sm text-slate-600">{t("form.withCardHint")}</span>
           </span>
-        </label>
+        </label>}
       </section>
 
       <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">

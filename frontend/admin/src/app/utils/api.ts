@@ -382,6 +382,46 @@ export const api = {
     async reject(id: string, comment: string) {
       const res = await request(`/events/${id}/reject`, { method: "POST", body: JSON.stringify({ comment }) });
       return res.data;
+    },
+    /** Offline agreements log + licence (claude/updates/offline-agreements-log.md): { licence, items, log }. */
+    async agreements(id: string) {
+      const res = await request(`/events/${id}/agreements`);
+      return res.data;
+    },
+    /** item: "details" | "sponsors". An Organizer's record waits for KKF; KKF staff record and confirm at once. */
+    async recordAgreement(id: string, item: string, note: string | null) {
+      const res = await request(`/events/${id}/agreements`, { method: "POST", body: JSON.stringify({ item, note }) });
+      return res.data;
+    },
+    async confirmAgreement(id: string, agreementId: string) {
+      const res = await request(`/events/${id}/agreements/${agreementId}/confirm`, { method: "POST" });
+      return res.data;
+    },
+    async returnAgreement(id: string, agreementId: string, comment: string) {
+      const res = await request(`/events/${id}/agreements/${agreementId}/return`, { method: "POST", body: JSON.stringify({ comment }) });
+      return res.data;
+    },
+    /** { number?, date?, document? } — document = base64 PDF / photo, "" removes it. */
+    async saveLicence(id: string, input: { number?: string | null; date?: string | null; document?: string }) {
+      const res = await request(`/events/${id}/licence`, { method: "PUT", body: JSON.stringify(input) });
+      return res.data;
+    },
+    /** The licence scan as a blob (it needs the token, so it can't be a plain link). */
+    async licenceDocument(id: string): Promise<Blob> {
+      const response = await fetch(`${API_BASE_URL}/events/${id}/licence/document`, { headers: getHeaders() });
+      sessionEnded(response);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.blob();
+    },
+    /** The belts this fight night puts on the line (replaces the list). */
+    async setTitles(id: string, titleIds: string[]) {
+      const res = await request(`/events/${id}/titles`, { method: "PUT", body: JSON.stringify({ titleIds }) });
+      return res.data;
+    },
+    /** KKF staff: records waiting for KKF across fight nights. */
+    async agreementsWaiting() {
+      const res = await request("/agreements/waiting");
+      return res.data;
     }
   },
 

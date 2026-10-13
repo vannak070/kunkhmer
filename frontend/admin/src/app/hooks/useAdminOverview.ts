@@ -12,7 +12,7 @@ import type { TextKey } from "../i18n/program";
 export type TodoKind =
   | "fighter" | "fighterSentBack" | "eventApproval" | "eventSentBack" | "readyToPublish"
   | "result" | "draftEvent" | "emptyEvent" | "unconfirmed" | "vacantTitle"
-  | "boutToAnswer" | "boutDeclined" | "boutWaiting" | "noOfficials";
+  | "boutToAnswer" | "boutDeclined" | "boutWaiting" | "noOfficials" | "agreementWaiting";
 
 export interface TodoItem {
   kind: TodoKind;
@@ -70,14 +70,16 @@ async function build(): Promise<Overview> {
   const isClub = role === "Club/Gym";
   // Referees and judges have no dashboard, so don't load it for them.
   const noDashboard = role === "Referee" || role === "Judge";
-  const [fighters, events, matches, champions, clubs] = noDashboard
-    ? [[], [], [], [], []]
+  const [fighters, events, matches, champions, clubs, waitingAgreements] = noDashboard
+    ? [[], [], [], [], [], []]
     : await Promise.all([
         api.fighters.list().catch(() => []),
         api.events.list().catch(() => []),
         api.matches.list().catch(() => []),
         api.champions.list().catch(() => []),
         api.clubs.list().catch(() => []),
+        // What Organizers recorded for KKF to confirm (claude/updates/offline-agreements-log.md).
+        isStaff ? api.events.agreementsWaiting().catch(() => []) : Promise.resolve([]),
       ]);
   const today = todayUtc();
   const todos: TodoItem[] = [];
@@ -173,6 +175,15 @@ async function build(): Promise<Overview> {
     }
   }
 
+  for (const r of waitingAgreements as any[]) {
+    todos.push({
+      kind: "agreementWaiting", id: `ag-${r.id}`, title: r.event_name,
+      detail: `${r.item === "details" ? "fight night details" : r.item === "titles" ? "titles" : "sponsors"} recorded by ${r.recorded_by_name ?? "the organizer"} · confirm or send back`,
+      info: { lead: [r.recorded_by_name], date: r.event_date ?? null, note: r.item === "details" ? "todo.note.agreementDetails" : r.item === "titles" ? "todo.note.agreementTitles" : "todo.note.agreementSponsors" },
+      href: `/home/events/${r.event_id}#agreements`, rank: 1,
+    });
+  }
+
   for (const c of (champions as any[]).filter((c) => isStaff && (c.approval_status ?? "approved") === "approved")) {
     if (c.status === "Vacant" || !c.current_holder_id) {
       todos.push({ kind: "vacantTitle", id: `t-${c.id}`, title: c.title_name, detail: "title is vacant · schedule a title bout", info: { note: "todo.note.vacant" }, href: `/home/champion/${c.id}/schedule-defense`, rank: 4 });
@@ -183,7 +194,7 @@ async function build(): Promise<Overview> {
   const counts = {
     fighter: 0, fighterSentBack: 0, eventApproval: 0, eventSentBack: 0, readyToPublish: 0,
     result: 0, draftEvent: 0, emptyEvent: 0, unconfirmed: 0, vacantTitle: 0,
-    boutToAnswer: 0, boutDeclined: 0, boutWaiting: 0, noOfficials: 0,
+    boutToAnswer: 0, boutDeclined: 0, boutWaiting: 0, noOfficials: 0, agreementWaiting: 0,
   } as Record<TodoKind, number>;
   for (const t of todos) counts[t.kind]++;
 

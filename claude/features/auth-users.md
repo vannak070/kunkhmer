@@ -14,7 +14,7 @@ Staff sign in to the admin system; Super Admins manage user accounts and roles.
 |---|---|
 | Super Admin | everything, incl. user management |
 | KKF Officer | federation staff: verify fighters, results, titles, content, partners |
-| Organizer | create/edit own events and their fight cards and bouts (becomes the event organizer); no fighter registration |
+| Organizer | works for one broadcaster (`broadcast_station_id`, several accounts per broadcaster): sees only that broadcaster's events, fight cards and bouts plus events it organizes (`updates/broadcaster-organizer-accounts.md`); read-only in the admin while approvals are off; in approvals mode creates/edits own events (which get its broadcaster); no fighter registration |
 | Club/Gym | tied to one club (`club_id`): manage own fighters, respond to own matches |
 | Referee, Judge | match officials (grade, year started); see "My bouts" only — managed by KKF staff on the Officials page (`officials.md`) |
 
@@ -27,12 +27,12 @@ Staff sign in to the admin system; Super Admins manage user accounts and roles.
 | PUT | `/users/me` | auth | edit own `fullName`, `email` only (role/status ignored) |
 | PUT | `/users/me/password` | auth | `{currentPassword, newPassword}`; 422 wrong current / < 8 chars; keeps this session, revokes the user's other tokens |
 | GET | `/users` | Super Admin | |
-| POST | `/users` | Super Admin | requires username, fullName, email, password, role; 201 |
+| POST | `/users` | Super Admin | requires username, fullName, email, password, role; 201. `broadcastStationId` kept only for role Organizer (unknown → 422) |
 | GET | `/users/:id` | Super Admin or self | |
-| PUT | `/users/:id` | Super Admin | password re-hashed if given; can't set own status to non-Active or own role away from Super Admin (422); a status change or password reset revokes that user's tokens |
+| PUT | `/users/:id` | Super Admin | password re-hashed if given; can't set own status to non-Active or own role away from Super Admin (422); a status change or password reset revokes that user's tokens; `broadcastStationId` (`""` clears), dropped when the role is no longer Organizer |
 | DELETE | `/users/:id` | Super Admin | not own account (422); revokes tokens |
 
-User shape (camelCase): `id, username, fullName, email, role, clubId, status, lastLogin, createdAt`.
+User shape (camelCase): `id, username, fullName, email, role, clubId, broadcastStationId, status, lastLogin, createdAt`.
 
 ## Data
 `users` (bcrypt `password_hash`), `personal_access_tokens` (token
@@ -49,9 +49,11 @@ User shape (camelCase): `id, username, fullName, email, role, clubId, status, la
   screens) and shows "Not available for your role"; signed-out visitors go to `/login`.
 - `pages/UserManagement.tsx` ("Staff accounts", Super Admin): real `/users` list with search,
   role and status filters, a roles guide, add/edit dialog (generated password, club picker
-  for Club/Gym, reset password, "Can sign in" toggle), Deactivate / Reactivate, and
+  for Club/Gym, required broadcaster picker for Organizer, reset password, "Can sign in" toggle), Deactivate / Reactivate, and
   "Delete permanently" (confirm) inside Edit. Old deep links `/user-management/new`,
-  `/:id`, `/:id/edit` open the dialog. You can't deactivate, demote or delete yourself.
+  `/:id`, `/:id/edit` open the dialog; `/user-management/new?role=Organizer&station=<id>` opens Add with the
+  role and broadcaster filled in (Broadcasters page "Add organizer account"). The list shows the club or
+  broadcaster under the role. You can't deactivate, demote or delete yourself.
 - `pages/Profile.tsx` ("My profile"): `/users/me`, edit name + email, change password, sign out.
 - `components/Layout.tsx`: light sidebar grouped (Competition, Content & partners,
   Administration), user card linking to My profile, phone menu drawer + "Menu" tab.

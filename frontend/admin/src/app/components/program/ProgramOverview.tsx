@@ -16,15 +16,33 @@ import { useAdminOverview, type TodoKind } from "../../hooks/useAdminOverview";
 import { formatDay, khmerDigits, useT } from "../../i18n/program";
 import { usePlaceName } from "../../hooks/useSettingsLists";
 import { FightNightSteps } from "./FightNightSteps";
+import { agreementsReady } from "./AgreementsPanel";
 import { StatusChip, dayOf, displayStatus, hasResult, nextStepText, todayUtc } from "./shared";
 
-const PROGRAM_TODOS: TodoKind[] = ["result", "noOfficials", "draftEvent", "emptyEvent", "unconfirmed", "vacantTitle"];
+const PROGRAM_TODOS: TodoKind[] = ["agreementWaiting", "result", "noOfficials", "draftEvent", "emptyEvent", "unconfirmed", "vacantTitle"];
 
 interface Data {
   events: any[];
   cards: any[];
   bouts: any[];
   titles: any[];
+}
+
+/** Upcoming fight nights (soonest first) and past ones still owing results (latest first). */
+function nights(data: Data) {
+  const today = todayUtc();
+  const live = data.events.filter((e) => e.status !== "Cancelled");
+  const upcoming = live.filter((e) => dayOf(e.date) >= today).sort((a, b) => dayOf(a.date) - dayOf(b.date));
+  const openPast = live
+    .filter((e) => dayOf(e.date) < today && data.bouts.some((b) => b.event_id === e.id && !hasResult(b)))
+    .sort((a, b) => dayOf(b.date) - dayOf(a.date));
+  return { upcoming, openPast };
+}
+
+/** Results still owed come first: they're the job after a fight night; otherwise the next one coming up. */
+function pickFocus(data: Data) {
+  const { upcoming, openPast } = nights(data);
+  return openPast[0] ?? upcoming[0] ?? null;
 }
 
 export function ProgramOverview() {
@@ -36,6 +54,8 @@ export function ProgramOverview() {
   const isStaff = me?.role === "Super Admin" || me?.role === "KKF Officer";
   const canEdit = permissions.hasPermission("events.edit");
   const canCreate = permissions.hasPermission("events.create");
+  // Organizers create their broadcaster's fight nights too (claude/updates/offline-agreements-log.md).
+  const canNewNight = permissions.hasAnyPermission(["events.create", "events.record"]);
   const { data: overview } = useAdminOverview();
 
   const [data, setData] = useState<Data | null>(null);
@@ -49,6 +69,16 @@ export function ProgramOverview() {
   };
   useEffect(load, []);
 
+  // Publishing waits for KKF to confirm the details (claude/updates/offline-agreements-log.md): ask for the focus night.
+  const [focusConfirmed, setFocusConfirmed] = useState<{ id: string; confirmed: boolean } | null>(null);
+  const focusId = data ? pickFocus(data)?.id : undefined;
+  useEffect(() => {
+    if (!focusId || !isStaff) return;
+    api.events.agreements(focusId)
+      .then((a: any) => setFocusConfirmed({ id: focusId, confirmed: agreementsReady(a) }))
+      .catch(() => setFocusConfirmed(null));
+  }, [focusId, isStaff]);
+
   if (failed) {
     return (
       <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center space-y-4">
@@ -61,16 +91,10 @@ export function ProgramOverview() {
     return <div className="rounded-2xl border border-slate-200 bg-white p-10 flex justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" aria-label={t("common.loading")} /></div>;
   }
 
-  const today = todayUtc();
   const cardsOf = (e: any) => data.cards.filter((c) => c.event_id === e.id);
   const boutsOf = (e: any) => data.bouts.filter((b) => b.event_id === e.id);
-  const live = data.events.filter((e) => e.status !== "Cancelled");
-  const upcoming = live.filter((e) => dayOf(e.date) >= today).sort((a, b) => dayOf(a.date) - dayOf(b.date));
-  const openPast = live
-    .filter((e) => dayOf(e.date) < today && boutsOf(e).some((b) => !hasResult(b)))
-    .sort((a, b) => dayOf(b.date) - dayOf(a.date));
-  // Results still owed come first: they're the job after a fight night; otherwise the next one coming up.
-  const focus = openPast[0] ?? upcoming[0] ?? null;
+  const { upcoming, openPast } = nights(data);
+  const focus = pickFocus(data);
   const comingUp = upcoming.filter((e) => e.id !== focus?.id).slice(0, 4);
 
   const todos = (overview?.todos ?? []).filter((x) => PROGRAM_TODOS.includes(x.kind));
@@ -104,6 +128,7 @@ export function ProgramOverview() {
             bouts={boutsOf(focus)}
             canEdit={canEdit}
             isStaff={isStaff}
+            detailsConfirmed={focusConfirmed?.id === focus.id ? focusConfirmed.confirmed : undefined}
             onEditDetails={openNight}
             onAddFightCard={openNight}
             onChanged={load}
@@ -113,7 +138,7 @@ export function ProgramOverview() {
         <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center space-y-3">
           <p className="text-xl font-bold text-slate-900">{t("ov.nothingTitle")}</p>
           <p className="text-base text-slate-600">{t("ov.nothingText")}</p>
-          {canCreate && (
+          {canNewNight && (
             <Link to="/home/events/new" className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90">
               <Plus className="w-4 h-4" aria-hidden /> {t("list.new")}
             </Link>

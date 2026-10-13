@@ -48,6 +48,8 @@ export function AddBout() {
   const [busy, setBusy] = useState(false);
   // Fighters with missing / expired private details (staff only) — a warning, never a block.
   const [gapById, setGapById] = useState<Map<string, any>>(new Map());
+  // The fight night's title list and whether KKF confirmed it (claude/updates/fight-night-titles.md); null = unknown.
+  const [nightTitles, setNightTitles] = useState<{ ids: string[]; confirmed: boolean } | null>(null);
 
   const load = async () => {
     try {
@@ -61,6 +63,9 @@ export function AddBout() {
       ]);
       setCard(c);
       api.fighters.privateSummary().then((rows) => setGapById(new Map(rows.map((r: any) => [r.fighterId, r])))).catch(() => {});
+      api.events.agreements(c.event_id)
+        .then((a: any) => setNightTitles({ ids: a.titles.map((x: any) => x.id), confirmed: a.items.titles.state === "confirmed" }))
+        .catch(() => setNightTitles(null));
       // Only registered (verified) fighters can be matched.
       setFighters((fs as any[]).filter((f) => f.status === "Active"));
       setTitles(cs);
@@ -81,9 +86,11 @@ export function AddBout() {
   const back = card ? `/home/events/${card.event_id}#card-${card.id}` : "/home/program?tab=events";
   const onCard = (f: any) => cardBouts.some((b) => b.fighter_a_id === f.id || b.fighter_b_id === f.id);
   const offWeight = (f: any) => { const kg = weightOf(f); return kg !== null && Math.abs(kg - weight) > WEIGHT_WARN_KG; };
+  // This fight night's titles first, then the closest weight.
+  const onNight = (id: string) => Boolean(nightTitles?.ids.includes(id));
   const titleOptions = useMemo(
-    () => [...titles].sort((a, b) => Math.abs(Number(a.weight_class) - weight) - Math.abs(Number(b.weight_class) - weight)),
-    [titles, weight],
+    () => [...titles].sort((a, b) => Number(onNight(b.id)) - Number(onNight(a.id)) || Math.abs(Number(a.weight_class) - weight) - Math.abs(Number(b.weight_class) - weight)),
+    [titles, weight, nightTitles],
   );
 
   const pickRed = (f: any | null) => {
@@ -146,6 +153,11 @@ export function AddBout() {
     ...(offWeight(f) ? [t("bout.warnWeight", { name: f.name, kg: weightOf(f), agreed: weight })] : []),
     ...(gapById.has(f.id) ? [t("pv.warnLine", { name: f.name, issues: issueTexts(gapById.get(f.id), t).join(", ") })] : []),
   ]);
+  // A title bout for a belt off the fight night's confirmed list: a warning, never a block (the API warns too).
+  if (isTitle && titleId && nightTitles) {
+    if (!onNight(titleId)) warnings.push(t("bout.warnTitleOff"));
+    else if (!nightTitles.confirmed) warnings.push(t("bout.warnTitleUnconfirmed"));
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
@@ -205,7 +217,7 @@ export function AddBout() {
             ) : (
               <select className={fieldCls} value={titleId} onChange={(e) => setTitleId(e.target.value)} aria-label={t("bout.whichTitle")}>
                 <option value="">{t("bout.whichTitle")}</option>
-                {titleOptions.map((c) => <option key={c.id} value={c.id}>{c.title_name}{c.current_holder_name_db ? ` — ${c.current_holder_name_db}` : ` — ${t("bout.vacant")}`}</option>)}
+                {titleOptions.map((c) => <option key={c.id} value={c.id}>{onNight(c.id) ? "★ " : ""}{c.title_name}{c.current_holder_name_db ? ` — ${c.current_holder_name_db}` : ` — ${t("bout.vacant")}`}</option>)}
               </select>
             )
           )}

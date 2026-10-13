@@ -13,13 +13,14 @@ venue, broadcaster and sponsors; KKF approves them.
 ## API (`backend/src/modules/events/routes.ts`)
 | Method | Path | Who | Notes |
 |---|---|---|---|
-| GET | `/events`, `/events/:id` | public | newest date first |
+| GET | `/events`, `/events/:id` | public | newest date first; public sees published only; an Organizer only its broadcaster's + its own events (others 404, `updates/broadcaster-organizer-accounts.md`) |
 | POST | `/events` | STAFF, Organizer | requires name, date, location; creator becomes organizer; Organizer events always start Draft; 201 |
-| PUT | `/events/:id` | STAFF; Organizer own events only | `sponsorIds` replaces the sponsor list; Organizer may set status only to Published (once Approved) or Cancelled (422 otherwise) |
+| PUT | `/events/:id` | STAFF; Organizer its broadcaster's / own events | `sponsorIds` replaces the sponsor list; Organizer may set status only to Published (once Approved) or Cancelled (422 otherwise), can't change organizer or broadcaster (403), and changes nothing else once Published / Completed / Cancelled (422) |
 | POST | `/events/:id/submit` | Organizer (own), STAFF | Draft → Pending KKF Approval; clears `kkf_comment` |
 | POST | `/events/:id/approve` | STAFF | Pending → Approved; sets `kkf_approval_date` / `kkf_approved_by` |
 | POST | `/events/:id/reject` | STAFF | `{comment}` required; Pending → Draft with `kkf_comment` |
-| DELETE | `/events/:id` | Super Admin | cascades to batches and matches |
+| DELETE | `/events/:id` | Super Admin | cascades to batches, matches and agreements |
+| … | `/events/:id/agreements[...]`, `/events/:id/licence[/document]`, `/agreements/waiting` | STAFF, Organizer | offline agreements log + private licence — `modules/events/agreements.ts`, `updates/offline-agreements-log.md` |
 
 Response: snake_case event row + nested `organizer`, `broadcast_station`,
 `main_sponsor`, `sponsors[]` (with `pivot`) + flat extras `organizer_name`,
@@ -60,4 +61,7 @@ sent back, and ready to publish.
 - Approval history keeps only the latest approval and the latest send-back
   comment (no full audit trail).
 
-Publish guard: an event can't be switched to Published while it has no bouts (422; `updates/publish-guard.md`).
+Publish guard: an event can't be switched to Published while it has no bouts (422; `updates/publish-guard.md`),
+nor before KKF confirmed its details and licence (422; `updates/offline-agreements-log.md`). Both apply to the
+PUT status change only (staff creating an event as Published skip them; the admin always creates Drafts).
+The licence (`licence_number`, `licence_date`, `licence_document`) is never part of an event response.
