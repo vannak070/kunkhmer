@@ -19,7 +19,7 @@ async function newOrganizer(stationId: string): Promise<Actor> {
 }
 
 const newFighter = async (extra: Record<string, unknown> = {}) =>
-  (await post("/fighters", { name: `Fighter ${uniq()}`, nameKhmer: "x", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, ...extra }, a.admin.token)).body.data.id as string;
+  (await post("/fighters", { name: `Fighter ${uniq()}`, nameKhmer: `x ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, ...extra }, a.admin.token)).body.data.id as string;
 
 const fighterOf = async (id: string) => (await get(`/fighters/${id}`, a.admin.token)).body.data;
 

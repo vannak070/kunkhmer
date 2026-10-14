@@ -52,8 +52,16 @@ await prisma.$transaction(async (tx) => {
   const champions = data.champions.map((c) => ({ ...c, winning_match_id: null }));
 
   for (const table of TABLES) {
-    const rows = table === "champions" ? champions : data[table];
+    let rows = table === "champions" ? champions : data[table];
     if (rows.length === 0) continue;
+    // Each fighter gets a KKF ID from the database's running number (claude/updates/fighter-kkf-id-optional-details.md);
+    // json_populate_recordset would otherwise insert NULL instead of using the column default.
+    if (table === "fighters") {
+      const ids = await tx.$queryRawUnsafe<{ id: string }[]>(
+        `SELECT kkf_next_id() AS id FROM generate_series(1, ${rows.length})`,
+      );
+      rows = rows.map((r, i) => ({ ...r, kkf_id: (r as Record<string, unknown>).kkf_id ?? ids[i].id }));
+    }
     // Table names come from the fixed list above; rows are passed as a parameter.
     await tx.$executeRawUnsafe(
       `INSERT INTO ${table} SELECT * FROM json_populate_recordset(NULL::${table}, $1::json)`,

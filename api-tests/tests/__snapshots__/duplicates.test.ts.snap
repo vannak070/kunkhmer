@@ -1,0 +1,45 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`duplicates list > lists the same English name and birth date as very likely, with the reasons and both records 1`] = `
+{
+  "body": {
+    "data": {
+      "counts": {
+        "dismissed": "number",
+        "open": "number",
+        "possible": "number",
+        "veryLikely": "number",
+      },
+      "items": [
+        {
+          "dismissed": "boolean",
+          "fighters": [
+            {
+              "bouts": "number",
+              "clubName": "null",
+              "currentWeight": "number",
+              "dateOfBirth": "date",
+              "hasIdNumber": "boolean",
+              "id": "uuid",
+              "image": "null",
+              "kkfId": "string",
+              "name": "string",
+              "nameKhmer": "string",
+              "nationality": "string",
+              "record": "null",
+              "registered": "date",
+              "status": "string",
+            },
+          ],
+          "key": "string",
+          "reasons": [
+            "string",
+          ],
+          "tier": "string",
+        },
+      ],
+    },
+  },
+  "status": 200,
+}
+`;

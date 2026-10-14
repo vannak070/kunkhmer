@@ -35,7 +35,7 @@ const newEvent = async (body: Record<string, unknown> = {}) =>
 async function newFighter(clubId: string) {
   const res = await post(
     "/fighters",
-    { name: `Fighter ${uniq()}`, nameKhmer: "x", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, clubId, grade: "B", image: "https://example.com/f.png", status: "Active" },
+    { name: `Fighter ${uniq()}`, nameKhmer: `x ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, clubId, grade: "B", image: "https://example.com/f.png", status: "Active" },
     a.admin.token,
   );
   return res.body.data.id as string;

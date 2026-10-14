@@ -15,7 +15,7 @@ beforeAll(async () => {
 async function fighter(record?: string) {
   const res = await post(
     "/fighters",
-    { name: `Rec ${uniq()}`, nameKhmer: "អ្នកប្រដាល់", dateOfBirth: "2000-01-01", currentWeight: 60, height: 170, clubId: a.clubId, ...(record === undefined ? {} : { record }) },
+    { name: `Rec ${uniq()}`, nameKhmer: `អ្នកប្រដាល់ ${uniq()}`, dateOfBirth: "2000-01-01", currentWeight: 60, height: 170, clubId: a.clubId, ...(record === undefined ? {} : { record }) },
     a.officer.token,
   );
   if (res.status !== 201) throw new Error(`fighter setup failed: ${JSON.stringify(res.body)}`);
@@ -74,7 +74,7 @@ describe("fighter records: career + results recorded here", () => {
     // Can't go below the results recorded here, and the format is checked.
     expect((await put(`/fighters/${red.id}`, { record: "0-0-0" }, a.officer.token)).status).toBe(422);
     expect((await put(`/fighters/${red.id}`, { record: "ten wins" }, a.officer.token)).status).toBe(422);
-    expect((await post("/fighters", { name: `Bad ${uniq()}`, nameKhmer: "x", dateOfBirth: "2000-01-01", currentWeight: 60, height: 170, record: "10/2/1" }, a.officer.token)).status).toBe(422);
+    expect((await post("/fighters", { name: `Bad ${uniq()}`, nameKhmer: `x ${uniq()}`, dateOfBirth: "2000-01-01", currentWeight: 60, height: 170, record: "10/2/1" }, a.officer.token)).status).toBe(422);
   });
 });
 

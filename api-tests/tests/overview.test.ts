@@ -8,7 +8,7 @@ const rules = { rounds: 3, roundTime: 3, knockdownLimit: 3, gloveSize: "10oz", g
 let eventId: string, cardId: string, fighters: string[], draft: string, rejected: string;
 
 const fighter = async (extra: Record<string, unknown> = {}) =>
-  (await post("/fighters", { name: `Overview Fighter ${uniq()}`, nameKhmer: "គុន", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, grade: "B", ...extra }, a.admin.token)).body.data.id as string;
+  (await post("/fighters", { name: `Overview Fighter ${uniq()}`, nameKhmer: `គុន ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, grade: "B", ...extra }, a.admin.token)).body.data.id as string;
 const ids = (rows: any[]) => rows.map((r) => r.id).sort();
 
 beforeAll(async () => {
@@ -18,7 +18,7 @@ beforeAll(async () => {
   fighters = [await fighter(), await fighter()];
   await post("/matches", { subEventId: cardId, fighterAId: fighters[0], fighterBId: fighters[1], agreedWeight: 60, ...rules }, a.admin.token);
   // A club registers fighters as Draft; one of them KKF sends back.
-  const byClub = async () => (await post("/fighters", { name: `Overview Draft ${uniq()}`, nameKhmer: "គុន", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, grade: "B" }, a.club.token)).body.data.id as string;
+  const byClub = async () => (await post("/fighters", { name: `Overview Draft ${uniq()}`, nameKhmer: `គុន ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, grade: "B" }, a.club.token)).body.data.id as string;
   draft = await byClub();
   rejected = await byClub();
   await post(`/fighters/${rejected}/reject`, { reason: "Photo missing" }, a.officer.token);

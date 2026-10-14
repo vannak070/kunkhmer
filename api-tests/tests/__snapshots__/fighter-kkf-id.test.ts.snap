@@ -1,0 +1,21 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`KKF ID > is unique: another fighter's number is refused, on create and on edit 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 422,
+}
+`;
+
+exports[`exact duplicates are refused > same Khmer name and birth date → 422 naming the fighter and its KKF ID 1`] = `
+{
+  "body": {
+    "error": "string",
+    "success": "boolean",
+  },
+  "status": 422,
+}
+`;

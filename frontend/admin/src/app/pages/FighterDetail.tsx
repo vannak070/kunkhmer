@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
-import { ArrowLeft, CalendarDays, Crown, MoreHorizontal, Pencil, PlayCircle, Swords, Trash2, Trophy } from "lucide-react";
+import { ArrowLeft, CalendarDays, Combine, Crown, MoreHorizontal, Pencil, PlayCircle, Swords, Trash2, Trophy } from "lucide-react";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { formatDay, useT } from "../i18n/program";
@@ -17,6 +17,7 @@ import { ConfirmDialog, DEFAULT_FIGHTER_AVATAR, LangSwitch } from "../components
 import { FighterReviewActions } from "../components/FighterReview";
 import { FighterStatusChip, RecordText } from "../components/fighters/FighterTable";
 import { PrivateDetailsView, issueTexts } from "../components/fighters/PrivateDetails";
+import { MergeFighterDialog } from "../components/fighters/MergeFighterDialog";
 import { nationalityLabel, withEventNames, ageOf, boutsOf, classFor, className, isRealPhoto, isUnverified, nextBout, opponentOf, outcomeFor, recordParts, weightOf, type Outcome } from "../components/fighters/fighterUtils";
 
 type Tab = "overview" | "fights" | "videos" | "titles" | "private";
@@ -31,6 +32,7 @@ export function FighterDetail() {
   const [tab, setTab] = useState<Tab>("overview");
   const [data, setData] = useState<{ fighter: any; bouts: any[]; classes: any[]; videos: any[]; titles: any[] } | null | undefined>(undefined);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [merging, setMerging] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   // Private details (ID / emergency contact / medical): KKF staff only — claude/features/fighter-personal-records.md
@@ -136,6 +138,7 @@ export function FighterDetail() {
               <FighterStatusChip status={f.status} />
             </div>
             {f.nameKhmer && <p lang="km" className="text-lg text-slate-700">{f.nameKhmer}</p>}
+            {f.kkfId && <p className="text-sm font-semibold tracking-wide text-primary" title={t("kkf.idHint")}>{f.kkfId}</p>}
             {f.alias && <p className="text-base text-slate-600">“{f.alias}”</p>}
             <p className="flex flex-wrap gap-x-5 gap-y-1 text-base text-slate-700">
               {f.clubId ? <Link to={`/home/clubs/${f.clubId}`} className="text-primary font-semibold hover:underline">{f.clubName}</Link> : <span className="text-slate-500">{t("f.noClub")}</span>}
@@ -153,16 +156,23 @@ export function FighterDetail() {
             {isUnverified(f.status) && isStaff && (
               <FighterReviewActions fighter={f} onDone={() => load()} />
             )}
-            {permissions.hasPermission("fighters.delete") && (
+            {(permissions.hasPermission("fighters.delete") || isStaff) && (
               <div className="relative">
                 <button type="button" onClick={() => setMoreOpen((o) => !o)} aria-expanded={moreOpen} aria-label={t("common.more")} className="inline-flex items-center justify-center w-11 h-11 rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-primary">
                   <MoreHorizontal className="w-5 h-5" aria-hidden />
                 </button>
                 {moreOpen && (
-                  <div className="absolute right-0 mt-2 w-52 rounded-xl border border-slate-200 bg-white shadow-lg z-20 py-1" onMouseLeave={() => setMoreOpen(false)}>
-                    <button type="button" onClick={() => { setMoreOpen(false); setConfirmDelete(true); }} className="w-full text-left px-4 py-2.5 text-sm text-red-700 hover:bg-red-50 inline-flex items-center gap-2">
-                      <Trash2 className="w-4 h-4" aria-hidden /> {t("fp.delete")}
-                    </button>
+                  <div className="absolute right-0 mt-2 w-64 rounded-xl border border-slate-200 bg-white shadow-lg z-20 py-1" onMouseLeave={() => setMoreOpen(false)}>
+                    {isStaff && (
+                      <button type="button" onClick={() => { setMoreOpen(false); setMerging(true); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-50 inline-flex items-center gap-2">
+                        <Combine className="w-4 h-4" aria-hidden /> {t("mg.menu")}
+                      </button>
+                    )}
+                    {permissions.hasPermission("fighters.delete") && (
+                      <button type="button" onClick={() => { setMoreOpen(false); setConfirmDelete(true); }} className="w-full text-left px-4 py-2.5 text-sm text-red-700 hover:bg-red-50 inline-flex items-center gap-2">
+                        <Trash2 className="w-4 h-4" aria-hidden /> {t("fp.delete")}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -282,6 +292,7 @@ export function FighterDetail() {
         onConfirm={remove}
         onClose={() => setConfirmDelete(false)}
       />
+      {merging && <MergeFighterDialog fighter={f} onClose={() => setMerging(false)} onDone={(keptId) => { setMerging(false); navigate(`/home/fighters/${keptId}`); }} />}
     </div>
   );
 }

@@ -30,7 +30,7 @@ const newNight = async () =>
 const agreements = async (id: string, token = a.officer.token) => (await get(`/events/${id}/agreements`, token)).body.data;
 
 const newFighter = async () =>
-  (await post("/fighters", { name: `Agreed ${uniq()}`, nameKhmer: "x", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170 }, a.admin.token)).body.data.id as string;
+  (await post("/fighters", { name: `Agreed ${uniq()}`, nameKhmer: `x ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170 }, a.admin.token)).body.data.id as string;
 
 /** A fight card with one bout on the event (extra bout fields, e.g. a title); returns the card id and the response. */
 async function addBout(eventId: string, extra: Record<string, unknown> = {}) {

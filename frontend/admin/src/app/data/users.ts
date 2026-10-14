@@ -33,6 +33,7 @@ const BASE_ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     // Phase 4: menu areas by role
     'dashboard.view',
     'officials.manage', // Officials page: add/edit referees and judges
+    'fighters.duplicates', // Duplicate fighters list: compare, merge or dismiss
     'officials.assign', // Assign referees and judges to bouts (API: KKF staff only)
     'content.manage', // Media (news, video)
     'partners.manage', // Broadcasters and sponsors
@@ -140,6 +141,7 @@ const BASE_ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     // Phase 4: menu areas by role
     'dashboard.view',
     'officials.manage', // Officials page: add/edit referees and judges
+    'fighters.duplicates', // Duplicate fighters list: compare, merge or dismiss
     'officials.assign', // Assign referees and judges to bouts (API: KKF staff only)
     'content.manage', // Media (news, video)
     'partners.manage', // Broadcasters and sponsors

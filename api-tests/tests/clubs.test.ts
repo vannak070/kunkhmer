@@ -82,7 +82,7 @@ describe("clubs CRUD", () => {
   it("lists and shows clubs publicly, with a fighter count", async () => {
     const { body } = await post("/clubs", fullClub(), a.officer.token);
     const id = body.data.id;
-    await post("/fighters", { name: "Counted", nameKhmer: "x", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, clubId: id }, a.admin.token);
+    await post("/fighters", { name: "Counted", nameKhmer: `x ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, clubId: id }, a.admin.token);
 
     const list = await get("/clubs");
     expect(list.status).toBe(200);
@@ -110,7 +110,7 @@ describe("clubs CRUD", () => {
     const { body } = await post("/clubs", { name: `Logo ${uniq()}`, logoUrl: png }, a.officer.token);
     expect(body.data.logo_url).toMatch(/^\/api\/files\/[0-9a-f]{64}\.gif$/);
 
-    const fighter = await post("/fighters", { name: `Logo fighter ${uniq()}`, nameKhmer: "x", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, clubId: body.data.id }, a.admin.token);
+    const fighter = await post("/fighters", { name: `Logo fighter ${uniq()}`, nameKhmer: `x ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, clubId: body.data.id }, a.admin.token);
     expect(fighter.body.data.clubLogo).toBe(body.data.logo_url);
 
     const cleared = await put(`/clubs/${body.data.id}`, { logoUrl: "" }, a.officer.token);

@@ -8,7 +8,7 @@ let fighterId: string;
 beforeAll(async () => {
   a = await setupActors();
   fighterId = (
-    await post("/fighters", { name: `Video Fighter ${uniq()}`, nameKhmer: "x", dateOfBirth: "2001-01-01", gender: "Male", currentWeight: 60, height: 170, clubId: a.clubId }, a.admin.token)
+    await post("/fighters", { name: `Video Fighter ${uniq()}`, nameKhmer: `x ${uniq()}`, dateOfBirth: "2001-01-01", gender: "Male", currentWeight: 60, height: 170, clubId: a.clubId }, a.admin.token)
   ).body.data.id;
 });
 

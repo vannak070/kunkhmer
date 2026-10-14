@@ -7,7 +7,7 @@ const tag = `Pg${uniq()}`;
 let clubId: string;
 const made: { id: string; name: string; kg: number; nationality: string; club: boolean }[] = [];
 
-const fighter = async (token: string, body: Record<string, unknown>) => (await post("/fighters", { nameKhmer: "គុន", dateOfBirth: "2000-01-01", gender: "Male", height: 170, grade: "B", ...body }, token)).body.data.id as string;
+const fighter = async (token: string, body: Record<string, unknown>) => (await post("/fighters", { nameKhmer: `គុន ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male", height: 170, grade: "B", ...body }, token)).body.data.id as string;
 const page = async (qs: string, token = a.admin.token) => (await get(`/fighters/page?${qs}`, token)).body.data;
 const all = async (qs: string) => {
   const out: any[] = [];
@@ -42,7 +42,7 @@ describe("fighters page", () => {
     const first = await page(`q=${tag}&limit=2`);
     expect(first.total).toBe(6);
     expect(first.items.map((f: any) => f.name)).toEqual([`${tag} Alpha`, `${tag} Bravo`]);
-    expect(first.items[0]).toMatchObject({ id: made[0].id, clubName: `${tag} Club`, nameKhmer: "គុន", currentWeight: 54 });
+    expect(first.items[0]).toMatchObject({ id: made[0].id, clubName: `${tag} Club`, nameKhmer: expect.stringContaining("គុន"), currentWeight: 54 });
     const second = await page(`q=${tag}&limit=2&offset=2`);
     expect(second.items.map((f: any) => f.name)).toEqual([`${tag} Charlie`, `${tag} Delta`]);
     const last = await page(`q=${tag}&limit=2&offset=4`);

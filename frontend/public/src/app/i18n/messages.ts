@@ -889,6 +889,7 @@ const en = {
   "home.statFighters": "Registered fighters",
   "home.statEvents": "Fight nights",
   "home.statPartners": "Official partners",
+  "home.statSponsors": "Official sponsors",
   "home.playVideo": "Play video",
 } as const;
 
@@ -1762,6 +1763,7 @@ const km: Messages = {
   "home.statFighters": "កីឡាករបានចុះឈ្មោះ",
   "home.statEvents": "រាត្រីប្រកួត",
   "home.statPartners": "ដៃគូផ្លូវការ",
+  "home.statSponsors": "អ្នកឧបត្ថម្ភផ្លូវការ",
   "home.playVideo": "ចាក់វីដេអូ",
 };
 

@@ -42,6 +42,7 @@ exports[`empty corners > creates a bout with an empty corner, keeps it off the f
         "height": "number",
         "id": "uuid",
         "image": "null",
+        "kkf_id": "string",
         "medical_status": "string",
         "name": "string",
         "name_khmer": "string",

@@ -52,7 +52,12 @@ export function AddFighter() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [priv, setPriv] = useState<PrivateForm>(emptyPrivate);
   // Possible same fighter, looked up while typing the names / date of birth.
+  // KKF ID: the system's next number is shown while registering; KKF staff may change it (kkfOrig = what the system proposed / stored).
+  const [kkfId, setKkfId] = useState("");
+  const [kkfOrig, setKkfOrig] = useState("");
   const [similar, setSimilar] = useState<any[]>([]);
+  // Same Khmer name AND same birth date: the same person (claude/updates/fighter-kkf-id-optional-details.md).
+  const exactTwin = similar.find((f) => f.reasons?.includes("same_name_khmer") && f.reasons?.includes("same_birth")) ?? null;
   const [askSame, setAskSame] = useState(false);
   useEffect(() => {
     const name = form.name.trim();
@@ -68,12 +73,27 @@ export function AddFighter() {
   const file = useRef<HTMLInputElement>(null);
   const me = api.auth.getCurrentUser();
   const isStaff = me?.role === "Super Admin" || me?.role === "KKF Officer";
+  // One ID number per fighter (claude/updates/fighter-id-merge.md): checked while typing, saving is blocked.
+  const [idTaken, setIdTaken] = useState<{ id: string; name: string; nameKhmer: string } | null>(null);
+  useEffect(() => {
+    const number = priv.idNumber.trim();
+    if (!isStaff || number.replace(/[^A-Za-z0-9]/g, "").length < 3) { setIdTaken(null); return; }
+    let live = true;
+    const timer = setTimeout(() => {
+      api.fighters.idCheck(number, editing ? id : null).then((r) => live && setIdTaken(r.fighter)).catch(() => live && setIdTaken(null));
+    }, 400);
+    return () => { live = false; clearTimeout(timer); };
+  }, [priv.idNumber]);
 
   useEffect(() => {
     api.clubs.list().then((c: any[]) => setClubs((c || []).filter((x) => x.status !== "inactive").sort((a, b) => a.name.localeCompare(b.name)))).catch(() => {});
-    if (!editing) return;
+    if (!editing) {
+      api.fighters.nextKkfId().then((n) => { setKkfId(n ?? ""); setKkfOrig(n ?? ""); }).catch(() => {});
+      return;
+    }
     if (isStaff) api.fighters.privateGet(id!).then((p: any) => setPriv(privateFromApi(p))).catch(() => toast.error(t("pv.loadFailed")));
     api.fighters.get(id!).then((f: any) => {
+      setKkfId(f.kkfId ?? ""); setKkfOrig(f.kkfId ?? "");
       const r = recordParts(f.record) ?? [0, 0, 0];
       setForm({
         name: f.name ?? "", nameKhmer: f.nameKhmer ?? "", alias: f.alias ?? "", nationality: f.nationality ?? "Cambodian", gender: f.gender ?? "Male",
@@ -116,16 +136,14 @@ export function AddFighter() {
     const cm = Number(form.height);
     if ((!foreign || form.height.trim()) && !(cm >= 100 && cm <= 250)) e.height = t("ff.heightRange");
     for (const k of ["wins", "losses", "draws"] as const) if (!/^\d+$/.test(form[k].trim())) e.record = t("ff.recordNumbers");
-    // A new fighter needs an ID number and an emergency contact; when editing, only a wrong email is refused.
+    // Personal details are optional; only a wrong email, or an ID number another fighter already has, is refused.
     if (isStaff) {
-      const p = validatePrivate(priv, t);
-      if (editing || foreign) {
-        delete p.idNumber;
-        delete p.emergencyName;
-        delete p.emergencyPhone;
-      }
-      Object.assign(e, p);
+      Object.assign(e, validatePrivate(priv, t));
+      if (idTaken) e.idNumber = t("pv.idTaken", { name: idTaken.name });
     }
+    if (isStaff && kkfId.trim() && !/^KKF-\d{4,12}$/i.test(kkfId.trim().replace(/\s+/g, ""))) e.kkfId = t("kkf.idBad");
+    // The same Khmer name and birth date as a registered fighter is refused (the server checks too).
+    if (!editing && exactTwin) e.nameKhmer = t("dup.exactBlock", { name: exactTwin.name, id: exactTwin.kkfId });
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -151,6 +169,8 @@ export function AddFighter() {
       style: form.styles.join(", "),
       province: form.province.trim(),
       image: form.image || null,
+      // Only when KKF staff changed the number the system proposed (or stored).
+      ...(isStaff && kkfId.trim() && kkfId.trim().toUpperCase() !== kkfOrig ? { kkfId: kkfId.trim() } : {}),
       // A new fighter's status is set by the server (active at once for KKF staff); staff change it when editing.
       ...(editing && isStaff ? { status: form.status } : {}),
     };
@@ -166,10 +186,12 @@ export function AddFighter() {
           return;
         }
       }
-      toast.success(editing ? t("ff.saved") : isUnverified(saved?.status) ? t("ff.createdDraft") : t("ff.created", { name: saved?.name ?? form.name }));
+      toast.success(editing ? t("ff.saved") : isUnverified(saved?.status) ? t("ff.createdDraft") : t("ff.created", { name: saved?.name ?? form.name }), saved?.kkfId ? { description: `${t("kkf.idLabel")}: ${saved.kkfId}` } : undefined);
       navigate(`/home/fighters/${saved?.id ?? id}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("common.error"));
+      const msg = err instanceof Error ? err.message : t("common.error");
+      if (/KKF ID/.test(msg)) setErrors((e) => ({ ...e, kkfId: msg }));
+      toast.error(msg);
       setBusy(false);
     }
   };
@@ -197,6 +219,18 @@ export function AddFighter() {
       </header>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-7 space-y-6 shadow-sm">
+        {/* KKF ID: shown while registering and given automatically; KKF staff can change it (claude/updates/fighter-kkf-id-optional-details.md) */}
+        <div className="rounded-xl border border-primary/20 bg-[#f5f8fd] px-4 py-3 space-y-1.5">
+          <label htmlFor="kkf-id" className="block text-sm font-semibold text-slate-800">{t("kkf.idLabel")}</label>
+          {isStaff ? (
+            <input id="kkf-id" className={`${fieldCls} font-bold tracking-wide text-primary max-w-xs`} value={kkfId} onChange={(e) => { setKkfId(e.target.value); setErrors((x) => ({ ...x, kkfId: "" })); }} placeholder={editing ? "" : t("kkf.idNew")} aria-invalid={Boolean(errors.kkfId)} autoComplete="off" />
+          ) : (
+            <p className="text-base font-bold tracking-wide text-primary">{editing ? (kkfId || "…") : t("kkf.idNew")}</p>
+          )}
+          {errors.kkfId && <span className="block text-sm text-red-700">{errors.kkfId}</span>}
+          <p className="text-xs text-slate-600">{isStaff ? t("kkf.idNoteStaff") : t("kkf.idNote")}</p>
+        </div>
+
         {/* Photo */}
         <div className="flex items-center gap-4">
           {isRealPhoto(form.image) ? <img src={form.image} alt="" className="w-24 h-24 rounded-2xl object-cover object-top bg-slate-100" /> : <span className="w-24 h-24 rounded-2xl bg-slate-100 inline-flex items-center justify-center text-slate-400"><ImagePlus className="w-7 h-7" aria-hidden /></span>}
@@ -215,6 +249,16 @@ export function AddFighter() {
           <label className="block">{label(t("ff.name"), true)}<input className={`${fieldCls} mt-1`} value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder="Sok Dara" />{err("name")}</label>
           <label className="block">{label(t("ff.nameKhmer"), !foreign)}<input lang="km" className={`${fieldCls} mt-1`} value={form.nameKhmer} onChange={(e) => set({ nameKhmer: e.target.value })} placeholder="សុខ ដារ៉ា" />{err("nameKhmer")}{foreign && !errors.nameKhmer && <span className="block text-xs text-slate-500 mt-1">{t("ff.khmerOptional")}</span>}</label>
         </div>
+
+        {exactTwin && (
+          <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm space-y-1">
+            <p className="font-semibold text-red-900">{editing ? t("dup.exactEdit") : t("dup.exactTitle")}</p>
+            <p className="text-red-950">
+              <Link to={`/home/fighters/${exactTwin.id}`} target="_blank" className="font-semibold underline">{lang === "km" && exactTwin.nameKhmer ? exactTwin.nameKhmer : exactTwin.name}</Link>
+              {" · "}{exactTwin.kkfId}{exactTwin.clubName ? ` · ${exactTwin.clubName}` : ""}
+            </p>
+          </div>
+        )}
 
         {similar.length > 0 && (
           <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm space-y-1.5">
@@ -307,7 +351,7 @@ export function AddFighter() {
         )}
       </section>
 
-      {isStaff && <PrivateFields form={priv} set={setPrivate} errors={errors} minor={minor} />}
+      {isStaff && <PrivateFields form={priv} set={setPrivate} errors={errors} minor={minor} idTaken={idTaken} />}
 
       <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
         <Link to={back} className="h-12 px-6 rounded-xl border border-slate-300 bg-white text-base font-semibold text-slate-700 hover:bg-slate-50 inline-flex items-center justify-center">{t("common.cancel")}</Link>

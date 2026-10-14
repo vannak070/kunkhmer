@@ -57,12 +57,12 @@ export function privateBody(f: PrivateForm): Record<string, unknown> {
   return body;
 }
 
-/** Required when registering a fighter: ID number and an emergency contact (owner, 2026-09-30). */
+/**
+ * Personal details are all optional (owner, 2026-10-14: every fighter gets a KKF ID, which is what stops duplicates).
+ * Only a wrong email is refused; missing ID / emergency contact still show as warnings on the lists.
+ */
 export function validatePrivate(f: PrivateForm, t: (k: TextKey, v?: any) => string): Record<string, string> {
   const e: Record<string, string> = {};
-  if (!f.idNumber.trim()) e.idNumber = t("pv.needId");
-  if (!f.emergencyName.trim()) e.emergencyName = t("pv.needEmName");
-  if (!f.emergencyPhone.trim()) e.emergencyPhone = t("pv.needEmPhone");
   if (f.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) e.email = t("pv.badEmail");
   return e;
 }
@@ -113,8 +113,8 @@ function ScanField({ label, value, onChange, hint }: { label: string; value: str
 }
 
 /** The form part: required ID + emergency contact first, everything else under "More details". */
-export function PrivateFields({ form, set, errors, minor }: { form: PrivateForm; set: (patch: Partial<PrivateForm>) => void; errors: Record<string, string>; minor: boolean }) {
-  const { t } = useT();
+export function PrivateFields({ form, set, errors, minor, idTaken = null }: { form: PrivateForm; set: (patch: Partial<PrivateForm>) => void; errors: Record<string, string>; minor: boolean; idTaken?: { id: string; name: string; nameKhmer?: string | null } | null }) {
+  const { t, lang } = useT();
   const label = (text: string, required = false) => <span className="text-sm font-semibold text-slate-800">{text}{required && " *"}</span>;
   const err = (k: string) => (errors[k] ? <span className="block text-sm text-red-700 mt-1">{errors[k]}</span> : null);
   const [more, setMore] = useState(false);
@@ -128,22 +128,29 @@ export function PrivateFields({ form, set, errors, minor }: { form: PrivateForm;
       <fieldset className="space-y-4">
         <legend className="text-sm font-bold text-slate-900">{t("pv.id")}</legend>
         <div className="grid sm:grid-cols-2 gap-5">
-          <label className="block">{label(t("pv.idType"), true)}
+          <label className="block">{label(t("pv.idType"))}
             <select className={`${fieldCls} mt-1`} value={form.idType} onChange={(e) => set({ idType: e.target.value })}>
               <option value="National ID">{t("pv.idt.national")}</option>
               <option value="Passport">{t("pv.idt.passport")}</option>
               <option value="Other">{t("pv.idt.other")}</option>
             </select>
           </label>
-          <label className="block">{label(t("pv.idNumber"), true)}<input className={`${fieldCls} mt-1`} value={form.idNumber} onChange={(e) => set({ idNumber: e.target.value })} />{err("idNumber")}</label>
+          <label className="block">{label(t("pv.idNumber"))}<input className={`${fieldCls} mt-1`} value={form.idNumber} onChange={(e) => set({ idNumber: e.target.value })} aria-invalid={Boolean(idTaken)} />
+            {/* One ID number per fighter (claude/updates/fighter-id-merge.md): the server refuses a number already used. */}
+            {idTaken ? (
+              <span role="alert" className="block text-sm text-red-700 mt-1">
+                {t("pv.idTaken", { name: lang === "km" && idTaken.nameKhmer ? idTaken.nameKhmer : idTaken.name })}{" "}
+                <Link to={`/home/fighters/${idTaken.id}`} target="_blank" className="font-semibold underline">{t("pv.idTakenOpen")}</Link>
+              </span>
+            ) : err("idNumber")}</label>
         </div>
       </fieldset>
 
       <fieldset className="space-y-4">
         <legend className="text-sm font-bold text-slate-900">{t("pv.emergency")}</legend>
         <div className="grid sm:grid-cols-3 gap-5">
-          <label className="block">{label(t("pv.emName"), true)}<input className={`${fieldCls} mt-1`} value={form.emergencyName} onChange={(e) => set({ emergencyName: e.target.value })} />{err("emergencyName")}</label>
-          <label className="block">{label(t("pv.emPhone"), true)}<input type="tel" inputMode="tel" className={`${fieldCls} mt-1`} value={form.emergencyPhone} onChange={(e) => set({ emergencyPhone: e.target.value })} />{err("emergencyPhone")}</label>
+          <label className="block">{label(t("pv.emName"))}<input className={`${fieldCls} mt-1`} value={form.emergencyName} onChange={(e) => set({ emergencyName: e.target.value })} />{err("emergencyName")}</label>
+          <label className="block">{label(t("pv.emPhone"))}<input type="tel" inputMode="tel" className={`${fieldCls} mt-1`} value={form.emergencyPhone} onChange={(e) => set({ emergencyPhone: e.target.value })} />{err("emergencyPhone")}</label>
           <label className="block">{label(t("pv.emRelation"))}<input className={`${fieldCls} mt-1`} value={form.emergencyRelation} onChange={(e) => set({ emergencyRelation: e.target.value })} /></label>
         </div>
       </fieldset>

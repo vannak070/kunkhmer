@@ -11,7 +11,7 @@ beforeAll(async () => {
 
 const fullFighter = (clubId: string | null = null) => ({
   name: `Fighter ${uniq()}`,
-  nameKhmer: "អ្នកប្រដាល់",
+  nameKhmer: `អ្នកប្រដាល់ ${uniq()}`,
   alias: "The Tiger",
   dateOfBirth: "2000-05-15",
   nationality: "Cambodian",
@@ -252,7 +252,7 @@ describe("foreign (guest) fighters (claude/features/weekly-program.md)", () => {
     expect(shown.body.data).toMatchObject({ dateOfBirth: null, height: null });
 
     expect((await post("/fighters", { name: `Khmer ${uniq()}`, nameKhmer: "ខ្មែរ", gender: "Male", currentWeight: 60, height: 170 }, a.admin.token)).status).toBe(422);
-    expect((await post("/fighters", { name: `Khmer ${uniq()}`, nameKhmer: "ខ្មែរ", gender: "Male", currentWeight: 60, dateOfBirth: "2000-01-01" }, a.admin.token)).status).toBe(422);
+    expect((await post("/fighters", { name: `Khmer ${uniq()}`, nameKhmer: `ខ្មែរ ${uniq()}`, gender: "Male", currentWeight: 60, dateOfBirth: "2000-01-01" }, a.admin.token)).status).toBe(422);
   });
 });
 

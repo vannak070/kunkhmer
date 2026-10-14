@@ -20,7 +20,7 @@ afterAll(async () => {
 });
 
 const fighter = async (kg = 60) =>
-  (await post("/fighters", { name: `Week Fighter ${uniq()}`, nameKhmer: "គុន", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: kg, height: 170, grade: "B" }, a.admin.token)).body.data.id as string;
+  (await post("/fighters", { name: `Week Fighter ${uniq()}`, nameKhmer: `គុន ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: kg, height: 170, grade: "B" }, a.admin.token)).body.data.id as string;
 // One venue per run, so clashes with earlier runs' matches in the same week don't show up here.
 const venue = `Studio ${uniq()}`;
 const event = async (body: Record<string, unknown>) => (await post("/events", { location: venue, ...body, name: `${body.name} ${uniq()}` }, a.admin.token)).body.data;
