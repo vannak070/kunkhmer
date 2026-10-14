@@ -1,0 +1,61 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`overview > gives staff the same events, bouts, to-do fighters and numbers as the lists 1`] = `
+{
+  "event": {
+    "date": "datetime(.000000Z)",
+    "id": "uuid",
+    "kkf_comment": "null",
+    "location": "string",
+    "name": "string",
+    "organizer_id": "uuid",
+    "organizer_name": "string",
+    "signed_off_at": "null",
+    "status": "string",
+  },
+  "fighter": {
+    "clubId": "uuid",
+    "clubName": "string",
+    "id": "uuid",
+    "name": "string",
+    "reviewNote": "null",
+    "status": "string",
+  },
+  "keys": [
+    "string",
+  ],
+  "match": {
+    "club_a_name": "null",
+    "club_a_note": "null",
+    "club_a_response": "string",
+    "club_b_name": "null",
+    "club_b_note": "null",
+    "club_b_response": "string",
+    "date": "date",
+    "event_id": "uuid",
+    "fighter_a": {
+      "club": "null",
+    },
+    "fighter_a_confirmed": "boolean",
+    "fighter_a_id": "uuid",
+    "fighter_a_name": "string",
+    "fighter_b": {
+      "club": "null",
+    },
+    "fighter_b_confirmed": "boolean",
+    "fighter_b_id": "uuid",
+    "fighter_b_name": "string",
+    "id": "uuid",
+    "judge_ids": [],
+    "proposal_status": "string",
+    "referee_id": "null",
+    "replacement_side": "null",
+    "result": "null",
+    "status": "string",
+    "sub_event_id": "uuid",
+    "winner_id": "null",
+    "winner_method": "null",
+    "winner_round": "null",
+  },
+}
+`;

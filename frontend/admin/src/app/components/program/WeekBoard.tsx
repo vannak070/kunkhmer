@@ -31,11 +31,25 @@ interface Props {
   onChanged?: () => void;
 }
 
-export function WeekBoard({ events, bouts, canCopy, onChanged }: Props) {
+export function WeekBoard({ events: parentEvents, bouts: parentBouts, canCopy, onChanged }: Props) {
   const { t, lang } = useT();
   const placeName = usePlaceName();
   const [start, setStart] = useState(() => mondayOf(todayUtc()));
   const [station, setStation] = useState("all");
+  // The week shown loads its own matches and bouts (any week, however old), not the whole history
+  // (claude/updates/admin-performance.md); the page's lists are the first paint and a reload trigger.
+  const [weekData, setWeekData] = useState<{ events: any[]; bouts: any[] } | null>(null);
+  useEffect(() => {
+    let live = true;
+    const from = new Date(start).toISOString().slice(0, 10);
+    const to = new Date(start + 6 * DAY).toISOString().slice(0, 10);
+    Promise.all([api.events.list({ from, to }), api.matches.list(undefined, { from, to })])
+      .then(([e, b]) => live && setWeekData({ events: e, bouts: b }))
+      .catch(() => live && setWeekData(null));
+    return () => { live = false; };
+  }, [start, parentEvents, parentBouts]);
+  const events = weekData?.events ?? parentEvents;
+  const bouts = weekData?.bouts ?? parentBouts;
   const [stations, setStations] = useState<any[]>([]);
   const [sponsors, setSponsors] = useState<any[]>([]);
 

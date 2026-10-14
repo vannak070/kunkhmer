@@ -1,25 +1,15 @@
 /**
- * Help (Phase 5): how the management system works, in English and Khmer — the real
- * steps built in Phases 3–4, what the signed-in role does, and common questions.
- * Replaces the old "Process Flow" page. The language choice is remembered per browser.
+ * Help: how the management system works, in English and Khmer — the words (Match, Bout, Titles), the steps of a match
+ * from creation to settlement, what the signed-in role does, and common questions. Uses the admin's language button.
+ * Rewritten for Matches, match day, withdrawals, sign-off and the week view: claude/updates/help-page-matches.md.
  */
-import { useState } from "react";
 import { Link } from "react-router";
-import { BookOpen, ChevronRight, HelpCircle, Languages, UserRound } from "lucide-react";
+import { BookOpen, ChevronRight, HelpCircle, UserRound } from "lucide-react";
 import { api } from "../utils/api";
-import { APPROVALS_ENABLED } from "../config/features";
+import { useT } from "../i18n/program";
+import { LangSwitch } from "../components/program/shared";
 
-type Lang = "en" | "km";
-type Text = Record<Lang, string>;
-
-const LANG_KEY = "kkf_help_lang";
-const readLang = (): Lang => {
-  try {
-    return localStorage.getItem(LANG_KEY) === "km" ? "km" : "en";
-  } catch {
-    return "en";
-  }
-};
+type Text = { en: string; km: string };
 
 const UI = {
   title: { en: "Help", km: "ជំនួយ" },
@@ -27,7 +17,8 @@ const UI = {
     en: "How the Kun Khmer management system works, and what you can do with your account.",
     km: "របៀបដែលប្រព័ន្ធគ្រប់គ្រងគុនខ្មែរដំណើរការ និងអ្វីដែលអ្នកអាចធ្វើបានជាមួយគណនីរបស់អ្នក។",
   },
-  journey: { en: "From event to result", km: "ពីព្រឹត្តិការណ៍ ដល់លទ្ធផល" },
+  words: { en: "Words used here", km: "ពាក្យដែលប្រើនៅទីនេះ" },
+  journey: { en: "A match from start to finish", km: "ការប្រកួតមួយ ពីដើមដល់ចប់" },
   fighters: { en: "Fighters", km: "អ្នកប្រដាល់" },
   yourRole: { en: "Your role", km: "តួនាទីរបស់អ្នក" },
   faq: { en: "Common questions", km: "សំណួរដែលសួរញឹកញាប់" },
@@ -39,111 +30,104 @@ const UI = {
   },
 } satisfies Record<string, Text>;
 
-const APPROVAL_STEPS: { who: Text; title: Text; body: Text }[] = [
-  {
-    who: { en: "Organizer", km: "អ្នករៀបចំ" },
-    title: { en: "Create the event", km: "បង្កើតព្រឹត្តិការណ៍" },
-    body: {
-      en: "Name, date, venue, broadcaster and sponsors. A new event is a draft that fans can't see. Submit it to KKF when it's ready.",
-      km: "ឈ្មោះ កាលបរិច្ឆេទ ទីកន្លែង ស្ថានីយផ្សាយ និងអ្នកឧបត្ថម្ភ។ ព្រឹត្តិការណ៍ថ្មីជាសេចក្តីព្រាង ដែលអ្នកគាំទ្រមើលមិនឃើញ។ ដាក់ជូន KKF នៅពេលរួចរាល់។",
-    },
-  },
-  {
-    who: { en: "KKF", km: "KKF" },
-    title: { en: "Approve and publish", km: "អនុម័ត និងផ្សព្វផ្សាយ" },
-    body: {
-      en: "KKF approves the event or sends it back with a comment. Once approved, the organizer publishes it and fans can see it. KKF staff can publish directly.",
-      km: "KKF អនុម័តព្រឹត្តិការណ៍ ឬបញ្ជូនត្រឡប់វិញជាមួយមតិយោបល់។ ក្រោយអនុម័ត អ្នករៀបចំផ្សព្វផ្សាយ ហើយអ្នកគាំទ្រអាចមើលឃើញ។ បុគ្គលិក KKF អាចផ្សព្វផ្សាយដោយផ្ទាល់។",
-    },
-  },
-  {
-    who: { en: "Organizer or KKF", km: "អ្នករៀបចំ ឬ KKF" },
-    title: { en: "Fight cards and bouts", km: "កម្មវិធីប្រកួត និងគូប្រកួត" },
-    body: {
-      en: "Add a fight card for each fight night, then its bouts: two verified fighters, weight, rounds and gloves. A rule preset fills the usual settings.",
-      km: "បន្ថែមកម្មវិធីប្រកួតសម្រាប់យប់ប្រកួតនីមួយៗ បន្ទាប់មកគូប្រកួត៖ អ្នកប្រដាល់ពីរនាក់ដែលបានផ្ទៀងផ្ទាត់ ទម្ងន់ ចំនួនទឹក និងស្រោមដៃ។ ច្បាប់គំរូបំពេញការកំណត់ទូទៅ។",
-    },
-  },
-  {
-    who: { en: "Clubs", km: "ក្លឹប" },
-    title: { en: "Clubs accept the bout", km: "ក្លឹបទទួលយកគូប្រកួត" },
-    body: {
-      en: "Each new bout goes to both fighters' clubs on Match Proposals. They accept, or decline with a reason — then the organizer changes the fighter. Fans see a bout only after both clubs accept.",
-      km: "គូប្រកួតថ្មីនីមួយៗ ត្រូវបានផ្ញើទៅក្លឹបរបស់អ្នកប្រដាល់ទាំងពីរ នៅទំព័រ «សំណើគូប្រកួត»។ ក្លឹបទទួលយក ឬបដិសេធដោយផ្តល់មូលហេតុ — ពេលនោះអ្នករៀបចំប្តូរអ្នកប្រដាល់។ អ្នកគាំទ្រមើលឃើញគូប្រកួត លុះត្រាតែក្លឹបទាំងពីរទទួលយក។",
-    },
-  },
-  {
-    who: { en: "KKF", km: "KKF" },
-    title: { en: "Referee and judges", km: "អាជ្ញាកណ្តាល និងចៅក្រម" },
-    body: {
-      en: "KKF assigns a referee and judges to each bout. The list shows how many bouts each official already has that night. Officials see their bouts under My bouts.",
-      km: "KKF ចាត់តាំងអាជ្ញាកណ្តាល និងចៅក្រមសម្រាប់គូប្រកួតនីមួយៗ។ បញ្ជីបង្ហាញថាមន្ត្រីម្នាក់ៗមានគូប្រកួតប៉ុន្មានរួចហើយនៅយប់នោះ។ មន្ត្រីមើលគូប្រកួតរបស់ខ្លួននៅ «គូប្រកួតរបស់ខ្ញុំ»។",
-    },
-  },
-  {
-    who: { en: "Organizer or KKF", km: "អ្នករៀបចំ ឬ KKF" },
-    title: { en: "Weigh-in", km: "ថ្លឹងទម្ងន់" },
-    body: {
-      en: "Record each fighter's weight on the fight card. A fighter within 1 kg of the agreed weight passes.",
-      km: "កត់ត្រាទម្ងន់អ្នកប្រដាល់ម្នាក់ៗនៅលើកម្មវិធីប្រកួត។ អ្នកប្រដាល់ដែលមានទម្ងន់ខុសពីទម្ងន់ព្រមព្រៀងមិនលើស ១ គីឡូក្រាម គឺជាប់។",
-    },
-  },
-  {
-    who: { en: "KKF", km: "KKF" },
-    title: { en: "Results", km: "លទ្ធផល" },
-    body: {
-      en: "KKF records the winner, method and round. Fighter records, title holders and the fan site update, and fans who follow the fighters are notified.",
-      km: "KKF កត់ត្រាអ្នកឈ្នះ វិធីឈ្នះ និងទឹក។ កំណត់ត្រាអ្នកប្រដាល់ ម្ចាស់ខ្សែក្រវាត់ និងគេហទំព័រអ្នកគាំទ្រ ត្រូវបានធ្វើបច្ចុប្បន្នភាព ហើយអ្នកគាំទ្រដែលតាមដានអ្នកប្រដាល់ទទួលបានការជូនដំណឹង។",
-    },
-  },
-];
-
 const KKF: Text = { en: "KKF", km: "KKF" };
 
-/** Officer-run flow (approvals off, config/features.ts): KKF staff do every step. */
-const OFFICER_STEPS: { who: Text; title: Text; body: Text }[] = [
+/** The words, so every screen and every conversation means the same thing. */
+const WORDS: { term: Text; meaning: Text }[] = [
+  { term: { en: "Match", km: "ការប្រកួត" }, meaning: { en: "One day of fights: a date, a venue and a TV station. Fans see it as one event.", km: "ថ្ងៃប្រកួតមួយ៖ កាលបរិច្ឆេទ ទីកន្លែង និងស្ថានីយទូរទស្សន៍។ អ្នកគាំទ្រឃើញវាជាព្រឹត្តិការណ៍មួយ។" } },
+  { term: { en: "Bout", km: "គូប្រកួត" }, meaning: { en: "One fight between two fighters (red corner and blue corner).", km: "ការប្រកួតមួយរវាងអ្នកប្រដាល់ពីរនាក់ (ជ្រុងក្រហម និងជ្រុងខៀវ)។" } },
+  { term: { en: "Fight card", km: "កម្មវិធីប្រកួត" }, meaning: { en: "The list of bouts of a match. Most matches have one, so the page only shows it when there are two.", km: "បញ្ជីគូប្រកួតរបស់ការប្រកួត។ ភាគច្រើនមានតែមួយ ដូច្នេះទំព័របង្ហាញវាតែនៅពេលមានពីរប៉ុណ្ណោះ។" } },
+  { term: { en: "Title", km: "ខ្សែក្រវាត់ជើងឯក" }, meaning: { en: "A championship belt and its champion. A title bout decides who holds it.", km: "ខ្សែក្រវាត់ជើងឯក និងម្ចាស់ជើងឯករបស់វា។ ការប្រកួតដណ្ដើមខ្សែក្រវាត់កំណត់ថាអ្នកណាកាន់វា។" } },
+  { term: { en: "Sign-off", km: "ការបញ្ជាក់ចុងក្រោយ" }, meaning: { en: "KKF confirms a match is finished: the results become official and are locked.", km: "KKF បញ្ជាក់ថាការប្រកួតបានបញ្ចប់៖ លទ្ធផលក្លាយជាផ្លូវការ និងត្រូវបានចាក់សោ។" } },
+];
+
+const STEPS: { who: Text; title: Text; body: Text }[] = [
   {
-    who: KKF,
-    title: { en: "Create the event", km: "បង្កើតព្រឹត្តិការណ៍" },
+    who: { en: "KKF or Organizer", km: "KKF ឬអ្នករៀបចំ" },
+    title: { en: "Create the match", km: "បង្កើតការប្រកួត" },
     body: {
-      en: "Name, date, venue, broadcaster and sponsors. A new event is a draft that fans can't see.",
-      km: "ឈ្មោះ កាលបរិច្ឆេទ ទីកន្លែង ស្ថានីយផ្សាយ និងអ្នកឧបត្ថម្ភ។ ព្រឹត្តិការណ៍ថ្មីជាសេចក្តីព្រាង ដែលអ្នកគាំទ្រមើលមិនឃើញ។",
+      en: "Press New match: a name, a date, a venue and the TV station are enough — the start time and sponsors can come later. You can also start from a saved show (Start from a show) or copy last week's match from the Week tab. A new match is a draft: fans can't see it.",
+      km: "ចុច «ការប្រកួតថ្មី»៖ ឈ្មោះ កាលបរិច្ឆេទ ទីកន្លែង និងស្ថានីយទូរទស្សន៍ គឺគ្រប់គ្រាន់ — ម៉ោងចាប់ផ្តើម និងអ្នកឧបត្ថម្ភអាចបន្ថែមពេលក្រោយ។ អ្នកក៏អាចចាប់ផ្តើមពីកម្មវិធីដែលបានរក្សាទុក ឬចម្លងការប្រកួតសប្តាហ៍មុនពីផ្ទាំង «សប្តាហ៍»។ ការប្រកួតថ្មីជាសេចក្តីព្រាង៖ អ្នកគាំទ្រមើលមិនឃើញ។",
+    },
+  },
+  {
+    who: { en: "Organizer sends, KKF confirms", km: "អ្នករៀបចំផ្ញើ KKF បញ្ជាក់" },
+    title: { en: "Agree", km: "ព្រមព្រៀង" },
+    body: {
+      en: "The match page lists what is agreed offline first: the match details, the sponsors and any title belts. The organizer presses Send to KKF; KKF presses Confirm (KKF staff can confirm directly). A match can only be published once its details are confirmed.",
+      km: "ទំព័រការប្រកួតរាយបញ្ជីអ្វីដែលព្រមព្រៀងគ្នានៅក្រៅប្រព័ន្ធជាមុន៖ ព័ត៌មានការប្រកួត អ្នកឧបត្ថម្ភ និងខ្សែក្រវាត់ (បើមាន)។ អ្នករៀបចំចុច «ផ្ញើទៅ KKF» ហើយ KKF ចុច «បញ្ជាក់» (បុគ្គលិក KKF អាចបញ្ជាក់ដោយផ្ទាល់)។ ការប្រកួតអាចផ្សព្វផ្សាយបាន លុះត្រាតែព័ត៌មានរបស់វាត្រូវបានបញ្ជាក់។",
     },
   },
   {
     who: KKF,
-    title: { en: "Fight cards and bouts", km: "កម្មវិធីប្រកួត និងគូប្រកួត" },
+    title: { en: "Add the bouts", km: "បន្ថែមគូប្រកួត" },
     body: {
-      en: "Add a fight card for each fight night, then its bouts: two active fighters, weight, rounds and gloves. A rule preset fills the usual settings. A bout is confirmed as soon as you add it.",
-      km: "បន្ថែមកម្មវិធីប្រកួតសម្រាប់យប់ប្រកួតនីមួយៗ បន្ទាប់មកគូប្រកួត៖ អ្នកប្រដាល់សកម្មពីរនាក់ ទម្ងន់ ចំនួនទឹក និងស្រោមដៃ។ ច្បាប់គំរូបំពេញការកំណត់ទូទៅ។ គូប្រកួតត្រូវបានបញ្ជាក់ភ្លាមៗ នៅពេលអ្នកបន្ថែម។",
+      en: "Press Add bouts: choose the red and the blue fighter (fighters near the agreed weight come first), the weight, the rules and the gloves. As soon as both fighters are chosen the KKF rules are checked, in plain words, with a button to fix each problem. Add several bouts saves time on a long card. A corner can stay empty (“to be announced” or “winner of bout 3”), and a foreign guest fighter needs no birth date.",
+      km: "ចុច «បន្ថែមគូប្រកួត»៖ ជ្រើសអ្នកប្រដាល់ជ្រុងក្រហម និងជ្រុងខៀវ (អ្នកដែលមានទម្ងន់ជិតទម្ងន់ព្រមព្រៀងមកមុន) ទម្ងន់ ច្បាប់ និងស្រោមដៃ។ ពេលជ្រើសអ្នកប្រដាល់ទាំងពីររួច ច្បាប់ KKF ត្រូវបានពិនិត្យភ្លាមៗ ជាពាក្យសាមញ្ញ ជាមួយប៊ូតុងដើម្បីកែបញ្ហានីមួយៗ។ «បន្ថែមគូប្រកួតច្រើន» សន្សំពេលនៅពេលមានគូច្រើន។ ជ្រុងមួយអាចទុកទំនេរ (“នឹងប្រកាស” ឬ “អ្នកឈ្នះគូទី ៣”) ហើយអ្នកប្រដាល់បរទេសអញ្ជើញមិនត្រូវការថ្ងៃខែឆ្នាំកំណើតទេ។",
     },
   },
-  APPROVAL_STEPS[4], // Referee and judges
+  {
+    who: KKF,
+    title: { en: "Referee and judges", km: "អាជ្ញាកណ្តាល និងចៅក្រម" },
+    body: {
+      en: "Assign a referee and three judges to each bout. The list shows how many bouts each official already has that day. Officials see their bouts under My bouts.",
+      km: "ចាត់តាំងអាជ្ញាកណ្តាលម្នាក់ និងចៅក្រមបីនាក់សម្រាប់គូប្រកួតនីមួយៗ។ បញ្ជីបង្ហាញថាមន្ត្រីម្នាក់ៗមានគូប្រកួតប៉ុន្មានរួចហើយនៅថ្ងៃនោះ។ មន្ត្រីមើលគូប្រកួតរបស់ខ្លួននៅ «គូប្រកួតរបស់ខ្ញុំ»។",
+    },
+  },
   {
     who: KKF,
     title: { en: "Publish", km: "ផ្សព្វផ្សាយ" },
     body: {
-      en: "When the fight card is ready, publish the event. Fans then see the event and its bouts.",
-      km: "នៅពេលកម្មវិធីប្រកួតរួចរាល់ សូមផ្សព្វផ្សាយព្រឹត្តិការណ៍។ បន្ទាប់មកអ្នកគាំទ្រមើលឃើញព្រឹត្តិការណ៍ និងគូប្រកួតរបស់វា។",
+      en: "When the card is ready, press Publish. Fans then see the match and its bouts. A match with no bouts, or whose details are not confirmed yet, can't be published — the page says why.",
+      km: "នៅពេលកម្មវិធីរួចរាល់ ចុច «ផ្សព្វផ្សាយ»។ បន្ទាប់មកអ្នកគាំទ្រមើលឃើញការប្រកួត និងគូប្រកួតរបស់វា។ ការប្រកួតដែលគ្មានគូប្រកួត ឬព័ត៌មានមិនទាន់បានបញ្ជាក់ មិនអាចផ្សព្វផ្សាយបានទេ — ទំព័រប្រាប់មូលហេតុ។",
     },
   },
-  { ...APPROVAL_STEPS[5], who: KKF }, // Weigh-in
-  APPROVAL_STEPS[6], // Results
+  {
+    who: KKF,
+    title: { en: "Match day", km: "ថ្ងៃប្រកួត" },
+    body: {
+      en: "On the day press Start match day. It shows one bout at a time with big buttons, made for a phone: first the weigh-in (a fighter within 1 kg of the agreed weight passes), then the result — who won, how, which round. Saving moves you to the next bout. Match day needs an internet connection.",
+      km: "នៅថ្ងៃប្រកួតចុច «ចាប់ផ្តើមថ្ងៃប្រកួត»។ វាបង្ហាញគូប្រកួតម្តងមួយ ជាមួយប៊ូតុងធំ សម្រាប់ទូរស័ព្ទ៖ ដំបូងថ្លឹងទម្ងន់ (អ្នកប្រដាល់ដែលមានទម្ងន់ខុសពីទម្ងន់ព្រមព្រៀងមិនលើស ១ គីឡូក្រាម គឺជាប់) បន្ទាប់មកលទ្ធផល — អ្នកណាឈ្នះ ដោយរបៀបណា ទឹកទីប៉ុន្មាន។ ការរក្សាទុកនាំអ្នកទៅគូបន្ទាប់។ ថ្ងៃប្រកួតត្រូវការអ៊ីនធឺណិត។",
+    },
+  },
+  {
+    who: { en: "KKF (Organizer before match day)", km: "KKF (អ្នករៀបចំមុនថ្ងៃប្រកួត)" },
+    title: { en: "If the plan changes", km: "បើផែនការផ្លាស់ប្តូរ" },
+    body: {
+      en: "A fighter can't fight: press Withdraw a fighter and give the reason. The bout stays on the card as “Replacement needed” until you choose a replacement who also passes the KKF rules — or cancel the bout. To move the match to another date press Postpone (the rules are checked again for every bout); Cancel match needs a reason. Fans only see “Postponed” or “Cancelled”, never the reason. Everything is listed under Changes on the match page.",
+      km: "អ្នកប្រដាល់ម្នាក់មិនអាចប្រកួតបាន៖ ចុច «ដកកីឡាករ» ហើយផ្តល់មូលហេតុ។ គូប្រកួតនៅតែមានក្នុងកម្មវិធីជា “ត្រូវការអ្នកជំនួស” រហូតដល់អ្នកជ្រើសអ្នកជំនួសដែលជាប់ច្បាប់ KKF ដែរ — ឬលុបចោលគូនោះ។ ដើម្បីប្តូរការប្រកួតទៅថ្ងៃផ្សេង ចុច «ពន្យារពេល» (ច្បាប់ត្រូវបានពិនិត្យម្តងទៀតសម្រាប់គូនីមួយៗ)។ «លុបចោលការប្រកួត» ត្រូវការមូលហេតុ។ អ្នកគាំទ្រឃើញតែ “បានពន្យារពេល” ឬ “បានលុបចោល” មិនឃើញមូលហេតុទេ។ អ្វីៗទាំងអស់មានក្នុង «ការផ្លាស់ប្ដូរ» នៅលើទំព័រការប្រកួត។",
+    },
+  },
+  {
+    who: KKF,
+    title: { en: "Results", km: "លទ្ធផល" },
+    body: {
+      en: "KKF records the winner, the method and the round. Fighter records, title holders and the fan site update, and fans who follow the fighters are notified.",
+      km: "KKF កត់ត្រាអ្នកឈ្នះ វិធីឈ្នះ និងទឹក។ កំណត់ត្រាអ្នកប្រដាល់ ម្ចាស់ខ្សែក្រវាត់ និងគេហទំព័រអ្នកគាំទ្រ ត្រូវបានធ្វើបច្ចុប្បន្នភាព ហើយអ្នកគាំទ្រដែលតាមដានអ្នកប្រដាល់ត្រូវបានជូនដំណឹង។",
+    },
+  },
+  {
+    who: KKF,
+    title: { en: "After the match", km: "ក្រោយការប្រកួត" },
+    body: {
+      en: "If someone disputes a result, record the dispute on the bout and resolve it later. When every result is in and no dispute is open, press Sign off: the results become official and are locked (only a Super Admin can correct one, with a reason). Then tick the broadcaster and each sponsor as settled.",
+      km: "ប្រសិនបើមាននរណាម្នាក់ជំទាស់លទ្ធផល សូមកត់ត្រាការជំទាស់នៅលើគូប្រកួត ហើយដោះស្រាយនៅពេលក្រោយ។ នៅពេលលទ្ធផលទាំងអស់មាន ហើយគ្មានការជំទាស់ដែលនៅបើក ចុច «បញ្ជាក់ចុងក្រោយ»៖ លទ្ធផលក្លាយជាផ្លូវការ និងត្រូវបានចាក់សោ (មានតែ Super Admin ទេដែលអាចកែ ដោយមានមូលហេតុ)។ បន្ទាប់មកធីកស្ថានីយផ្សាយ និងអ្នកឧបត្ថម្ភម្នាក់ៗថាបានទូទាត់។",
+    },
+  },
+  {
+    who: KKF,
+    title: { en: "The week and the program sheet", km: "សប្តាហ៍ និងសន្លឹកកម្មវិធី" },
+    body: {
+      en: "Matches › Week shows every match of the week by TV station and day, and flags clashes: a fighter booked twice, two shows at the same studio, a fighter over weight. Open a match and press Program sheet to print the official sheet; sign and stamp it by hand.",
+      km: "«ការប្រកួត › សប្តាហ៍» បង្ហាញរាល់ការប្រកួតក្នុងសប្តាហ៍តាមស្ថានីយ និងថ្ងៃ ហើយសម្គាល់ការជាន់គ្នា៖ អ្នកប្រដាល់ត្រូវបានកក់ពីរដង កម្មវិធីពីរនៅស្ទូឌីយោតែមួយ អ្នកប្រដាល់លើសទម្ងន់។ បើកការប្រកួតមួយ ហើយចុច «សន្លឹកកម្មវិធី» ដើម្បីបោះពុម្ពសន្លឹកផ្លូវការ ហើយចុះហត្ថលេខា និងបោះត្រាដោយដៃ។",
+    },
+  },
 ];
 
-const STEPS = APPROVALS_ENABLED ? APPROVAL_STEPS : OFFICER_STEPS;
-
-const OFFICER_FIGHTER_FLOW: Text = {
-  en: "KKF staff register fighters. A fighter you add is active straight away: it can be put in a bout and shown to fans. A fighter saved as Draft stays hidden until you activate it.",
-  km: "បុគ្គលិក KKF ចុះឈ្មោះអ្នកប្រដាល់។ អ្នកប្រដាល់ដែលអ្នកបន្ថែម ក្លាយជាសកម្មភ្លាមៗ៖ អាចដាក់ក្នុងគូប្រកួត និងបង្ហាញជូនអ្នកគាំទ្របាន។ អ្នកប្រដាល់ដែលរក្សាទុកជាសេចក្តីព្រាង នៅតែលាក់ រហូតដល់អ្នកធ្វើឱ្យសកម្ម។",
+const FIGHTER_FLOW: Text = {
+  en: "KKF staff register fighters. A fighter you add is active straight away: it can be put in a bout and shown to fans. A fighter saved as Draft stays hidden until you activate it. When you type a name that looks like a fighter already registered (even spelled differently, or in Khmer), you are asked to check first. A foreign guest fighter only needs a name.",
+  km: "បុគ្គលិក KKF ចុះឈ្មោះអ្នកប្រដាល់។ អ្នកប្រដាល់ដែលអ្នកបន្ថែម ក្លាយជាសកម្មភ្លាមៗ៖ អាចដាក់ក្នុងគូប្រកួត និងបង្ហាញជូនអ្នកគាំទ្រ។ អ្នកប្រដាល់ដែលរក្សាទុកជាសេចក្តីព្រាង នៅលាក់រហូតដល់អ្នកធ្វើឲ្យសកម្ម។ នៅពេលអ្នកវាយឈ្មោះដែលមើលទៅដូចអ្នកប្រដាល់ដែលបានចុះឈ្មោះរួចហើយ (សូម្បីសរសេរខុសគ្នា ឬជាភាសាខ្មែរ) អ្នកនឹងត្រូវបានស្នើឲ្យពិនិត្យមុន។ អ្នកប្រដាល់បរទេសអញ្ជើញ ត្រូវការតែឈ្មោះប៉ុណ្ណោះ។",
 };
-
-const APPROVAL_FIGHTER_FLOW: Text = {
-  en: "Clubs register their own fighters (KKF staff can too). KKF verifies each new fighter or sends it back with a reason; the club fixes it and it comes back to KKF. Only verified fighters can be put in a bout or shown to fans.",
-  km: "ក្លឹបចុះឈ្មោះអ្នកប្រដាល់របស់ខ្លួន (បុគ្គលិក KKF ក៏អាចធ្វើបាន)។ KKF ផ្ទៀងផ្ទាត់អ្នកប្រដាល់ថ្មីនីមួយៗ ឬបញ្ជូនត្រឡប់វិញដោយផ្តល់មូលហេតុ ហើយក្លឹបកែតម្រូវរួចបញ្ជូនមកវិញ។ មានតែអ្នកប្រដាល់ដែលបានផ្ទៀងផ្ទាត់ទេ ដែលអាចដាក់ក្នុងគូប្រកួត ឬបង្ហាញជូនអ្នកគាំទ្រ។",
-};
-
-const FIGHTER_FLOW = APPROVALS_ENABLED ? APPROVAL_FIGHTER_FLOW : OFFICER_FIGHTER_FLOW;
 
 type RoleKey = "Super Admin" | "KKF Officer" | "Organizer" | "Club/Gym" | "Official";
 const ROLE_NAMES: Record<RoleKey, Text> = {
@@ -154,48 +138,37 @@ const ROLE_NAMES: Record<RoleKey, Text> = {
   Official: { en: "Referee / Judge", km: "អាជ្ញាកណ្តាល / ចៅក្រម" },
 };
 
-const APPROVAL_KKF_TASKS: { text: Text; to?: string }[] = [
-  { text: { en: "Approve events or send them back with a comment.", km: "អនុម័តព្រឹត្តិការណ៍ ឬបញ្ជូនត្រឡប់វិញជាមួយមតិយោបល់។" }, to: "/home" },
-  { text: { en: "Verify new fighters, or send them back to the club.", km: "ផ្ទៀងផ្ទាត់អ្នកប្រដាល់ថ្មី ឬបញ្ជូនត្រឡប់ទៅក្លឹបវិញ។" }, to: "/home/fighters?status=waiting" },
-  { text: { en: "Assign referees and judges; keep the Officials list up to date.", km: "ចាត់តាំងអាជ្ញាកណ្តាល និងចៅក្រម ហើយធ្វើបច្ចុប្បន្នភាពបញ្ជីមន្ត្រី។" }, to: "/home/officials" },
-  { text: { en: "Answer a bout for a club (for example after a phone call).", km: "ឆ្លើយគូប្រកួតជំនួសក្លឹប (ឧទាហរណ៍ ក្រោយការហៅទូរស័ព្ទ)។" }, to: "/home/match-proposals" },
-  { text: { en: "Record results; manage clubs, partners, news and videos.", km: "កត់ត្រាលទ្ធផល គ្រប់គ្រងក្លឹប ដៃគូ ព័ត៌មាន និងវីដេអូ។" } },
+type Task = { text: Text; to?: string };
+
+const KKF_TASKS: Task[] = [
+  { text: { en: "Create matches, add bouts, assign officials and publish.", km: "បង្កើតការប្រកួត បន្ថែមគូប្រកួត ចាត់តាំងមន្ត្រី និងផ្សព្វផ្សាយ។" }, to: "/home/matches" },
+  { text: { en: "Run match day: weigh in the fighters and record each result, one bout at a time.", km: "ដំណើរការថ្ងៃប្រកួត៖ ថ្លឹងទម្ងន់អ្នកប្រដាល់ និងកត់ត្រាលទ្ធផលម្តងមួយគូ។" } },
+  { text: { en: "Withdraw or replace a fighter, postpone or cancel a match when the plan changes.", km: "ដក ឬជំនួសអ្នកប្រដាល់ ពន្យារពេល ឬលុបចោលការប្រកួតនៅពេលផែនការផ្លាស់ប្តូរ។" } },
+  { text: { en: "Sign off a finished match, record disputes and the settlement.", km: "បញ្ជាក់ចុងក្រោយការប្រកួតដែលបានបញ្ចប់ កត់ត្រាការជំទាស់ និងការទូទាត់។" } },
+  { text: { en: "See the week at a glance and print the program sheet.", km: "មើលសប្តាហ៍ទាំងមូលក្នុងមួយភ្លែត និងបោះពុម្ពសន្លឹកកម្មវិធី។" }, to: "/home/matches?tab=week" },
+  { text: { en: "Register fighters (active at once) and keep their profiles up to date.", km: "ចុះឈ្មោះអ្នកប្រដាល់ (សកម្មភ្លាមៗ) ហើយធ្វើបច្ចុប្បន្នភាពប្រវត្តិរូបរបស់ពួកគេ។" }, to: "/home/fighters" },
+  { text: { en: "Keep Titles, Clubs and the Officials list up to date.", km: "ធ្វើបច្ចុប្បន្នភាពខ្សែក្រវាត់ ក្លឹប និងបញ្ជីមន្ត្រី។" }, to: "/home/titles" },
 ];
 
-const OFFICER_KKF_TASKS: { text: Text; to?: string }[] = [
-  { text: { en: "Create events, fight cards and bouts, then publish the event.", km: "បង្កើតព្រឹត្តិការណ៍ កម្មវិធីប្រកួត និងគូប្រកួត រួចផ្សព្វផ្សាយព្រឹត្តិការណ៍។" }, to: "/home/matches" },
-  { text: { en: "Register fighters (they're active at once) and keep their profiles up to date.", km: "ចុះឈ្មោះអ្នកប្រដាល់ (សកម្មភ្លាមៗ) ហើយធ្វើបច្ចុប្បន្នភាពប្រវត្តិរូបរបស់ពួកគេ។" }, to: "/home/fighters/kunkhmer" },
-  APPROVAL_KKF_TASKS[2], // Assign referees and judges
-  APPROVAL_KKF_TASKS[4], // Record results; clubs, partners, news, videos
-];
-
-const KKF_TASKS = APPROVALS_ENABLED ? APPROVAL_KKF_TASKS : OFFICER_KKF_TASKS;
-
-const READ_ONLY_TASKS: { text: Text; to?: string }[] = [
-  { text: { en: "Your account is read-only for now: you can view events, fight cards and fighters. KKF staff make the changes.", km: "គណនីរបស់អ្នកអាចមើលបានតែប៉ុណ្ណោះនៅពេលនេះ៖ អ្នកអាចមើលព្រឹត្តិការណ៍ កម្មវិធីប្រកួត និងអ្នកប្រដាល់។ បុគ្គលិក KKF ជាអ្នកធ្វើការផ្លាស់ប្តូរ។" }, to: "/home/matches" },
-  { text: { en: "Ask KKF to add or change anything.", km: "សូមស្នើ KKF ដើម្បីបន្ថែម ឬផ្លាស់ប្តូរអ្វីមួយ។" } },
-];
-
-const ROLE_TASKS: Record<RoleKey, { text: Text; to?: string }[]> = {
+const ROLE_TASKS: Record<RoleKey, Task[]> = {
   "Super Admin": [
     ...KKF_TASKS,
     { text: { en: "Create and manage staff, organizer and club accounts.", km: "បង្កើត និងគ្រប់គ្រងគណនីបុគ្គលិក អ្នករៀបចំ និងក្លឹប។" }, to: "/home/user-management" },
-    { text: { en: "Edit the settings lists: weight classes, venues, bout rules and gloves.", km: "កែសម្រួលបញ្ជីការកំណត់៖ ថ្នាក់ទម្ងន់ ទីកន្លែង ច្បាប់ប្រកួត និងស្រោមដៃ។" }, to: "/home/settings" },
+    { text: { en: "Edit the settings lists (weight classes, venues, bout rules, gloves, shows) and the KKF matching rules. Correct a signed-off result, with a reason.", km: "កែសម្រួលបញ្ជីការកំណត់ (ថ្នាក់ទម្ងន់ ទីកន្លែង ច្បាប់ប្រកួត ស្រោមដៃ កម្មវិធី) និងច្បាប់ផ្គូផ្គង KKF។ កែលទ្ធផលដែលបានបញ្ជាក់ចុងក្រោយ ដោយមានមូលហេតុ។" }, to: "/home/settings" },
   ],
   "KKF Officer": [
     ...KKF_TASKS,
     { text: { en: "View the settings lists (only the Super Admin changes them).", km: "មើលបញ្ជីការកំណត់ (មានតែ Super Admin ទេដែលអាចកែប្រែ)។" }, to: "/home/settings" },
   ],
-  Organizer: !APPROVALS_ENABLED ? READ_ONLY_TASKS : [
-    { text: { en: "Create your events and submit them to KKF; publish them once approved.", km: "បង្កើតព្រឹត្តិការណ៍របស់អ្នក ហើយដាក់ជូន KKF រួចផ្សព្វផ្សាយក្រោយពេលអនុម័ត។" }, to: "/home/matches" },
-    { text: { en: "Add fight cards and bouts to your own events.", km: "បន្ថែមកម្មវិធីប្រកួត និងគូប្រកួតទៅព្រឹត្តិការណ៍របស់អ្នក។" } },
-    { text: { en: "Follow club answers; change the fighter when a club declines.", km: "តាមដានចម្លើយក្លឹប ហើយប្តូរអ្នកប្រដាល់នៅពេលក្លឹបបដិសេធ។" }, to: "/home/match-proposals" },
+  Organizer: [
+    { text: { en: "Create your broadcaster's matches (New match), then send the details, sponsors and titles to KKF to confirm.", km: "បង្កើតការប្រកួតរបស់ស្ថានីយអ្នក (ការប្រកួតថ្មី) រួចផ្ញើព័ត៌មាន អ្នកឧបត្ថម្ភ និងខ្សែក្រវាត់ទៅ KKF ដើម្បីបញ្ជាក់។" }, to: "/home/events/new" },
+    { text: { en: "Follow your matches: bouts, officials and results are shown to you; KKF adds them.", km: "តាមដានការប្រកួតរបស់អ្នក៖ គូប្រកួត មន្ត្រី និងលទ្ធផលត្រូវបានបង្ហាញជូនអ្នក KKF ជាអ្នកបន្ថែមវា។" }, to: "/home/matches" },
+    { text: { en: "Before match day you can withdraw a fighter, postpone or cancel your match; from match day only KKF can.", km: "មុនថ្ងៃប្រកួតអ្នកអាចដកអ្នកប្រដាល់ ពន្យារពេល ឬលុបចោលការប្រកួតរបស់អ្នក ចាប់ពីថ្ងៃប្រកួតមានតែ KKF ទេ។" } },
     { text: { en: "You can't register fighters, assign officials or record results — KKF does.", km: "អ្នកមិនអាចចុះឈ្មោះអ្នកប្រដាល់ ចាត់តាំងមន្ត្រី ឬកត់ត្រាលទ្ធផលបានទេ — KKF ជាអ្នកធ្វើ។" } },
   ],
-  "Club/Gym": !APPROVALS_ENABLED ? READ_ONLY_TASKS : [
-    { text: { en: "Register your fighters; KKF verifies them before they can fight.", km: "ចុះឈ្មោះអ្នកប្រដាល់របស់អ្នក ហើយ KKF ផ្ទៀងផ្ទាត់មុនពេលពួកគេអាចប្រកួត។" }, to: "/home/fighters/kunkhmer/new" },
-    { text: { en: "Fix fighters KKF sent back — saving sends them to KKF again.", km: "កែតម្រូវអ្នកប្រដាល់ដែល KKF បញ្ជូនត្រឡប់ — ការរក្សាទុកនឹងបញ្ជូនទៅ KKF ម្តងទៀត។" }, to: "/home" },
-    { text: { en: "Accept or decline bouts for your fighters, with a reason when you decline.", km: "ទទួលយក ឬបដិសេធគូប្រកួតសម្រាប់អ្នកប្រដាល់របស់អ្នក ដោយផ្តល់មូលហេតុនៅពេលបដិសេធ។" }, to: "/home/match-proposals" },
+  "Club/Gym": [
+    { text: { en: "Your account is read-only for now: you can view matches, bouts and fighters. KKF staff make the changes.", km: "គណនីរបស់អ្នកអាចមើលបានតែប៉ុណ្ណោះនៅពេលនេះ៖ អ្នកអាចមើលការប្រកួត គូប្រកួត និងអ្នកប្រដាល់។ បុគ្គលិក KKF ជាអ្នកធ្វើការផ្លាស់ប្តូរ។" }, to: "/home/matches" },
+    { text: { en: "Ask KKF to add or change anything.", km: "សូមស្នើ KKF ដើម្បីបន្ថែម ឬផ្លាស់ប្តូរអ្វីមួយ។" } },
   ],
   Official: [
     { text: { en: "See the bouts KKF assigned you: date, venue, fighters and rules.", km: "មើលគូប្រកួតដែល KKF បានចាត់តាំងអ្នក៖ កាលបរិច្ឆេទ ទីកន្លែង អ្នកប្រដាល់ និងច្បាប់។" }, to: "/home/my-bouts" },
@@ -203,45 +176,67 @@ const ROLE_TASKS: Record<RoleKey, { text: Text; to?: string }[]> = {
   ],
 };
 
-const ALL_FAQ: { q: Text; a: Text; roles?: RoleKey[]; approvalsOnly?: boolean }[] = [
+const ALL_FAQ: { q: Text; a: Text; roles?: RoleKey[] }[] = [
   {
     q: { en: "Why can't fans see a bout?", km: "ហេតុអ្វីអ្នកគាំទ្រមើលមិនឃើញគូប្រកួត?" },
     a: {
-      en: APPROVALS_ENABLED
-        ? "Fans see a bout only when its event is published and both clubs accepted it (or it already has a result)."
-        : "Fans see a bout once its event is published (or once the bout has a result).",
-      km: APPROVALS_ENABLED
-        ? "អ្នកគាំទ្រមើលឃើញគូប្រកួត លុះត្រាតែព្រឹត្តិការណ៍ត្រូវបានផ្សព្វផ្សាយ ហើយក្លឹបទាំងពីរបានទទួលយក (ឬមានលទ្ធផលរួចហើយ)។"
-        : "អ្នកគាំទ្រមើលឃើញគូប្រកួត នៅពេលព្រឹត្តិការណ៍ត្រូវបានផ្សព្វផ្សាយ (ឬនៅពេលគូប្រកួតមានលទ្ធផលរួចហើយ)។",
+      en: "Fans see a bout once its match is published. They don't see a bout that is cancelled or waiting for a replacement. Results show as “Official” once KKF has signed the match off.",
+      km: "អ្នកគាំទ្រមើលឃើញគូប្រកួត នៅពេលការប្រកួតត្រូវបានផ្សព្វផ្សាយ។ ពួកគេមិនឃើញគូដែលត្រូវបានលុបចោល ឬកំពុងរង់ចាំអ្នកជំនួសទេ។ លទ្ធផលបង្ហាញជា “ផ្លូវការ” នៅពេល KKF បានបញ្ជាក់ចុងក្រោយការប្រកួត។",
     },
     roles: ["Super Admin", "KKF Officer", "Organizer", "Club/Gym"],
   },
   {
-    q: { en: "Why can't I pick a fighter for a bout?", km: "ហេតុអ្វីខ្ញុំមិនអាចជ្រើសអ្នកប្រដាល់សម្រាប់គូប្រកួតបាន?" },
+    q: { en: "A red box says two fighters can't fight yet. What do I do?", km: "ប្រអប់ក្រហមប្រាប់ថាអ្នកប្រដាល់ទាំងពីរមិនទាន់អាចប្រកួតបាន។ ត្រូវធ្វើអ្វី?" },
     a: {
-      en: APPROVALS_ENABLED
-        ? "Only fighters KKF has verified can be matched. Look for fighters waiting for verification on the Fighters page."
-        : "Only active fighters can be matched. Draft fighters are marked on the Fighters page — open one and press Activate.",
-      km: APPROVALS_ENABLED
-        ? "មានតែអ្នកប្រដាល់ដែល KKF បានផ្ទៀងផ្ទាត់ទេ ដែលអាចផ្គូផ្គងបាន។ សូមមើលអ្នកប្រដាល់ដែលកំពុងរង់ចាំការផ្ទៀងផ្ទាត់នៅទំព័រ «អ្នកប្រដាល់»។"
-        : "មានតែអ្នកប្រដាល់សកម្មទេ ដែលអាចផ្គូផ្គងបាន។ អ្នកប្រដាល់ជាសេចក្តីព្រាង មានសម្គាល់នៅទំព័រ «អ្នកប្រដាល់» — សូមបើកម្នាក់ ហើយចុច «Activate»។",
+      en: "The box says what breaks a KKF rule. Use its button: choose another fighter, or open the fighter's page (for example to update the medical status). The Add bout button stays off until nothing blocks. A yellow note is only a warning: you can still add the bout. Only the Super Admin can switch a rule off or change its limit, in Settings › Matching rules.",
+      km: "ប្រអប់នោះប្រាប់ថាអ្វីបំពានច្បាប់ KKF។ ប្រើប៊ូតុងរបស់វា៖ ជ្រើសអ្នកប្រដាល់ផ្សេង ឬបើកទំព័ររបស់អ្នកប្រដាល់ (ឧទាហរណ៍ដើម្បីធ្វើបច្ចុប្បន្នភាពស្ថានភាពពេទ្យ)។ ប៊ូតុង «បន្ថែមគូប្រកួត» នៅបិទ រហូតដល់គ្មានអ្វីរារាំង។ កំណត់ចំណាំពណ៌លឿងគ្រាន់តែជាការព្រមាន៖ អ្នកនៅតែអាចបន្ថែមគូបាន។ មានតែ Super Admin ទេដែលអាចបិទច្បាប់ ឬប្តូរកម្រិតរបស់វា នៅ «ការកំណត់ › ច្បាប់ផ្គូផ្គង»។",
     },
     roles: ["Super Admin", "KKF Officer", "Organizer"],
   },
   {
-    q: { en: "KKF sent something back. What now?", km: "KKF បានបញ្ជូនអ្វីមួយត្រឡប់មកវិញ។ ត្រូវធ្វើអ្វីបន្ទាប់?" },
+    q: { en: "Why can't I pick a fighter for a bout?", km: "ហេតុអ្វីខ្ញុំមិនអាចជ្រើសអ្នកប្រដាល់សម្រាប់គូប្រកួតបាន?" },
     a: {
-      en: "The reason is shown on the event or fighter and on your dashboard. Make the change and submit (event) or save (fighter) — it goes back to KKF.",
-      km: "មូលហេតុត្រូវបានបង្ហាញនៅលើព្រឹត្តិការណ៍ ឬអ្នកប្រដាល់ និងនៅលើផ្ទាំងគ្រប់គ្រងរបស់អ្នក។ កែតម្រូវ ហើយដាក់ជូន (ព្រឹត្តិការណ៍) ឬរក្សាទុក (អ្នកប្រដាល់) — វានឹងត្រឡប់ទៅ KKF វិញ។",
+      en: "Only active fighters can be matched. The list shows fighters within 2 kg of the agreed weight first — turn on Show all weights to see everyone. Draft fighters are marked on the Fighters page: open one and press Activate.",
+      km: "មានតែអ្នកប្រដាល់សកម្មទេ ដែលអាចផ្គូផ្គងបាន។ បញ្ជីបង្ហាញអ្នកប្រដាល់ដែលមានទម្ងន់ក្នុង ២ គីឡូក្រាមពីទម្ងន់ព្រមព្រៀងមុន — បើក «បង្ហាញគ្រប់ទម្ងន់» ដើម្បីឃើញគ្រប់គ្នា។ អ្នកប្រដាល់ជាសេចក្តីព្រាងមានសម្គាល់នៅទំព័រ «អ្នកប្រដាល់» — សូមបើកម្នាក់ ហើយចុច «ធ្វើឲ្យសកម្ម»។",
     },
-    roles: ["Organizer", "Club/Gym"],
-    approvalsOnly: true,
+    roles: ["Super Admin", "KKF Officer", "Organizer"],
   },
   {
-    q: { en: "A weight class, venue or glove brand is missing.", km: "ខ្វះថ្នាក់ទម្ងន់ ទីកន្លែង ឬម៉ាកស្រោមដៃ។" },
+    q: { en: "A fighter can't fight any more. What now?", km: "អ្នកប្រដាល់ម្នាក់មិនអាចប្រកួតបានទៀត។ ត្រូវធ្វើអ្វីបន្ទាប់?" },
     a: {
-      en: "The Super Admin adds it under System Settings. Events and bouts already saved keep their values.",
-      km: "Super Admin បន្ថែមវានៅក្នុង «ការកំណត់ប្រព័ន្ធ»។ ព្រឹត្តិការណ៍ និងគូប្រកួតដែលបានរក្សាទុករួច នៅរក្សាតម្លៃដដែល។",
+      en: "Open the bout and press Withdraw a fighter (it is also on Match day). Give the reason; you can also mark the fighter as injured. Then choose a replacement — the KKF rules are checked for them too — or cancel the bout. Until then the bout shows “Replacement needed” and can't be weighed in or get a result.",
+      km: "បើកគូប្រកួត ហើយចុច «ដកកីឡាករ» (មានក្នុងថ្ងៃប្រកួតផងដែរ)។ ផ្តល់មូលហេតុ អ្នកក៏អាចសម្គាល់អ្នកប្រដាល់ថាមានរបួស។ បន្ទាប់មកជ្រើសអ្នកជំនួស — ច្បាប់ KKF ត្រូវបានពិនិត្យសម្រាប់ពួកគេដែរ — ឬលុបចោលគូនោះ។ ដរាបណានោះ គូប្រកួតបង្ហាញ “ត្រូវការអ្នកជំនួស” ហើយមិនអាចថ្លឹងទម្ងន់ ឬមានលទ្ធផលបានទេ។",
+    },
+    roles: ["Super Admin", "KKF Officer", "Organizer"],
+  },
+  {
+    q: { en: "I can't change a result. Why?", km: "ខ្ញុំមិនអាចកែលទ្ធផលបានទេ។ ហេតុអ្វី?" },
+    a: {
+      en: "After KKF signs a match off, its results are locked. Only a Super Admin can correct one, and has to give a reason (kept in the match history); a Super Admin can also reopen the match.",
+      km: "បន្ទាប់ពី KKF បញ្ជាក់ចុងក្រោយការប្រកួត លទ្ធផលរបស់វាត្រូវបានចាក់សោ។ មានតែ Super Admin ទេដែលអាចកែ ហើយត្រូវផ្តល់មូលហេតុ (រក្សាទុកក្នុងប្រវត្តិការប្រកួត)។ Super Admin ក៏អាចបើកការប្រកួតឡើងវិញបានដែរ។",
+    },
+    roles: ["Super Admin", "KKF Officer"],
+  },
+  {
+    q: { en: "Where did “Program” and “Champions” go?", km: "«កម្មវិធី» និង «ម្ចាស់ជើងឯក» ទៅណាហើយ?" },
+    a: {
+      en: "Program is now Matches (Upcoming, Week, Past, Needs attention). Champions is now Titles, in the menu next to Clubs.",
+      km: "«កម្មវិធី» ឥឡូវជា «ការប្រកួត» (ខាងមុខ សប្តាហ៍ កន្លងមក ត្រូវយកចិត្តទុកដាក់)។ «ម្ចាស់ជើងឯក» ឥឡូវជា «ខ្សែក្រវាត់ជើងឯក» នៅក្នុងម៉ឺនុយក្បែរ «ក្លឹប»។",
+    },
+    roles: ["Super Admin", "KKF Officer", "Organizer"],
+  },
+  {
+    q: { en: "A weight class, venue, glove brand or show is missing.", km: "ខ្វះថ្នាក់ទម្ងន់ ទីកន្លែង ម៉ាកស្រោមដៃ ឬកម្មវិធី។" },
+    a: {
+      en: "The Super Admin adds it under System Settings. Matches and bouts already saved keep their values.",
+      km: "Super Admin បន្ថែមវានៅក្នុង «ការកំណត់ប្រព័ន្ធ»។ ការប្រកួត និងគូប្រកួតដែលបានរក្សាទុករួច នៅរក្សាតម្លៃដដែល។",
+    },
+  },
+  {
+    q: { en: "How do I use this on my phone?", km: "ខ្ញុំប្រើវានៅលើទូរស័ព្ទយ៉ាងដូចម្តេច?" },
+    a: {
+      en: "Open the admin in your phone's browser and follow the Install card on the Dashboard: on Android press Install; on iPhone press Share, then Add to Home Screen. It then opens like an app. It needs an internet connection to load and save data.",
+      km: "បើកផ្ទាំងគ្រប់គ្រងក្នុងកម្មវិធីរុករកនៃទូរស័ព្ទរបស់អ្នក ហើយធ្វើតាមកាត «ដំឡើង» នៅលើផ្ទាំងគ្រប់គ្រង៖ លើ Android ចុច «ដំឡើង» លើ iPhone ចុច «ចែករំលែក» បន្ទាប់មក «បន្ថែមទៅអេក្រង់ដើម»។ បន្ទាប់មកវាបើកដូចកម្មវិធី។ វាត្រូវការអ៊ីនធឺណិតដើម្បីផ្ទុក និងរក្សាទុកទិន្នន័យ។",
     },
   },
   {
@@ -253,31 +248,20 @@ const ALL_FAQ: { q: Text; a: Text; roles?: RoleKey[]; approvalsOnly?: boolean }[
   },
 ];
 
-const FAQ = ALL_FAQ.filter((f) => APPROVALS_ENABLED || !f.approvalsOnly);
-
 function roleKey(apiRole?: string): RoleKey | null {
   if (apiRole === "Referee" || apiRole === "Judge") return "Official";
   return apiRole && apiRole in ROLE_NAMES ? (apiRole as RoleKey) : null;
 }
 
 export function Help() {
-  const [lang, setLangState] = useState<Lang>(readLang);
-  const setLang = (l: Lang) => {
-    setLangState(l);
-    try {
-      localStorage.setItem(LANG_KEY, l);
-    } catch {
-      /* the choice just isn't remembered */
-    }
-  };
+  const { lang } = useT();
   const t = (x: Text) => x[lang];
   const role = roleKey(api.auth.getCurrentUser()?.role);
   const officialOnly = role === "Official";
-  const faqs = FAQ.filter((f) => !f.roles || (role && f.roles.includes(role)));
-  const khmer = lang === "km" ? "font-['Kantumruy_Pro',sans-serif] leading-relaxed" : "";
+  const faqs = ALL_FAQ.filter((f) => !f.roles || (role && f.roles.includes(role)));
 
   return (
-    <div className={`p-4 md:p-8 max-w-4xl mx-auto space-y-8 ${khmer}`} lang={lang === "km" ? "km" : "en"}>
+    <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8" lang={lang}>
       <header className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground flex items-center gap-2">
@@ -285,20 +269,7 @@ export function Help() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1 font-medium">{t(UI.intro)}</p>
         </div>
-        <div role="group" aria-label="Language" className="inline-flex items-center gap-1 rounded-xl bg-slate-100 p-1 shrink-0">
-          <Languages className="w-4 h-4 text-slate-400 mx-1.5" aria-hidden />
-          {(["en", "km"] as Lang[]).map((l) => (
-            <button
-              key={l}
-              type="button"
-              aria-pressed={lang === l}
-              onClick={() => setLang(l)}
-              className={`h-8 px-3 rounded-lg text-sm font-semibold ${l === "km" ? "font-['Kantumruy_Pro',sans-serif]" : ""} ${lang === l ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
-            >
-              {l === "en" ? "English" : "ខ្មែរ"}
-            </button>
-          ))}
-        </div>
+        <span className="shrink-0"><LangSwitch /></span>
       </header>
 
       {role && (
@@ -322,28 +293,42 @@ export function Help() {
       )}
 
       {!officialOnly && (
-        <section aria-labelledby="journey-title" className="space-y-3">
-          <h2 id="journey-title" className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-primary" aria-hidden /> {t(UI.journey)}
-          </h2>
-          <ol className="space-y-3">
-            {STEPS.map((s, i) => (
-              <li key={i} className="rounded-2xl border border-slate-200 bg-white p-4 flex gap-4">
-                <span className="w-8 h-8 rounded-full bg-primary text-white text-sm font-bold flex items-center justify-center shrink-0">{i + 1}</span>
-                <div className="min-w-0">
-                  <p className="font-semibold text-slate-900">
-                    {t(s.title)} <span className="ml-1 text-xs font-semibold text-slate-500">· {t(UI.who)}: {t(s.who)}</span>
-                  </p>
-                  <p className="text-sm text-slate-600 mt-1">{t(s.body)}</p>
+        <>
+          <section aria-labelledby="words-title" className="space-y-3">
+            <h2 id="words-title" className="text-lg font-semibold text-slate-900">{t(UI.words)}</h2>
+            <dl className="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100">
+              {WORDS.map((w, i) => (
+                <div key={i} className="p-4 sm:grid sm:grid-cols-[10rem_1fr] sm:gap-4">
+                  <dt className="font-semibold text-slate-900">{t(w.term)}</dt>
+                  <dd className="text-sm text-slate-600 mt-1 sm:mt-0">{t(w.meaning)}</dd>
                 </div>
-              </li>
-            ))}
-          </ol>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="font-semibold text-slate-900">{t(UI.fighters)}</p>
-            <p className="text-sm text-slate-600 mt-1">{t(FIGHTER_FLOW)}</p>
-          </div>
-        </section>
+              ))}
+            </dl>
+          </section>
+
+          <section aria-labelledby="journey-title" className="space-y-3">
+            <h2 id="journey-title" className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-primary" aria-hidden /> {t(UI.journey)}
+            </h2>
+            <ol className="space-y-3">
+              {STEPS.map((s, i) => (
+                <li key={i} className="rounded-2xl border border-slate-200 bg-white p-4 flex gap-4">
+                  <span className="w-8 h-8 rounded-full bg-primary text-white text-sm font-bold flex items-center justify-center shrink-0">{lang === "km" ? khmerNumber(i + 1) : i + 1}</span>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-900">
+                      {t(s.title)} <span className="ml-1 text-xs font-semibold text-slate-500">· {t(UI.who)}: {t(s.who)}</span>
+                    </p>
+                    <p className="text-sm text-slate-600 mt-1">{t(s.body)}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <p className="font-semibold text-slate-900">{t(UI.fighters)}</p>
+              <p className="text-sm text-slate-600 mt-1">{t(FIGHTER_FLOW)}</p>
+            </div>
+          </section>
+        </>
       )}
 
       <section aria-labelledby="faq-title" className="space-y-3">
@@ -364,3 +349,5 @@ export function Help() {
     </div>
   );
 }
+
+const khmerNumber = (n: number) => String(n).replace(/\d/g, (d) => "០១២៣៤៥៦៧៨៩"[Number(d)]);

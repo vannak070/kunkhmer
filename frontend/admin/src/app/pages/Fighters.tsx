@@ -11,21 +11,23 @@ import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { useT } from "../i18n/program";
 import { LangSwitch } from "../components/program/shared";
-import { FighterTable } from "../components/fighters/FighterTable";
+import { FighterDirectory } from "../components/fighters/FighterDirectory";
 
 export function Fighters() {
   const { t } = useT();
   const location = useLocation();
   const permissions = usePermissions();
   const origin = location.pathname.endsWith("/foreigner") ? "foreign" : location.pathname.endsWith("/kunkhmer") ? "local" : "all";
-  const [data, setData] = useState<{ fighters: any[]; bouts: any[]; classes: any[] } | null>(null);
+  const [data, setData] = useState<{ bouts: any[]; classes: any[] } | null>(null);
   const [failed, setFailed] = useState(false);
   const [gaps, setGaps] = useState<Map<string, unknown>>(new Map());
 
   const load = () => {
     setFailed(false);
-    Promise.all([api.fighters.list(), api.matches.list().catch(() => []), api.settingsLists.list("weight-classes").catch(() => [])])
-      .then(([fighters, bouts, classes]) => setData({ fighters, bouts, classes }))
+    // The fighters come a page at a time (FighterDirectory); only today's and later bouts are needed for "Next bout".
+    const today = new Date().toISOString().slice(0, 10);
+    Promise.all([api.matches.list(undefined, { from: today }).catch(() => []), api.settingsLists.list("weight-classes").catch(() => [])])
+      .then(([bouts, classes]) => setData({ bouts, classes }))
       .catch(() => setFailed(true));
     // Staff see which fighters have missing / expired private details.
     api.fighters.privateSummary().then((rows) => setGaps(new Map(rows.map((r: any) => [r.fighterId, r])))).catch(() => setGaps(new Map()));
@@ -61,9 +63,8 @@ export function Fighters() {
         <div className="rounded-2xl border border-slate-200 bg-white p-10 flex justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" aria-label={t("common.loading")} /></div>
       ) : (
         // key: switching between the Kun Khmer / Foreigner menu items resets the origin filter.
-        <FighterTable
+        <FighterDirectory
           key={origin}
-          fighters={data.fighters}
           bouts={data.bouts}
           classes={data.classes}
           origin={origin}

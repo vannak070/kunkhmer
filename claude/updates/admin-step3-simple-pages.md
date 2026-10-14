@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress, pushed (Clubs, Titles, Match page done; Help, ShareFightCard chrome, Not found left) |
+| **Status** | Done (Clubs, Titles, Match page, Help, share poster chrome, Not found; MatchProposals stays dormant) |
 | **Jira** | n/a |
 | **Feature** | claude/features/admin-pwa.md (step 3), clubs.md, champions.md |
 | **Requested by** | Owner ("go ahead with step 3") |
@@ -21,7 +21,7 @@ In scope (done):
 - **Clubs** list + **Add / edit club** (Khmer name, association, logo/banner, map; delete only with no fighters, with a plain message). Edit/delete permission is `clubs.manage`.
 - **Titles**: list (All / Has a champion / Vacant, search), title page (champion, history lines from results, vacate, delete for Super Admin), **add / edit** (`/home/champion/:id/edit`; can set the current champion, so a belt that existed before the system no longer needs a fake title bout), **Schedule a title bout** (pick the fight card, continue to Add bout).
 - **Match page** (`/home/match/:id`): corners with photo, club and record, title/rounds/weight, fight night, result (staff record or change it; changing a title winner asks first), referee and judges. Same logic as the Results page.
-Out of scope / still to do: Help, ShareFightCard chrome (the poster keeps Moul + html2canvas), Not found, MatchProposals (dormant while approvals are off).
+Done afterwards: Help (`help-page-matches.md`), ShareFightCard chrome and Not found (`step3-last-pages.md`). Left as it is: MatchProposals (dormant while approvals are off).
 
 ## Impact
 - API response shapes: none. Database: none.

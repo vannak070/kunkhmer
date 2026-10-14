@@ -6,12 +6,15 @@ export function usePermissions() {
   const [currentUser, setCurrentUser] = useState<User | null>(getCurrentUser());
 
   useEffect(() => {
-    // Listen for user changes
-    const interval = setInterval(() => {
-      setCurrentUser(getCurrentUser());
-    }, 100);
+    // Notice a sign-in / sign-out / profile change (cheap: the user object only changes when the stored user does).
+    const check = () => setCurrentUser(getCurrentUser());
+    const interval = setInterval(check, 1000);
+    window.addEventListener("storage", check);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", check);
+    };
   }, []);
 
   const hasPermission = (permission: string): boolean => {

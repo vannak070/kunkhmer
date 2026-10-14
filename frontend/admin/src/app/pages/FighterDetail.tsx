@@ -40,7 +40,7 @@ export function FighterDetail() {
   const load = () => {
     Promise.all([
       api.fighters.get(id!),
-      api.matches.list().catch(() => []),
+      api.matches.list(undefined, { fighterId: id! }).catch(() => []),
       api.settingsLists.list("weight-classes").catch(() => []),
       api.videos.list().catch(() => []),
       api.champions.list().catch(() => []),

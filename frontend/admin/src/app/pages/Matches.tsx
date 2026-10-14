@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { CalendarDays, ChevronRight, MapPin, Plus, Search } from "lucide-react";
-import { api } from "../utils/api";
+import { api, recentFrom } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { useAdminOverview } from "../hooks/useAdminOverview";
 import { formatDay, formatTime, khmerDigits, useT } from "../i18n/program";
@@ -35,13 +35,16 @@ export function Matches() {
   const { data: overview, refresh } = useAdminOverview();
 
   // A failed load says so (with Try again) instead of an empty list that looks like lost data.
+  // Only the last six months onward by default; "Show older matches" (Past tab) loads the rest (claude/updates/admin-performance.md).
+  const [older, setOlder] = useState(false);
   const load = () => {
     setFailed(false);
-    Promise.all([api.events.list(), api.batches.list(), api.matches.list()])
+    const window = older ? undefined : { from: recentFrom() };
+    Promise.all([api.events.list(window), api.batches.list(undefined, window), api.matches.list(undefined, window)])
       .then(([e, c, m]) => { setEvents(e); setCards(c); setBouts(m); })
       .catch(() => setFailed(true));
   };
-  useEffect(load, []);
+  useEffect(load, [older]);
 
   const todos = overview?.todos ?? [];
   const attentionCount = useMemo(() => {
@@ -153,6 +156,9 @@ export function Matches() {
                 );
               })}
             </ul>
+          )}
+          {tab === "past" && !older && (
+            <button type="button" onClick={() => setOlder(true)} className="h-11 px-5 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-700 hover:border-primary hover:text-primary">{t("mt.older")}</button>
           )}
         </>
       )}

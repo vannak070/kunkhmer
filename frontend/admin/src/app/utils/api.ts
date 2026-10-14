@@ -31,8 +31,35 @@ function sessionEnded(response: Response) {
   }
 }
 
+/**
+ * Lists are asked for by several parts of a page at once (the header, the bell, the page itself). Identical GETs share one
+ * request and keep their answer for a few seconds; any write clears everything. Each caller gets its own copy, so a page
+ * that sorts its list in place can't disturb another. claude/updates/admin-performance.md
+ */
+// The signed-in user as stored, parsed once per change (pages ask for it while rendering).
+let storedUserRaw: string | null | undefined;
+let storedUser: any = null;
+
+const CACHE_MS = 8_000;
+const cache = new Map<string, { at: number; promise: Promise<any> }>();
+
 // Unified request handler
 async function request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const method = (options.method ?? "GET").toUpperCase();
+  if (method !== "GET") {
+    cache.clear();
+    return send<T>(endpoint, options);
+  }
+  const key = `${localStorage.getItem("token") ?? ""}|${endpoint}`;
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_MS) return structuredClone(await hit.promise);
+  const promise = send<T>(endpoint, options);
+  cache.set(key, { at: Date.now(), promise });
+  promise.catch(() => cache.delete(key));
+  return structuredClone(await promise);
+}
+
+async function send<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers: getHeaders(options.headers as any)
@@ -60,7 +87,38 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}): Pr
   return data;
 }
 
+/** Optional match-date window (and filters) for the list endpoints, as a query string. */
+export interface DateWindow { from?: string; to?: string }
+/** Start of the default look-back (six months): lists load from here onward; older ones only when asked. One value per day so every part of a page asks for the same window and shares one request. */
+export const recentFrom = () => new Date(Date.now() - 180 * 86_400_000).toISOString().slice(0, 10);
+
+function windowQuery(window: (DateWindow & { fighterId?: string; clubId?: string; championshipId?: string }) | undefined, base: Record<string, string> = {}) {
+  const q = new URLSearchParams({ ...base, ...Object.fromEntries(Object.entries(window ?? {}).filter(([, v]) => v)) as Record<string, string> }).toString();
+  return q ? `?${q}` : "";
+}
+
 export const api = {
+  // --- Header search: a few matches from the server (claude/updates/admin-header-search.md) ---
+  search: {
+    async get(q: string) {
+      const res = await request(`/search?q=${encodeURIComponent(q)}`);
+      return res.data as {
+        fighters: { id: string; name: string; nameKhmer: string | null; clubName: string | null; status: string }[];
+        clubs: { id: string; name: string; name_khmer: string | null; location: string | null }[];
+        events: { id: string; name: string; date: string | null; location: string | null; status: string }[];
+      };
+    },
+  },
+  // --- Dashboard and header bell: only the data the overview reads, in one call ---
+  overview: {
+    async get(window?: DateWindow) {
+      const res = await request(`/overview${windowQuery(window)}`);
+      return res.data as {
+        fighters: any[]; events: any[]; matches: any[]; champions: any[]; agreements_waiting: any[]; open_disputes: any[];
+        active_fighters: number; clubs: number;
+      };
+    },
+  },
   // --- KUNKHMER HUB: staff assistant and answer review (KKF staff) ---
   ai: {
     async status(): Promise<{ enabled: boolean }> {
@@ -212,7 +270,11 @@ export const api = {
     },
     getCurrentUser() {
       const userStr = localStorage.getItem("user");
-      return userStr ? JSON.parse(userStr) : null;
+      if (userStr !== storedUserRaw) {
+        storedUserRaw = userStr;
+        storedUser = userStr ? JSON.parse(userStr) : null;
+      }
+      return storedUser;
     },
     async listUsers() {
       const res = await request("/users");
@@ -252,6 +314,12 @@ export const api = {
     async similar(body: { name: string; nameKhmer?: string; dateOfBirth?: string | null; excludeId?: string | null }) {
       const res = await request("/fighters/similar", { method: "POST", body: JSON.stringify(body) });
       return res.data as any[];
+    },
+    /** One page of the admin Fighters list, filtered by the server (claude/updates/admin-fighters-paging.md). */
+    async page(params: { q?: string; origin?: string; clubId?: string; status?: string; classId?: string; sort?: string; limit?: number; offset?: number }) {
+      const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== "" && v != null).map(([k, v]) => [k, String(v)])).toString();
+      const res = await request(`/fighters/page${query ? `?${query}` : ""}`);
+      return res.data as { items: any[]; total: number; clubs: { id: string; name: string }[]; noClub: boolean; statuses: string[] };
     },
     async list(status?: string, clubId?: string) {
       let query = "";
@@ -348,8 +416,9 @@ export const api = {
 
   // --- EVENTS ---
   events: {
-    async list() {
-      const res = await request("/events");
+    /** All matches, or only those from / to a date (YYYY-MM-DD, the match date). */
+    async list(window?: DateWindow) {
+      const res = await request(`/events${windowQuery(window)}`);
       return res.data;
     },
     async get(id: string) {
@@ -481,8 +550,8 @@ export const api = {
   // --- BATCHES (SUB-EVENTS) ---
   batches: {
     /** All fight cards, or one fight night's cards. */
-    async list(eventId?: string) {
-      const res = await request(`/matches/batches${eventId ? `?eventId=${eventId}` : ""}`);
+    async list(eventId?: string, window?: DateWindow) {
+      const res = await request(`/matches/batches${windowQuery(window, eventId ? { eventId } : {})}`);
       return res.data;
     },
     async get(id: string) {
@@ -547,12 +616,9 @@ export const api = {
       const res = await request("/matches/check", { method: "POST", body: JSON.stringify(body) });
       return res.data as { allowed: boolean; blocked: any[]; warnings: any[] };
     },
-    async list(subEventId?: string) {
-      let query = "";
-      if (subEventId) {
-        query = `?subEventId=${subEventId}`;
-      }
-      const res = await request(`/matches${query}`);
+    /** All bouts, one fight card's, or a window by match date / one fighter's / one club's bouts. */
+    async list(subEventId?: string, window?: DateWindow & { fighterId?: string; clubId?: string; championshipId?: string }) {
+      const res = await request(`/matches${windowQuery(window, subEventId ? { subEventId } : {})}`);
       return res.data;
     },
     /** One fight night's bouts (every card). */

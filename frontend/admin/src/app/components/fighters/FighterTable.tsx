@@ -39,6 +39,55 @@ export function RecordText({ record }: { record?: string | null }) {
   );
 }
 
+/** One row of the fighter list: the whole row opens the fighter; "Edit" is its own button. */
+export function FighterRow({ f, bouts, classes, showClub = true, canEdit = false, gaps }: {
+  f: any;
+  bouts: any[];
+  classes: WeightClass[];
+  showClub?: boolean;
+  canEdit?: boolean;
+  gaps?: Map<string, unknown>;
+}) {
+  const { t, lang } = useT();
+  const kg = weightOf(f);
+  const c = classFor(kg, classes);
+  const next = nextBout(f.id, bouts);
+  return (
+    <li className="flex items-stretch hover:bg-slate-50">
+      <Link to={`/home/fighters/${f.id}`} className="flex-1 min-w-0 grid gap-x-4 gap-y-1 p-4 grid-cols-[auto_minmax(0,1fr)] md:grid-cols-[auto_minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1fr)_auto_minmax(0,1.3fr)] items-center">
+        <span className="row-span-2 md:row-span-1"><FighterAvatar name={f.name} image={f.image} /></span>
+        <span className="min-w-0">
+          <span className="block text-base font-semibold text-slate-900 break-words">{f.name}</span>
+          {f.nameKhmer && <span lang="km" className="block text-sm text-slate-600 break-words">{f.nameKhmer}</span>}
+          {gaps?.has(f.id) && <span title={t("pv.badge")} className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-800"><AlertTriangle className="w-3 h-3" aria-hidden /> {t("pv.badge")}</span>}
+          {showClub && <span className="md:hidden block text-sm text-slate-600 break-words">{f.clubName || t("f.noClub")}</span>}
+        </span>
+        {showClub && <span className="hidden md:block text-sm text-slate-700 break-words">{f.clubName || <span className="text-slate-400">{t("f.noClub")}</span>}</span>}
+        {!showClub && <span className="hidden md:block" />}
+        <span className="col-start-2 md:col-start-auto flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-700">
+          <span>{kg ? t("common.kg", { n: kg }) : "—"}</span>
+          {c && <span className="text-slate-500">{className(c, lang)}</span>}
+          <span className="md:hidden"><RecordText record={f.record} /></span>
+          <span className="md:hidden"><FighterStatusChip status={f.status} /></span>
+        </span>
+        <span className="hidden md:flex flex-col items-start gap-1 text-sm">
+          <RecordText record={f.record} />
+          <FighterStatusChip status={f.status} />
+        </span>
+        <span className="col-start-2 md:col-start-auto text-sm text-slate-600 break-words">
+          {next ? t("f.nextBout", { date: formatDay(next.date, lang, false), name: opponentOf(next, f.id) }) : <span className="hidden md:inline text-slate-400">{t("f.noNext")}</span>}
+        </span>
+      </Link>
+      {canEdit && (
+        <Link to={`/home/fighters/${f.id}/edit`} aria-label={`${t("common.edit")} — ${f.name}`} className="shrink-0 self-center mr-3 inline-flex items-center gap-1.5 h-10 px-3 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:border-primary hover:text-primary">
+          <Pencil className="w-4 h-4" aria-hidden /> <span className="hidden sm:inline">{t("common.edit")}</span>
+        </Link>
+      )}
+    </li>
+
+  );
+}
+
 export function FighterTable({ fighters, bouts, classes, showClub = true, origin: initialOrigin = "all", canEdit = false, gaps, empty }: {
   fighters: any[];
   bouts: any[];
@@ -125,44 +174,7 @@ export function FighterTable({ fighters, bouts, classes, showClub = true, origin
         <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-slate-600">{t("f.noResults")}</p>
       ) : (
         <ul className="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100 overflow-hidden">
-          {rows.map((f) => {
-            const kg = weightOf(f);
-            const c = classFor(kg, classes);
-            const next = nextBout(f.id, bouts);
-            return (
-              <li key={f.id} className="flex items-stretch hover:bg-slate-50">
-                <Link to={`/home/fighters/${f.id}`} className="flex-1 min-w-0 grid gap-x-4 gap-y-1 p-4 grid-cols-[auto_minmax(0,1fr)] md:grid-cols-[auto_minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1fr)_auto_minmax(0,1.3fr)] items-center">
-                  <span className="row-span-2 md:row-span-1"><FighterAvatar name={f.name} image={f.image} /></span>
-                  <span className="min-w-0">
-                    <span className="block text-base font-semibold text-slate-900 break-words">{f.name}</span>
-                    {f.nameKhmer && <span lang="km" className="block text-sm text-slate-600 break-words">{f.nameKhmer}</span>}
-                    {gaps?.has(f.id) && <span title={t("pv.badge")} className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-800"><AlertTriangle className="w-3 h-3" aria-hidden /> {t("pv.badge")}</span>}
-                    {showClub && <span className="md:hidden block text-sm text-slate-600 break-words">{f.clubName || t("f.noClub")}</span>}
-                  </span>
-                  {showClub && <span className="hidden md:block text-sm text-slate-700 break-words">{f.clubName || <span className="text-slate-400">{t("f.noClub")}</span>}</span>}
-                  {!showClub && <span className="hidden md:block" />}
-                  <span className="col-start-2 md:col-start-auto flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-700">
-                    <span>{kg ? t("common.kg", { n: kg }) : "—"}</span>
-                    {c && <span className="text-slate-500">{className(c, lang)}</span>}
-                    <span className="md:hidden"><RecordText record={f.record} /></span>
-                    <span className="md:hidden"><FighterStatusChip status={f.status} /></span>
-                  </span>
-                  <span className="hidden md:flex flex-col items-start gap-1 text-sm">
-                    <RecordText record={f.record} />
-                    <FighterStatusChip status={f.status} />
-                  </span>
-                  <span className="col-start-2 md:col-start-auto text-sm text-slate-600 break-words">
-                    {next ? t("f.nextBout", { date: formatDay(next.date, lang, false), name: opponentOf(next, f.id) }) : <span className="hidden md:inline text-slate-400">{t("f.noNext")}</span>}
-                  </span>
-                </Link>
-                {canEdit && (
-                  <Link to={`/home/fighters/${f.id}/edit`} aria-label={`${t("common.edit")} — ${f.name}`} className="shrink-0 self-center mr-3 inline-flex items-center gap-1.5 h-10 px-3 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:border-primary hover:text-primary">
-                    <Pencil className="w-4 h-4" aria-hidden /> <span className="hidden sm:inline">{t("common.edit")}</span>
-                  </Link>
-                )}
-              </li>
-            );
-          })}
+          {rows.map((f) => <FighterRow key={f.id} f={f} bouts={bouts} classes={classes} showClub={showClub} canEdit={canEdit} gaps={gaps} />)}
         </ul>
       )}
     </div>

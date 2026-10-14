@@ -470,8 +470,7 @@ export const MOCK_USERS: User[] = [
 ];
 
 // Current logged-in user (dynamic from localStorage)
-export const getCurrentUser = (): User | null => {
-  const userStr = localStorage.getItem("user");
+const parseUser = (userStr: string | null): User | null => {
   if (!userStr) return null;
   
   try {
@@ -510,6 +509,19 @@ export const getCurrentUser = (): User | null => {
   } catch (err) {
     return null;
   }
+};
+
+// The same stored user gives the same object every time (parsed once per change), so screens that ask for it while
+// rendering — and the timer below that watches for a change — don't rebuild it hundreds of times a second.
+// claude/updates/admin-performance.md
+let cachedRaw: string | null | undefined;
+let cachedUser: User | null = null;
+export const getCurrentUser = (): User | null => {
+  const raw = localStorage.getItem("user");
+  if (raw === cachedRaw) return cachedUser;
+  cachedRaw = raw;
+  cachedUser = parseUser(raw);
+  return cachedUser;
 };
 
 export const logoutUser = () => {

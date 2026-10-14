@@ -181,6 +181,7 @@ model Fighter {
   fanNotifications     FanNotification[]
   private              FighterPrivate?
 
+  @@index([club_id], map: "fighters_club_id_index")
   @@map("fighters")
 }
 
@@ -303,6 +304,8 @@ model Event {
   signedOffByUser  User?            @relation("EventSignedOff", fields: [signed_off_by], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "events_signed_off_by_foreign")
   titleLinks       EventTitle[]
 
+  @@index([date], map: "events_date_index")
+  @@index([broadcast_station_id], map: "events_broadcast_station_id_index")
   @@map("events")
 }
 
@@ -457,6 +460,8 @@ model SubEvent {
   createdBy User?   @relation("SubEventCreator", fields: [created_by], references: [id], onUpdate: NoAction, map: "sub_events_created_by_foreign")
   matches   Match[]
 
+  @@index([event_id], map: "sub_events_event_id_index")
+  @@index([date], map: "sub_events_date_index")
   @@map("sub_events")
 }
 
@@ -534,6 +539,10 @@ model Match {
   titleChange      ChampionshipChange?
   videos           Video[]
 
+  @@index([event_id], map: "matches_event_id_index")
+  @@index([sub_event_id], map: "matches_sub_event_id_index")
+  @@index([fighter_a_id], map: "matches_fighter_a_id_index")
+  @@index([fighter_b_id], map: "matches_fighter_b_id_index")
   @@map("matches")
 }
 

@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import html2canvas from "html2canvas-pro";
 import kkfLogo from "../../assets/modern_logo.webp";
 import { api } from "../utils/api";
+import { useT } from "../i18n/program";
+import { LangSwitch } from "../components/program/shared";
 
 const getSponsorLogoSvg = (sponsorName: string) => {
   const name = sponsorName.toLowerCase();
@@ -126,6 +128,7 @@ const getSponsorLogoSvg = (sponsorName: string) => {
 export function ShareFightCard() {
   const { batchId } = useParams<{ batchId: string }>();
   const navigate = useNavigate();
+  const { t } = useT();
   const [copiedImage, setCopiedImage] = useState(false);
   const [logoBase64, setLogoBase64] = useState<string>("");
   const [sponsorLogoBase64, setSponsorLogoBase64] = useState<string>("");
@@ -144,9 +147,9 @@ export function ShareFightCard() {
         const b = await api.batches.get(batchId);
         if (b) {
           // Load matches for this sub-event
-          const allMatches = await api.matches.list();
+          // Only this fight card's bouts, not every bout in the database.
+          const allMatches = await api.matches.list(b.id);
           const batchMatches = allMatches
-            .filter((m: any) => m.sub_event_id === b.id)
             .map((m: any) => {
               return {
                 id: m.id,
@@ -223,18 +226,8 @@ export function ShareFightCard() {
     fetchBatchData();
   }, [batchId]);
 
-  // Determine if sharing is allowed based on batch lifecycle status
-  // Draft Ready (Draft + has matches), Weight-In, Ready, Live → share fighter card
-  // Complete → share only if ALL matches have results (winner set or draw/no contest method/id set)
-  const allMatchesHaveResults = batch
-    ? batch.matches.length > 0 && batch.matches.every((m: any) => m.winnerId || m.winner || m.winnerMethod)
-    : false;
-
-  const isShareable = batch ? (
-    (batch.status === "Draft" && batch.matches.length > 0) || // Draft Ready step
-    ["Weight-In", "Ready", "Live"].includes(batch.status) ||  // Active event stages
-    (["Complete", "Completed"].includes(batch.status) && allMatchesHaveResults) // Completed with results
-  ) : false;
+  // The card can be shared as soon as it has a bout that is not cancelled (claude/updates/step3-last-pages.md).
+  const isShareable = batch ? batch.matches.some((m: any) => m.status !== "Cancelled") : false;
 
   useEffect(() => {
     // Load KKF logo
@@ -277,67 +270,41 @@ export function ShareFightCard() {
     }
   }, [batch]);
   
+  const screen = (body: React.ReactNode) => (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl p-8 text-center shadow-sm max-w-md w-full border border-slate-200 space-y-4">{body}</div>
+    </div>
+  );
+  const backTo = batch?.eventId ? `/home/events/${batch.eventId}` : "/home/matches";
+  const backBtn = (
+    <button type="button" onClick={() => navigate(backTo)} className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-xl bg-primary text-white text-base font-semibold hover:opacity-90">
+      <ArrowLeft className="w-4 h-4" aria-hidden /> {t("sh.back")}
+    </button>
+  );
+
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-        <div className="w-12 h-12 border-4 border-[#0A3D91] border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-slate-500 font-bold text-sm">Loading official fight card details...</p>
-      </div>
-    );
+    return screen(<><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" aria-label={t("common.loading")} /><p className="text-slate-600">{t("sh.loading")}</p></>);
   }
 
   if (!batch) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 text-center shadow-lg max-w-md border border-slate-200/80">
-          <h2 className="text-2xl font-black text-slate-900 mb-4 uppercase tracking-tight">Fight Card Not Found</h2>
-          <p className="text-slate-500 mb-6 font-normal text-sm">The fight card you're looking for doesn't exist.</p>
-          <button
-            onClick={() => navigate("/home/matches")}
-            className="btn-primary w-full py-3 font-semibold uppercase tracking-wider text-xs rounded-xl shadow-md flex items-center justify-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Matches
-          </button>
-        </div>
-      </div>
-    );
+    return screen(<><p className="text-lg font-semibold text-slate-900">{t("sh.notFound")}</p>{backBtn}</>);
   }
 
   if (!isShareable) {
-    const isCompleted = ["Complete", "Completed"].includes(batch.status);
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 text-center shadow-lg max-w-md border border-slate-200/80">
-          <h2 className="text-2xl font-black text-amber-600 mb-4 uppercase tracking-tight">Sharing Restricted</h2>
-          <p className="text-slate-500 mb-6 font-normal text-sm">
-            {isCompleted
-              ? "This fight card is completed but results have not been recorded for all matches. Please update match results before sharing."
-              : "Sharing is only available during Draft Ready, Weight-In, Ready & Live, or Completed (with results) stages."}
-          </p>
-          <button
-            onClick={() => navigate(`/home/batches/${batch.id}`)}
-            className="btn-primary w-full py-3 font-semibold uppercase tracking-wider text-xs rounded-xl shadow-md"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Fight Card
-          </button>
-        </div>
-      </div>
-    );
+    return screen(<><p className="text-lg font-semibold text-slate-900">{t("sh.noBouts")}</p>{backBtn}</>);
   }
 
   const handleCopyImage = async () => {
     const cardElement = document.getElementById("fight-card-document");
     if (!cardElement) {
-      toast.error("Fight card element not found");
+      toast.error(t("sh.failed"));
       return;
     }
     
-    const toastId = toast.loading("Generating high-resolution fight card image...");
+    const toastId = toast.loading(t("sh.making"));
     
     // Create a promise that resolves to the blob to preserve user gesture context
-    const blobPromise = (async () => {
+    const blobPromise = (async (): Promise<Blob> => {
       try {
         const canvas = await html2canvas(cardElement, {
           useCORS: true,
@@ -348,7 +315,7 @@ export function ShareFightCard() {
           foreignObjectRendering: false,
         });
         
-        return new Promise((resolve, reject) => {
+        return new Promise<Blob>((resolve, reject) => {
           canvas.toBlob((blob) => {
             if (blob) {
               resolve(blob);
@@ -372,7 +339,7 @@ export function ShareFightCard() {
       await navigator.clipboard.write([clipboardItem]);
       toast.dismiss(toastId);
       setCopiedImage(true);
-      toast.success("✅ Fight card copied as image to clipboard!");
+      toast.success(t("sh.copiedToast"));
       setTimeout(() => setCopiedImage(false), 2000);
     } catch (err) {
       // Fallback for browsers that don't support writing Promises (like Firefox)
@@ -385,7 +352,7 @@ export function ShareFightCard() {
             new ClipboardItem({ "image/png": blob })
           ]);
           setCopiedImage(true);
-          toast.success("✅ Fight card copied as image to clipboard!");
+          toast.success(t("sh.copiedToast"));
           setTimeout(() => setCopiedImage(false), 2000);
         } catch (clipErr) {
           // If clipboard API still blocks, fallback to downloading
@@ -394,11 +361,11 @@ export function ShareFightCard() {
           link.href = url;
           link.download = `${batch.batchNumber}_FightCard.png`;
           link.click();
-          toast.success("📥 Saved fight card image to your downloads folder!");
+          toast.success(t("sh.savedToast"));
         }
       } catch (error) {
         toast.dismiss(toastId);
-        toast.error("Failed to generate and copy image");
+        toast.error(t("sh.failed"));
         console.error(error);
       }
     }
@@ -411,60 +378,30 @@ export function ShareFightCard() {
   return (
     <div className="min-h-screen bg-gradient-to-tr from-[#F1F5F9] via-[#F8FAFC] to-[#FFFFFF] text-slate-800 p-4 md:p-8 workspace-wrapper transition-colors duration-300 print:bg-white print:p-0 print:text-black">
       <div className="max-w-4xl mx-auto flex flex-col items-center">
-        {/* Navigation Bar - Hidden when printing */}
-        <div className="w-full mb-6 print:hidden flex justify-start">
-          <button
-            onClick={() => navigate("/home/matches")}
-            className="inline-flex items-center gap-2 px-4.5 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-all shadow-sm active:scale-[0.98]"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Matches
-          </button>
-        </div>
-        
-        {/* Action Bar - Hidden when printing */}
-        <div className="mb-8 print:hidden max-w-4xl w-full">
-          {/* Quick Actions Panel */}
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div>
-                <h3 className="text-sm font-extrabold text-slate-900 mb-1 uppercase tracking-wider font-sans">
-                  Export Fight Card
-                </h3>
-                <p className="text-xs text-slate-500 font-normal">
-                  Copy this official fight card as a high-resolution image or print to A4 size directly.
-                </p>
-              </div>
-              <div className="flex items-center gap-3.5 w-full md:w-auto">
-                <button
-                  onClick={handleCopyImage}
-                  className={`flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs transition-all shadow-sm active:scale-[0.98] ${
-                    copiedImage 
-                      ? "bg-emerald-600 text-white"
-                      : "bg-[#0A3D91] hover:bg-[#082E6E] text-white shadow-sm hover:-translate-y-[2px]"
-                  }`}
-                >
-                  {copiedImage ? (
-                    <>
-                      <CheckCircle className="w-4 h-4" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Image className="w-4 h-4" />
-                      Copy as Image
-                    </>
-                  )}
-                </button>
-                
-                <button
-                  onClick={handlePrint}
-                  className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-[#C8102E] hover:bg-[#A00D24] text-white rounded-xl font-bold uppercase tracking-wider text-xs shadow-sm hover:-translate-y-[2px] active:scale-[0.98] transition-all"
-                >
-                  <Printer className="w-4 h-4" />
-                  Print (A4)
-                </button>
-              </div>
+        {/* Page chrome (hidden when printing): back to the match, what this does, and the two buttons. */}
+        <div className="w-full mb-6 print:hidden space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <button type="button" onClick={() => navigate(backTo)} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-primary">
+              <ArrowLeft className="w-4 h-4" aria-hidden /> {t("sh.back")}
+            </button>
+            <LangSwitch />
+          </div>
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">{t("sh.title")}</h1>
+              <p className="text-sm text-slate-600 mt-1">{t("sh.lead")}</p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={handleCopyImage}
+                className={`inline-flex items-center justify-center gap-2 h-12 px-6 rounded-xl text-base font-semibold text-white ${copiedImage ? "bg-emerald-600" : "bg-primary hover:opacity-90"}`}
+              >
+                {copiedImage ? <><CheckCircle className="w-5 h-5" aria-hidden /> {t("sh.copied")}</> : <><Image className="w-5 h-5" aria-hidden /> {t("sh.copy")}</>}
+              </button>
+              <button type="button" onClick={handlePrint} className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-xl border border-slate-300 bg-white text-base font-semibold text-slate-800 hover:border-primary hover:text-primary">
+                <Printer className="w-5 h-5" aria-hidden /> {t("sh.print")}
+              </button>
             </div>
           </div>
         </div>

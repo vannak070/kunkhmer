@@ -1,0 +1,26 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`search > finds fighters, clubs and events in any case 1`] = `
+{
+  "club": {
+    "id": "uuid",
+    "location": "string",
+    "name": "string",
+    "name_khmer": "string",
+  },
+  "event": {
+    "date": "datetime(.000000Z)",
+    "id": "uuid",
+    "location": "string",
+    "name": "string",
+    "status": "string",
+  },
+  "fighter": {
+    "clubName": "string",
+    "id": "uuid",
+    "name": "string",
+    "nameKhmer": "string",
+    "status": "string",
+  },
+}
+`;
