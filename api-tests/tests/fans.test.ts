@@ -22,7 +22,7 @@ async function register(overrides: Record<string, unknown> = {}) {
 async function newFighter(clubId: string | null = null) {
   const res = await post(
     "/fighters",
-    { name: `Fighter ${uniq()}`, nameKhmer: "អ្នកប្រដាល់", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, grade: "B", status: "Active", clubId },
+    { name: `Fighter ${uniq()}`, nameKhmer: `អ្នកប្រដាល់ ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, grade: "B", status: "Active", clubId },
     a.admin.token,
   );
   return res.body.data.id as string;
@@ -129,7 +129,7 @@ describe("following fighters", () => {
 
     const list = await get("/fans/me/follows", token);
     expect(list.body.data).toHaveLength(1);
-    expect(list.body.data[0]).toMatchObject({ fighterId, nameKhmer: "អ្នកប្រដាល់" });
+    expect(list.body.data[0]).toMatchObject({ fighterId, nameKhmer: expect.stringContaining("អ្នកប្រដាល់") });
 
     expect((await del(`/fans/me/follows/${fighterId}`, token)).body.data).toEqual({ fighterId, following: false });
     expect((await del(`/fans/me/follows/${fighterId}`, token)).status).toBe(200);

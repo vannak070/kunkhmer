@@ -40,26 +40,40 @@ const emptyRow = (from?: Row): Row => ({
   weight: from?.weight ?? 60, ruleId: from?.ruleId ?? "", label: "", ruleSet: from?.ruleSet ?? "kun_khmer",
 });
 
-/** A small search box that picks one fighter (Khmer or English name, club). */
-function Picker({ value, fighters, exclude, tone, placeholder, onChange, nearKg }: {
-  value: any | null; fighters: any[]; exclude: Set<string>; tone: "red" | "blue"; placeholder: string; onChange: (f: any | null) => void;
+/** A small search box that picks one fighter (Khmer or English name, club). The server finds them (claude/updates/admin-bout-picker.md). */
+function Picker({ value, exclude, tone, placeholder, onChange, nearKg }: {
+  value: any | null; exclude: Set<string>; tone: "red" | "blue"; placeholder: string; onChange: (f: any | null) => void;
   /** Agreed weight: an empty search lists fighters within ±2 kg; a search lists everyone, closest weight first. */
   nearKg?: number | null;
 }) {
   const { t, lang } = useT();
   const [q, setQ] = useState("");
+  const [typed, setTyped] = useState("");
   const [open, setOpen] = useState(false);
+  const [list, setList] = useState<any[]>([]);
   const box = useRef<HTMLDivElement>(null);
   const name = (f: any) => (lang === "km" && f.nameKhmer ? f.nameKhmer : f.name);
-  const gap = (f: any) => { const kg = weightOf(f); return kg === null || !nearKg ? Infinity : Math.abs(kg - nearKg); };
-  const list = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s && !nearKg) return [];
-    const found = fighters
-      .filter((f) => !exclude.has(f.id))
-      .filter((f) => (s ? [f.name, f.nameKhmer, f.alias, f.clubName].some((x) => x?.toLowerCase().includes(s)) : gap(f) <= 2));
-    return (nearKg ? found.sort((a, b) => gap(a) - gap(b)) : found).slice(0, s ? 8 : 15);
-  }, [q, fighters, exclude, nearKg]);
+  const skip = [...exclude].join(",");
+
+  // Typing waits for a pause; only registered (Active) fighters can be matched. Nothing is asked until there is a search or a weight.
+  useEffect(() => {
+    const id = setTimeout(() => setQ(typed.trim()), 250);
+    return () => clearTimeout(id);
+  }, [typed]);
+  useEffect(() => {
+    if (value || !open || (!q && !nearKg)) { setList([]); return; }
+    let stale = false;
+    api.fighters
+      .page({
+        status: "Active", q, excludeIds: skip, facets: 0,
+        ...(nearKg ? { nearKg } : {}),
+        ...(nearKg && !q ? { minKg: nearKg - 2, maxKg: nearKg + 2 } : {}),
+        limit: q ? 8 : 15,
+      })
+      .then((p) => { if (!stale) setList(p.items); })
+      .catch(() => { if (!stale) setList([]); });
+    return () => { stale = true; };
+  }, [value?.id, open, q, nearKg, skip]);
   useEffect(() => {
     const close = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) setOpen(false); };
     document.addEventListener("mousedown", close);
@@ -81,14 +95,14 @@ function Picker({ value, fighters, exclude, tone, placeholder, onChange, nearKg 
   return (
     <div ref={box} className="relative">
       <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />
-      <input value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} placeholder={placeholder}
-        onKeyDown={(e) => { if (e.key === "Enter" && list[0]) { e.preventDefault(); onChange(list[0]); setQ(""); setOpen(false); } }}
+      <input value={typed} onChange={(e) => { setTyped(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} placeholder={placeholder}
+        onKeyDown={(e) => { if (e.key === "Enter" && list[0]) { e.preventDefault(); onChange(list[0]); setQ(""); setTyped(""); setOpen(false); } }}
         className={`${cell} pl-9 border-l-4 ${border}`} />
       {open && list.length > 0 && (
         <ul className="absolute z-30 mt-1 w-full min-w-[16rem] max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg divide-y divide-slate-100">
           {list.map((f) => (
             <li key={f.id}>
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { onChange(f); setQ(""); setOpen(false); }} className="w-full text-left flex items-center gap-2 p-2 hover:bg-slate-50">
+              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { onChange(f); setQ(""); setTyped(""); setOpen(false); }} className="w-full text-left flex items-center gap-2 p-2 hover:bg-slate-50">
                 <FighterAvatar name={f.name} image={f.image} />
                 <span className="min-w-0 text-sm">
                   <span className="block font-semibold text-slate-900">{name(f)}</span>
@@ -108,7 +122,6 @@ export function QuickBouts() {
   const { t, lang } = useT();
   const navigate = useNavigate();
   const [card, setCard] = useState<any | null | undefined>(undefined);
-  const [fighters, setFighters] = useState<any[]>([]);
   const [existing, setExisting] = useState<any[]>([]);
   const [rules, setRules] = useState<any[]>([]);
   const [gloves, setGloves] = useState<any[]>([]);
@@ -120,14 +133,12 @@ export function QuickBouts() {
     (async () => {
       try {
         const c = await api.batches.get(batchId!);
-        const [fs, bs, rs, gs] = await Promise.all([
-          api.fighters.list(),
+        const [bs, rs, gs] = await Promise.all([
           api.matches.list(batchId),
           api.settingsLists.list("bout-rules").catch(() => []),
           api.settingsLists.list("glove-brands").catch(() => []),
         ]);
         setCard(c);
-        setFighters((fs as any[]).filter((f) => f.status === "Active"));
         setExisting(bs);
         setRules(rs);
         setGloves(gs);
@@ -166,7 +177,7 @@ export function QuickBouts() {
   }, [checkKey, card?.id]);
 
   const nameOf = (id: string | null | undefined, fallback: string) => {
-    const f = id ? fighters.find((x) => x.id === id) : null;
+    const f = id ? rows.flatMap((r) => [r.red, r.blue]).find((x) => x?.id === id) : null;
     return f ? (lang === "km" && f.nameKhmer ? f.nameKhmer : f.name) : fallback;
   };
   const rowProblem = (r: Row): string | null => {
@@ -250,7 +261,7 @@ export function QuickBouts() {
               {/* Corners: number, red, blue */}
               <div className="grid gap-3 grid-cols-[1.75rem_minmax(0,1fr)] sm:grid-cols-[1.75rem_minmax(0,1fr)_minmax(0,1fr)] items-start">
                 <span className="text-sm font-bold text-slate-400 pt-3">{n(existing.length + i + 1)}</span>
-                <Picker value={r.red} fighters={fighters} exclude={new Set([...taken, ...(r.blue ? [r.blue.id] : [])])} tone="red" nearKg={r.weightSet ? r.weight : null} placeholder={t("qb.red")} onChange={(f) => update(r.key, { red: f, ...(f && !r.weightSet && weightOf(f) ? { weight: weightOf(f)! } : {}), ...(f && !r.label && f.nationality && f.nationality !== "Cambodian" ? { label: "international" } : {}) })} />
+                <Picker value={r.red} exclude={new Set([...taken, ...(r.blue ? [r.blue.id] : [])])} tone="red" nearKg={r.weightSet ? r.weight : null} placeholder={t("qb.red")} onChange={(f) => update(r.key, { red: f, ...(f && !r.weightSet && weightOf(f) ? { weight: weightOf(f)! } : {}), ...(f && !r.label && f.nationality && f.nationality !== "Cambodian" ? { label: "international" } : {}) })} />
                 <div className="col-start-2 sm:col-start-auto">
                 {r.blueLater ? (
                   <div className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-blue-300 h-11 px-3 text-sm text-slate-600">
@@ -259,7 +270,7 @@ export function QuickBouts() {
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    <Picker value={r.blue} fighters={fighters} exclude={new Set([...taken, ...(r.red ? [r.red.id] : [])])} tone="blue" nearKg={r.weight || null} placeholder={t("qb.blue")} onChange={(f) => update(r.key, { blue: f, ...(f && !r.label && f.nationality && f.nationality !== "Cambodian" ? { label: "international" } : {}) })} />
+                    <Picker value={r.blue} exclude={new Set([...taken, ...(r.red ? [r.red.id] : [])])} tone="blue" nearKg={r.weight || null} placeholder={t("qb.blue")} onChange={(f) => update(r.key, { blue: f, ...(f && !r.label && f.nationality && f.nationality !== "Cambodian" ? { label: "international" } : {}) })} />
                     {!r.blue && <button type="button" onClick={() => update(r.key, { blueLater: true, blue: null })} className="text-xs font-semibold text-slate-500 hover:text-primary">{t("qb.blueLater")}</button>}
                   </div>
                 )}

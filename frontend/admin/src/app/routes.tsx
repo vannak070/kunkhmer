@@ -179,6 +179,7 @@ export const router = createBrowserRouter(
       { path: "fighters", ...page(() => import("./pages/Fighters"), "Fighters") },
       { path: "fighters/kunkhmer", ...page(() => import("./pages/Fighters"), "Fighters") },
       { path: "fighters/foreigner", ...page(() => import("./pages/Fighters"), "Fighters") },
+      { path: "fighters/duplicates", ...page(() => import("./pages/Duplicates"), "Duplicates") },
       { path: "fighters/kunkhmer/new", ...page(() => import("./pages/AddFighter"), "AddFighter") },
       { path: "fighters/foreigner/new", ...page(() => import("./pages/AddFighter"), "AddFighter") },
       { path: "fighters/:id/edit", ...page(() => import("./pages/AddFighter"), "AddFighter") },

@@ -43,6 +43,7 @@ type FighterWithClub = Fighter & { club: Club | null };
 export function formatFighter(f: FighterWithClub) {
   return {
     id: f.id,
+    kkfId: f.kkf_id,
     name: f.name,
     nameKhmer: f.name_khmer,
     alias: f.alias,
@@ -74,6 +75,7 @@ export function formatFighter(f: FighterWithClub) {
 export function fighterArray(f: Fighter) {
   return {
     id: f.id,
+    kkf_id: f.kkf_id,
     name: f.name,
     name_khmer: f.name_khmer,
     alias: f.alias,
@@ -131,10 +133,56 @@ async function findByIdOrName(key: string) {
   const rows = await prisma.$queryRaw<{ id: string }[]>`
     SELECT id FROM fighters
     WHERE deleted_at IS NULL
-      AND (LOWER(name) = ${lower} OR LOWER(name) = ${lower.replaceAll("-", " ")} OR name_khmer = ${key})
+      AND (LOWER(name) = ${lower} OR LOWER(name) = ${lower.replaceAll("-", " ")} OR name_khmer = ${key}
+           OR UPPER(kkf_id) = ${key.toUpperCase()})
     LIMIT 1`;
   if (rows.length === 0) return null;
   return prisma.fighter.findUnique({ where: { id: rows[0].id }, include: withClub });
+}
+
+/** "KKF-000123" (digits only after the dash, at least 4); lower case and spaces are tolerated. */
+const KKF_ID = /^KKF-\d{4,12}$/;
+
+/**
+ * A KKF ID typed by KKF staff (claude/updates/fighter-kkf-id-optional-details.md): the right shape and not used by
+ * any other fighter (deleted ones keep theirs). Null when none was given.
+ */
+async function chosenKkfId(raw: unknown, exceptId?: string): Promise<string | null> {
+  const id = String(raw ?? "").trim().toUpperCase().replace(/\s+/g, "");
+  if (!id) return null;
+  if (!KKF_ID.test(id)) throw new HttpError(422, "The KKF ID must look like KKF-000123");
+  const owner = await prisma.fighter.findFirst({ where: { kkf_id: id, ...(exceptId ? { id: { not: exceptId } } : {}) }, select: { name: true } });
+  if (owner) throw new HttpError(422, `The KKF ID ${id} is already used by ${owner.name}`);
+  return id;
+}
+
+/** The number the next new fighter will get (a preview: someone else may take it first). */
+async function peekNextKkfId(): Promise<string> {
+  const [seq] = await prisma.$queryRaw<{ last_value: bigint; is_called: boolean }[]>`SELECT last_value, is_called FROM fighter_kkf_seq`;
+  let n = Number(seq.last_value) + (seq.is_called ? 1 : 0);
+  for (;;) {
+    const id = `KKF-${String(n).padStart(6, "0")}`;
+    if (!(await prisma.fighter.findFirst({ where: { kkf_id: id }, select: { id: true } }))) return id;
+    n++;
+  }
+}
+
+/**
+ * Hard block on an exact duplicate (claude/updates/fighter-kkf-id-optional-details.md): another registered (not
+ * deleted) fighter with the same Khmer name (spaces ignored) and the same date of birth. Fighters without a Khmer
+ * name or birth date (foreign guests) aren't checked. Similar names stay a warning (POST /fighters/similar).
+ */
+async function refuseExactDuplicate(nameKhmer: string | null | undefined, dateOfBirth: Date | null | undefined, excludeId?: string) {
+  const key = khmer(nameKhmer);
+  if (!key || !dateOfBirth) return;
+  const sameBirth = await prisma.fighter.findMany({
+    where: { ...NOT_DELETED, date_of_birth: dateOfBirth, ...(excludeId ? { id: { not: excludeId } } : {}) },
+    select: { id: true, name: true, name_khmer: true, kkf_id: true },
+  });
+  const twin = sameBirth.find((f) => khmer(f.name_khmer) === key);
+  if (twin) {
+    throw new HttpError(422, `This fighter is already registered: ${twin.name} (${twin.kkf_id}) has the same Khmer name and date of birth`);
+  }
 }
 
 const UPDATABLE = {
@@ -193,11 +241,12 @@ export default async function fighterRoutes(app: FastifyInstance) {
      * One page of the admin Fighters list (claude/updates/admin-fighters-paging.md). Filters work as on the screen:
      * `q` (name, Khmer name, alias or club, any case), `origin` (local | foreign), `clubId` (or "none"), `status` (a display
      * status: "Draft" = not yet public), `classId` (a weight class: its range, minus the earlier classes, like the screen),
-     * `sort` (name | weight), `limit` (default 30, most 100) and `offset`. Answers `{ items, total, clubs, noClub, statuses }`:
+     * `sort` (name | weight), `limit` (default 30, most 100) and `offset`. For the bout pickers (claude/updates/admin-bout-picker.md): `minKg` / `maxKg`
+     * (current weight, both included), `excludeIds` (comma-separated ids to leave out) and `nearKg` (closest to this weight first, then A–Z; wins over `sort`), and `facets=0` to skip the filter choices (they come back empty). Answers `{ items, total, clubs, noClub, statuses }`:
      * the page, how many match, and the choices for the club and status filters (from all fighters, whatever the filters).
      */
     protectedRoutes.get("/fighters/page", async (request, reply) => {
-      const query = request.query as { q?: string; origin?: string; clubId?: string; status?: string; classId?: string; sort?: string; limit?: string; offset?: string };
+      const query = request.query as { q?: string; origin?: string; clubId?: string; status?: string; classId?: string; sort?: string; limit?: string; offset?: string; minKg?: string; maxKg?: string; nearKg?: string; excludeIds?: string; facets?: string };
       const limit = Math.min(Math.max(Number.parseInt(query.limit ?? "", 10) || 30, 1), 100);
       const offset = Math.max(Number.parseInt(query.offset ?? "", 10) || 0, 0);
       const empty = { items: [], total: 0 };
@@ -206,7 +255,7 @@ export default async function fighterRoutes(app: FastifyInstance) {
       const q = query.q?.trim();
       if (q) {
         const has = (field: "name" | "name_khmer" | "alias") => ({ [field]: { contains: q, mode: "insensitive" as const } });
-        and.push({ OR: [has("name"), has("name_khmer"), has("alias"), { club: { name: { contains: q, mode: "insensitive" } } }] });
+        and.push({ OR: [has("name"), has("name_khmer"), has("alias"), { kkf_id: { contains: q, mode: "insensitive" } }, { club: { name: { contains: q, mode: "insensitive" } } }] });
       }
       const FOREIGN_NOT = ["", "Cambodian"];
       if (query.origin === "foreign") and.push({ nationality: { notIn: FOREIGN_NOT } });
@@ -228,13 +277,29 @@ export default async function fighterRoutes(app: FastifyInstance) {
         and.push(within(classes[at]), ...classes.slice(0, at).map((c) => ({ NOT: within(c) })));
       }
 
+      const choices = () => (query.facets === "0" ? Promise.resolve({ clubs: [], noClub: false, statuses: [] as string[] }) : facets());
+      const kg = (v?: string) => (v !== undefined && v !== "" && Number.isFinite(Number(v)) ? Number(v) : null);
+      const [minKg, maxKg, nearKg] = [kg(query.minKg), kg(query.maxKg), kg(query.nearKg)];
+      if (minKg !== null || maxKg !== null) and.push({ current_weight: { ...(minKg === null ? {} : { gte: minKg }), ...(maxKg === null ? {} : { lte: maxKg }) } });
+      const exclude = (query.excludeIds ?? "").split(",").filter((id) => isUuid(id));
+      if (exclude.length) and.push({ id: { notIn: exclude } });
+
       const where: Prisma.FighterWhereInput = { ...NOT_DELETED, ...(and.length ? { AND: and } : {}) };
+      if (nearKg !== null) {
+        // Closest weight first (then A–Z): the database can't order by distance, so sort the matches' ids and weights here.
+        const all = await prisma.fighter.findMany({ where, select: { id: true, name: true, current_weight: true } });
+        all.sort((a, b) => Math.abs(Number(a.current_weight) - nearKg) - Math.abs(Number(b.current_weight) - nearKg) || a.name.localeCompare(b.name));
+        const ids = all.slice(offset, offset + limit).map((f) => f.id);
+        const rows = await prisma.fighter.findMany({ where: { id: { in: ids } }, include: withClub });
+        const byId = new Map(rows.map((f) => [f.id, f]));
+        return ok(reply, { items: ids.map((id) => formatFighter(byId.get(id)!)), total: all.length, ...(await choices()) });
+      }
       const orderBy: Prisma.FighterOrderByWithRelationInput[] =
         query.sort === "weight" ? [{ current_weight: "asc" }, { name: "asc" }, { id: "asc" }] : [{ name: "asc" }, { id: "asc" }];
       const [rows, total, shown] = await Promise.all([
         prisma.fighter.findMany({ where, include: withClub, orderBy, skip: offset, take: limit }),
         prisma.fighter.count({ where }),
-        facets(),
+        choices(),
       ]);
       return ok(reply, { items: rows.map(formatFighter), total, ...shown });
     });
@@ -245,6 +310,12 @@ export default async function fighterRoutes(app: FastifyInstance) {
      * similar_name (Latin, ≤ 2 letters apart or the same words in another order), similar_name_khmer (≤ 1 apart),
      * same_birth (only together with a similar name). Nothing is saved; staff and clubs decide.
      */
+    /** The KKF ID the next new fighter will get, shown on the Register form (staff and clubs). */
+    protectedRoutes.get("/fighters/next-kkf-id", async (request, reply) => {
+      requireRole(request, [...STAFF, Role.Club]);
+      return ok(reply, { kkfId: await peekNextKkfId() });
+    });
+
     protectedRoutes.post("/fighters/similar", async (request, reply) => {
       requireRole(request, [...STAFF, Role.Club]);
       const input = inputOf(request.body);
@@ -272,7 +343,7 @@ export default async function fighterRoutes(app: FastifyInstance) {
       }
       found.sort((a, b) => b.score - a.score || a.f.name.localeCompare(b.f.name));
       return ok(reply, found.slice(0, 5).map(({ f, reasons }) => ({
-        id: f.id, name: f.name, nameKhmer: f.name_khmer, nationality: f.nationality, dateOfBirth: dateOnly(f.date_of_birth),
+        id: f.id, kkfId: f.kkf_id, name: f.name, nameKhmer: f.name_khmer, nationality: f.nationality, dateOfBirth: dateOnly(f.date_of_birth),
         currentWeight: f.current_weight === null ? null : Number(f.current_weight), clubName: f.club?.name ?? null, image: f.image, status: f.status, reasons,
       })));
     });
@@ -287,10 +358,14 @@ export default async function fighterRoutes(app: FastifyInstance) {
 
       // A foreign (guest) fighter needs only a name, country, gender and weight (claude/features/weekly-program.md).
       const guest = String(input.get("nationality", "Cambodian")) !== "Cambodian";
+      await refuseExactDuplicate(input.get("nameKhmer"), toDate(input.get("dateOfBirth")));
+      // KKF staff may choose the KKF ID; otherwise (and for clubs) the database gives the next number.
+      const kkfId = isStaff(user) ? await chosenKkfId(input.get("kkfId")) : null;
       const at = now();
       const fighter = await prisma.fighter.create({
         data: {
           id: randomUUID(),
+          ...(kkfId ? { kkf_id: kkfId } : {}),
           name: input.required("name"),
           name_khmer: khmerName(input.get("nationality", "Cambodian"), input.get("nameKhmer")),
           alias: input.get("alias"),
@@ -359,6 +434,17 @@ export default async function fighterRoutes(app: FastifyInstance) {
       }
       if (input.has("clubId") && user.role !== Role.Club) data.club_id = input.get("clubId");
       if (input.has("status") && isStaff(user)) data.status = input.get<string>("status")!;
+      // Only KKF staff change a fighter's KKF ID.
+      if (input.has("kkfId") && isStaff(user)) {
+        const next = await chosenKkfId(input.get("kkfId"), id);
+        if (next && next !== fighter.kkf_id) data.kkf_id = next;
+      }
+      // Only when the Khmer name or birth date changes, so an existing duplicate pair can still be edited.
+      const nextKhmer = (data.name_khmer as string | undefined) ?? fighter.name_khmer;
+      const nextBirth = data.date_of_birth !== undefined ? (data.date_of_birth as Date | null) : fighter.date_of_birth;
+      if (khmer(nextKhmer) !== khmer(fighter.name_khmer) || nextBirth?.getTime() !== fighter.date_of_birth?.getTime()) {
+        await refuseExactDuplicate(nextKhmer, nextBirth, id);
+      }
       // A club fixing a fighter KKF sent back re-submits it for verification.
       if (user.role === Role.Club && fighter.status === "Rejected" && Object.keys(data).length > 0) data.status = "Draft";
       if (Object.keys(data).length > 0) data.updated_at = now();

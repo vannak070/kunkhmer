@@ -1,0 +1,80 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`merging two fighters > previews and moves bouts, results, titles, follows and private details to the fighter kept, then removes the duplicate > merged 1`] = `
+{
+  "body": {
+    "data": {
+      "kept": {
+        "id": "uuid",
+        "name": "string",
+        "record": "string",
+      },
+      "moves": {
+        "bouts": "number",
+        "defences": "number",
+        "follows": "number",
+        "privateDetails": "boolean",
+        "results": "number",
+        "titles": "number",
+        "videos": "number",
+      },
+      "removed": {
+        "id": "uuid",
+        "name": "string",
+      },
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`merging two fighters > previews and moves bouts, results, titles, follows and private details to the fighter kept, then removes the duplicate > preview 1`] = `
+{
+  "body": {
+    "data": {
+      "blocked": "null",
+      "keep": {
+        "id": "uuid",
+        "name": "string",
+        "nameKhmer": "string",
+        "record": "string",
+      },
+      "moves": {
+        "bouts": "number",
+        "defences": "number",
+        "follows": "number",
+        "privateDetails": "boolean",
+        "results": "number",
+        "titles": "number",
+        "videos": "number",
+      },
+      "remove": {
+        "id": "uuid",
+        "name": "string",
+        "nameKhmer": "string",
+        "record": "string",
+      },
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
+
+exports[`one ID number per fighter > refuses an ID number already registered for another fighter, ignoring spaces, dashes and case > taken 1`] = `
+{
+  "body": {
+    "data": {
+      "fighter": {
+        "id": "uuid",
+        "name": "string",
+        "nameKhmer": "string",
+      },
+      "taken": "boolean",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;

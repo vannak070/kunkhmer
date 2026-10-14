@@ -25,7 +25,7 @@ async function boutOn(date: string, refereeId: string | null, judgeIds: string[]
   const eventId = (await post("/events", { name: `Officials Event ${uniq()}`, date, location: "Arena", status: "Published" }, a.admin.token)).body.data.id;
   const subEventId = (await post("/matches/batches", { eventId, name: `Card ${uniq()}`, weekNumber: 1, date, location: "Arena" }, a.admin.token)).body.data.id;
   const fighter = async () =>
-    (await post("/fighters", { name: `Fighter ${uniq()}`, nameKhmer: "x", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, status: "Active" }, a.admin.token)).body.data.id;
+    (await post("/fighters", { name: `Fighter ${uniq()}`, nameKhmer: `x ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, status: "Active" }, a.admin.token)).body.data.id;
   const res = await post(
     "/matches",
     { subEventId, fighterAId: await fighter(), fighterBId: await fighter(), rounds: 5, roundTime: 3, knockdownLimit: 3, agreedWeight: 60, gloveSize: "8oz", gloveBrand: "Twins", refereeId, judgeIds },

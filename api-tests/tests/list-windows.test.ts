@@ -13,7 +13,7 @@ let early: any, late: any, earlyCard: string, lateCard: string;
 let fighterA: string, fighterB: string, fighterC: string, fighterD: string, clubId: string;
 
 const fighter = async (club?: string) =>
-  (await post("/fighters", { name: `Window Fighter ${uniq()}`, nameKhmer: "គុន", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, grade: "B", ...(club ? { clubId: club } : {}) }, a.admin.token)).body.data.id as string;
+  (await post("/fighters", { name: `Window Fighter ${uniq()}`, nameKhmer: `គុន ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, grade: "B", ...(club ? { clubId: club } : {}) }, a.admin.token)).body.data.id as string;
 const event = async (name: string, date: string) => (await post("/events", { name: `${name} ${uniq()}`, date, location: venue, status: "Draft" }, a.admin.token)).body.data;
 const card = async (eventId: string, date: string) => (await post("/matches/batches", { eventId, name: "Card", weekNumber: 1, date, location: "Studio A" }, a.admin.token)).body.data.id as string;
 const bout = async (subEventId: string, x: string, y: string) => {

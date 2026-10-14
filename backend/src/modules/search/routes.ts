@@ -28,8 +28,8 @@ export default async function searchRoutes(app: FastifyInstance) {
 
       const [fighters, clubs, events] = await Promise.all([
         prisma.fighter.findMany({
-          where: { ...NOT_DELETED, OR: [{ name: like }, { name_khmer: like }, { alias: like }, { club: { name: like } }] },
-          select: { id: true, name: true, name_khmer: true, status: true, club: { select: { name: true } } },
+          where: { ...NOT_DELETED, OR: [{ name: like }, { name_khmer: like }, { alias: like }, { kkf_id: like }, { club: { name: like } }] },
+          select: { id: true, kkf_id: true, name: true, name_khmer: true, status: true, club: { select: { name: true } } },
           orderBy: [{ name: "asc" }, { id: "asc" }],
           take: LIMIT,
         }),
@@ -48,7 +48,7 @@ export default async function searchRoutes(app: FastifyInstance) {
       ]);
 
       return ok(reply, {
-        fighters: fighters.map((f) => ({ id: f.id, name: f.name, nameKhmer: f.name_khmer, clubName: f.club?.name ?? null, status: f.status })),
+        fighters: fighters.map((f) => ({ id: f.id, kkfId: f.kkf_id, name: f.name, nameKhmer: f.name_khmer, clubName: f.club?.name ?? null, status: f.status })),
         clubs: clubs.map((c) => ({ id: c.id, name: c.name, name_khmer: c.name_khmer, location: c.location })),
         events: events.map((e) => ({ id: e.id, name: e.name, date: micro(e.date), location: e.location, status: e.status })),
       });

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-10-14, committed and pushed (dev 11253144), not live) |
+| **Status** | Done (2026-10-14, live since 2026-10-14, 936db4ea) |
 | **Feature** | claude/features/weekly-program.md (step 6) |
 | **Requested by** | vannak070 ("start step 6 weekly checks") |
 

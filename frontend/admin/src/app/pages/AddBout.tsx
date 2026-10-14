@@ -38,7 +38,6 @@ export function AddBout() {
   const { t, lang } = useT();
 
   const [card, setCard] = useState<any | null | undefined>(undefined);
-  const [fighters, setFighters] = useState<any[]>([]);
   const [titles, setTitles] = useState<any[]>([]);
   const [cardBouts, setCardBouts] = useState<any[]>([]);
   const [rules, setRules] = useState<any[]>([]);
@@ -74,8 +73,7 @@ export function AddBout() {
   const load = async () => {
     try {
       const c = await api.batches.get(batchId!);
-      const [fs, cs, bs, rs, gs] = await Promise.all([
-        api.fighters.list(),
+      const [cs, bs, rs, gs] = await Promise.all([
         api.champions.list().catch(() => []),
         api.matches.list(batchId),
         api.settingsLists.list("bout-rules").catch(() => []),
@@ -86,8 +84,6 @@ export function AddBout() {
       api.events.agreements(c.event_id)
         .then((a: any) => setNightTitles({ ids: a.titles.map((x: any) => x.id), confirmed: a.items.titles.state === "confirmed" }))
         .catch(() => setNightTitles(null));
-      // Only registered (verified) fighters can be matched.
-      setFighters((fs as any[]).filter((f) => f.status === "Active"));
       setTitles(cs);
       setCardBouts(bs);
       setRules(rs);
@@ -104,7 +100,7 @@ export function AddBout() {
 
   const rule = rules.find((r) => r.id === ruleId) ?? null;
   const nameOf = (id: string | null | undefined, fallback: string) => {
-    const f = id ? [...fighters, red, blue].find((x) => x?.id === id) : null;
+    const f = id ? [red, blue].find((x) => x?.id === id) : null;
     return f ? (lang === "km" && f.nameKhmer ? f.nameKhmer : f.name) : fallback;
   };
   const back = card ? `/home/events/${card.event_id}#card-${card.id}` : "/home/matches";
@@ -241,12 +237,12 @@ export function AddBout() {
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-7 space-y-6 shadow-sm">
         <div className="grid md:grid-cols-2 gap-5">
-          <FighterPicker corner="red" label={t("common.red")} fighters={fighters} value={red} other={blue} onChange={pickRed} lang={lang} nearKg={weightTouched ? weight : null} />
+          <FighterPicker corner="red" label={t("common.red")} value={red} exclude={[blue?.id]} onChange={pickRed} lang={lang} nearKg={weightTouched ? weight : null} />
           <div className="space-y-2">
             {blueLater ? (
               <div className="rounded-xl border border-dashed border-blue-300 bg-blue-50/30 p-4 text-sm font-semibold text-slate-700">{t("common.blue")}: {t("corner.tba")}</div>
             ) : (
-              <FighterPicker corner="blue" label={t("common.blue")} fighters={fighters} value={blue} other={red} onChange={setBlue} lang={lang} nearKg={weightTouched || red ? weight : null} />
+              <FighterPicker corner="blue" label={t("common.blue")} value={blue} exclude={[red?.id]} onChange={setBlue} lang={lang} nearKg={weightTouched || red ? weight : null} />
             )}
             <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
               <input type="checkbox" className="w-4 h-4" checked={blueLater} onChange={(e) => { setBlueLater(e.target.checked); if (e.target.checked) setBlue(null); }} />
@@ -349,12 +345,12 @@ export function AddBout() {
   );
 }
 
-export function FighterPicker({ corner, label, fighters, value, other, onChange, lang, nearKg }: {
+export function FighterPicker({ corner, label, value, exclude = [], onChange, lang, nearKg }: {
   corner: "red" | "blue";
   label: string;
-  fighters: any[];
   value: any | null;
-  other: any | null;
+  /** Fighters that can't be picked here (the other corner, the bout's own fighters). */
+  exclude?: (string | null | undefined)[];
   onChange: (f: any | null) => void;
   lang: string;
   /** The agreed weight: the list shows fighters within ±2 kg first (all weights on request or when searching). */
@@ -362,26 +358,43 @@ export function FighterPicker({ corner, label, fighters, value, other, onChange,
 }) {
   const { t } = useT();
   const [q, setQ] = useState("");
+  const [typed, setTyped] = useState("");
   const [allWeights, setAllWeights] = useState(false);
+  const [matches, setMatches] = useState<any[]>([]);
+  const [busy, setBusy] = useState(true);
+  const [failed, setFailed] = useState(false);
   const tone = corner === "red" ? "border-red-200 bg-red-50/40" : "border-blue-200 bg-blue-50/40";
   const dot = corner === "red" ? "bg-red-600" : "bg-blue-600";
   const name = (f: any) => (lang === "km" && f.nameKhmer ? f.nameKhmer : f.name);
   const facts = (f: any) => [weightOf(f) ? t("common.kg", { n: weightOf(f) }) : null, f.clubName, f.record ? `${f.record} W-L-D` : null].filter(Boolean).join(" · ");
 
   const near = nearKg && nearKg > 0 ? nearKg : null;
-  const gap = (f: any) => { const kg = weightOf(f); return kg === null || !near ? Infinity : Math.abs(kg - near); };
-  const matches = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    let list = fighters
-      .filter((f) => f.id !== other?.id)
-      .filter((f) => !s || [f.name, f.nameKhmer, f.alias, f.clubName].some((x) => x?.toLowerCase().includes(s)));
-    // Similar weight: within ±2 kg of the agreed weight, closest first (a search or "all weights" shows everyone, closest first).
-    if (near) {
-      if (!s && !allWeights) list = list.filter((f) => gap(f) <= NEAR_KG);
-      list = [...list].sort((a, b) => gap(a) - gap(b));
-    }
-    return list.slice(0, near && !s ? 30 : 8);
-  }, [fighters, q, other, near, allWeights]);
+  const skip = exclude.filter(Boolean).join(",");
+
+  // Typing waits for a pause; the server finds the fighters (claude/updates/admin-bout-picker.md). Only registered (Active)
+  // fighters can be matched. Similar weight: within ±2 kg of the agreed weight, closest first (a search or "all weights"
+  // shows everyone, closest first).
+  useEffect(() => {
+    const id = setTimeout(() => setQ(typed.trim()), 250);
+    return () => clearTimeout(id);
+  }, [typed]);
+  useEffect(() => {
+    if (value) return;
+    let stale = false;
+    setBusy(true);
+    setFailed(false);
+    api.fighters
+      .page({
+        status: "Active", q, excludeIds: skip, facets: 0,
+        ...(near ? { nearKg: near } : {}),
+        ...(near && !q && !allWeights ? { minKg: near - NEAR_KG, maxKg: near + NEAR_KG } : {}),
+        limit: near && !q ? 30 : 8,
+      })
+      .then((p) => { if (!stale) setMatches(p.items); })
+      .catch(() => { if (!stale) setFailed(true); })
+      .finally(() => { if (!stale) setBusy(false); });
+    return () => { stale = true; };
+  }, [value?.id, q, near, allWeights, skip]);
 
   return (
     <div className={`rounded-xl border p-4 space-y-3 ${tone}`}>
@@ -400,19 +413,19 @@ export function FighterPicker({ corner, label, fighters, value, other, onChange,
           <label className="relative block">
             <span className="sr-only">{t("bout.searchFighter")}</span>
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("bout.searchFighter")} className={`${fieldCls} pl-9`} />
+            <input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={t("bout.searchFighter")} className={`${fieldCls} pl-9`} />
           </label>
-          {near && !q.trim() && (
+          {near && !typed.trim() && (
             <p className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
               <span>{allWeights ? t("bout.allWeights") : t("bout.nearWeights", { kg: near, n: NEAR_KG })}</span>
               <button type="button" onClick={() => setAllWeights((a) => !a)} className="font-semibold text-primary hover:underline">{allWeights ? t("bout.onlyNear", { n: NEAR_KG }) : t("bout.showAllWeights")}</button>
             </p>
           )}
           <ul className="max-h-72 overflow-y-auto rounded-xl bg-white border border-slate-200 divide-y divide-slate-100">
-            {matches.length === 0 && <li className="p-3 text-sm text-slate-500">{t("bout.noFighter")}</li>}
+            {failed ? <li className="p-3 text-sm text-slate-500">{t("common.error")}</li> : busy && matches.length === 0 ? <li className="p-3 text-sm text-slate-500">{t("common.loading")}</li> : matches.length === 0 && <li className="p-3 text-sm text-slate-500">{t("bout.noFighter")}</li>}
             {matches.map((f) => (
               <li key={f.id}>
-                <button type="button" onClick={() => { onChange(f); setQ(""); }} className="w-full text-left flex items-center gap-3 p-3 hover:bg-slate-50">
+                <button type="button" onClick={() => { onChange(f); setQ(""); setTyped(""); }} className="w-full text-left flex items-center gap-3 p-3 hover:bg-slate-50">
                   <FighterAvatar name={f.name} image={f.image} />
                   <span className="min-w-0">
                     <span className="block text-sm font-semibold text-slate-900 break-words">{name(f)}</span>

@@ -16,7 +16,7 @@ beforeAll(async () => {
 });
 
 const fighter = (image: unknown) => ({
-  name: `File Fighter ${uniq()}`, nameKhmer: "x", dateOfBirth: "2000-01-01", gender: "Male",
+  name: `File Fighter ${uniq()}`, nameKhmer: `x ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male",
   currentWeight: 60, height: 170, clubId: a.clubId, image,
 });
 

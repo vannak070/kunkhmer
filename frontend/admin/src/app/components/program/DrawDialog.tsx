@@ -3,7 +3,7 @@
  * draw (the lots are drawn offline; "Shuffle" helps when KKF draws on the spot), the agreed weight, the rules and the
  * last bout's label. The qualifiers are created at once; later rounds wait for the winners ("winner of bout N").
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Search, Shuffle, X } from "lucide-react";
 import { api } from "../../utils/api";
@@ -19,7 +19,7 @@ export function DrawDialog({ card, onClose, onDone }: { card: any; onClose: () =
   const { t, lang } = useT();
   const [size, setSize] = useState<4 | 8>(4);
   const [picked, setPicked] = useState<any[]>([]);
-  const [fighters, setFighters] = useState<any[]>([]);
+  const [list, setList] = useState<any[]>([]);
   const [rules, setRules] = useState<any[]>([]);
   const [gloves, setGloves] = useState<any[]>([]);
   const [ruleId, setRuleId] = useState("");
@@ -31,18 +31,27 @@ export function DrawDialog({ card, onClose, onDone }: { card: any; onClose: () =
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api.fighters.list().then((f: any[]) => setFighters((f || []).filter((x) => x.status === "Active"))).catch(() => {});
     api.settingsLists.list("bout-rules").then((r: any[]) => { setRules(r || []); if (r?.[0]) setRuleId(r[0].id); }).catch(() => {});
     api.settingsLists.list("glove-brands").then((g: any[]) => { setGloves(g || []); if (g?.[0]) setGlove(`${g[0].brand}${g[0].model ? ` ${g[0].model}` : ""}`); }).catch(() => {});
   }, []);
 
   const name = (f: any) => (lang === "km" && f.nameKhmer ? f.nameKhmer : f.name);
   const num = (n: number) => (lang === "km" ? khmerDigits(n) : String(n));
-  const list = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    const taken = new Set(picked.map((p) => p.id));
-    return fighters.filter((f) => !taken.has(f.id)).filter((f) => !s || [f.name, f.nameKhmer, f.clubName].some((x) => x?.toLowerCase().includes(s))).slice(0, 8);
-  }, [fighters, picked, q]);
+  // The server finds the fighters (claude/updates/admin-bout-picker.md): Active only, those already picked left out, a pause after typing.
+  const [typed, setTyped] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setQ(typed.trim()), 250);
+    return () => clearTimeout(id);
+  }, [typed]);
+  const taken = picked.map((p) => p.id).join(",");
+  useEffect(() => {
+    let stale = false;
+    api.fighters
+      .page({ status: "Active", q, excludeIds: taken, facets: 0, limit: 8 })
+      .then((p) => { if (!stale) setList(p.items); })
+      .catch(() => { if (!stale) setList([]); });
+    return () => { stale = true; };
+  }, [q, taken]);
   const rule = rules.find((r) => r.id === ruleId);
 
   const shuffle = () => setPicked((p) => { const a = [...p]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; });
@@ -110,13 +119,13 @@ export function DrawDialog({ card, onClose, onDone }: { card: any; onClose: () =
             <label className="relative block">
               <span className="sr-only">{t("draw.pick")}</span>
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("draw.pick")} className={`${fieldCls} pl-9`} />
+              <input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={t("draw.pick")} className={`${fieldCls} pl-9`} />
             </label>
             <ul className="max-h-56 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100">
               {list.length === 0 && <li className="p-3 text-sm text-slate-500">{t("bout.noFighter")}</li>}
               {list.map((f) => (
                 <li key={f.id}>
-                  <button type="button" onClick={() => { setPicked((p) => [...p, f]); setQ(""); }} className="w-full text-left flex items-center gap-3 p-2.5 hover:bg-slate-50">
+                  <button type="button" onClick={() => { setPicked((p) => [...p, f]); setQ(""); setTyped(""); }} className="w-full text-left flex items-center gap-3 p-2.5 hover:bg-slate-50">
                     <FighterAvatar name={f.name} image={f.image} />
                     <span className="min-w-0 text-sm"><span className="block font-semibold text-slate-900">{name(f)}</span><span className="block text-xs text-slate-600">{[weightOf(f) ? t("common.kg", { n: weightOf(f) }) : null, f.clubName].filter(Boolean).join(" · ")}</span></span>
                   </button>

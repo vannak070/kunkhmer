@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-10-14, uncommitted, not live) |
+| **Status** | Done (2026-10-14, live since 936db4ea) |
 | **Feature** | claude/features/matches-results.md |
 | **Requested by** | vannak070 (screenshot of Add bout: "when choose bout and weight, the blue corner should display similar weight — less than and more than 2 kg") |
 

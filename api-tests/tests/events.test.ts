@@ -180,7 +180,7 @@ async function confirmDetails(eventId: string) {
 async function addBout(eventId: string) {
   const card = (await post("/matches/batches", { eventId, name: "Main card", weekNumber: 1, date: "2026-11-01", location: "Arena" }, a.admin.token)).body.data.id;
   const fighter = async () =>
-    (await post("/fighters", { name: `Guard ${uniq()}`, nameKhmer: "x", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170 }, a.admin.token)).body.data;
+    (await post("/fighters", { name: `Guard ${uniq()}`, nameKhmer: `x ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170 }, a.admin.token)).body.data;
   const [red, blue] = [await fighter(), await fighter()];
   const res = await post("/matches", { subEventId: card, fighterAId: red.id, fighterBId: blue.id, rounds: 5, roundTime: 180, knockdownLimit: 3, agreedWeight: 60, gloveSize: "10oz", gloveBrand: "Twins" }, a.admin.token);
   expect(res.body.success).toBe(true);

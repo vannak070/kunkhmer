@@ -11,7 +11,7 @@ const search = async (q: string, token = a.admin.token) => (await get(`/search?q
 beforeAll(async () => {
   a = await setupActors();
   clubId = (await post("/clubs", { name: `${tag} Gym`, nameKhmer: `ក្លឹប ${tag}`, location: `${tag}ville` }, a.admin.token)).body.data.id;
-  fighterId = (await post("/fighters", { name: `${tag} Sok`, nameKhmer: "សុខ", alias: `${tag}Tiger`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, grade: "B", clubId }, a.admin.token)).body.data.id;
+  fighterId = (await post("/fighters", { name: `${tag} Sok`, nameKhmer: `សុខ ${uniq()}`, alias: `${tag}Tiger`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, grade: "B", clubId }, a.admin.token)).body.data.id;
   eventId = (await post("/events", { name: `${tag} Night`, date: "2035-03-03", location: `${tag} Arena`, status: "Draft" }, a.admin.token)).body.data.id;
 });
 
@@ -25,7 +25,7 @@ describe("search", () => {
     expect(r.fighters.map((f: any) => f.id)).toEqual([fighterId]);
     expect(r.clubs.map((c: any) => c.id)).toEqual([clubId]);
     expect(r.events.map((e: any) => e.id)).toEqual([eventId]);
-    expect(r.fighters[0]).toMatchObject({ name: `${tag} Sok`, nameKhmer: "សុខ", clubName: `${tag} Gym`, status: "Active" });
+    expect(r.fighters[0]).toMatchObject({ name: `${tag} Sok`, nameKhmer: expect.stringContaining("សុខ"), clubName: `${tag} Gym`, status: "Active" });
     expect(shape({ fighter: r.fighters[0], club: r.clubs[0], event: r.events[0] })).toMatchSnapshot();
   });
 

@@ -7,7 +7,7 @@ let holderId: string;
 beforeAll(async () => {
   a = await setupActors();
   holderId = (
-    await post("/fighters", { name: `Champ ${uniq()}`, nameKhmer: "x", dateOfBirth: "1998-01-01", gender: "Male", currentWeight: 60, height: 170, clubId: a.clubId, image: "https://example.com/c.png" }, a.admin.token)
+    await post("/fighters", { name: `Champ ${uniq()}`, nameKhmer: `x ${uniq()}`, dateOfBirth: "1998-01-01", gender: "Male", currentWeight: 60, height: 170, clubId: a.clubId, image: "https://example.com/c.png" }, a.admin.token)
   ).body.data.id;
 });
 

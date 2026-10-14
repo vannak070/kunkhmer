@@ -26,7 +26,7 @@ async function newFighter(clubId: string | null = a.clubId) {
   const res = await post(
     "/fighters",
     // Only KKF-verified (Active) fighters can be matched.
-    { name: `Fighter ${uniq()}`, nameKhmer: "x", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, clubId, grade: "B", image: "https://example.com/f.png", status: "Active" },
+    { name: `Fighter ${uniq()}`, nameKhmer: `x ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, clubId, grade: "B", image: "https://example.com/f.png", status: "Active" },
     a.admin.token,
   );
   return res.body.data.id as string;
@@ -35,7 +35,7 @@ async function newFighter(clubId: string | null = a.clubId) {
 async function draftFighter() {
   const res = await post(
     "/fighters",
-    { name: `Unverified ${uniq()}`, nameKhmer: "x", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, clubId: a.clubId },
+    { name: `Unverified ${uniq()}`, nameKhmer: `x ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, clubId: a.clubId },
     a.club.token,
   );
   return res.body.data.id as string;
@@ -662,7 +662,7 @@ describe("KKF matching rules (updates/matching-rules.md)", () => {
   const newFighterWith = async (fields: Record<string, unknown>) => {
     const res = await post(
       "/fighters",
-      { name: `Fighter ${uniq()}`, nameKhmer: "x", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, clubId: otherClubId, grade: "B", image: "https://example.com/f.png", status: "Active", ...fields },
+      { name: `Fighter ${uniq()}`, nameKhmer: `x ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, clubId: otherClubId, grade: "B", image: "https://example.com/f.png", status: "Active", ...fields },
       a.admin.token,
     );
     return res.body.data.id as string;

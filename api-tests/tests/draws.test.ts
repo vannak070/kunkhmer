@@ -14,7 +14,7 @@ beforeAll(async () => {
 });
 
 const fighter = async () =>
-  (await post("/fighters", { name: `Draw Fighter ${uniq()}`, nameKhmer: "គុន", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, grade: "B" }, a.admin.token)).body.data.id as string;
+  (await post("/fighters", { name: `Draw Fighter ${uniq()}`, nameKhmer: `គុន ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170, grade: "B" }, a.admin.token)).body.data.id as string;
 const card = async () => (await post("/matches/batches", { eventId, name: `Card ${uniq()}`, weekNumber: 1, date: "2026-11-21", location: "Studio" }, a.admin.token)).body.data.id as string;
 const rules = { rounds: 3, roundTime: 3, knockdownLimit: 3, agreedWeight: 60, gloveSize: "10oz", gloveBrand: "Boon" };
 const result = (id: string, winnerId: string) => post(`/matches/${id}/result`, { winnerId, method: "Decision", round: 3 }, a.officer.token);

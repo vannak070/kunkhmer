@@ -40,7 +40,7 @@ export function HeaderSearch() {
           setFound({
             term,
             hits: [
-              ...fighters.map((f) => ({ type: "Fighter" as const, id: f.id, label: f.name, sub: [f.nameKhmer, f.clubName, f.status].filter(Boolean).join(" · "), href: `/home/fighters/${f.id}` })),
+              ...fighters.map((f) => ({ type: "Fighter" as const, id: f.id, label: f.name, sub: [f.kkfId, f.nameKhmer, f.clubName, f.status].filter(Boolean).join(" · "), href: `/home/fighters/${f.id}` })),
               ...clubs.map((c) => ({ type: "Club" as const, id: c.id, label: c.name, sub: [c.name_khmer, c.location].filter(Boolean).join(" · "), href: `/home/clubs/${c.id}` })),
               ...events.map((e) => ({ type: "Event" as const, id: e.id, label: e.name, sub: [String(e.date ?? "").slice(0, 10), e.location, e.status].filter(Boolean).join(" · "), href: `/home/events/${e.id}` })),
             ].slice(0, 8),

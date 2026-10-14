@@ -315,8 +315,26 @@ export const api = {
       const res = await request("/fighters/similar", { method: "POST", body: JSON.stringify(body) });
       return res.data as any[];
     },
+    /** Pairs of fighters who may be the same person (KKF staff): `show` = "open" (default) or "dismissed". */
+    async duplicates(show: "open" | "dismissed" = "open") {
+      const res = await request(`/fighters/duplicates?show=${show}`);
+      return res.data as { items: any[]; counts: { open: number; veryLikely: number; possible: number; dismissed: number } };
+    },
+    async dismissDuplicate(fighterAId: string, fighterBId: string) {
+      const res = await request("/fighters/duplicates/dismiss", { method: "POST", body: JSON.stringify({ fighterAId, fighterBId }) });
+      return res.data;
+    },
+    async restoreDuplicate(fighterAId: string, fighterBId: string) {
+      const res = await request("/fighters/duplicates/restore", { method: "POST", body: JSON.stringify({ fighterAId, fighterBId }) });
+      return res.data;
+    },
+    /** The KKF ID the next new fighter will get (a preview; staff may change it before saving). */
+    async nextKkfId() {
+      const res = await request("/fighters/next-kkf-id");
+      return (res.data?.kkfId ?? null) as string | null;
+    },
     /** One page of the admin Fighters list, filtered by the server (claude/updates/admin-fighters-paging.md). */
-    async page(params: { q?: string; origin?: string; clubId?: string; status?: string; classId?: string; sort?: string; limit?: number; offset?: number }) {
+    async page(params: { q?: string; origin?: string; clubId?: string; status?: string; classId?: string; sort?: string; limit?: number; offset?: number; minKg?: number; maxKg?: number; nearKg?: number; excludeIds?: string; facets?: number }) {
       const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== "" && v != null).map(([k, v]) => [k, String(v)])).toString();
       const res = await request(`/fighters/page${query ? `?${query}` : ""}`);
       return res.data as { items: any[]; total: number; clubs: { id: string; name: string }[]; noClub: boolean; statuses: string[] };
@@ -344,6 +362,20 @@ export const api = {
     async privatePut(id: string, input: any) {
       const res = await request(`/fighters/${id}/private`, { method: "PUT", body: JSON.stringify(input) });
       return res.data;
+    },
+    /** Who already has this ID number (claude/updates/fighter-id-merge.md); spaces, dashes and case don't count. */
+    async idCheck(number: string, excludeId?: string | null) {
+      const res = await request(`/fighters/private/id-check?${new URLSearchParams({ number, ...(excludeId ? { excludeId } : {}) })}`);
+      return res.data as { taken: boolean; fighter: { id: string; name: string; nameKhmer: string } | null };
+    },
+    /** What merging :id (the duplicate) into intoId would move. */
+    async mergePreview(id: string, intoId: string) {
+      const res = await request(`/fighters/${id}/merge-preview?intoId=${intoId}`);
+      return res.data as { remove: any; keep: any; moves: Record<string, number | boolean>; blocked: string | null };
+    },
+    async merge(id: string, intoId: string) {
+      const res = await request(`/fighters/${id}/merge`, { method: "POST", body: JSON.stringify({ intoId }) });
+      return res.data as { kept: { id: string; name: string; record: string }; removed: { id: string; name: string } };
     },
     /** Fighters with missing / expired details: [{ fighterId, missing: [...], idExpired, medicalExpired, needsGuardian }]. */
     async privateSummary(): Promise<any[]> {

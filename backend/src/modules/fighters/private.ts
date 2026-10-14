@@ -18,11 +18,11 @@ import { stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../../db.ts";
-import type { FighterPrivate } from "../../generated/prisma/client.ts";
+import { Prisma, type FighterPrivate } from "../../generated/prisma/client.ts";
 import { STAFF, requireAuth, requireRole } from "../../lib/auth.ts";
 import { dateOnly, iso, now, toDate } from "../../lib/dates.ts";
 import { CONTENT_TYPES, FILE_NAME, isPrivateDataUri, privateDir, storePrivateDocument } from "../../lib/files.ts";
-import { HttpError, idParam, notFound, ok } from "../../lib/http.ts";
+import { HttpError, idParam, isUuid, notFound, ok } from "../../lib/http.ts";
 import { inputOf } from "../../lib/input.ts";
 import { NOT_DELETED } from "./routes.ts";
 
@@ -69,6 +69,21 @@ export function gaps(row: FighterPrivate | null, dob: Date | null) {
   };
 }
 
+/** An ID number compared without spaces, dashes or case ("N 0123-45" = "n012345"). claude/updates/fighter-id-merge.md */
+export const idKey = (s: string | null | undefined) => (s ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+/** The registered (not deleted) fighter who already has this ID number, other than `exceptId`. */
+export async function idOwner(number: string, exceptId: string | null) {
+  const key = idKey(number);
+  if (key.length < 3) return null;
+  const rows = await prisma.$queryRaw<{ id: string; name: string; name_khmer: string }[]>`
+    SELECT f.id, f.name, f.name_khmer FROM fighter_private p JOIN fighters f ON f.id = p.fighter_id
+    WHERE f.deleted_at IS NULL AND upper(regexp_replace(coalesce(p.id_number, ''), '[^A-Za-z0-9]', '', 'g')) = ${key}
+    ${exceptId ? Prisma.sql`AND f.id <> ${exceptId}::uuid` : Prisma.empty}
+    LIMIT 1`;
+  return rows[0] ?? null;
+}
+
 const hasGap = (g: ReturnType<typeof gaps>) => g.missing.length > 0 || g.idExpired || g.medicalExpired || g.needsGuardian;
 
 function shape(fighterId: string, row: FighterPrivate | null, dob: Date | null, status: { medical_status: string; suspension_end_date: Date | null }) {
@@ -110,6 +125,14 @@ export default async function fighterPrivateRoutes(app: FastifyInstance) {
   app.register(async (staffRoutes) => {
     staffRoutes.addHook("preHandler", requireAuth);
 
+    // Is this ID number already registered? `?number=&excludeId=` → { taken, fighter: { id, name, nameKhmer } | null }.
+    staffRoutes.get("/fighters/private/id-check", async (request, reply) => {
+      requireRole(request, STAFF);
+      const { number, excludeId } = request.query as { number?: string; excludeId?: string };
+      const owner = number ? await idOwner(number, excludeId && isUuid(excludeId) ? excludeId : null) : null;
+      return ok(reply, { taken: Boolean(owner), fighter: owner ? { id: owner.id, name: owner.name, nameKhmer: owner.name_khmer } : null });
+    });
+
     staffRoutes.get("/fighters/private-summary", async (request, reply) => {
       requireRole(request, STAFF);
       const fighters = await prisma.fighter.findMany({ where: NOT_DELETED, select: { id: true, date_of_birth: true, private: true } });
@@ -138,6 +161,11 @@ export default async function fighterPrivateRoutes(app: FastifyInstance) {
         const value = input.get<string>(key);
         if (value != null && String(value).length > max) throw new HttpError(422, `The ${key} field is too long`);
         data[column] = value == null ? null : String(value);
+      }
+      // One ID number belongs to one fighter (claude/updates/fighter-id-merge.md).
+      if (typeof data.id_number === "string") {
+        const owner = await idOwner(data.id_number, fighter.id);
+        if (owner) throw new HttpError(422, `This ID number is already registered for ${owner.name}`);
       }
       if (data.blood_type && !BLOOD_TYPES.includes(String(data.blood_type))) throw new HttpError(422, "The bloodType field must be A+, A-, B+, B-, AB+, AB-, O+ or O-");
       if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.email))) throw new HttpError(422, "The email field must be a valid email address");

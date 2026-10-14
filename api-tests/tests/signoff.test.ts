@@ -11,7 +11,7 @@ let sponsor: string;
 const future = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 
 const newFighter = async () =>
-  (await post("/fighters", { name: `Fighter ${uniq()}`, nameKhmer: "x", dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170 }, a.admin.token)).body.data.id as string;
+  (await post("/fighters", { name: `Fighter ${uniq()}`, nameKhmer: `x ${uniq()}`, dateOfBirth: "2000-01-01", gender: "Male", currentWeight: 60, height: 170 }, a.admin.token)).body.data.id as string;
 
 /** A match `days` from today (0 = match day) with `bouts` bouts; sponsor and broadcaster attached. */
 async function newMatch(days = 0, bouts = 2) {

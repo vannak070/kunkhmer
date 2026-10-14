@@ -18,6 +18,7 @@ exports[`search > finds fighters, clubs and events in any case 1`] = `
   "fighter": {
     "clubName": "string",
     "id": "uuid",
+    "kkfId": "string",
     "name": "string",
     "nameKhmer": "string",
     "status": "string",

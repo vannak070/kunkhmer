@@ -138,6 +138,10 @@ model Club {
 
 model Fighter {
   id                  String    @id @db.Uuid
+  /// KKF's own fighter number, "KKF-000123": given by the database on insert (kkf_next_id(), sequence
+  /// fighter_kkf_seq); KKF staff can change it (unique, KKF-digits). Numbers from the counter are never reused
+  /// (claude/updates/fighter-kkf-id-optional-details.md).
+  kkf_id              String    @unique @default(dbgenerated("kkf_next_id()")) @db.VarChar(20)
   name                String    @db.VarChar(255)
   name_khmer          String    @db.VarChar(255)
   alias               String?   @db.VarChar(255)
@@ -840,6 +844,21 @@ model ShowTemplate {
   @@map("show_templates")
 }
 
+/// Two fighter records merged into one (claude/updates/fighter-id-merge.md): who was kept, who was removed, by whom, what moved.
+model FighterMerge {
+  id           String    @id @db.Uuid
+  kept_id      String    @db.Uuid
+  removed_id   String    @db.Uuid
+  removed_name String    @db.VarChar(255)
+  merged_by    String?   @db.Uuid
+  merged_at    DateTime  @db.Timestamp(0)
+  /// counts of what moved (bouts, results, titles, follows, videos…)
+  summary      Json
+
+  @@index([kept_id])
+  @@map("fighter_merges")
+}
+
 /// Bout rule presets: picking one on "Create match" fills rounds, round time
 /// (minutes), knockdown limit and glove size.
 model BoutRule {
@@ -981,4 +1000,16 @@ model MatchingRule {
   updated_by  String?   @db.Uuid
 
   @@map("matching_rules")
+}
+
+/// Pairs of fighters staff marked "not the same person" on the duplicates list (claude/features/duplicate-fighters-list.md).
+/// fighter_a_id < fighter_b_id (as text), so each pair is stored once. No foreign keys: a deleted fighter just stops matching.
+model FighterDuplicateDismissal {
+  fighter_a_id String   @db.Uuid
+  fighter_b_id String   @db.Uuid
+  dismissed_by String?  @db.Uuid
+  dismissed_at DateTime @db.Timestamp(0)
+
+  @@id([fighter_a_id, fighter_b_id])
+  @@map("fighter_duplicate_dismissals")
 }

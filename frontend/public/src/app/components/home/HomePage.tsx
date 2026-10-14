@@ -471,16 +471,14 @@ function VideoCard({ v, onPlay }: { v: HomeVideo; onPlay: () => void }) {
 // ─── 7. Become a partner ────────────────────────────────────────────────────
 
 /**
- * "Join our official partners": logo tiles grouped by role (sponsors, international partners,
- * broadcaster), each linking to the partner's website, ending with a dashed "Your brand here" tile
+ * "Join our official partners": the official sponsors' logo tiles (sponsors only since 2026-10-14), each linking to the partner's website, ending with a dashed "Your brand here" tile
  * that opens the partnership email.
  */
 function PartnerWall({ partners, mailto }: { partners: Partner[]; mailto: string }) {
   const { t } = useI18n();
+  // Sponsors only (owner, 2026-10-14): broadcasters and international partners have their own pages.
   const groups = [
     { key: "sponsors", label: t("partners.sponsors"), list: partners.filter((p) => !p.broadcaster && !p.international) },
-    { key: "international", label: t("partners.international"), list: partners.filter((p) => p.international) },
-    { key: "broadcast", label: t("partners.broadcasters"), list: partners.filter((p) => p.broadcaster) },
   ].filter((g) => g.list.length > 0);
   // Light card per partner: logo, name underneath; the whole tile links to the partner's website.
   const tile = "group h-full flex flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 text-center transition";
@@ -660,7 +658,7 @@ export default function HomePage(props: HomePageProps) {
   const stats = [
     { label: t("home.statFighters"), value: fighters.length },
     { label: t("home.statEvents"), value: upcomingEvents.length + pastEvents.length },
-    { label: t("home.statPartners"), value: partners.length },
+    { label: t("home.statSponsors"), value: partners.filter((p) => !p.broadcaster && !p.international).length },
   ].filter((s) => s.value >= 10); // small counts undersell the pitch; they appear as the federation grows
 
   return (

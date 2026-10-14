@@ -14,7 +14,7 @@ const raw = (path: string, token?: string) =>
   fetch(API_URL + path, { headers: { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
 
 const newFighter = async (dateOfBirth = "2000-01-01") =>
-  (await post("/fighters", { name: `Private ${uniq()}`, nameKhmer: "x", dateOfBirth, gender: "Male", currentWeight: 60, height: 170 }, a.admin.token)).body.data;
+  (await post("/fighters", { name: `Private ${uniq()}`, nameKhmer: `x ${uniq()}`, dateOfBirth, gender: "Male", currentWeight: 60, height: 170 }, a.admin.token)).body.data;
 
 const FULL = {
   idType: "National ID",
@@ -50,9 +50,11 @@ describe("private fighter details", () => {
 
   it("updates only the given fields and clears a field sent empty", async () => {
     const f = await newFighter();
-    await put(`/fighters/${f.id}/private`, FULL, a.officer.token);
+    // One ID number per fighter (claude/updates/fighter-id-merge.md), so each fighter here gets its own.
+    const idNumber = `ID-${uniq()}`;
+    await put(`/fighters/${f.id}/private`, { ...FULL, idNumber }, a.officer.token);
     const res = await put(`/fighters/${f.id}/private`, { phone: "", emergencyRelation: "Mother" }, a.officer.token);
-    expect(res.body.data).toMatchObject({ phone: null, emergencyRelation: "Mother", idNumber: FULL.idNumber, emergencyName: FULL.emergencyName });
+    expect(res.body.data).toMatchObject({ phone: null, emergencyRelation: "Mother", idNumber, emergencyName: FULL.emergencyName });
   });
 
   it("validates values", async () => {
@@ -67,12 +69,12 @@ describe("private fighter details", () => {
 
   it("flags expired documents and a missing guardian for under-18s; the summary lists only fighters with a gap", async () => {
     const adult = await newFighter();
-    await put(`/fighters/${adult.id}/private`, { ...FULL, idExpiry: "2020-01-01", medicalExpiry: "2021-01-01" }, a.officer.token);
+    await put(`/fighters/${adult.id}/private`, { ...FULL, idNumber: `ID-${uniq()}`, idExpiry: "2020-01-01", medicalExpiry: "2021-01-01" }, a.officer.token);
     const minorDob = `${new Date().getUTCFullYear() - 15}-06-15`;
     const minor = await newFighter(minorDob);
     const complete = await newFighter();
-    await put(`/fighters/${complete.id}/private`, FULL, a.officer.token);
-    await put(`/fighters/${minor.id}/private`, FULL, a.officer.token);
+    await put(`/fighters/${complete.id}/private`, { ...FULL, idNumber: `ID-${uniq()}` }, a.officer.token);
+    await put(`/fighters/${minor.id}/private`, { ...FULL, idNumber: `ID-${uniq()}` }, a.officer.token);
 
     expect((await get(`/fighters/${adult.id}/private`, a.officer.token)).body.data).toMatchObject({ idExpired: true, medicalExpired: true, needsGuardian: false });
     expect((await get(`/fighters/${minor.id}/private`, a.officer.token)).body.data).toMatchObject({ needsGuardian: true });
@@ -137,19 +139,20 @@ describe("private fighter details", () => {
 
   it("never shows any of it in a public response", async () => {
     const f = await newFighter();
+    const secretId = uniq();
     await post(`/fighters/${f.id}/verify`, {}, a.officer.token);
-    await put(`/fighters/${f.id}/private`, { ...FULL, idNumber: "SECRET-ID-99887", emergencyPhone: "099 000 111", medicalNotes: "SECRET-NOTE" }, a.officer.token);
+    await put(`/fighters/${f.id}/private`, { ...FULL, idNumber: `SECRET-ID-${secretId}`, emergencyPhone: "099 000 111", medicalNotes: "SECRET-NOTE" }, a.officer.token);
     for (const path of ["/fighters", `/fighters/${f.id}`, `/fighters?status=Active`]) {
       const res = await raw(path);
       expect(res.status).toBe(200);
       const text = await res.text();
-      for (const secret of ["SECRET-ID-99887", "099 000 111", "SECRET-NOTE", "emergency", "idNumber", "id_number", "bloodType"]) {
+      for (const secret of [`SECRET-ID-${secretId}`, "099 000 111", "SECRET-NOTE", "emergency", "idNumber", "id_number", "bloodType"]) {
         expect(text).not.toContain(secret);
       }
     }
     // Staff lists don't carry it either: it only comes from the private routes.
     const staffList = await (await raw("/fighters", a.officer.token)).text();
-    expect(staffList).not.toContain("SECRET-ID-99887");
+    expect(staffList).not.toContain(`SECRET-ID-${secretId}`);
   });
 
   it("stores scans privately: staff download them, the public file route can't serve them", async () => {

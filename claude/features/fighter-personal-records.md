@@ -37,9 +37,11 @@ what. None of it is ever shown on the public site or sent to the AI.
 
 ## Owner decisions (2026-09-30)
 - **Yes**, build staff-only private records; never public, never in search / sitemap / Hub.
-- **Required when registering a fighter** (Add Fighter form): ID type + ID number and one emergency
-  contact (name + phone). Everything else (relationship, phone, email, address, blood type, medical
-  check / expiry / notes, guardian, consent, document scans) is optional and can follow.
+- ~~Required when registering a fighter: ID number + emergency contact~~ — **changed 2026-10-14: nothing in
+  "Personal & medical details" is required** (`updates/fighter-kkf-id-optional-details.md`); every fighter gets a
+  KKF ID instead, which is what protects against duplicates. Everything (ID type and number, emergency contact,
+  relationship, phone, email, address, blood type, medical check / expiry / notes, guardian, consent, document
+  scans) can be filled in later. A typed ID number must still be unique.
 - **Document scans**: private storage with a staff-only download route — never `/api/files`.
 - Missing / expired details **warn only** (fighter page, Fighters list, Add bout) — they never block a bout.
 - Defaults I chose for what wasn't asked (say if you want them changed): no read-audit log in the first
@@ -49,8 +51,10 @@ what. None of it is ever shown on the public site or sent to the AI.
 ## Built (2026-09-30)
 - **Data**: table `fighter_private` (migration `20260930000004_fighter_private`), one row per fighter, cascade delete.
 - **API** (`backend/src/modules/fighters/private.ts`, STAFF only): `GET /fighters/private-summary`, `GET|PUT /fighters/:id/private`, `GET /fighters/:id/private/documents/:kind` (`id` | `medical`). Documents are files in `UPLOAD_DIR/private/` (must persist and be backed up), served with `Cache-Control: private, no-store`; the API only returns `hasIdDocument` / `hasMedicalDocument`, never a link. The base64-to-public-file hook skips these routes (`PRIVATE_ROUTE` in `app.ts`).
+- **One ID number per fighter** (blocks): another fighter's number is refused (spaces, dashes and case ignored;
+  deleted fighters don't count); `GET /fighters/private/id-check`. See `updates/fighter-id-merge.md`.
 - **Warnings** (never block): missing ID / emergency contact / medical check; ID or medical expired; under 18 without guardian name + phone.
-- **Admin**: Add Fighter has the required ID + emergency contact block; fighter page has a "Personal details" tab; Fighters list shows a "Missing details" chip; Add bout shows a warning line.
+- **Admin**: Add Fighter has the optional ID + emergency contact block; fighter page has a "Personal details" tab; Fighters list shows a "Missing details" chip; Add bout shows a warning line.
 - **Tests**: `api-tests/tests/fighter-private.test.ts` (shapes, validation, roles, no public leak, private scan storage); suite 275/275.
 - **Browser-checked** on the test API: add with details + scan, tab, scan download (staff 200, anonymous 401), list chip, Khmer and phone width of the form. Not walked through: Add bout warning, guardian block, edit flow.
 

@@ -51,6 +51,7 @@ const navGroups: { title: string | null; items: NavItem[] }[] = [
         submenu: [
           { label: "Kun Khmer", path: "/home/fighters/kunkhmer", permission: "fighters.view" },
           { label: "Foreigner", path: "/home/fighters/foreigner", permission: "fighters.view" },
+          { label: "Duplicates", path: "/home/fighters/duplicates", permission: "fighters.duplicates" },
         ],
       },
       { icon: Building2, label: "Clubs", path: "/home/clubs", permission: "fighters.view" },
@@ -139,6 +140,7 @@ const MENU_TEXT: Record<string, TextKey> = {
   Fighters: "menu.fighters",
   "Kun Khmer": "menu.fighters.local",
   Foreigner: "menu.fighters.foreign",
+  Duplicates: "menu.fighters.duplicates",
   Clubs: "menu.clubs",
   "Match Proposals": "menu.proposals",
   Media: "menu.media",

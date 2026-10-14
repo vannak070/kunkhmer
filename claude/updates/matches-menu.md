@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done 2026-10-13 (committed and pushed (dev 11253144), not live) |
+| **Status** | Done 2026-10-13 (live since 2026-10-14, 936db4ea) |
 | **Jira** | n/a |
 | **Feature** | program-workflow.md, admin-pwa.md |
 | **Requested by** | Owner ("I want to change fight night as Matches … go ahead with your recommended package") |
