@@ -6,7 +6,7 @@
 # keeps running; only `up -d` replaces it. Database changes apply automatically when the new backend starts.
 set -eu
 COMMIT="${1:?usage: sh update.sh <commit>}"
-cd "$(dirname "$0")"
+cd "${DEPLOY_DIR:-$(dirname "$0")}"
 [ -f .env ] || { echo "deploy/.env is missing"; exit 1; }
 DC="docker compose -f docker-compose.prod.yml"
 OLD="${2:-$(git rev-parse --short HEAD)}"
