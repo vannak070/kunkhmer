@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-10-14, uncommitted) |
+| **Status** | Done (2026-10-14, committed bb5a146c; not live) |
 | **Jira** | n/a |
 | **Feature** | claude/features/fighters.md, claude/features/fighter-personal-records.md |
 | **Requested by** | Owner (screenshot of "Personal & medical details": "make them as optional. when add fighter, they will have their own KKF_ID. it is the logic to protect duplicate fighter") |

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Loaded 2026-10-14 on the **dev database only** (not the live pilot, nothing committed) |
+| **Status** | Loaded 2026-10-14 on the **dev database only** (not the live pilot); the doc is committed (bb5a146c), the data never goes to the live pilot |
 | **Feature** | claude/features/weekly-program.md |
 | **Requested by** | vannak070 ("start demo week"; earlier: put the demo shows on dates at the end of this week) |
 

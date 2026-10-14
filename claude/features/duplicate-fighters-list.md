@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-10-14, uncommitted) |
+| **Status** | Done (2026-10-14, committed bb5a146c; not live) |
 | **Jira** | n/a |
 | **Figma** | n/a |
 | **Owner** | vannak070 |
