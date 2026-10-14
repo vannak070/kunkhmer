@@ -141,12 +141,13 @@ model Fighter {
   name                String    @db.VarChar(255)
   name_khmer          String    @db.VarChar(255)
   alias               String?   @db.VarChar(255)
-  date_of_birth       DateTime  @db.Date
+  /// Required for Cambodian fighters; optional for a foreign (guest) fighter. claude/features/weekly-program.md
+  date_of_birth       DateTime? @db.Date
   nationality         String    @default("Cambodian") @db.VarChar(255)
   province            String?   @db.VarChar(255)
   gender              String    @db.VarChar(10)
   current_weight      Decimal   @db.Decimal(5, 2)
-  height              Decimal   @db.Decimal(5, 2)
+  height              Decimal?  @db.Decimal(5, 2)
   club_id             String?   @db.Uuid
   image               String?
   style               String?   @db.VarChar(255)
@@ -201,6 +202,7 @@ model BroadcastStation {
 
   events     Event[]
   organizers User[]
+  showTemplates ShowTemplate[]
 
   @@map("broadcast_stations")
 }
@@ -222,6 +224,7 @@ model Sponsor {
 
   eventLinks        EventSponsor[]
   mainSponsorEvents Event[]
+  showTemplates     ShowTemplate[]
 
   @@map("sponsors")
 }
@@ -253,6 +256,8 @@ model Event {
   name                    String    @db.VarChar(255)
   date                    DateTime  @db.Date
   end_date                DateTime? @db.Date
+  /// Start time of the show, "HH:MM" (24 h, Cambodia time). See claude/features/weekly-program.md.
+  start_time              String?   @db.VarChar(5)
   /// The first date this match was set to before it was postponed (null = never postponed).
   original_date           DateTime? @db.Date
   /// Program workflow phase 7 (claude/updates/match-signoff-settlement.md): KKF signed the match off — results are locked.
@@ -459,8 +464,15 @@ model Match {
   id                   String    @id @db.Uuid
   event_id             String    @db.Uuid
   sub_event_id         String    @db.Uuid
-  fighter_a_id         String    @db.Uuid
-  fighter_b_id         String    @db.Uuid
+  /// Empty (null) = "to be announced": a corner not known yet, or filled later by the winner of `slot_x_from`.
+  /// claude/updates/empty-corners-draws.md
+  fighter_a_id         String?   @db.Uuid
+  fighter_b_id         String?   @db.Uuid
+  /// The bout whose winner fills this corner when its result is recorded ("winner of bout N").
+  slot_a_from          String?   @db.Uuid
+  slot_b_from          String?   @db.Uuid
+  /// Bouts created together from one tournament draw share this id (qualifiers + final).
+  draw_id              String?   @db.Uuid
   rounds               Int
   round_time           Int
   knockdown_limit      Int
@@ -494,6 +506,10 @@ model Match {
   created_at           DateTime? @db.Timestamp(0)
   updated_at           DateTime? @db.Timestamp(0)
   is_title_match       Boolean   @default(false)
+  /// What kind of bout the program sheet prints: friendly | international | youth | qualifier | final | prize (null = not set).
+  bout_label           String?   @db.VarChar(20)
+  /// Rule set the bout is fought under: kun_khmer | mas_fight. claude/features/weekly-program.md
+  rule_set             String    @default("kun_khmer") @db.VarChar(20)
   championship_id      String?   @db.Uuid
   sort_order           Int       @default(0)
   /// Program workflow phase 6 (claude/updates/withdrawals-postponement.md): the corner ("a" / "b") whose fighter
@@ -503,8 +519,8 @@ model Match {
   disputes     BoutDispute[]
   event        Event     @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "matches_event_id_foreign")
   subEvent     SubEvent  @relation(fields: [sub_event_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "matches_sub_event_id_foreign")
-  fighterA     Fighter   @relation("MatchFighterA", fields: [fighter_a_id], references: [id], onUpdate: NoAction, map: "matches_fighter_a_id_foreign")
-  fighterB     Fighter   @relation("MatchFighterB", fields: [fighter_b_id], references: [id], onUpdate: NoAction, map: "matches_fighter_b_id_foreign")
+  fighterA     Fighter?  @relation("MatchFighterA", fields: [fighter_a_id], references: [id], onUpdate: NoAction, map: "matches_fighter_a_id_foreign")
+  fighterB     Fighter?  @relation("MatchFighterB", fields: [fighter_b_id], references: [id], onUpdate: NoAction, map: "matches_fighter_b_id_foreign")
   referee      User?     @relation("MatchReferee", fields: [referee_id], references: [id], onUpdate: NoAction, map: "matches_referee_id_foreign")
   clubAResponder User?   @relation("MatchClubAResponder", fields: [club_a_responded_by], references: [id], onUpdate: NoAction, map: "matches_club_a_responded_by_foreign")
   clubBResponder User?   @relation("MatchClubBResponder", fields: [club_b_responded_by], references: [id], onUpdate: NoAction, map: "matches_club_b_responded_by_foreign")
@@ -789,6 +805,30 @@ model Association {
   updated_at DateTime? @db.Timestamp(0)
 
   @@map("associations")
+}
+
+/// Shows (series) KKF runs every week, e.g. "AIRA SUPER STRENGTH KUN KHMER" on Hang Meas at 15:00 on Sundays: a template
+/// that fills a new match (System Settings › Shows). claude/updates/show-templates-copy-week.md
+model ShowTemplate {
+  id                   String    @id @db.Uuid
+  name                 String    @db.VarChar(255)
+  broadcast_station_id String?   @db.Uuid
+  main_sponsor_id      String?   @db.Uuid
+  location             String?   @db.VarChar(255)
+  /// "HH:MM"
+  start_time           String?   @db.VarChar(5)
+  /// 0 = Sunday … 6 = Saturday (the usual day of the show)
+  weekday              Int?
+  description          String?
+  sort_order           Int       @default(0)
+  active               Boolean   @default(true)
+  created_at           DateTime? @db.Timestamp(0)
+  updated_at           DateTime? @db.Timestamp(0)
+
+  broadcastStation BroadcastStation? @relation(fields: [broadcast_station_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  mainSponsor      Sponsor?          @relation(fields: [main_sponsor_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@map("show_templates")
 }
 
 /// Bout rule presets: picking one on "Create match" fills rounds, round time

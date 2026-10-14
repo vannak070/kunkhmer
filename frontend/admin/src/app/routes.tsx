@@ -68,6 +68,8 @@ export const router = createBrowserRouter(
     path: "/events/:id",
     element: <RedirectToHomeEvents />,
   },
+  // The printable program sheet of one match, outside the admin frame so it prints clean (claude/features/weekly-program.md).
+  { path: "/events/:id/sheet", ...page(() => import("./pages/ProgramSheet"), "ProgramSheet") },
   {
     path: "/events/:eventId/sub-events/:subEventId",
     element: <RedirectToHomeEvents />,

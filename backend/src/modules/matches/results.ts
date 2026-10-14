@@ -34,6 +34,7 @@ export async function recordMatchResult(matchId: string, result: ResultInput) {
   await prisma.$transaction(async (tx) => {
     const match = await tx.match.findUnique({ where: { id: matchId } });
     if (!match) throw notFound("Match");
+    if (!match.fighter_a_id || !match.fighter_b_id) throw new HttpError(422, "Both corners need a fighter before a result can be recorded");
     if (result.winnerId && result.winnerId !== match.fighter_a_id && result.winnerId !== match.fighter_b_id) {
       throw new HttpError(422, "The winner must be one of the two fighters in this bout");
     }
@@ -45,6 +46,7 @@ export async function recordMatchResult(matchId: string, result: ResultInput) {
     }
     const at = now();
 
+    const previousWinner = match.winner_id;
     const bout = { winner_id: result.winnerId, method: result.method, round: result.round, duration: result.duration, recorded_at: at };
     await tx.boutResult.upsert({ where: { match_id: matchId }, create: { match_id: matchId, ...bout }, update: bout });
     await tx.match.update({ where: { id: matchId }, data: { status: "Completed", winner_id: result.winnerId, updated_at: at } });
@@ -53,7 +55,27 @@ export async function recordMatchResult(matchId: string, result: ResultInput) {
 
     await recalculateRecord(tx, match.fighter_a_id);
     await recalculateRecord(tx, match.fighter_b_id);
+
+    await advanceWinner(tx, matchId, previousWinner, result.winnerId, at);
   });
+}
+
+/**
+ * "Winner of bout N" (claude/updates/empty-corners-draws.md): the winner moves into every corner that waits for this
+ * bout. A corner is filled when it is empty or still holds this bout's previous winner (a corrected result); a draw or
+ * no contest empties it again. Bouts that already have a result are left alone. The matching rules are not run here:
+ * the fighter was already checked for the first bout, and the same night is expected in a draw.
+ */
+async function advanceWinner(tx: Tx, matchId: string, previous: string | null, winner: string | null, at: Date) {
+  for (const side of ["a", "b"] as const) {
+    const next = await tx.match.findMany({ where: { [`slot_${side}_from`]: matchId, status: { not: "Cancelled" }, result: null } });
+    for (const m of next) {
+      const current = m[`fighter_${side}_id`];
+      if (current && current !== previous) continue; // someone was put there by hand
+      if (winner && winner === m[side === "a" ? "fighter_b_id" : "fighter_a_id"]) continue; // never both corners
+      await tx.match.update({ where: { id: m.id }, data: { [`fighter_${side}_id`]: winner, updated_at: at } });
+    }
+  }
 }
 
 type TitleFight = Match & { result: { winner_id: string | null; method: string; round: number } | null };
@@ -138,7 +160,7 @@ async function applyTitleResult(tx: Tx, match: TitleFight) {
 
   const winner = result.winner_id ? await tx.fighter.findFirst({ where: { id: result.winner_id, ...NOT_DELETED } }) : null;
   const opponentId = result.winner_id === match.fighter_a_id ? match.fighter_b_id : match.fighter_a_id;
-  const opponent = await tx.fighter.findFirst({ where: { id: opponentId, ...NOT_DELETED } });
+  const opponent = opponentId ? await tx.fighter.findFirst({ where: { id: opponentId, ...NOT_DELETED } }) : null;
 
   const logDefense = (fields: { opponent: string; opponent_id: string | null; result: string }) =>
     tx.championDefense.create({
@@ -196,7 +218,8 @@ async function applyTitleResult(tx: Tx, match: TitleFight) {
 }
 
 /** A fighter's record = career before this system + results recorded here. */
-export async function recalculateRecord(tx: Tx, fighterId: string) {
+export async function recalculateRecord(tx: Tx, fighterId: string | null) {
+  if (!fighterId) return; // an empty corner
   const fighter = await tx.fighter.findUnique({ where: { id: fighterId }, select: { career_record: true } });
   if (!fighter) return;
   const total = addRecords(parseRecord(fighter.career_record) ?? ZERO, await recordedResults(tx, fighterId));

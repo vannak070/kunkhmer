@@ -8,7 +8,7 @@ import { Link, useNavigate } from "react-router";
 import { CalendarDays, ChevronRight, MapPin } from "lucide-react";
 import { api } from "../../utils/api";
 import { usePermissions } from "../../hooks/usePermissions";
-import { formatDay, useT } from "../../i18n/program";
+import { formatDay, formatTime, useT } from "../../i18n/program";
 import { usePlaceName } from "../../hooks/useSettingsLists";
 import { type Agreements, LOCKED_FOR_ORGANIZER } from "./AgreementsPanel";
 import { NightNextCard } from "./NightFlow";
@@ -59,7 +59,7 @@ export function NextMatchCard({ events, cards, bouts, onChanged }: { events: any
           <p className={`text-sm font-semibold ${results ? "text-amber-700" : "text-primary"}`}>{results ? t("ov.focusResults") : t("ov.focusNext")}</p>
           <h2 id="focus-match" className="text-2xl font-bold text-slate-900 break-words">{focus.name}</h2>
           <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-base text-slate-600">
-            <span className="inline-flex items-center gap-1.5"><CalendarDays className="w-4 h-4" aria-hidden /> {formatDay(focus.date, lang)}</span>
+            <span className="inline-flex items-center gap-1.5"><CalendarDays className="w-4 h-4" aria-hidden /> {formatDay(focus.date, lang)}{focus.start_time ? ` · ${formatTime(focus.start_time, lang)}` : ""}</span>
             {focus.location && <span className="inline-flex items-center gap-1.5"><MapPin className="w-4 h-4" aria-hidden /> {placeName(focus.location)}</span>}
             <StatusChip status={displayStatus(focus, mine)} />
           </p>

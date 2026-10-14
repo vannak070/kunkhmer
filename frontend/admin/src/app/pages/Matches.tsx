@@ -10,14 +10,15 @@ import { CalendarDays, ChevronRight, MapPin, Plus, Search } from "lucide-react";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { useAdminOverview } from "../hooks/useAdminOverview";
-import { formatDay, khmerDigits, useT } from "../i18n/program";
+import { formatDay, formatTime, khmerDigits, useT } from "../i18n/program";
 import { usePlaceName } from "../hooks/useSettingsLists";
 import { LangSwitch, StatusChip, dayOf, displayStatus, nextStepText, todayUtc } from "../components/program/shared";
+import { WeekBoard } from "../components/program/WeekBoard";
 import { NextMatchCard } from "../components/program/NextMatchCard";
 import { NeedsAttention, PROGRAM_TODOS } from "../components/program/NeedsAttention";
 
-type Tab = "upcoming" | "past" | "attention";
-const TABS: Tab[] = ["upcoming", "past", "attention"];
+type Tab = "upcoming" | "week" | "past" | "attention";
+const TABS: Tab[] = ["upcoming", "week", "past", "attention"];
 
 export function Matches() {
   const { t, lang } = useT();
@@ -97,8 +98,8 @@ export function Matches() {
           {tab === "upcoming" && <NextMatchCard events={events} cards={cards} bouts={bouts} onChanged={() => { load(); refresh(); }} />}
 
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex flex-wrap gap-2">{[chip("upcoming", t("list.upcoming")), chip("past", t("list.past")), chip("attention", t("mt.attention"), attentionCount)]}</div>
-            {tab !== "attention" && (
+            <div className="flex flex-wrap gap-2">{[chip("upcoming", t("list.upcoming")), chip("week", t("wk.tab")), chip("past", t("list.past")), chip("attention", t("mt.attention"), attentionCount)]}</div>
+            {tab !== "attention" && tab !== "week" && (
               <div className="relative flex-1 min-w-[14rem]">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />
                 <label htmlFor="match-search" className="sr-only">{t("list.search")}</label>
@@ -107,7 +108,9 @@ export function Matches() {
             )}
           </div>
 
-          {tab === "attention" ? (
+          {tab === "week" ? (
+            <WeekBoard events={events} bouts={bouts} canCopy={permissions.hasAnyPermission(["events.create", "events.record"])} onChanged={load} />
+          ) : tab === "attention" ? (
             attentionCount === 0
               ? <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-600">{t("mt.attentionEmpty")}</p>
               : <NeedsAttention todos={todos} limit={Infinity} bare />
@@ -129,6 +132,7 @@ export function Matches() {
                       <div className="w-16 shrink-0 rounded-xl bg-[#eef3fb] text-center py-2">
                         <p className="text-2xl font-bold text-primary leading-none">{lang === "km" ? khmerDigits(d.getUTCDate()) : d.getUTCDate()}</p>
                         <p className="text-xs font-semibold text-slate-600 mt-1">{formatDay(e.date, lang, false).split(" ").slice(1).join(" ")}</p>
+                        {e.start_time && <p className="text-xs font-bold text-slate-900 mt-0.5">{formatTime(e.start_time, lang)}</p>}
                       </div>
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex flex-wrap items-center gap-2">

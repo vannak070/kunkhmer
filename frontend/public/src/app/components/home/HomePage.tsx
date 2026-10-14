@@ -35,6 +35,8 @@ export interface HomeEvent {
   id: string;
   name: string;
   date: string;
+  /** "19:00" or empty. */
+  startTime?: string;
   venue: string;
   image: string;
   station?: string;
@@ -164,7 +166,7 @@ function PartnerLogo({ p, size = "md" }: { p: Partner; size?: "sm" | "md" | "lg"
 // ─── 1. Hero ────────────────────────────────────────────────────────────────
 
 function HeroEventCard({ event, poster, sponsor, onOpen }: { event: HomeEvent; poster: string | null; sponsor: Partner | null; onOpen: () => void }) {
-  const { t, formatDate } = useI18n();
+  const { t, formatDate, formatTime } = useI18n();
   const placeName = usePlaceName();
   return (
     <div className="rounded-3xl bg-white text-gray-900 border border-[#d5e0f3] shadow-[0_6px_18px_-10px_rgba(36,51,111,0.18)] overflow-hidden">
@@ -180,7 +182,7 @@ function HeroEventCard({ event, poster, sponsor, onOpen }: { event: HomeEvent; p
         </div>
         <h2 lang={textLang(event.name)} className="kk-heading text-3xl md:text-4xl break-words">{event.name}</h2>
         <ul className="mt-3 space-y-1.5 text-sm text-gray-600">
-          <li className="flex items-center gap-2"><Calendar className="w-4 h-4 text-[var(--kk-blue)] shrink-0" aria-hidden />{formatDate(event.date, "long")}</li>
+          <li className="flex items-center gap-2"><Calendar className="w-4 h-4 text-[var(--kk-blue)] shrink-0" aria-hidden />{[formatDate(event.date, "long"), formatTime(event.startTime)].filter(Boolean).join(" · ")}</li>
           <li className="flex items-center gap-2"><MapPin className="w-4 h-4 text-[var(--kk-blue)] shrink-0" aria-hidden /><span lang={textLang(placeName(event.venue))}>{placeName(event.venue)}</span></li>
           {event.station && <li className="flex items-center gap-2"><Tv className="w-4 h-4 text-[var(--kk-blue)] shrink-0" aria-hidden />{t("home.broadcastOn", { name: event.station })}</li>}
         </ul>

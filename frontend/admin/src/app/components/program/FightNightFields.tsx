@@ -15,6 +15,8 @@ export const fieldCls =
 export interface FightNightForm {
   name: string;
   date: string;
+  /** "HH:MM" (24 h) or "". */
+  startTime: string;
   location: string;
   broadcastStationId: string;
   mainSponsorId: string;
@@ -27,6 +29,7 @@ export interface FightNightForm {
 export const fightNightForm = (event?: any): FightNightForm => ({
   name: event?.name ?? "",
   date: String(event?.date ?? "").slice(0, 10),
+  startTime: event?.start_time ?? "",
   location: event?.location ?? "",
   broadcastStationId: event?.broadcast_station_id ?? "",
   mainSponsorId: event?.main_sponsor_id ?? "",
@@ -46,6 +49,7 @@ const sponsorList = (f: FightNightForm) => [...new Set([f.mainSponsorId, ...f.ot
 export const fightNightPayload = (f: FightNightForm, station = true) => ({
   name: f.name.trim(),
   date: f.date,
+  startTime: f.startTime || null,
   location: f.location.trim(),
   ...(station ? { broadcastStationId: f.broadcastStationId || null } : {}),
   mainSponsorId: f.mainSponsorId || null,
@@ -149,6 +153,10 @@ export function FightNightFields({ form, setForm, autoFocus = false, lockStation
           <input type="date" className={`${fieldCls} mt-1`} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
         </label>
         <label className="block">
+          <span className="text-sm font-semibold text-slate-800">{t("night.startTime")}</span>
+          <input type="time" className={`${fieldCls} mt-1`} value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
+        </label>
+        <label className="block sm:col-span-2">
           <span className="text-sm font-semibold text-slate-800">{t("night.venue")} *</span>
           <input list="fight-night-venues" className={`${fieldCls} mt-1`} value={form.location} placeholder={t("form.venuePlaceholder")} onChange={(e) => setForm({ ...form, location: e.target.value })} />
           <datalist id="fight-night-venues">{venues.map((v) => <option key={v.id} value={v.name} label={v.name_khmer || undefined} />)}</datalist>

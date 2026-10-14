@@ -28,7 +28,7 @@ days, double-booking or club.
 | medical | status Cleared | **off** | block |
 | suspension | not suspended on the fight date | **off** | block |
 | same_gender | — | on | block |
-| min_age | 16 years | on | block |
+| min_age | 16 years | **off since 2026-10-13** (owner: youth fighters are normal fighters; migration `20261013190000_min_age_off`) | block |
 | weight_gap | ±2 kg of the agreed weight | on | warn |
 | grade_gap | 1 step (A–D) | on | warn |
 | record_gap | 10 wins apart | on | warn |

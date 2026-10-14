@@ -41,6 +41,7 @@ exports[`weigh-in on the bout > saves each corner's weight on the bout without t
   "body": {
     "data": {
       "agreed_weight": "number",
+      "bout_label": "null",
       "championship": "null",
       "championshipId": "null",
       "championshipTitleName": "null",
@@ -61,6 +62,7 @@ exports[`weigh-in on the bout > saves each corner's weight on the bout without t
       "club_b_response": "string",
       "created_at": "datetime(.000000Z)",
       "date": "date",
+      "draw_id": "null",
       "event_id": "uuid",
       "fighter_a": {
         "alias": "null",
@@ -187,6 +189,9 @@ exports[`weigh-in on the bout > saves each corner's weight on the bout without t
       "result": "null",
       "round_time": "number",
       "rounds": "number",
+      "rule_set": "string",
+      "slot_a_from": "null",
+      "slot_b_from": "null",
       "sortOrder": "number",
       "sort_order": "number",
       "status": "string",

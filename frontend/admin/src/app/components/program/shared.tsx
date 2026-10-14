@@ -170,3 +170,26 @@ export function nextStepText(t: (k: any, v?: any) => string, e: any, cards: any[
   return passed ? null : t("next.wait");
 }
 
+
+/** Bout labels (what the program sheet prints) and rule sets, as the API accepts them (claude/features/weekly-program.md). */
+export const BOUT_LABELS = ["friendly", "international", "youth", "qualifier", "final", "prize"] as const;
+export const RULE_SETS = ["kun_khmer", "mas_fight"] as const;
+
+/** Bout numbers in program order (sort order, then creation): id → 1, 2, 3… for "winner of bout N". */
+export function boutNumbers(bouts: any[]): Map<string, number> {
+  const sorted = [...bouts].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")));
+  return new Map(sorted.map((b, i) => [b.id, i + 1]));
+}
+
+/** Both corners have a fighter (a result and the weigh-in need both). claude/updates/empty-corners-draws.md */
+export const hasBothCorners = (m: any) => Boolean(m?.fighter_a_id && m?.fighter_b_id);
+
+/** A corner's name: the fighter, or "Winner of bout N" / "To be announced" when it is still empty. */
+export function cornerName(m: any, side: "a" | "b", t: (key: any, vars?: Record<string, string | number>) => string, numbers?: Map<string, number>): string {
+  const name = m?.[`fighter_${side}_name`];
+  if (name) return name;
+  const from = m?.[`slot_${side}_from`];
+  if (!from) return t("corner.tba");
+  const n = numbers?.get(from);
+  return n ? t("corner.winnerOf", { n }) : t("corner.winner");
+}

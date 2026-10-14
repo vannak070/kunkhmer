@@ -49,7 +49,7 @@ function groupByCard(bouts: Bout[]): CardGroup[] {
 
 export function EventDetail() {
   const { id: key } = useParams();
-  const { t, tn, formatDate } = useI18n();
+  const { t, tn, formatDate, formatTime } = useI18n();
   const placeName = usePlaceName();
   const data = useFanData();
   const [params, setParams] = useSearchParams();
@@ -186,7 +186,7 @@ export function EventDetail() {
                       <FactRow icon={<Calendar className="w-4 h-4" />} label={t("matches.date")}>
                         {event.end_date && event.end_date !== event.date
                           ? `${formatDate(event.date, "long")} – ${formatDate(event.end_date, "long")}`
-                          : formatDate(event.date, "long")}
+                          : [formatDate(event.date, "long"), formatTime(event.start_time)].filter(Boolean).join(" · ")}
                       </FactRow>
                       <FactRow icon={<MapPin className="w-4 h-4" />} label={t("matches.venue")} tone="red">
                         <span lang={textLang(placeName(event.location))}>{event.location ? placeName(event.location) : t("matches.venueTba")}</span>

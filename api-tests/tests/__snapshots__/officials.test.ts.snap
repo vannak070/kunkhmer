@@ -3,6 +3,7 @@
 exports[`my bouts > shows a referee or judge the bouts they're assigned to, with their role 1`] = `
 {
   "agreed_weight": "number",
+  "bout_label": "null",
   "championship": "null",
   "championshipId": "null",
   "championshipTitleName": "null",
@@ -23,6 +24,7 @@ exports[`my bouts > shows a referee or judge the bouts they're assigned to, with
   "club_b_response": "string",
   "created_at": "datetime(.000000Z)",
   "date": "date",
+  "draw_id": "null",
   "event_id": "uuid",
   "event_location": "string",
   "event_name": "string",
@@ -122,6 +124,9 @@ exports[`my bouts > shows a referee or judge the bouts they're assigned to, with
   "result": "null",
   "round_time": "number",
   "rounds": "number",
+  "rule_set": "string",
+  "slot_a_from": "null",
+  "slot_b_from": "null",
   "sortOrder": "number",
   "sort_order": "number",
   "status": "string",

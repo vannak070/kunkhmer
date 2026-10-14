@@ -26,6 +26,9 @@ export const PUBLIC_BOUT = {
   OR: [{ proposal_status: "accepted" }, { result: { isNot: null } }],
   status: { not: "Cancelled" },
   replacement_side: null,
+  // A bout with an empty corner ("to be announced", claude/updates/empty-corners-draws.md) stays off the fan site.
+  fighter_a_id: { not: null },
+  fighter_b_id: { not: null },
 } satisfies Prisma.MatchWhereInput;
 
 export function proposalStatus(a: string, b: string) {
@@ -55,7 +58,7 @@ export function openSide(side: Side, fighter: Pick<Fighter, "club_id">, by: { us
   } as Prisma.MatchUncheckedUpdateInput;
 }
 
-type MatchWithFighters = Match & { fighterA: Fighter; fighterB: Fighter };
+type MatchWithFighters = Match & { fighterA: Fighter | null; fighterB: Fighter | null };
 
 /**
  * The sides this user answers for. Staff may answer either side (both when no
@@ -66,7 +69,8 @@ export function sidesFor(user: User, match: MatchWithFighters, requested: string
   if (requested !== null && requested !== "a" && requested !== "b") {
     throw new HttpError(422, 'The side must be "a" or "b"');
   }
-  const clubOf = { a: match.fighterA.club_id, b: match.fighterB.club_id };
+  // An empty corner ("to be announced") has no club.
+  const clubOf = { a: match.fighterA?.club_id ?? null, b: match.fighterB?.club_id ?? null };
   const staff = hasRole(user, STAFF);
   const own = SIDES.filter((s) => user.role === Role.Club && !!user.club_id && clubOf[s] === user.club_id);
   if (!staff && own.length === 0) {

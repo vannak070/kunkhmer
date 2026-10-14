@@ -199,9 +199,16 @@ export function PostponeDialog({ event, onClose, onDone }: { event: any; onClose
 }
 
 /** "Replacement needed" with a fighter picker and the live KKF rule check; used on the bout page and in Match day. */
-export function ReplacementPanel({ match, onDone, onCancelBout }: { match: any; onDone: (updated: any) => void; onCancelBout?: () => void }) {
+export function ReplacementPanel({ match, onDone, onCancelBout, side: sideProp, numbers }: {
+  match: any; onDone: (updated: any) => void; onCancelBout?: () => void;
+  /** An empty corner to fill ("to be announced", claude/updates/empty-corners-draws.md) instead of a withdrawn fighter's. */
+  side?: "a" | "b"; numbers?: Map<string, number>;
+}) {
   const { t, lang } = useT();
-  const side = match.replacement_side as "a" | "b";
+  const side = (sideProp ?? match.replacement_side) as "a" | "b";
+  const filling = !match[`fighter_${side}_id`];
+  const from = match[`slot_${side}_from`];
+  const fromNo = from ? numbers?.get(from) : undefined;
   const other = side === "a" ? "b" : "a";
   const [fighters, setFighters] = useState<any[]>([]);
   const [pick, setPick] = useState<any | null>(null);
@@ -232,7 +239,7 @@ export function ReplacementPanel({ match, onDone, onCancelBout }: { match: any; 
     setBusy(true);
     try {
       const updated = await api.matches.replace(match.id, { side, fighterId: pick.id });
-      toast.success(t("ch.replaced", { name: nameOf(lang, pick) }));
+      toast.success(t(filling ? "corner.filled" : "ch.replaced", { name: nameOf(lang, pick) }));
       onDone(updated);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("common.error"));
@@ -241,11 +248,18 @@ export function ReplacementPanel({ match, onDone, onCancelBout }: { match: any; 
   };
 
   return (
-    <section className="rounded-2xl border-2 border-red-200 bg-red-50/60 p-5 space-y-4">
-      <div>
-        <h2 className="text-lg font-bold text-red-900 flex items-center gap-2"><AlertTriangle className="w-5 h-5" aria-hidden /> {t("ch.needTitle")}</h2>
-        <p className="text-sm text-red-900 mt-1">{t("ch.needText", { name: match[`fighter_${side}_name`], corner: t(side === "a" ? "common.red" : "common.blue") })}</p>
-      </div>
+    <section className={`rounded-2xl border-2 p-5 space-y-4 ${filling ? "border-slate-200 bg-slate-50" : "border-red-200 bg-red-50/60"}`}>
+      {filling ? (
+        <div>
+          <h2 className="text-lg font-bold text-slate-900">{t("corner.fillTitle")}</h2>
+          <p className="text-sm text-slate-700 mt-1">{fromNo ? t("corner.fillWinner", { n: fromNo }) : t("corner.fillText", { corner: t(side === "a" ? "common.red" : "common.blue") })}</p>
+        </div>
+      ) : (
+        <div>
+          <h2 className="text-lg font-bold text-red-900 flex items-center gap-2"><AlertTriangle className="w-5 h-5" aria-hidden /> {t("ch.needTitle")}</h2>
+          <p className="text-sm text-red-900 mt-1">{t("ch.needText", { name: match[`fighter_${side}_name`], corner: t(side === "a" ? "common.red" : "common.blue") })}</p>
+        </div>
+      )}
       <FighterPicker corner={side === "a" ? "red" : "blue"} label={t(side === "a" ? "common.red" : "common.blue")} fighters={fighters} value={pick} other={null} onChange={setPick} lang={lang} />
       {pick && check === undefined && <p role="status" className="text-sm text-slate-600">{t("ch.checking")}</p>}
       {blocked.length > 0 && (
@@ -259,8 +273,8 @@ export function ReplacementPanel({ match, onDone, onCancelBout }: { match: any; 
         </ul>
       )}
       <div className="flex flex-wrap gap-2">
-        <button type="button" disabled={!pick || busy || blocked.length > 0 || check === undefined} onClick={save} className={`${btn} bg-primary text-white hover:opacity-90 h-12`}>{busy ? t("common.saving") : t("ch.recordBtn")}</button>
-        {onCancelBout && <button type="button" onClick={onCancelBout} className={`${btn} h-12 border border-red-300 bg-white text-red-800 hover:bg-red-50`}>{t("ch.cancelInstead")}</button>}
+        <button type="button" disabled={!pick || busy || blocked.length > 0 || check === undefined} onClick={save} className={`${btn} bg-primary text-white hover:opacity-90 h-12`}>{busy ? t("common.saving") : t(filling ? "corner.fillBtn" : "ch.recordBtn")}</button>
+        {onCancelBout && !filling && <button type="button" onClick={onCancelBout} className={`${btn} h-12 border border-red-300 bg-white text-red-800 hover:bg-red-50`}>{t("ch.cancelInstead")}</button>}
       </div>
     </section>
   );
@@ -278,6 +292,7 @@ export function ChangesHistory({ eventId, refreshKey }: { eventId: string; refre
   const line = (r: any) =>
     r.kind === "withdraw" ? t("ch.h.withdraw", { name: r.fighter_name ?? "", reason: why(r) })
     : r.kind === "replace" ? t("ch.h.replace", { name: r.fighter_name ?? "", other: r.other_name ?? "" })
+    : r.kind === "fill" ? t("ch.h.fill", { name: r.fighter_name ?? "" })
     : r.kind === "cancel_bout" ? t("ch.h.cancelBout", { pair: r.fighter_name ?? "", reason: why(r) })
     : r.kind === "postpone" ? t("ch.h.postpone", { from: day(r.from_date), to: day(r.to_date), reason: why(r) })
     : r.kind === "sign_off" ? t("ch.h.signOff")

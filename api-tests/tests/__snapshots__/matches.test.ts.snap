@@ -79,6 +79,7 @@ exports[`batches (sub-events) > creates a batch 1`] = `
         "organizer_id": "uuid",
         "postponed_from": "null",
         "signed_off_at": "null",
+        "start_time": "null",
         "status": "string",
         "tournament_format": "null",
         "tournament_weight_class": "null",
@@ -162,6 +163,7 @@ exports[`batches (sub-events) > lists and shows batches publicly > list item 1`]
     "organizer_id": "uuid",
     "postponed_from": "null",
     "signed_off_at": "null",
+    "start_time": "null",
     "status": "string",
     "tournament_format": "null",
     "tournament_weight_class": "null",
@@ -239,6 +241,7 @@ exports[`batches (sub-events) > updates a batch 1`] = `
         "organizer_id": "uuid",
         "postponed_from": "null",
         "signed_off_at": "null",
+        "start_time": "null",
         "status": "string",
         "tournament_format": "null",
         "tournament_weight_class": "null",
@@ -265,6 +268,7 @@ exports[`match proposals (club confirmation) > confirms a new bout at once and s
   "body": {
     "data": {
       "agreed_weight": "number",
+      "bout_label": "null",
       "championship": "null",
       "championshipId": "null",
       "championshipTitleName": "null",
@@ -285,6 +289,7 @@ exports[`match proposals (club confirmation) > confirms a new bout at once and s
       "club_b_response": "string",
       "created_at": "datetime(.000000Z)",
       "date": "date",
+      "draw_id": "null",
       "event_id": "uuid",
       "fighter_a": {
         "alias": "null",
@@ -411,6 +416,9 @@ exports[`match proposals (club confirmation) > confirms a new bout at once and s
       "result": "null",
       "round_time": "number",
       "rounds": "number",
+      "rule_set": "string",
+      "slot_a_from": "null",
+      "slot_b_from": "null",
       "sortOrder": "number",
       "sort_order": "number",
       "status": "string",
@@ -459,6 +467,7 @@ exports[`match proposals (club confirmation) > lets a club answer only its own s
 exports[`match proposals (club confirmation) > lists proposals: a club sees bouts with its fighters, staff see all 1`] = `
 {
   "agreed_weight": "number",
+  "bout_label": "null",
   "championship": "null",
   "championshipId": "null",
   "championshipTitleName": "null",
@@ -479,6 +488,7 @@ exports[`match proposals (club confirmation) > lists proposals: a club sees bout
   "club_b_response": "string",
   "created_at": "datetime(.000000Z)",
   "date": "date",
+  "draw_id": "null",
   "event_id": "uuid",
   "event_name": "string",
   "event_status": "string",
@@ -603,6 +613,9 @@ exports[`match proposals (club confirmation) > lists proposals: a club sees bout
   "result": "null",
   "round_time": "number",
   "rounds": "number",
+  "rule_set": "string",
+  "slot_a_from": "null",
+  "slot_b_from": "null",
   "sortOrder": "number",
   "sort_order": "number",
   "status": "string",
@@ -659,6 +672,7 @@ exports[`match results > records a win and recalculates both fighters' records 1
   "body": {
     "data": {
       "agreed_weight": "number",
+      "bout_label": "null",
       "championship": "null",
       "championshipId": "null",
       "championshipTitleName": "null",
@@ -679,6 +693,7 @@ exports[`match results > records a win and recalculates both fighters' records 1
       "club_b_response": "string",
       "created_at": "datetime(.000000Z)",
       "date": "date",
+      "draw_id": "null",
       "event_id": "uuid",
       "fighter_a": {
         "alias": "null",
@@ -812,6 +827,9 @@ exports[`match results > records a win and recalculates both fighters' records 1
       },
       "round_time": "number",
       "rounds": "number",
+      "rule_set": "string",
+      "slot_a_from": "null",
+      "slot_b_from": "null",
       "sortOrder": "number",
       "sort_order": "number",
       "status": "string",
@@ -860,6 +878,7 @@ exports[`match results > referee cannot record results 1`] = `
 exports[`matches > creates a match, deriving the event from the batch 1`] = `
 {
   "agreed_weight": "number",
+  "bout_label": "null",
   "championship": "null",
   "championshipId": "null",
   "championshipTitleName": "null",
@@ -880,6 +899,7 @@ exports[`matches > creates a match, deriving the event from the batch 1`] = `
   "club_b_response": "string",
   "created_at": "datetime(.000000Z)",
   "date": "date",
+  "draw_id": "null",
   "event_id": "uuid",
   "fighter_a": {
     "alias": "null",
@@ -1019,6 +1039,9 @@ exports[`matches > creates a match, deriving the event from the batch 1`] = `
   "result": "null",
   "round_time": "number",
   "rounds": "number",
+  "rule_set": "string",
+  "slot_a_from": "null",
+  "slot_b_from": "null",
   "sortOrder": "number",
   "sort_order": "number",
   "status": "string",
@@ -1055,6 +1078,7 @@ exports[`matches > deletes a match (Super Admin only) 1`] = `
   "body": {
     "data": {
       "agreed_weight": "number",
+      "bout_label": "null",
       "championship_id": "null",
       "club_a_note": "null",
       "club_a_responded_at": "datetime(.000000Z)",
@@ -1065,6 +1089,7 @@ exports[`matches > deletes a match (Super Admin only) 1`] = `
       "club_b_responded_by": "uuid",
       "club_b_response": "string",
       "created_at": "datetime(.000000Z)",
+      "draw_id": "null",
       "event_id": "uuid",
       "fighter_a_confirmed": "boolean",
       "fighter_a_id": "uuid",
@@ -1083,6 +1108,9 @@ exports[`matches > deletes a match (Super Admin only) 1`] = `
       "replacement_side": "null",
       "round_time": "number",
       "rounds": "number",
+      "rule_set": "string",
+      "slot_a_from": "null",
+      "slot_b_from": "null",
       "sort_order": "number",
       "status": "string",
       "sub_event_id": "uuid",
@@ -1125,6 +1153,7 @@ exports[`matches > shows a match 1`] = `
   "body": {
     "data": {
       "agreed_weight": "number",
+      "bout_label": "null",
       "championship": "null",
       "championshipId": "null",
       "championshipTitleName": "null",
@@ -1145,6 +1174,7 @@ exports[`matches > shows a match 1`] = `
       "club_b_response": "string",
       "created_at": "datetime(.000000Z)",
       "date": "date",
+      "draw_id": "null",
       "event_id": "uuid",
       "fighter_a": {
         "alias": "null",
@@ -1267,6 +1297,9 @@ exports[`matches > shows a match 1`] = `
       "result": "null",
       "round_time": "number",
       "rounds": "number",
+      "rule_set": "string",
+      "slot_a_from": "null",
+      "slot_b_from": "null",
       "sortOrder": "number",
       "sort_order": "number",
       "status": "string",
@@ -1303,6 +1336,7 @@ exports[`matches > updates a match, accepting sortOrder or sort_order 1`] = `
   "body": {
     "data": {
       "agreed_weight": "number",
+      "bout_label": "null",
       "championship": "null",
       "championshipId": "null",
       "championshipTitleName": "null",
@@ -1323,6 +1357,7 @@ exports[`matches > updates a match, accepting sortOrder or sort_order 1`] = `
       "club_b_response": "string",
       "created_at": "datetime(.000000Z)",
       "date": "date",
+      "draw_id": "null",
       "event_id": "uuid",
       "fighter_a": {
         "alias": "null",
@@ -1445,6 +1480,9 @@ exports[`matches > updates a match, accepting sortOrder or sort_order 1`] = `
       "result": "null",
       "round_time": "number",
       "rounds": "number",
+      "rule_set": "string",
+      "slot_a_from": "null",
+      "slot_b_from": "null",
       "sortOrder": "number",
       "sort_order": "number",
       "status": "string",

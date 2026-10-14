@@ -54,11 +54,11 @@ async function loadEvent(id: string) {
   return event;
 }
 
-const disputeRow = (d: { id: string; match_id: string; event_id: string; raised_by_text: string; reason: string; status: string; resolution_note: string | null; created_at: Date; resolved_at: Date | null; creator?: { full_name: string } | null; resolver?: { full_name: string } | null; match?: { fighterA: { name: string }; fighterB: { name: string } } }) => ({
+const disputeRow = (d: { id: string; match_id: string; event_id: string; raised_by_text: string; reason: string; status: string; resolution_note: string | null; created_at: Date; resolved_at: Date | null; creator?: { full_name: string } | null; resolver?: { full_name: string } | null; match?: { fighterA: { name: string } | null; fighterB: { name: string } | null } }) => ({
   id: d.id,
   match_id: d.match_id,
   event_id: d.event_id,
-  bout: d.match ? `${d.match.fighterA.name} vs ${d.match.fighterB.name}` : null,
+  bout: d.match ? `${d.match.fighterA?.name ?? "TBA"} vs ${d.match.fighterB?.name ?? "TBA"}` : null,
   raised_by: d.raised_by_text,
   reason: d.reason,
   status: d.status,

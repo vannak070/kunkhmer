@@ -206,3 +206,58 @@ describe("publish guard", () => {
     expect(renamed.status).toBe(200);
   });
 });
+
+describe("start time", () => {
+  it("saves a start time as HH:MM, normalises it, rejects bad values and clears it", async () => {
+    const created = await post("/events", { ...fullEvent(), startTime: "9:30" }, a.admin.token);
+    expect(created.status).toBe(201);
+    expect(created.body.data.start_time).toBe("09:30");
+    const id = created.body.data.id;
+    expect((await get(`/events/${id}`, a.admin.token)).body.data.start_time).toBe("09:30");
+    expect((await put(`/events/${id}`, { startTime: "19:00" }, a.admin.token)).body.data.start_time).toBe("19:00");
+    // Other edits keep it.
+    expect((await put(`/events/${id}`, { description: "x" }, a.admin.token)).body.data.start_time).toBe("19:00");
+    for (const bad of ["25:00", "7pm", "19:60", "1900"]) {
+      expect((await put(`/events/${id}`, { startTime: bad }, a.admin.token)).status).toBe(422);
+    }
+    expect((await put(`/events/${id}`, { startTime: "" }, a.admin.token)).body.data.start_time).toBeNull();
+    expect((await post("/events", fullEvent(), a.admin.token)).body.data.start_time).toBeNull();
+  });
+});
+
+describe("copying matches (claude/updates/show-templates-copy-week.md)", () => {
+  it("copies a match to another date as a Draft with the same details and sponsors, without bouts or poster", async () => {
+    const source = (await post("/events", { ...fullEvent(), startTime: "15:00", status: "Published" }, a.admin.token)).body.data;
+    const res = await post(`/events/${source.id}/copy`, { date: "2031-03-15" }, a.officer.token);
+    expect(res.status).toBe(201);
+    expect(res.body.data).toMatchObject({
+      name: source.name, location: source.location, start_time: "15:00", status: "Draft",
+      broadcast_station_id: stationId, main_sponsor_id: sponsorIds[0], description: source.description, image: null,
+    });
+    expect(String(res.body.data.date)).toMatch(/^2031-03-15/);
+    expect(res.body.data.sponsorIds.sort()).toEqual([...sponsorIds].sort());
+    expect((await post(`/events/${source.id}/copy`, {}, a.officer.token)).status).toBe(422);
+    expect((await post(`/events/${source.id}/copy`, { date: "2031-03-15" }, a.club.token)).status).toBe(403);
+  });
+
+  it("copies last week into the next one, leaves cancelled matches out and skips what already exists", async () => {
+    const make = (name: string, date: string, extra: Record<string, unknown> = {}) => post("/events", { name, date, location: "Studio", broadcastStationId: stationId, startTime: "19:00", ...extra }, a.admin.token);
+    const tag = uniq();
+    await make(`Week A ${tag}`, "2031-04-07");
+    await make(`Week B ${tag}`, "2031-04-13");
+    const gone = (await make(`Week C ${tag}`, "2031-04-10")).body.data.id;
+    await put(`/events/${gone}`, { status: "Cancelled" }, a.admin.token);
+
+    const res = await post("/events/copy-week", { from: "2031-04-07" }, a.officer.token);
+    expect(res.status).toBe(201);
+    const mine = res.body.data.created.filter((e: any) => e.name.endsWith(tag));
+    expect(mine.map((e: any) => [e.name, String(e.date).slice(0, 10), e.status, e.start_time])).toEqual([
+      [`Week A ${tag}`, "2031-04-14", "Draft", "19:00"],
+      [`Week B ${tag}`, "2031-04-20", "Draft", "19:00"],
+    ]);
+    const again = await post("/events/copy-week", { from: "2031-04-07" }, a.officer.token);
+    expect(again.body.data.created.filter((e: any) => e.name.endsWith(tag))).toHaveLength(0);
+    expect(again.body.data.skipped.filter((e: any) => e.name.endsWith(tag)).map((e: any) => e.reason)).toEqual(["exists", "exists"]);
+    expect((await post("/events/copy-week", { from: "2031-04-07" }, a.club.token)).status).toBe(403);
+  });
+});

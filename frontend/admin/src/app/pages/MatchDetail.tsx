@@ -12,7 +12,7 @@ import { ArrowLeft, CalendarDays, CheckCircle2, MapPin, Shield, Trophy, Users } 
 import { api } from "../utils/api";
 import { useOfficials } from "../hooks/useOfficials";
 import { formatDay, useT } from "../i18n/program";
-import { ConfirmDialog, FighterAvatar, LangSwitch, dayOf, hasResult, resultText, todayUtc } from "../components/program/shared";
+import { ConfirmDialog, FighterAvatar, LangSwitch, boutNumbers, cornerName, dayOf, hasBothCorners, hasResult, resultText, todayUtc } from "../components/program/shared";
 import { CancelBoutDialog, ReplacementPanel, WithdrawDialog, canChangeMatch } from "../components/program/MatchChanges";
 import { DisputeDialog, ReasonPrompt } from "../components/program/AfterMatch";
 import { fieldCls } from "../components/program/FightNightFields";
@@ -27,6 +27,8 @@ export function MatchDetail() {
 
   const [match, setMatch] = useState<any | null | undefined>(undefined);
   const [card, setCard] = useState<any | null>(null);
+  // The other bouts of the fight card, for "winner of bout N".
+  const [siblings, setSiblings] = useState<any[]>([]);
   const [failed, setFailed] = useState(false);
   const [draft, setDraft] = useState<ResultDraft>({ ...emptyDraft });
   const [editing, setEditing] = useState(false);
@@ -46,6 +48,7 @@ export function MatchDetail() {
       setMatch(m ?? null);
       if (m) setDraft(draftOf(m));
       if (m?.sub_event_id) api.batches.get(m.sub_event_id).then(setCard).catch(() => setCard(null));
+      if (m?.sub_event_id) api.matches.list(m.sub_event_id).then((l: any[]) => setSiblings(l || [])).catch(() => setSiblings([]));
       if (m?.event_id) api.events.get(m.event_id).then((e: any) => setSignedOff(Boolean(e.signed_off_at))).catch(() => {});
     } catch {
       setFailed(true);
@@ -81,6 +84,9 @@ export function MatchDetail() {
   const cancelled = m.status === "Cancelled";
   const needsReplacement = Boolean(m.replacement_side) && !cancelled;
   const canChange = canChangeMatch(card?.date) && !done && !cancelled;
+  const numbers = boutNumbers(siblings);
+  const both = hasBothCorners(m);
+  const emptySide: "a" | "b" | null = !m.fighter_a_id ? "a" : !m.fighter_b_id ? "b" : null;
 
   const save = async (confirmed = false) => {
     const r = resultBody(m, draft);
@@ -108,14 +114,15 @@ export function MatchDetail() {
   };
 
   const fighter = (side: "a" | "b") => {
-    const name = m[`fighter_${side}_name`] || t("bo.tbd");
+    const name = cornerName(m, side, t, numbers);
     const fid = m[`fighter_${side}_id`];
     const won = winnerSide === side;
-    const facts = [m[`club_${side}_name`] || t("bo.independent"), m[`fighter_${side}_record`] ? t("bo.recordLine", { r: m[`fighter_${side}_record`] }) : null].filter(Boolean);
+    // An empty corner has no club or record to show.
+    const facts = fid ? [m[`club_${side}_name`] || t("bo.independent"), m[`fighter_${side}_record`] ? t("bo.recordLine", { r: m[`fighter_${side}_record`] }) : null].filter(Boolean) : [];
     return (
       <div className={`rounded-2xl border-2 bg-white p-5 text-center space-y-2 ${won ? "border-emerald-400" : "border-slate-200"}`}>
         <p className={`text-sm font-semibold ${side === "a" ? "text-red-700" : "text-blue-700"}`}>{t(side === "a" ? "common.red" : "common.blue")}</p>
-        <div className="flex justify-center"><FighterAvatar name={name} image={m[`fighter_${side}_image`]} tone={side === "a" ? "bg-red-50 text-red-700" : "bg-blue-50 text-blue-700"} /></div>
+        <div className="flex justify-center">{fid ? <FighterAvatar name={name} image={m[`fighter_${side}_image`]} tone={side === "a" ? "bg-red-50 text-red-700" : "bg-blue-50 text-blue-700"} /> : <span className="w-9 h-9 rounded-full border-2 border-dashed border-slate-300" aria-hidden />}</div>
         {fid ? <Link to={`/home/fighters/${fid}`} className="block text-lg font-bold text-slate-900 break-words hover:text-primary">{name}</Link> : <p className="text-lg font-bold text-slate-900">{name}</p>}
         <p className="text-sm text-slate-600 break-words">{facts.join(" · ")}</p>
         {won && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 text-sm font-semibold"><Trophy className="w-4 h-4" aria-hidden /> {t("bo.winner")}</span>}
@@ -148,7 +155,7 @@ export function MatchDetail() {
       </div>
 
       <header className="space-y-2">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 break-words">{m.fighter_a_name || t("bo.tbd")} {t("common.vs")} {m.fighter_b_name || t("bo.tbd")}</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 break-words">{cornerName(m, "a", t, numbers)} {t("common.vs")} {cornerName(m, "b", t, numbers)}</h1>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {isTitle && <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1 font-semibold"><Trophy className="w-4 h-4" aria-hidden /> {titleName ? `${t("common.titleFight")} · ${titleName}` : t("common.titleFight")}</span>}
           {m.agreed_weight > 0 && <span className="rounded-full bg-slate-100 text-slate-700 px-3 py-1 font-semibold">{t("common.kg", { n: m.agreed_weight })}</span>}
@@ -173,7 +180,9 @@ export function MatchDetail() {
       {cancelled && <p role="status" className="rounded-2xl border border-slate-300 bg-slate-100 p-4 font-semibold text-slate-700">{t("ch.cancelledBanner")}</p>}
       {needsReplacement && canChange && <ReplacementPanel match={m} onDone={(updated) => { const next = { ...m, ...updated }; setMatch(next); setDraft(draftOf(next)); }} onCancelBout={() => setDialog("cancel")} />}
       {needsReplacement && !canChange && <p role="status" className="rounded-2xl border border-red-200 bg-red-50 p-4 font-semibold text-red-900">{t("ch.needTitle")}</p>}
-      {canChange && !needsReplacement && (
+      {emptySide && canChange && !needsReplacement && <ReplacementPanel match={m} side={emptySide} numbers={numbers} onDone={(updated) => { const next = { ...m, ...updated }; setMatch(next); setDraft(draftOf(next)); }} />}
+      {!both && !cancelled && <p role="status" className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">{t("corner.waiting")}</p>}
+      {canChange && !needsReplacement && both && (
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setDialog("withdraw")} className="h-11 px-4 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-800 hover:border-red-300 hover:text-red-700">{t("ch.menu.withdraw")}</button>
           <button type="button" onClick={() => setDialog("cancel")} className="h-11 px-4 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-800 hover:border-red-300 hover:text-red-700">{t("ch.menu.cancelBout")}</button>
@@ -184,7 +193,7 @@ export function MatchDetail() {
       {dialog === "withdraw" && <WithdrawDialog match={m} onClose={() => setDialog(null)} onDone={(updated) => { setMatch({ ...m, ...updated }); setDialog(null); }} />}
       {dialog === "cancel" && <CancelBoutDialog match={m} onClose={() => setDialog(null)} onDone={(updated) => { setMatch({ ...m, ...updated }); setDialog(null); }} />}
 
-      {!cancelled && !needsReplacement && <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 space-y-4">
+      {!cancelled && !needsReplacement && both && <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 space-y-4">
         <h2 className="text-lg font-bold text-slate-900">{t("bo.result")}</h2>
         {done && !editing ? (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-emerald-50 px-4 py-3">

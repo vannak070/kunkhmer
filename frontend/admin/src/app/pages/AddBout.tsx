@@ -14,14 +14,17 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Search, ShieldAlert, Swords, Trophy, X } from "lucide-react";
 import { api } from "../utils/api";
-import { useT } from "../i18n/program";
+import { type TextKey, useT } from "../i18n/program";
 import { WEIGHT_CLASSES } from "../data/champion";
-import { FighterAvatar, LangSwitch } from "../components/program/shared";
+import { BOUT_LABELS, FighterAvatar, LangSwitch, RULE_SETS } from "../components/program/shared";
 import { issueTexts } from "../components/fighters/PrivateDetails";
 import { FIGHTER_PAGE_RULES, PAIR_RULES, type RuleHit, ruleSentence } from "../components/program/ruleSentence";
 import { fieldCls } from "../components/program/FightNightFields";
 
 const weightOf = (f: any) => Number(f?.currentWeight ?? f?.current_weight) || null;
+/** Agreed weights offered on Add bout: the usual ones plus the youth weights seen on KKF programs. */
+const BOUT_WEIGHTS = [...new Set([28, 31, 35, 38, 41, 44, 45, 48, ...WEIGHT_CLASSES, 65, 71, 73, 77])].sort((a, b) => a - b);
+
 const nearestWeight = (kg: number | null) => (kg ? WEIGHT_CLASSES.reduce((best, w) => (Math.abs(w - kg) < Math.abs(best - kg) ? w : best), WEIGHT_CLASSES[0]) : WEIGHT_CLASSES[3]);
 /** More than this away from the agreed weight → a warning. */
 const WEIGHT_WARN_KG = 3;
@@ -44,6 +47,11 @@ export function AddBout() {
   const [weight, setWeight] = useState<number>(WEIGHT_CLASSES[3]);
   const [weightTouched, setWeightTouched] = useState(false);
   const [ruleId, setRuleId] = useState("");
+  // What the program sheet prints for the bout, and the rule set (claude/features/weekly-program.md).
+  const [boutLabel, setBoutLabel] = useState("");
+  // Blue corner "to be announced": the bout is saved with an empty corner, filled later (claude/updates/empty-corners-draws.md).
+  const [blueLater, setBlueLater] = useState(false);
+  const [ruleSet, setRuleSet] = useState("kun_khmer");
   const [glove, setGlove] = useState("");
   const [titleId, setTitleId] = useState(params.get("championId") ?? "");
   const [isTitle, setIsTitle] = useState(Boolean(params.get("championId")));
@@ -54,6 +62,12 @@ export function AddBout() {
   const [nightTitles, setNightTitles] = useState<{ ids: string[]; confirmed: boolean } | null>(null);
   // Live check of the KKF matching rules for the chosen pair: undefined = not asked yet / asking, null = couldn't check.
   const [check, setCheck] = useState<{ allowed: boolean; blocked: RuleHit[]; warnings: RuleHit[] } | null | undefined>(undefined);
+
+  // A bout with a foreign fighter is an international bout unless the officer chose another type.
+  useEffect(() => {
+    const foreign = [red, blue].some((f) => f && f.nationality && f.nationality !== "Cambodian");
+    if (foreign && !boutLabel) setBoutLabel("international");
+  }, [red?.id, blue?.id]);
 
   const load = async () => {
     try {
@@ -103,16 +117,16 @@ export function AddBout() {
 
   useEffect(() => {
     setCheck(undefined);
-    if (!card || !red || !blue) return;
+    if (!card || !red || (!blue && !blueLater)) return;
     let live = true;
     const timer = setTimeout(() => {
       api.matches
-        .check({ subEventId: card.id, fighterAId: red.id, fighterBId: blue.id, agreedWeight: weight, championshipId: isTitle && titleId ? titleId : null })
+        .check({ subEventId: card.id, fighterAId: red.id, fighterBId: blueLater ? null : blue.id, agreedWeight: weight, championshipId: isTitle && titleId ? titleId : null })
         .then((r) => live && setCheck(r))
         .catch(() => live && setCheck(null));
     }, 300);
     return () => { live = false; clearTimeout(timer); };
-  }, [card?.id, red?.id, blue?.id, weight, isTitle, titleId]);
+  }, [card?.id, red?.id, blue?.id, blueLater, weight, isTitle, titleId]);
 
   const pickRed = (f: any | null) => {
     setRed(f);
@@ -120,8 +134,8 @@ export function AddBout() {
   };
 
   const save = async (another: boolean) => {
-    if (!red || !blue) { toast.error(t("bout.pickBoth")); return; }
-    if (red.id === blue.id) { toast.error(t("bout.sameFighter")); return; }
+    if (!red || (!blue && !blueLater)) { toast.error(t("bout.pickBoth")); return; }
+    if (!blueLater && red.id === blue.id) { toast.error(t("bout.sameFighter")); return; }
     if (isTitle && !titleId) { toast.error(t("bout.pickTitle")); return; }
     setBusy(true);
     try {
@@ -129,7 +143,7 @@ export function AddBout() {
         eventId: card.event_id,
         subEventId: card.id,
         fighterAId: red.id,
-        fighterBId: blue.id,
+        fighterBId: blueLater ? null : blue.id,
         rounds: rule?.rounds ?? 5,
         roundTime: rule?.round_time ?? 3,
         knockdownLimit: rule?.knockdown_limit ?? 3,
@@ -139,8 +153,10 @@ export function AddBout() {
         sortOrder: cardBouts.length + 1,
         isTitleMatch: isTitle,
         championshipId: isTitle ? titleId : null,
+        boutLabel: boutLabel || null,
+        ruleSet,
       });
-      toast.success(t("bout.added", { red: red.name, blue: blue.name }));
+      toast.success(t("bout.added", { red: red.name, blue: blueLater ? t("corner.tba") : blue.name }));
       // Warn rules from the KKF matching rules: the bout is created, the officer is told why to look twice.
       if (created?.warnings?.length) toast.warning(t("mr.warnings", { list: created.warnings.map((w: RuleHit) => ruleSentence(t, lang, w, nameOf)).join(" ") }), { duration: 15000 });
       if (another) {
@@ -224,15 +240,25 @@ export function AddBout() {
       <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-7 space-y-6 shadow-sm">
         <div className="grid md:grid-cols-2 gap-5">
           <FighterPicker corner="red" label={t("common.red")} fighters={fighters} value={red} other={blue} onChange={pickRed} lang={lang} />
-          <FighterPicker corner="blue" label={t("common.blue")} fighters={fighters} value={blue} other={red} onChange={setBlue} lang={lang} />
+          <div className="space-y-2">
+            {blueLater ? (
+              <div className="rounded-xl border border-dashed border-blue-300 bg-blue-50/30 p-4 text-sm font-semibold text-slate-700">{t("common.blue")}: {t("corner.tba")}</div>
+            ) : (
+              <FighterPicker corner="blue" label={t("common.blue")} fighters={fighters} value={blue} other={red} onChange={setBlue} lang={lang} />
+            )}
+            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+              <input type="checkbox" className="w-4 h-4" checked={blueLater} onChange={(e) => { setBlueLater(e.target.checked); if (e.target.checked) setBlue(null); }} />
+              {t("corner.emptyOption")}
+            </label>
+          </div>
         </div>
 
         <div className="grid sm:grid-cols-3 gap-5">
           <label className="block">
             <span className="text-sm font-semibold text-slate-800">{t("bout.weight")}</span>
-            <select className={`${fieldCls} mt-1`} value={weight} onChange={(e) => { setWeight(Number(e.target.value)); setWeightTouched(true); }}>
-              {WEIGHT_CLASSES.map((w) => <option key={w} value={w}>{t("common.kg", { n: w })}</option>)}
-            </select>
+            {/* Any agreed weight (youth bouts go down to 28 kg); the usual ones are offered as suggestions. */}
+            <input type="number" inputMode="decimal" step="0.5" min={20} max={200} list="bout-weights" className={`${fieldCls} mt-1`} value={weight || ""} onChange={(e) => { setWeight(Number(e.target.value)); setWeightTouched(true); }} />
+            <datalist id="bout-weights">{BOUT_WEIGHTS.map((w) => <option key={w} value={w} />)}</datalist>
           </label>
           <label className="block">
             <span className="text-sm font-semibold text-slate-800">{t("bout.rules")}</span>
@@ -250,6 +276,22 @@ export function AddBout() {
           </label>
         </div>
         {rule && <p className="text-sm text-slate-600 -mt-3">{t("bout.ruleLine", { rounds: rule.rounds, min: rule.round_time, glove: rule.glove_size })}</p>}
+
+        <div className="grid sm:grid-cols-2 gap-5">
+          <label className="block">
+            <span className="text-sm font-semibold text-slate-800">{t("bout.label")}</span>
+            <select className={`${fieldCls} mt-1`} value={boutLabel} onChange={(e) => setBoutLabel(e.target.value)}>
+              <option value="">{t("common.notSet")}</option>
+              {BOUT_LABELS.map((k) => <option key={k} value={k}>{t(`boutLabel.${k}` as TextKey)}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-sm font-semibold text-slate-800">{t("bout.ruleSet")}</span>
+            <select className={`${fieldCls} mt-1`} value={ruleSet} onChange={(e) => setRuleSet(e.target.value)}>
+              {RULE_SETS.map((k) => <option key={k} value={k}>{t(`ruleSet.${k}` as TextKey)}</option>)}
+            </select>
+          </label>
+        </div>
 
         <div className="rounded-xl border border-slate-200 p-4 space-y-3">
           <label className="flex items-center gap-3 cursor-pointer">

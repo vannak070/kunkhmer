@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, CheckCircle2, Scale, Trophy, TriangleAlert } from "lucide-react";
 import { api } from "../utils/api";
 import { type TextKey, useT } from "../i18n/program";
-import { ConfirmDialog, FighterAvatar, LangSwitch, hasResult, overBy, resultText, weighState } from "../components/program/shared";
+import { ConfirmDialog, FighterAvatar, LangSwitch, boutNumbers, cornerName, hasBothCorners, hasResult, overBy, resultText, weighState } from "../components/program/shared";
 import { CancelBoutDialog, ReplacementPanel, WithdrawDialog } from "../components/program/MatchChanges";
 import { METHODS, type ResultDraft, draftOf, emptyDraft, needsTitleConfirm, resultBody, withMethod, withWinner } from "../components/program/resultForm";
 
@@ -182,6 +182,9 @@ export function MatchDay() {
 
       {m.replacement_side ? (
         <ReplacementPanel match={m} onDone={(updated) => { patch(updated); setTab("weigh"); }} onCancelBout={() => setDialog("cancel")} />
+      ) : !hasBothCorners(m) ? (
+        // An empty corner ("to be announced" / "winner of bout N"): fill it first (claude/updates/empty-corners-draws.md).
+        <ReplacementPanel match={m} side={m.fighter_a_id ? "b" : "a"} numbers={boutNumbers(bouts)} onDone={(updated) => { patch(updated); setTab("weigh"); }} />
       ) : (
       <section className="rounded-3xl border border-slate-200 bg-white p-5 md:p-6 space-y-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">

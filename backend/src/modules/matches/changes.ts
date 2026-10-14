@@ -29,7 +29,7 @@ import { canSeeEvent, eventArray } from "../events/routes.ts";
 import { assertNotSignedOff } from "../events/signoff.ts";
 import { formatMatch, matchRelations } from "./format.ts";
 import { openSide, proposalStatus } from "./proposals.ts";
-import { type RuleHit, checkPairing, enforceRules } from "./rules.ts";
+import { type RuleHit, checkPairing, enforceRules, movingOn } from "./rules.ts";
 
 export const WITHDRAW_REASONS = ["injured", "overweight", "not_cleared", "personal", "no_show", "other"] as const;
 export const MATCH_REASONS = ["weather", "venue", "broadcaster", "safety", "other"] as const;
@@ -89,6 +89,7 @@ export default async function matchChangeRoutes(app: FastifyInstance) {
       const side = sideOf(input.get("side"));
       const reason = reasonOf(input.get<string>("reason"), WITHDRAW_REASONS);
       const fighter = side === "a" ? match.fighterA : match.fighterB;
+      if (!fighter) throw new HttpError(422, "This corner has no fighter yet");
       // Optional: also mark the fighter so the matching rules stop pairing them (injury / medical reasons only).
       const mark = input.get("markFighter") === true && (reason === "injured" || reason === "not_cleared");
       const at = now();
@@ -110,12 +111,13 @@ export default async function matchChangeRoutes(app: FastifyInstance) {
       openBout(match);
       const input = inputOf(request.body);
       const side = sideOf(input.get("side"));
-      if (match.replacement_side !== side) throw new HttpError(422, "This corner does not need a replacement");
       const fighterId = input.required<string>("fighterId");
       const other = side === "a" ? match.fighterB : match.fighterA;
       const old = side === "a" ? match.fighterA : match.fighterB;
-      if (fighterId === other.id) throw new HttpError(422, "A bout needs two different fighters");
-      if (fighterId === old.id) throw new HttpError(422, "That fighter withdrew — choose someone else");
+      // A withdrawn fighter's corner, or an empty corner ("to be announced", claude/updates/empty-corners-draws.md).
+      if (match.replacement_side !== side && old) throw new HttpError(422, "This corner does not need a replacement");
+      if (other && fighterId === other.id) throw new HttpError(422, "A bout needs two different fighters");
+      if (old && fighterId === old.id) throw new HttpError(422, "That fighter withdrew — choose someone else");
       const fighter = isUuid(fighterId) ? await prisma.fighter.findFirst({ where: { id: fighterId, deleted_at: null } }) : null;
       if (!fighter) throw new HttpError(422, "The selected fighter does not exist");
       if (UNVERIFIED.includes(fighter.status)) throw new HttpError(422, `${fighter.name} must be verified by KKF before being matched`);
@@ -125,6 +127,7 @@ export default async function matchChangeRoutes(app: FastifyInstance) {
         fighterBId: side === "b" ? fighter.id : match.fighter_b_id,
         agreedWeight: Number(match.agreed_weight),
         matchId: id,
+        skipScheduleFor: await movingOn(match, [{ side, fighterId: fighter.id }]),
       });
       const at = now();
       const data: Prisma.MatchUncheckedUpdateInput = { [`fighter_${side}_id`]: fighter.id, replacement_side: null, updated_at: at, ...openSide(side, fighter, { userId: user.id, at }) };
@@ -134,7 +137,7 @@ export default async function matchChangeRoutes(app: FastifyInstance) {
       );
       await prisma.$transaction(async (tx) => {
         await tx.match.update({ where: { id }, data });
-        await log(tx, { event_id: match.event_id, match_id: id, kind: "replace", side, fighter_id: fighter.id, fighter_name: fighter.name, other_name: old.name }, user);
+        await log(tx, { event_id: match.event_id, match_id: id, kind: old ? "replace" : "fill", side, fighter_id: fighter.id, fighter_name: fighter.name, other_name: old?.name ?? null }, user);
       });
       const updated = await formatted(id);
       return ok(reply, warnings.length ? { ...updated, warnings } : updated);
@@ -149,7 +152,7 @@ export default async function matchChangeRoutes(app: FastifyInstance) {
       const reason = reasonOf(input.get<string>("reason"), WITHDRAW_REASONS);
       await prisma.$transaction(async (tx) => {
         await tx.match.update({ where: { id }, data: { status: "Cancelled", replacement_side: null, updated_at: now() } });
-        await log(tx, { event_id: match.event_id, match_id: id, kind: "cancel_bout", reason, note: input.get("note"), fighter_name: `${match.fighterA.name} vs ${match.fighterB.name}` }, user);
+        await log(tx, { event_id: match.event_id, match_id: id, kind: "cancel_bout", reason, note: input.get("note"), fighter_name: `${match.fighterA?.name ?? "TBA"} vs ${match.fighterB?.name ?? "TBA"}` }, user);
       });
       return ok(reply, await formatted(id));
     });
@@ -176,7 +179,7 @@ export default async function matchChangeRoutes(app: FastifyInstance) {
       const warnings: (RuleHit & { bout: string })[] = [];
       for (const b of bouts) {
         const hits = await checkPairing({ subEventId: b.sub_event_id, fighterAId: b.fighter_a_id, fighterBId: b.fighter_b_id, agreedWeight: Number(b.agreed_weight), matchId: b.id, fightDate: newDate.get(b.sub_event_id) });
-        const label = `${b.fighterA.name} vs ${b.fighterB.name}`;
+        const label = `${b.fighterA?.name ?? "TBA"} vs ${b.fighterB?.name ?? "TBA"}`;
         for (const h of hits) (h.action === "block" ? blocked.push(`${label}: ${h.message}`) : warnings.push({ ...h, bout: label }));
       }
       if (blocked.length) throw new HttpError(422, `Moving the match to ${day(next)} breaks KKF matching rules — ${blocked.join("; ")}`);

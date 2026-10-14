@@ -57,8 +57,8 @@ export default function AssignOfficials() {
         const allMatches = await api.matches.list();
         const batchMatches = allMatches.filter((m: any) => m.sub_event_id === b.id).map((m: any) => ({
           id: m.id,
-          fighterAName: m.fighter_a_name,
-          fighterBName: m.fighter_b_name,
+          fighterAName: m.fighter_a_name ?? "—",
+          fighterBName: m.fighter_b_name ?? "—",
           weight: m.agreed_weight || null,
           rounds: m.rounds,
           refereeId: m.referee_id || "",

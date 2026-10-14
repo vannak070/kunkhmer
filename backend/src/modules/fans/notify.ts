@@ -27,11 +27,14 @@ export async function notifyFollowers(matchId: string, type: NotificationType, l
       where: { id: matchId },
       include: { fighterA: true, fighterB: true, event: true, subEvent: true, result: true },
     });
-    if (!match) return;
+    // A bout with an empty corner ("to be announced") isn't announced to fans yet.
+    if (!match || !match.fighterA || !match.fighterB) return;
+    const fighterA = match.fighterA;
+    const fighterB = match.fighterB;
 
     const corners = [
-      { fighter: match.fighterA, opponent: match.fighterB },
-      { fighter: match.fighterB, opponent: match.fighterA },
+      { fighter: fighterA, opponent: fighterB },
+      { fighter: fighterB, opponent: fighterA },
     ].filter((c) => !c.fighter.deleted_at);
 
     const followers = await prisma.fanFollow.findMany({

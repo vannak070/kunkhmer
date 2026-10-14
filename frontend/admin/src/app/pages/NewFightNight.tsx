@@ -6,11 +6,12 @@
  * broadcaster's match — claude/updates/offline-agreements-log.md.
  */
 import { useState } from "react";
+import { type ShowTemplate, useSettingsList } from "../hooks/useSettingsLists";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { ArrowLeft, CalendarPlus } from "lucide-react";
 import { api } from "../utils/api";
-import { useT } from "../i18n/program";
+import { type TextKey, useT } from "../i18n/program";
 import { LangSwitch } from "../components/program/shared";
 import { FightNightFields, fightNightForm, fightNightReady, newFightNightPayload } from "../components/program/FightNightFields";
 
@@ -21,6 +22,32 @@ export function NewFightNight() {
   const isOrganizer = me?.role === "Organizer";
   const [form, setForm] = useState(() => ({ ...fightNightForm(), broadcastStationId: isOrganizer ? me?.broadcastStationId ?? "" : "" }));
   const [busy, setBusy] = useState(false);
+  // Weekly shows (System Settings › Shows): picking one fills the form (claude/updates/show-templates-copy-week.md).
+  const { rows: shows } = useSettingsList<ShowTemplate>("shows");
+  const visibleShows = isOrganizer ? shows.filter((x) => !x.broadcast_station_id || x.broadcast_station_id === me?.broadcastStationId) : shows;
+  const [showId, setShowId] = useState("");
+  const pickShow = (id: string) => {
+    setShowId(id);
+    const x = shows.find((s) => s.id === id);
+    if (!x) return;
+    // The next date on the show's usual day (today counts).
+    let date = form.date;
+    if (x.weekday != null) {
+      const d = new Date();
+      d.setDate(d.getDate() + ((x.weekday - d.getDay() + 7) % 7));
+      date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+    setForm({
+      ...form,
+      name: x.name,
+      date,
+      startTime: x.start_time ?? form.startTime,
+      location: x.location ?? form.location,
+      broadcastStationId: isOrganizer ? form.broadcastStationId : x.broadcast_station_id ?? "",
+      mainSponsorId: x.main_sponsor_id ?? form.mainSponsorId,
+      description: x.description ?? form.description,
+    });
+  };
 
   const save = async () => {
     if (!fightNightReady(form)) {
@@ -56,6 +83,15 @@ export function NewFightNight() {
       </header>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-7 space-y-6 shadow-sm">
+        {visibleShows.length > 0 && (
+          <label className="block rounded-xl border border-primary/20 bg-primary/5 p-4">
+            <span className="text-sm font-semibold text-slate-800">{t("copy.fromShow")}</span>
+            <select value={showId} onChange={(e) => pickShow(e.target.value)} className="mt-1 w-full h-12 rounded-xl border border-slate-300 bg-white px-3 text-base">
+              <option value="">{t("copy.noShow")}</option>
+              {visibleShows.map((x) => <option key={x.id} value={x.id}>{x.name}{x.weekday != null ? ` · ${t(`day.${x.weekday}` as TextKey)}` : ""}{x.start_time ? ` ${x.start_time}` : ""}</option>)}
+            </select>
+          </label>
+        )}
         <FightNightFields form={form} setForm={setForm} autoFocus lockStation={isOrganizer} short />
       </section>
 

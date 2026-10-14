@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, Box, Gavel, Landmark, Loader2, MapPin, Pencil, Plus, Scale, Settings, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Box, Gavel, Landmark, Loader2, Tv, MapPin, Pencil, Plus, Scale, Settings, Trash2 } from "lucide-react";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
 import { GLOVE_SIZES } from "../data/masterData";
@@ -22,7 +22,7 @@ interface Field {
   key: string;
   column: string;
   label: TextKey;
-  type?: "text" | "number" | "textarea" | "glove";
+  type?: "text" | "number" | "textarea" | "glove" | "station" | "sponsor" | "weekday" | "time";
   required?: boolean;
   placeholder?: TextKey;
 }
@@ -122,6 +122,26 @@ const TABS: ListTab[] = [
     fields: [
       { key: "name", column: "name", label: "set.f.nameEn", required: true, placeholder: "set.ph.associationEn" },
       { key: "nameKhmer", column: "name_khmer", label: "set.f.nameKm", placeholder: "set.ph.association" },
+    ],
+  },
+  {
+    // Weekly shows used as templates for a new match (claude/updates/show-templates-copy-week.md).
+    key: "shows",
+    label: "set.tab.shows",
+    add: "set.add.shows",
+    added: "set.added.shows",
+    icon: Tv,
+    hint: "set.hint.shows",
+    title: (r) => r.name,
+    detail: (r, t) => [r.weekday != null ? t(`day.${r.weekday}` as TextKey) : null, r.start_time, r.location].filter(Boolean).join(" · "),
+    fields: [
+      { key: "name", column: "name", label: "set.f.showName", required: true, placeholder: "set.ph.show" },
+      { key: "broadcastStationId", column: "broadcast_station_id", label: "night.broadcaster", type: "station" },
+      { key: "mainSponsorId", column: "main_sponsor_id", label: "night.sponsor", type: "sponsor" },
+      { key: "weekday", column: "weekday", label: "set.f.weekday", type: "weekday" },
+      { key: "startTime", column: "start_time", label: "night.startTime", type: "time" },
+      { key: "location", column: "location", label: "night.venue" },
+      { key: "description", column: "description", label: "set.f.notes", type: "textarea" },
     ],
   },
 ];
@@ -332,6 +352,13 @@ function EntryDialog({ tab, row, onClose, onSaved }: { tab: ListTab; row: Row | 
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Broadcasters and sponsors for the Shows list.
+  const [stations, setStations] = useState<any[]>([]);
+  const [sponsors, setSponsors] = useState<any[]>([]);
+  useEffect(() => {
+    if (tab.fields.some((f) => f.type === "station")) api.settings.listBroadcastStations().then((r: any[]) => setStations(r || [])).catch(() => {});
+    if (tab.fields.some((f) => f.type === "sponsor")) api.settings.listSponsors().then((r: any[]) => setSponsors(r || [])).catch(() => {});
+  }, [tab.key]);
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -340,7 +367,7 @@ function EntryDialog({ tab, row, onClose, onSaved }: { tab: ListTab; row: Row | 
     const body = Object.fromEntries(
       tab.fields.map((f) => {
         const v = values[f.key].trim();
-        return [f.key, v === "" ? null : f.type === "number" ? Number(v) : v];
+        return [f.key, v === "" ? null : f.type === "number" || f.type === "weekday" ? Number(v) : v];
       }),
     );
     setBusy(true);
@@ -373,6 +400,18 @@ function EntryDialog({ tab, row, onClose, onSaved }: { tab: ListTab; row: Row | 
                 </label>
                 {f.type === "textarea" ? (
                   <textarea id={`f-${f.key}`} rows={3} value={values[f.key]} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} placeholder={f.placeholder ? t(f.placeholder) : undefined} className="w-full rounded-xl border border-slate-300 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none p-3 text-sm" />
+                ) : f.type === "station" || f.type === "sponsor" ? (
+                  <select id={`f-${f.key}`} value={values[f.key]} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={inputClass}>
+                    <option value="">{t("set.dontSet")}</option>
+                    {(f.type === "station" ? stations : sponsors).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                  </select>
+                ) : f.type === "weekday" ? (
+                  <select id={`f-${f.key}`} value={values[f.key]} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={inputClass}>
+                    <option value="">{t("set.dontSet")}</option>
+                    {[1, 2, 3, 4, 5, 6, 0].map((d) => <option key={d} value={d}>{t(`day.${d}` as TextKey)}</option>)}
+                  </select>
+                ) : f.type === "time" ? (
+                  <input id={`f-${f.key}`} type="time" value={values[f.key]} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={inputClass} />
                 ) : f.type === "glove" ? (
                   <select id={`f-${f.key}`} value={values[f.key]} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} className={inputClass}>
                     <option value="">{t("set.dontSet")}</option>

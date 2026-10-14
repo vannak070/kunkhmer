@@ -42,6 +42,12 @@ Nested inside other responses as snake_case `fighterArray()`.
   `AddFighter.tsx` (new/edit), `FighterDetail.tsx`.
 - Public: `/fighters/:id` → `SuperAppFighterDetail.tsx` (uses slugs/names).
 
+## Foreign (guest) fighters
+Since 2026-10-13 a non-Cambodian fighter needs only a name, nationality, gender and weight: date of birth and height are
+optional (columns nullable, migration `20261013210000_guest_fighters`; API returns `dateOfBirth` / `height` null), the
+Khmer name stays optional, and Add Fighter does not ask for the ID number / emergency contact. A guest without a date of
+birth is never blocked by the minimum-age rule and gets no guardian warning. See `features/weekly-program.md`.
+
 ## Private details
 ID / KYC, emergency contact and medical records are staff-only and live outside the public API: see `features/fighter-personal-records.md`.
 

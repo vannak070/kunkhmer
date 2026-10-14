@@ -351,6 +351,15 @@ export const api = {
       const res = await request(`/events/${id}`);
       return res.data;
     },
+    /** A Draft copy of a match on another date; copy a whole week (claude/updates/show-templates-copy-week.md). */
+    async copy(id: string, date: string) {
+      const res = await request(`/events/${id}/copy`, { method: "POST", body: JSON.stringify({ date }) });
+      return res.data;
+    },
+    async copyWeek(from: string) {
+      const res = await request("/events/copy-week", { method: "POST", body: JSON.stringify({ from }) });
+      return res.data as { created: any[]; skipped: { name: string; date: string | null; reason: string }[] };
+    },
     async create(input: any) {
       const res = await request("/events", {
         method: "POST",
@@ -509,6 +518,12 @@ export const api = {
       const res = await request(`/matches/${matchId}/withdraw`, { method: "POST", body: JSON.stringify(body) });
       return res.data;
     },
+    /** Tournament draw on a fight card: qualifiers now, later rounds wait for the winners (claude/updates/empty-corners-draws.md). */
+    async draw(cardId: string, body: Record<string, unknown>) {
+      const res = await request(`/matches/batches/${cardId}/draw`, { method: "POST", body: JSON.stringify(body) });
+      return res.data as { draw_id: string; bouts: any[]; warnings?: any[] };
+    },
+    /** Replace a withdrawn fighter, or fill an empty corner ("to be announced"). */
     async replace(matchId: string, body: { side: "a" | "b"; fighterId: string }) {
       const res = await request(`/matches/${matchId}/replace`, { method: "POST", body: JSON.stringify(body) });
       return res.data;

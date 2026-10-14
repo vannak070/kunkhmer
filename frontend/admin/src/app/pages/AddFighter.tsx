@@ -94,16 +94,17 @@ export function AddFighter() {
     if (!form.name.trim()) e.name = t("ff.required");
     if (!foreign && !form.nameKhmer.trim()) e.nameKhmer = t("ff.khmerRequired");
     if (!form.nationality) e.nationality = t("ff.required");
-    if (!form.dateOfBirth) e.dateOfBirth = t("ff.required");
+    // A foreign (guest) fighter needs only a name, country, gender and weight (claude/features/weekly-program.md).
+    if (!foreign && !form.dateOfBirth) e.dateOfBirth = t("ff.required");
     const kg = Number(form.currentWeight);
     if (!(kg >= 20 && kg <= 200)) e.currentWeight = t("ff.weightRange");
     const cm = Number(form.height);
-    if (!(cm >= 100 && cm <= 250)) e.height = t("ff.heightRange");
+    if ((!foreign || form.height.trim()) && !(cm >= 100 && cm <= 250)) e.height = t("ff.heightRange");
     for (const k of ["wins", "losses", "draws"] as const) if (!/^\d+$/.test(form[k].trim())) e.record = t("ff.recordNumbers");
     // A new fighter needs an ID number and an emergency contact; when editing, only a wrong email is refused.
     if (isStaff) {
       const p = validatePrivate(priv, t);
-      if (editing) {
+      if (editing || foreign) {
         delete p.idNumber;
         delete p.emergencyName;
         delete p.emergencyPhone;
@@ -123,10 +124,10 @@ export function AddFighter() {
       alias: form.alias.trim(),
       nationality: form.nationality,
       gender: form.gender,
-      dateOfBirth: form.dateOfBirth,
+      dateOfBirth: form.dateOfBirth || null,
       clubId: form.clubId || null,
       currentWeight: Number(form.currentWeight),
-      height: Number(form.height),
+      height: form.height.trim() ? Number(form.height) : null,
       record: `${Number(form.wins)}-${Number(form.losses)}-${Number(form.draws)}`,
       grade: form.grade,
       style: form.styles.join(", "),
@@ -210,7 +211,7 @@ export function AddFighter() {
               <option value="Female">{t("gender.Female")}</option>
             </select>
           </label>
-          <label className="block">{label(t("fp.born"), true)}<input type="date" className={`${fieldCls} mt-1`} value={form.dateOfBirth} onChange={(e) => set({ dateOfBirth: e.target.value })} />{err("dateOfBirth")}</label>
+          <label className="block">{label(t("fp.born"), !foreign)}<input type="date" className={`${fieldCls} mt-1`} value={form.dateOfBirth} onChange={(e) => set({ dateOfBirth: e.target.value })} />{err("dateOfBirth")}</label>
         </div>
 
         <div className="grid sm:grid-cols-3 gap-5">
@@ -221,7 +222,7 @@ export function AddFighter() {
             </select>
           </label>
           <label className="block">{label(t("ff.weight"), true)}<input type="number" inputMode="decimal" step="0.1" className={`${fieldCls} mt-1`} value={form.currentWeight} onChange={(e) => set({ currentWeight: e.target.value })} placeholder="60" />{err("currentWeight")}</label>
-          <label className="block">{label(t("ff.height"), true)}<input type="number" inputMode="numeric" className={`${fieldCls} mt-1`} value={form.height} onChange={(e) => set({ height: e.target.value })} placeholder="170" />{err("height")}</label>
+          <label className="block">{label(t("ff.height"), !foreign)}<input type="number" inputMode="numeric" className={`${fieldCls} mt-1`} value={form.height} onChange={(e) => set({ height: e.target.value })} placeholder="170" />{err("height")}</label>
         </div>
 
         {/* Record */}

@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { ArrowLeft, CheckCircle2, Gavel, Trophy } from "lucide-react";
 import { api } from "../utils/api";
 import { formatDay, useT } from "../i18n/program";
-import { ConfirmDialog, FighterAvatar, LangSwitch, byCardOrder, dayOf, hasResult, resultText, todayUtc } from "../components/program/shared";
+import { ConfirmDialog, FighterAvatar, LangSwitch, boutNumbers, byCardOrder, cornerName, dayOf, hasBothCorners, hasResult, resultText, todayUtc } from "../components/program/shared";
 
 const METHODS = ["KO", "TKO", "Decision", "Disqualification"] as const;
 type Winner = "a" | "b" | "draw" | "nc" | "";
@@ -121,6 +121,16 @@ export function FightCardResults() {
 
       <ol className="space-y-4">
         {bouts.map((m, i) => {
+          // A bout with an empty corner can't take a result yet (claude/updates/empty-corners-draws.md).
+          if (!hasBothCorners(m)) {
+            const numbers = boutNumbers(bouts);
+            return (
+              <li key={m.id} className="rounded-2xl border border-dashed border-slate-300 bg-white p-5 space-y-1">
+                <p className="font-semibold text-slate-700"><span className="text-slate-400 font-bold mr-2">{i + 1}</span>{cornerName(m, "a", t, numbers)} <span className="text-slate-400 font-normal">{t("common.vs")}</span> {cornerName(m, "b", t, numbers)}</p>
+                <p className="text-sm text-slate-500">{t("corner.waiting")}</p>
+              </li>
+            );
+          }
           const d = drafts[m.id] ?? { winner: "", method: "", round: "" };
           const saved = hasResult(m) && !editing[m.id];
           const corner = d.winner === "a" || d.winner === "b";

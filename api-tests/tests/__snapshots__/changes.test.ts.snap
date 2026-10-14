@@ -23,6 +23,7 @@ exports[`postpone and cancel a match > moves the date, keeps the bouts and cards
       "organizer_id": "uuid",
       "postponed_from": "datetime(.000000Z)",
       "signed_off_at": "null",
+      "start_time": "null",
       "status": "string",
       "tournament_format": "null",
       "tournament_weight_class": "null",
@@ -39,6 +40,7 @@ exports[`withdraw and replace > keeps the bout, marks the corner, and takes no w
   "body": {
     "data": {
       "agreed_weight": "number",
+      "bout_label": "null",
       "championship": "null",
       "championshipId": "null",
       "championshipTitleName": "null",
@@ -59,6 +61,7 @@ exports[`withdraw and replace > keeps the bout, marks the corner, and takes no w
       "club_b_response": "string",
       "created_at": "datetime(.000000Z)",
       "date": "date",
+      "draw_id": "null",
       "event_id": "uuid",
       "fighter_a": {
         "alias": "null",
@@ -145,6 +148,9 @@ exports[`withdraw and replace > keeps the bout, marks the corner, and takes no w
       "result": "null",
       "round_time": "number",
       "rounds": "number",
+      "rule_set": "string",
+      "slot_a_from": "null",
+      "slot_b_from": "null",
       "sortOrder": "number",
       "sort_order": "number",
       "status": "string",
