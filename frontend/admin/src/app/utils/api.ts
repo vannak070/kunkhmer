@@ -356,6 +356,11 @@ export const api = {
       const res = await request(`/events/${id}/copy`, { method: "POST", body: JSON.stringify({ date }) });
       return res.data;
     },
+    /** What needs a look in the week starting `from` (claude/updates/weekly-checks.md). */
+    async weekChecks(from: string) {
+      const res = await request(`/events/week-checks?from=${from}`);
+      return res.data as { from: string; to: string; matches: number; problems: number; warnings: number; checks: any[] };
+    },
     async copyWeek(from: string) {
       const res = await request("/events/copy-week", { method: "POST", body: JSON.stringify({ from }) });
       return res.data as { created: any[]; skipped: { name: string; date: string | null; reason: string }[] };

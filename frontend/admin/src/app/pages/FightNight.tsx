@@ -10,7 +10,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import {
-  ArrowLeft, CalendarClock, CalendarDays, ChevronRight, ClipboardCheck, Gavel, ImagePlus, MapPin, MoreHorizontal, Pencil, Plus, Printer, Shuffle, Copy, Scale, Share2, ShieldCheck, Swords, Trash2, Trophy, Tv, Ban,
+  ArrowLeft, CalendarClock, CalendarDays, ChevronRight, ClipboardCheck, Gavel, ImagePlus, MapPin, MoreHorizontal, Pencil, Plus, Printer, Shuffle, Copy, ListPlus, Scale, Share2, ShieldCheck, Swords, Trash2, Trophy, Tv, Ban,
 } from "lucide-react";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
@@ -357,6 +357,11 @@ function FightCardSection({ card, bouts, single, canEdit, isStaff, isSuper, onDe
           {canEdit && (
             <button type="button" onClick={() => navigate(`/home/matches/${card.id}/create-match`)} className={`${action} bg-primary text-white border-primary hover:opacity-90`}>
               <Plus className="w-4 h-4" aria-hidden /> {t("card.addBout")}
+            </button>
+          )}
+          {canEdit && (
+            <button type="button" onClick={() => navigate(`/home/matches/${card.id}/quick-bouts`)} className={`${action} bg-white text-slate-700 border-slate-200 hover:border-primary hover:text-primary`}>
+              <ListPlus className="w-4 h-4" aria-hidden /> {t("qb.btn")}
             </button>
           )}
           {canEdit && (

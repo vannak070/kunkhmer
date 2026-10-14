@@ -191,6 +191,7 @@ export const router = createBrowserRouter(
       { path: "matches/new", element: <Navigate to="/home/matches" replace /> },
       { path: "matches/:batchId/edit", element: <ToFightCardPage /> },
       { path: "matches/:batchId/create-match", ...page(() => import("./pages/AddBout"), "AddBout") },
+      { path: "matches/:batchId/quick-bouts", ...page(() => import("./pages/QuickBouts"), "QuickBouts") },
       { path: "matches/:batchId/assign-officials", ...page(() => import("./pages/AssignOfficials"), "AssignOfficials") },
       { path: "matches/created", element: <Navigate to="/home/matches" replace /> },
       // The fight card lives on its fight night page now (claude/updates/program-officer-friendly.md).

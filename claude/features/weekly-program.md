@@ -51,4 +51,16 @@ Then the demo week (the 19 sheets) is loaded on the dev database at the end of t
 
 ### 2026-10-14 — step 4 part 2
 - Empty corners ("to be announced" / "winner of bout N") and tournament draws of 4 or 8: see `updates/empty-corners-draws.md`. Migration `20261014090000_empty_corners_draws`. Suite 344/344.
-- **Next**: step 5 (series templates + copy last week), 6 (weekly checks), 7 (Excel import + reports), then the demo week.
+- Step 5 done 2026-10-14: `updates/show-templates-copy-week.md`.
+
+### 2026-10-14 — step 5
+- Shows list (templates), New match "Start from a show", copy a match to another date, Matches › Week "Copy last week here": `updates/show-templates-copy-week.md`. Migration `20261014120000_show_templates`. Suite 350/350.
+- Step 6 done 2026-10-14: `updates/weekly-checks.md`.
+
+### 2026-10-14 — step 6
+- Weekly checks (`GET /events/week-checks`, Week board panel + card dots): `updates/weekly-checks.md`. No migration. Suite 352/352.
+- Owner (2026-10-14): Excel import not needed (no offline template); priorities are fast entry → duplicate fighter warning → demo week → reports later.
+
+### 2026-10-14 — fast bout entry
+- "Add several bouts" page: `updates/fast-bout-entry.md`. No backend change.
+- **Next**: duplicate-fighter warning when adding a fighter, then the demo week (19 sheets) on the dev DB; weekly reports later.

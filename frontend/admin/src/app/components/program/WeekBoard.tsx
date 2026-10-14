@@ -11,6 +11,7 @@ import { api } from "../../utils/api";
 import { formatDay, formatTime, khmerDigits, useT } from "../../i18n/program";
 import { usePlaceName } from "../../hooks/useSettingsLists";
 import { StatusChip, dayOf, displayStatus, todayUtc } from "./shared";
+import { type WeekCheckResult, WeekChecks, levelFor } from "./WeekChecks";
 
 const DAY = 86_400_000;
 const NONE = "none";
@@ -45,6 +46,18 @@ export function WeekBoard({ events, bouts, canCopy, onChanged }: Props) {
 
   // Copy last week: every match of the week before the one shown, 7 days later, as drafts (claude/updates/show-templates-copy-week.md).
   const [copying, setCopying] = useState(false);
+  // Weekly checks for the week shown (claude/updates/weekly-checks.md); reloaded when the week or the matches change.
+  const [checks, setChecks] = useState<WeekCheckResult | null>(null);
+  const [checksFailed, setChecksFailed] = useState(false);
+  useEffect(() => {
+    let live = true;
+    setChecks(null);
+    setChecksFailed(false);
+    api.events.weekChecks(new Date(start).toISOString().slice(0, 10))
+      .then((r) => live && setChecks(r))
+      .catch(() => live && setChecksFailed(true));
+    return () => { live = false; };
+  }, [start, events]);
   const copyLastWeek = async () => {
     setCopying(true);
     try {
@@ -98,12 +111,16 @@ export function WeekBoard({ events, bouts, canCopy, onChanged }: Props) {
   const count = (n: number) => (lang === "km" ? khmerDigits(n) : n);
 
   const Card = ({ e }: { e: any }) => {
+    const level = levelFor(checks?.checks, e.id);
     const n = boutsOf.get(e.id)?.length ?? 0;
     const sponsor = sponsorName(e.main_sponsor_id);
     return (
       <Link to={`/home/events/${e.id}`} className="block rounded-xl border border-slate-200 bg-white p-2.5 hover:border-primary hover:shadow-sm transition space-y-1">
         <p className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-          <span className="text-sm font-bold text-slate-900">{e.start_time ? formatTime(e.start_time, lang) : t("wk.noTime")}</span>
+          <span className="text-sm font-bold text-slate-900 inline-flex items-center gap-1.5">
+            {level && <span className={`w-2.5 h-2.5 rounded-full ${level === "problem" ? "bg-red-500" : "bg-amber-400"}`} aria-label={t(level === "problem" ? "wc.problem" : "wc.warning")} />}
+            {e.start_time ? formatTime(e.start_time, lang) : t("wk.noTime")}
+          </span>
           <StatusChip status={displayStatus(e, boutsOf.get(e.id) ?? [])} />
         </p>
         <p className="text-sm font-semibold text-slate-900 break-words leading-snug">{e.name}</p>
@@ -139,6 +156,8 @@ export function WeekBoard({ events, bouts, canCopy, onChanged }: Props) {
           </button>
         )}
       </div>
+
+      <WeekChecks data={checks} failed={checksFailed} />
 
       {week.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-600">{t("wk.empty")}</div>
