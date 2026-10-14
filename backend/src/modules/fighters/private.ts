@@ -54,7 +54,7 @@ const ageOn = (dob: Date, on: Date) => on.getUTCFullYear() - dob.getUTCFullYear(
  * What is missing or out of date (warnings only, nothing blocks a bout).
  * missing: id (no ID number), emergency (no contact name + phone), medical (no medical check date).
  */
-export function gaps(row: FighterPrivate | null, dob: Date) {
+export function gaps(row: FighterPrivate | null, dob: Date | null) {
   const t = today();
   const missing: string[] = [];
   if (!row?.id_number) missing.push("id");
@@ -64,13 +64,14 @@ export function gaps(row: FighterPrivate | null, dob: Date) {
     missing,
     idExpired: Boolean(row?.id_expiry && row.id_expiry < t),
     medicalExpired: Boolean(row?.medical_expiry && row.medical_expiry < t),
-    needsGuardian: ageOn(dob, t) < 18 && !(row?.guardian_name && row?.guardian_phone),
+    // No date of birth (a foreign guest fighter): the age is unknown, so no guardian warning.
+    needsGuardian: dob !== null && ageOn(dob, t) < 18 && !(row?.guardian_name && row?.guardian_phone),
   };
 }
 
 const hasGap = (g: ReturnType<typeof gaps>) => g.missing.length > 0 || g.idExpired || g.medicalExpired || g.needsGuardian;
 
-function shape(fighterId: string, row: FighterPrivate | null, dob: Date, status: { medical_status: string; suspension_end_date: Date | null }) {
+function shape(fighterId: string, row: FighterPrivate | null, dob: Date | null, status: { medical_status: string; suspension_end_date: Date | null }) {
   return {
     fighterId,
     medicalStatus: status.medical_status,

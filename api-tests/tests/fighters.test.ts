@@ -240,3 +240,18 @@ describe("fighters permissions", () => {
     expect((await del(`/fighters/${body.data.id}`)).status).toBe(401);
   });
 });
+
+describe("foreign (guest) fighters (claude/features/weekly-program.md)", () => {
+  it("registers a foreign fighter with only a name, country, gender and weight; a Cambodian still needs the date of birth and height", async () => {
+    const guest = await post("/fighters", { name: `Mahdi Asadi ${uniq()}`, nationality: "Iran", gender: "Male", currentWeight: 63.5 }, a.admin.token);
+    expect(guest.status).toBe(201);
+    expect(guest.body.data).toMatchObject({ nationality: "Iran", dateOfBirth: null, height: null, currentWeight: 63.5 });
+    expect(guest.body.data.nameKhmer).toBe(""); // foreign fighters keep an empty Khmer name (existing rule)
+
+    const shown = await get(`/fighters/${guest.body.data.id}`, a.admin.token);
+    expect(shown.body.data).toMatchObject({ dateOfBirth: null, height: null });
+
+    expect((await post("/fighters", { name: `Khmer ${uniq()}`, nameKhmer: "ខ្មែរ", gender: "Male", currentWeight: 60, height: 170 }, a.admin.token)).status).toBe(422);
+    expect((await post("/fighters", { name: `Khmer ${uniq()}`, nameKhmer: "ខ្មែរ", gender: "Male", currentWeight: 60, dateOfBirth: "2000-01-01" }, a.admin.token)).status).toBe(422);
+  });
+});

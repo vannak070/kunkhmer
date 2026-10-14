@@ -5,21 +5,26 @@
  *   Agreed weight (the agreed-weight list, preset from the red fighter), Rules (Settings › Bout rules),
  *   Gloves (Settings › Glove brands), Title fight (optional, ?championId= presets it)
  *   "Add bout" (back to the fight night) or "Add and add another" (keeps weight / rules / gloves).
- * Warns (doesn't block) when a fighter is far from the agreed weight or already on this card.
- * English + Khmer. See claude/updates/program-simple-forms.md.
+ * The KKF matching rules are checked live once both fighters are chosen: what breaks a rule is said in plain words with
+ * a fix button (choose another fighter, open the fighter's page), and "Add bout" waits until nothing blocks. Warnings
+ * never block. English + Khmer. See claude/updates/program-simple-forms.md and claude/updates/rule-messages.md.
  */
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeft, Search, Swords, Trophy, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Search, ShieldAlert, Swords, Trophy, X } from "lucide-react";
 import { api } from "../utils/api";
-import { useT } from "../i18n/program";
+import { type TextKey, useT } from "../i18n/program";
 import { WEIGHT_CLASSES } from "../data/champion";
-import { FighterAvatar, LangSwitch } from "../components/program/shared";
+import { BOUT_LABELS, FighterAvatar, LangSwitch, RULE_SETS } from "../components/program/shared";
 import { issueTexts } from "../components/fighters/PrivateDetails";
+import { FIGHTER_PAGE_RULES, PAIR_RULES, type RuleHit, ruleSentence } from "../components/program/ruleSentence";
 import { fieldCls } from "../components/program/FightNightFields";
 
 const weightOf = (f: any) => Number(f?.currentWeight ?? f?.current_weight) || null;
+/** Agreed weights offered on Add bout: the usual ones plus the youth weights seen on KKF programs. */
+const BOUT_WEIGHTS = [...new Set([28, 31, 35, 38, 41, 44, 45, 48, ...WEIGHT_CLASSES, 65, 71, 73, 77])].sort((a, b) => a - b);
+
 const nearestWeight = (kg: number | null) => (kg ? WEIGHT_CLASSES.reduce((best, w) => (Math.abs(w - kg) < Math.abs(best - kg) ? w : best), WEIGHT_CLASSES[0]) : WEIGHT_CLASSES[3]);
 /** More than this away from the agreed weight → a warning. */
 const WEIGHT_WARN_KG = 3;
@@ -42,6 +47,11 @@ export function AddBout() {
   const [weight, setWeight] = useState<number>(WEIGHT_CLASSES[3]);
   const [weightTouched, setWeightTouched] = useState(false);
   const [ruleId, setRuleId] = useState("");
+  // What the program sheet prints for the bout, and the rule set (claude/features/weekly-program.md).
+  const [boutLabel, setBoutLabel] = useState("");
+  // Blue corner "to be announced": the bout is saved with an empty corner, filled later (claude/updates/empty-corners-draws.md).
+  const [blueLater, setBlueLater] = useState(false);
+  const [ruleSet, setRuleSet] = useState("kun_khmer");
   const [glove, setGlove] = useState("");
   const [titleId, setTitleId] = useState(params.get("championId") ?? "");
   const [isTitle, setIsTitle] = useState(Boolean(params.get("championId")));
@@ -50,6 +60,14 @@ export function AddBout() {
   const [gapById, setGapById] = useState<Map<string, any>>(new Map());
   // The fight night's title list and whether KKF confirmed it (claude/updates/fight-night-titles.md); null = unknown.
   const [nightTitles, setNightTitles] = useState<{ ids: string[]; confirmed: boolean } | null>(null);
+  // Live check of the KKF matching rules for the chosen pair: undefined = not asked yet / asking, null = couldn't check.
+  const [check, setCheck] = useState<{ allowed: boolean; blocked: RuleHit[]; warnings: RuleHit[] } | null | undefined>(undefined);
+
+  // A bout with a foreign fighter is an international bout unless the officer chose another type.
+  useEffect(() => {
+    const foreign = [red, blue].some((f) => f && f.nationality && f.nationality !== "Cambodian");
+    if (foreign && !boutLabel) setBoutLabel("international");
+  }, [red?.id, blue?.id]);
 
   const load = async () => {
     try {
@@ -83,7 +101,11 @@ export function AddBout() {
   useEffect(() => { load(); }, [batchId]);
 
   const rule = rules.find((r) => r.id === ruleId) ?? null;
-  const back = card ? `/home/events/${card.event_id}#card-${card.id}` : "/home/program?tab=events";
+  const nameOf = (id: string | null | undefined, fallback: string) => {
+    const f = id ? [...fighters, red, blue].find((x) => x?.id === id) : null;
+    return f ? (lang === "km" && f.nameKhmer ? f.nameKhmer : f.name) : fallback;
+  };
+  const back = card ? `/home/events/${card.event_id}#card-${card.id}` : "/home/matches";
   const onCard = (f: any) => cardBouts.some((b) => b.fighter_a_id === f.id || b.fighter_b_id === f.id);
   const offWeight = (f: any) => { const kg = weightOf(f); return kg !== null && Math.abs(kg - weight) > WEIGHT_WARN_KG; };
   // This fight night's titles first, then the closest weight.
@@ -93,14 +115,27 @@ export function AddBout() {
     [titles, weight, nightTitles],
   );
 
+  useEffect(() => {
+    setCheck(undefined);
+    if (!card || !red || (!blue && !blueLater)) return;
+    let live = true;
+    const timer = setTimeout(() => {
+      api.matches
+        .check({ subEventId: card.id, fighterAId: red.id, fighterBId: blueLater ? null : blue.id, agreedWeight: weight, championshipId: isTitle && titleId ? titleId : null })
+        .then((r) => live && setCheck(r))
+        .catch(() => live && setCheck(null));
+    }, 300);
+    return () => { live = false; clearTimeout(timer); };
+  }, [card?.id, red?.id, blue?.id, blueLater, weight, isTitle, titleId]);
+
   const pickRed = (f: any | null) => {
     setRed(f);
     if (f && !weightTouched) setWeight(nearestWeight(weightOf(f)));
   };
 
   const save = async (another: boolean) => {
-    if (!red || !blue) { toast.error(t("bout.pickBoth")); return; }
-    if (red.id === blue.id) { toast.error(t("bout.sameFighter")); return; }
+    if (!red || (!blue && !blueLater)) { toast.error(t("bout.pickBoth")); return; }
+    if (!blueLater && red.id === blue.id) { toast.error(t("bout.sameFighter")); return; }
     if (isTitle && !titleId) { toast.error(t("bout.pickTitle")); return; }
     setBusy(true);
     try {
@@ -108,7 +143,7 @@ export function AddBout() {
         eventId: card.event_id,
         subEventId: card.id,
         fighterAId: red.id,
-        fighterBId: blue.id,
+        fighterBId: blueLater ? null : blue.id,
         rounds: rule?.rounds ?? 5,
         roundTime: rule?.round_time ?? 3,
         knockdownLimit: rule?.knockdown_limit ?? 3,
@@ -118,10 +153,12 @@ export function AddBout() {
         sortOrder: cardBouts.length + 1,
         isTitleMatch: isTitle,
         championshipId: isTitle ? titleId : null,
+        boutLabel: boutLabel || null,
+        ruleSet,
       });
-      toast.success(t("bout.added", { red: red.name, blue: blue.name }));
+      toast.success(t("bout.added", { red: red.name, blue: blueLater ? t("corner.tba") : blue.name }));
       // Warn rules from the KKF matching rules: the bout is created, the officer is told why to look twice.
-      if (created?.warnings?.length) toast.warning(t("mr.warnings", { list: created.warnings.map((w: { message: string }) => w.message).join("; ") }), { duration: 15000 });
+      if (created?.warnings?.length) toast.warning(t("mr.warnings", { list: created.warnings.map((w: RuleHit) => ruleSentence(t, lang, w, nameOf)).join(" ") }), { duration: 15000 });
       if (another) {
         setRed(null);
         setBlue(null);
@@ -148,16 +185,40 @@ export function AddBout() {
       </div>
     );
 
+  // Once the server's check answered, it covers weight, double booking and the title list; the local notes are the
+  // fallback while it is loading or unavailable. Missing private details are always shown.
+  const served = Boolean(check);
   const warnings = [red, blue].filter(Boolean).flatMap((f: any) => [
-    ...(onCard(f) ? [t("bout.warnOnCard", { name: f.name })] : []),
-    ...(offWeight(f) ? [t("bout.warnWeight", { name: f.name, kg: weightOf(f), agreed: weight })] : []),
+    ...(!served && onCard(f) ? [t("bout.warnOnCard", { name: f.name })] : []),
+    ...(!served && offWeight(f) ? [t("bout.warnWeight", { name: f.name, kg: weightOf(f), agreed: weight })] : []),
     ...(gapById.has(f.id) ? [t("pv.warnLine", { name: f.name, issues: issueTexts(gapById.get(f.id), t).join(", ") })] : []),
   ]);
-  // A title bout for a belt off the fight night's confirmed list: a warning, never a block (the API warns too).
-  if (isTitle && titleId && nightTitles) {
+  if (!served && isTitle && titleId && nightTitles) {
     if (!onNight(titleId)) warnings.push(t("bout.warnTitleOff"));
     else if (!nightTitles.confirmed) warnings.push(t("bout.warnTitleUnconfirmed"));
   }
+  const blocked = check?.blocked ?? [];
+  const served_warnings = check?.warnings ?? [];
+
+  // The fix for one broken rule: choose another fighter (the one named, or either of a pair), or open their page.
+  const fixes = (hit: RuleHit) => {
+    const out: { label: string; run?: () => void; to?: string }[] = [];
+    const corner = hit.fighter_id === red?.id ? "red" : hit.fighter_id === blue?.id ? "blue" : null;
+    if (corner) out.push({ label: t("rl.fixPick"), run: () => (corner === "red" ? pickRed(null) : setBlue(null)) });
+    else if (PAIR_RULES.includes(hit.key)) out.push({ label: t("rl.fixRed"), run: () => pickRed(null) }, { label: t("rl.fixBlue"), run: () => setBlue(null) });
+    if (hit.fighter_id && FIGHTER_PAGE_RULES.includes(hit.key)) out.push({ label: t("rl.fixOpen"), to: `/home/fighters/${hit.fighter_id}` });
+    return out;
+  };
+  const fixButtons = (hit: RuleHit) => {
+    const list = fixes(hit);
+    return list.length ? (
+      <span className="mt-2 flex flex-wrap gap-2">
+        {list.map((f) => f.to
+          ? <Link key={f.label} to={f.to} className="inline-flex items-center h-10 px-3 rounded-lg border border-red-300 bg-white text-sm font-semibold text-red-800 hover:bg-red-100">{f.label}</Link>
+          : <button key={f.label} type="button" onClick={f.run} className="inline-flex items-center h-10 px-3 rounded-lg border border-red-300 bg-white text-sm font-semibold text-red-800 hover:bg-red-100">{f.label}</button>)}
+      </span>
+    ) : null;
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
@@ -179,15 +240,25 @@ export function AddBout() {
       <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-7 space-y-6 shadow-sm">
         <div className="grid md:grid-cols-2 gap-5">
           <FighterPicker corner="red" label={t("common.red")} fighters={fighters} value={red} other={blue} onChange={pickRed} lang={lang} />
-          <FighterPicker corner="blue" label={t("common.blue")} fighters={fighters} value={blue} other={red} onChange={setBlue} lang={lang} />
+          <div className="space-y-2">
+            {blueLater ? (
+              <div className="rounded-xl border border-dashed border-blue-300 bg-blue-50/30 p-4 text-sm font-semibold text-slate-700">{t("common.blue")}: {t("corner.tba")}</div>
+            ) : (
+              <FighterPicker corner="blue" label={t("common.blue")} fighters={fighters} value={blue} other={red} onChange={setBlue} lang={lang} />
+            )}
+            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+              <input type="checkbox" className="w-4 h-4" checked={blueLater} onChange={(e) => { setBlueLater(e.target.checked); if (e.target.checked) setBlue(null); }} />
+              {t("corner.emptyOption")}
+            </label>
+          </div>
         </div>
 
         <div className="grid sm:grid-cols-3 gap-5">
           <label className="block">
             <span className="text-sm font-semibold text-slate-800">{t("bout.weight")}</span>
-            <select className={`${fieldCls} mt-1`} value={weight} onChange={(e) => { setWeight(Number(e.target.value)); setWeightTouched(true); }}>
-              {WEIGHT_CLASSES.map((w) => <option key={w} value={w}>{t("common.kg", { n: w })}</option>)}
-            </select>
+            {/* Any agreed weight (youth bouts go down to 28 kg); the usual ones are offered as suggestions. */}
+            <input type="number" inputMode="decimal" step="0.5" min={20} max={200} list="bout-weights" className={`${fieldCls} mt-1`} value={weight || ""} onChange={(e) => { setWeight(Number(e.target.value)); setWeightTouched(true); }} />
+            <datalist id="bout-weights">{BOUT_WEIGHTS.map((w) => <option key={w} value={w} />)}</datalist>
           </label>
           <label className="block">
             <span className="text-sm font-semibold text-slate-800">{t("bout.rules")}</span>
@@ -206,6 +277,22 @@ export function AddBout() {
         </div>
         {rule && <p className="text-sm text-slate-600 -mt-3">{t("bout.ruleLine", { rounds: rule.rounds, min: rule.round_time, glove: rule.glove_size })}</p>}
 
+        <div className="grid sm:grid-cols-2 gap-5">
+          <label className="block">
+            <span className="text-sm font-semibold text-slate-800">{t("bout.label")}</span>
+            <select className={`${fieldCls} mt-1`} value={boutLabel} onChange={(e) => setBoutLabel(e.target.value)}>
+              <option value="">{t("common.notSet")}</option>
+              {BOUT_LABELS.map((k) => <option key={k} value={k}>{t(`boutLabel.${k}` as TextKey)}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-sm font-semibold text-slate-800">{t("bout.ruleSet")}</span>
+            <select className={`${fieldCls} mt-1`} value={ruleSet} onChange={(e) => setRuleSet(e.target.value)}>
+              {RULE_SETS.map((k) => <option key={k} value={k}>{t(`ruleSet.${k}` as TextKey)}</option>)}
+            </select>
+          </label>
+        </div>
+
         <div className="rounded-xl border border-slate-200 p-4 space-y-3">
           <label className="flex items-center gap-3 cursor-pointer">
             <input type="checkbox" className="w-5 h-5" checked={isTitle} onChange={(e) => setIsTitle(e.target.checked)} />
@@ -223,23 +310,44 @@ export function AddBout() {
           )}
         </div>
 
-        {warnings.length > 0 && (
-          <ul role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-1 text-sm text-amber-900">
-            {warnings.map((w) => <li key={w} className="flex items-start gap-2"><AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden /> {w}</li>)}
-          </ul>
+        {red && blue && check === undefined && <p role="status" className="text-sm text-slate-500">{t("rl.checking")}</p>}
+        {red && blue && check === null && <p role="status" className="text-sm text-slate-500">{t("rl.failed")}</p>}
+
+        {blocked.length > 0 && (
+          <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
+            <p className="flex items-center gap-2 font-bold text-red-900"><ShieldAlert className="w-5 h-5 shrink-0" aria-hidden /> {t("rl.blockedTitle")}</p>
+            <p className="text-sm text-red-900">{t("rl.blockedHint")}</p>
+            <ul className="space-y-3">
+              {blocked.map((h, i) => <li key={`${h.key}-${i}`} className="text-sm text-red-900"><span className="block font-medium">{ruleSentence(t, lang, h, nameOf)}</span>{fixButtons(h)}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {(served_warnings.length > 0 || warnings.length > 0) && (
+          <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-2 text-sm text-amber-900">
+            <p className="font-bold">{t("rl.warnTitle")} <span className="font-normal">— {t("rl.warnHint")}</span></p>
+            <ul className="space-y-1">
+              {served_warnings.map((h, i) => <li key={`${h.key}-${i}`} className="flex items-start gap-2"><AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden /> {ruleSentence(t, lang, h, nameOf)}</li>)}
+              {warnings.map((w) => <li key={w} className="flex items-start gap-2"><AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden /> {w}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {check && check.allowed && served_warnings.length === 0 && warnings.length === 0 && (
+          <p role="status" className="flex items-center gap-2 text-sm font-medium text-emerald-800"><CheckCircle2 className="w-4 h-4" aria-hidden /> {t("rl.ok")}</p>
         )}
       </section>
 
       <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
         <Link to={back} className="h-12 px-6 rounded-xl border border-slate-300 bg-white text-base font-semibold text-slate-700 hover:bg-slate-50 inline-flex items-center justify-center">{t("common.cancel")}</Link>
-        <button type="button" disabled={busy} onClick={() => save(true)} className="h-12 px-6 rounded-xl border border-primary text-primary bg-white text-base font-semibold hover:bg-primary/5 disabled:opacity-60">{t("bout.addAnother")}</button>
-        <button type="button" disabled={busy} onClick={() => save(false)} className="h-12 px-6 rounded-xl bg-primary text-white text-base font-semibold hover:opacity-90 disabled:opacity-60">{busy ? t("common.saving") : t("card.addBout")}</button>
+        <button type="button" disabled={busy || blocked.length > 0} onClick={() => save(true)} className="h-12 px-6 rounded-xl border border-primary text-primary bg-white text-base font-semibold hover:bg-primary/5 disabled:opacity-40">{t("bout.addAnother")}</button>
+        <button type="button" disabled={busy || blocked.length > 0} onClick={() => save(false)} className="h-12 px-6 rounded-xl bg-primary text-white text-base font-semibold hover:opacity-90 disabled:opacity-60">{busy ? t("common.saving") : t("card.addBout")}</button>
       </div>
     </div>
   );
 }
 
-function FighterPicker({ corner, label, fighters, value, other, onChange, lang }: {
+export function FighterPicker({ corner, label, fighters, value, other, onChange, lang }: {
   corner: "red" | "blue";
   label: string;
   fighters: any[];

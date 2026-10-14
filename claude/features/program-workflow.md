@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress — flow and roles agreed 2026-10-13; **phase 1 (matching rules engine, `updates/matching-rules.md`), phase 2 (medical / suspension, `updates/fighter-medical-suspension.md`) phase 3 (broadcaster = Organizer accounts, `updates/broadcaster-organizer-accounts.md`) phase 4 (offline agreements log + licence, `updates/offline-agreements-log.md`) and phase 5 (titles on a fight night, `updates/fight-night-titles.md`) built**; phases 6–7 not started |
+| **Status** | In progress — flow and roles agreed 2026-10-13; **phase 1 (matching rules engine, `updates/matching-rules.md`), phase 2 (medical / suspension, `updates/fighter-medical-suspension.md`) phase 3 (broadcaster = Organizer accounts, `updates/broadcaster-organizer-accounts.md`) phase 4 (offline agreements log + licence, `updates/offline-agreements-log.md`) and phase 5 (titles on a fight night, `updates/fight-night-titles.md`) built**; phase 6 (withdrawal / replacement / postponement / cancellation, `updates/withdrawals-postponement.md`) built; phase 7 (after-match sign-off, disputes, settlement, `updates/match-signoff-settlement.md`) built — all seven phases done |
 | **Jira** | TBD |
 | **Figma** | TBD |
 | **Owner** | vannak070 |
@@ -48,6 +48,7 @@ Offline = people talk first, the system records later. No in-system negotiation,
 - Recording an offline agreement stores who recorded it, who confirmed it and when (audit).
 
 ## Decisions (owner, 2026-10-13)
+0. **Licence / permit dropped** (2026-10-13, "not important"): no longer asked for or required to confirm details; the data and `/events/:id/licence` API stay dormant (`updates/program-guided-fight-night.md`).
 1. **Record and confirm follow system role and permission.** No fixed "organizer records, KKF confirms" pair:
    each record type says which roles may record it and which may confirm it (a role may hold both).
 2. **Organizer = Broadcaster**, one broadcaster per event.
@@ -115,8 +116,8 @@ placeholder table above is the seed.
 | 3 | **Broadcaster = Organizer account**: `users.broadcast_station_id`; KKF "Enable organizer" on a broadcast station; Organizer sees only its station's events; event organizer and station always agree; one station per event. | migration + settings/auth routes |
 | 4 | **Offline agreements log** (built): fight night details + sponsors recorded by the Organizer, confirmed / sent back by KKF, with note, who and when; licence number / date / private scan; publish needs confirmed details. Title selection comes with phase 5; bouts stay KKF-only. | `event_agreements` + `events.licence_*` |
 | 5 | **Belts** (built): KKF creates the belt; the Organizer chooses the titles on its fight night (several allowed); KKF confirms through the agreements log; publishing waits for confirmed titles when any; a title bout off the confirmed list only warns. | `event_titles` |
-| 6 | **Withdrawal / replacement / postponement / cancellation** with reason; replacement re-runs the rules. | status + log |
-| 7 | **After-event sign-off** and settlement record. | TBD |
+| 6 | **Withdrawal / replacement / postponement / cancellation** with reason; replacement re-runs the rules. **Built 2026-10-13** (`updates/withdrawals-postponement.md`). | status + log |
+| 7 | **After-event sign-off** (locks results; Super Admin correction with a reason), **disputes** (block sign-off until resolved) and a **settlement checklist** (broadcaster + sponsors, no amounts). Built 2026-10-13 (`updates/match-signoff-settlement.md`). | `events.signed_off_*`, `bout_disputes`, `event_settlements` |
 
 Each phase: update doc in `claude/updates/`, contract tests, snapshots only for deliberate additive fields.
 Phase 1 is the first to build; phases 3–7 change who can do what, so each needs the owner's go-ahead.

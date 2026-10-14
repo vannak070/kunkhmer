@@ -10,8 +10,8 @@ export function FightCardRedirect() {
     api.batches
       .get(batchId!)
       .then((card: any) => navigate(`/home/events/${card.event_id}#card-${card.id}`, { replace: true }))
-      .catch(() => navigate("/home/program?tab=events", { replace: true }));
+      .catch(() => navigate("/home/matches", { replace: true }));
   }, [batchId]);
-  if (!batchId) return <Navigate to="/home/program?tab=events" replace />;
+  if (!batchId) return <Navigate to="/home/matches" replace />;
   return <div className="p-10 flex justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 }

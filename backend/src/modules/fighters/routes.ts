@@ -50,7 +50,7 @@ export function formatFighter(f: FighterWithClub) {
     province: f.province,
     gender: f.gender,
     currentWeight: Number(f.current_weight),
-    height: Number(f.height),
+    height: f.height === null ? null : Number(f.height),
     clubId: f.club_id,
     clubName: f.club?.name ?? null,
     clubLogo: f.club?.logo_url ?? null,
@@ -81,7 +81,7 @@ export function fighterArray(f: Fighter) {
     province: f.province,
     gender: f.gender,
     current_weight: Number(f.current_weight),
-    height: Number(f.height),
+    height: f.height === null ? null : Number(f.height),
     club_id: f.club_id,
     image: f.image,
     style: f.style,
@@ -185,6 +185,8 @@ export default async function fighterRoutes(app: FastifyInstance) {
       // Club/Gym users can only register fighters for their own club.
       const clubId = user.role === Role.Club && user.club_id ? user.club_id : input.get<string>("clubId");
 
+      // A foreign (guest) fighter needs only a name, country, gender and weight (claude/features/weekly-program.md).
+      const guest = String(input.get("nationality", "Cambodian")) !== "Cambodian";
       const at = now();
       const fighter = await prisma.fighter.create({
         data: {
@@ -192,12 +194,12 @@ export default async function fighterRoutes(app: FastifyInstance) {
           name: input.required("name"),
           name_khmer: khmerName(input.get("nationality", "Cambodian"), input.get("nameKhmer")),
           alias: input.get("alias"),
-          date_of_birth: toDate(input.required("dateOfBirth"))!,
+          date_of_birth: guest ? toDate(input.get("dateOfBirth")) : toDate(input.required("dateOfBirth"))!,
           nationality: input.get("nationality", "Cambodian"),
           province: input.get("province"),
           gender: input.get("gender", "Male"),
           current_weight: input.required("currentWeight"),
-          height: input.required("height"),
+          height: guest ? input.get("height") : input.required("height"),
           club_id: clubId,
           style: input.get("style"),
           grade: input.get("grade", "D"),

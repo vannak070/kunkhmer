@@ -7,7 +7,7 @@ import { RedirectToHomeEvents } from "./pages/RedirectToHomeEvents";
 import { RedirectToFighters } from "./pages/RedirectToFighters";
 import { NotFound } from "./pages/NotFound";
 import { Login } from "./pages/Login";
-import { Navigate, useParams } from "react-router";
+import { Navigate, useParams, useSearchParams } from "react-router";
 
 
 /**
@@ -33,6 +33,11 @@ function ToFightCardPage() {
 function ToTitle() {
   const { id } = useParams();
   return <Navigate to={`/home/champion/${id}`} replace />;
+}
+/** The old Program page: ?tab=champions is Titles; ?tab=overview / events are Matches. */
+function ProgramRedirect() {
+  const [params] = useSearchParams();
+  return <Navigate to={params.get("tab") === "champions" ? "/home/titles" : "/home/matches"} replace />;
 }
 function ToEvent() {
   const { eventId } = useParams();
@@ -63,6 +68,8 @@ export const router = createBrowserRouter(
     path: "/events/:id",
     element: <RedirectToHomeEvents />,
   },
+  // The printable program sheet of one match, outside the admin frame so it prints clean (claude/features/weekly-program.md).
+  { path: "/events/:id/sheet", ...page(() => import("./pages/ProgramSheet"), "ProgramSheet") },
   {
     path: "/events/:eventId/sub-events/:subEventId",
     element: <RedirectToHomeEvents />,
@@ -181,31 +188,34 @@ export const router = createBrowserRouter(
       { path: "clubs/new", ...page(() => import("./pages/AddClub"), "AddClub") },
       { path: "clubs", ...page(() => import("./pages/Clubs"), "Clubs") },
       // The old "create fight card" form is gone: fight cards are added on their fight night page.
-      { path: "matches/new", element: <Navigate to="/home/program?tab=events" replace /> },
+      { path: "matches/new", element: <Navigate to="/home/matches" replace /> },
       { path: "matches/:batchId/edit", element: <ToFightCardPage /> },
       { path: "matches/:batchId/create-match", ...page(() => import("./pages/AddBout"), "AddBout") },
       { path: "matches/:batchId/assign-officials", ...page(() => import("./pages/AssignOfficials"), "AssignOfficials") },
-      { path: "matches/created", element: <Navigate to="/home/program?tab=events" replace /> },
+      { path: "matches/created", element: <Navigate to="/home/matches" replace /> },
       // The fight card lives on its fight night page now (claude/updates/program-officer-friendly.md).
       { path: "matches/:batchId", ...page(() => import("./components/program/FightCardRedirect"), "FightCardRedirect") },
       { path: "batches/:batchId", ...page(() => import("./components/program/FightCardRedirect"), "FightCardRedirect") },
       { path: "fight-cards/:cardId/weigh-in", ...page(() => import("./pages/FightCardWeighIn"), "FightCardWeighIn") },
       { path: "fight-cards/:cardId/results", ...page(() => import("./pages/FightCardResults"), "FightCardResults") },
       { path: "batches/:batchId/share", ...page(() => import("./pages/ShareFightCard"), "ShareFightCard") },
-      { path: "program", ...page(() => import("./pages/ProgramDashboard"), "ProgramDashboard") },
-      { path: "matches", element: <Navigate to="/home/program?tab=events" replace /> },
-      { path: "matches-old", element: <Navigate to="/home/program?tab=events" replace /> },
+      // Program became Matches (list) + Titles; old Program links still land in the right place.
+      { path: "program", element: <ProgramRedirect /> },
+      { path: "matches", ...page(() => import("./pages/Matches"), "Matches") },
+      { path: "titles", ...page(() => import("./pages/Titles"), "Titles") },
+      { path: "matches-old", element: <Navigate to="/home/matches" replace /> },
       { path: "match/new", ...page(() => import("./pages/ScheduleTitleBout"), "ScheduleTitleBout") },
       { path: "match/:id", ...page(() => import("./pages/MatchDetail"), "MatchDetail") },
       { path: "match/:id/update-result", element: <ToMatch /> },
       { path: "events/new", ...page(() => import("./pages/NewFightNight"), "NewFightNight") },
       { path: "events/:eventId/assign-fighters", element: <ToEvent /> },
+      { path: "events/:id/match-day", ...page(() => import("./pages/MatchDay"), "MatchDay") },
       { path: "events/:id", ...page(() => import("./pages/FightNight"), "FightNight") },
       { path: "events/:eventId/sub-events/:subEventId", element: <ToFightCard /> },
       { path: "events/:eventId/sub-events/:subEventId/add-match", element: <ToFightCard /> },
       { path: "events/:eventId/add-match", element: <ToEvent /> },
-      { path: "events", element: <Navigate to="/home/program?tab=events" replace /> },
-      { path: "champion", element: <Navigate to="/home/program?tab=champions" replace /> },
+      { path: "events", element: <Navigate to="/home/matches" replace /> },
+      { path: "champion", element: <Navigate to="/home/titles" replace /> },
       { path: "champion/new", ...page(() => import("./pages/CreateChampion"), "CreateChampion") },
       { path: "champion/:id", ...page(() => import("./pages/ChampionDetail"), "ChampionDetail") },
       { path: "champion/:id/schedule-defense", ...page(() => import("./pages/ScheduleTitleBout"), "ScheduleTitleBout") },
@@ -232,7 +242,7 @@ export const router = createBrowserRouter(
       { path: "settings", ...page(() => import("./pages/SystemSettings"), "SystemSettings") },
       { path: "help", ...page(() => import("./pages/Help"), "Help") },
       { path: "process-flow", element: <Navigate to="/home/help" replace /> },
-      { path: "assign-officials", element: <Navigate to="/home/program?tab=events" replace /> },
+      { path: "assign-officials", element: <Navigate to="/home/matches" replace /> },
       { path: "product-management", element: <Navigate to="/home" replace /> },
       { path: "categories-setting", element: <Navigate to="/home" replace /> },
       { path: "store-settings", element: <Navigate to="/home" replace /> },

@@ -146,6 +146,7 @@ export function SuperAppHome() {
     id: e.id,
     name: e.name,
     date: e.date,
+    startTime: e.start_time || "",
     venue: e.location || "",
     image: e.image || "",
     station: e.broadcast_station_name || "",

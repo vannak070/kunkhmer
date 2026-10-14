@@ -55,7 +55,7 @@ export function ChampionDetail() {
         <p className="text-slate-700">{t("td.loadFailed")}</p>
         <div className="flex justify-center gap-3">
           <button type="button" onClick={() => { setData(undefined); load(); }} className="h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90">{t("common.tryAgain")}</button>
-          <Link to="/home/program?tab=champions" className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700 inline-flex items-center">{t("td.back")}</Link>
+          <Link to="/home/titles" className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700 inline-flex items-center">{t("td.back")}</Link>
         </div>
       </div>
     );
@@ -85,7 +85,7 @@ export function ChampionDetail() {
       () => api.champions.update(title.id, { currentHolderId: null, currentHolderName: null, nationality: null, status: "Vacant", ...(reason.trim() ? { notes: `${t("td.vacatedNote")}: ${reason.trim()}` } : {}) }),
       t("td.vacated"),
     );
-  const remove = () => run(() => api.champions.delete(title.id), t("td.deleted", { name: title.title_name }), () => navigate("/home/program?tab=champions"));
+  const remove = () => run(() => api.champions.delete(title.id), t("td.deleted", { name: title.title_name }), () => navigate("/home/titles"));
 
   /** One history line: who won and against whom, from the bout when it is known. */
   const line = (d: any) => {
@@ -100,7 +100,7 @@ export function ChampionDetail() {
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
       <div className="flex items-center justify-between gap-3">
-        <Link to="/home/program?tab=champions" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-primary">
+        <Link to="/home/titles" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-primary">
           <ArrowLeft className="w-4 h-4" aria-hidden /> {t("td.back")}
         </Link>
         <LangSwitch />

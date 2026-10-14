@@ -128,8 +128,8 @@ async function pendingApprovals() {
   ]);
   const waitingOn = (m: (typeof proposals)[number]) =>
     [
-      m.club_a_response === "pending" ? m.fighterA.club?.name : null,
-      m.club_b_response === "pending" ? m.fighterB.club?.name : null,
+      m.club_a_response === "pending" ? m.fighterA?.club?.name : null,
+      m.club_b_response === "pending" ? m.fighterB?.club?.name : null,
     ].filter(Boolean);
   return {
     fighters_to_verify: {
@@ -149,7 +149,7 @@ async function pendingApprovals() {
       count: proposalCount,
       admin_url: admin.proposals,
       items: proposals.map((m) => ({
-        bout: `${m.fighterA.name} vs ${m.fighterB.name}`,
+        bout: `${m.fighterA?.name ?? "TBA"} vs ${m.fighterB?.name ?? "TBA"}`,
         event: m.event.name,
         card: m.subEvent.name,
         date: day(m.subEvent.date),
@@ -188,7 +188,7 @@ async function missingResults() {
       admin_url: admin.card(b.subEvent.id),
       bouts: [],
     };
-    c.bouts.push({ bout: `${b.fighterA.name} vs ${b.fighterB.name}`, record_result_url: admin.result(b.id) });
+    c.bouts.push({ bout: `${b.fighterA?.name ?? "TBA"} vs ${b.fighterB?.name ?? "TBA"}`, record_result_url: admin.result(b.id) });
     cards.set(b.subEvent.id, c);
   }
   return {
@@ -267,6 +267,7 @@ async function duplicates() {
   byKey((i) => khmer(rows[i].name_khmer), "same Khmer name");
   const byBirth = new Map<string, number[]>();
   rows.forEach((f, i) => {
+    if (!f.date_of_birth) return; // guest fighters may have no date of birth
     const k = day(f.date_of_birth)!;
     byBirth.set(k, [...(byBirth.get(k) ?? []), i]);
   });
@@ -315,7 +316,7 @@ async function missingOfficials() {
   return {
     upcoming_bouts_without_referee: bouts.length,
     bouts: bouts.map((b) => ({
-      bout: `${b.fighterA.name} vs ${b.fighterB.name}`,
+      bout: `${b.fighterA?.name ?? "TBA"} vs ${b.fighterB?.name ?? "TBA"}`,
       event: b.event.name,
       card: b.subEvent.name,
       date: day(b.subEvent.date),

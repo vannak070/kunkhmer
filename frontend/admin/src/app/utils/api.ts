@@ -351,6 +351,15 @@ export const api = {
       const res = await request(`/events/${id}`);
       return res.data;
     },
+    /** A Draft copy of a match on another date; copy a whole week (claude/updates/show-templates-copy-week.md). */
+    async copy(id: string, date: string) {
+      const res = await request(`/events/${id}/copy`, { method: "POST", body: JSON.stringify({ date }) });
+      return res.data;
+    },
+    async copyWeek(from: string) {
+      const res = await request("/events/copy-week", { method: "POST", body: JSON.stringify({ from }) });
+      return res.data as { created: any[]; skipped: { name: string; date: string | null; reason: string }[] };
+    },
     async create(input: any) {
       const res = await request("/events", {
         method: "POST",
@@ -384,6 +393,40 @@ export const api = {
       return res.data;
     },
     /** Offline agreements log + licence (claude/updates/offline-agreements-log.md): { licence, items, log }. */
+    /** After the match (phase 7): sign off (locks the results), reopen, disputes, settlement checklist. */
+    async signOff(id: string) {
+      const res = await request(`/events/${id}/sign-off`, { method: "POST", body: JSON.stringify({}) });
+      return res.data;
+    },
+    async reopen(id: string, reason: string) {
+      const res = await request(`/events/${id}/reopen`, { method: "POST", body: JSON.stringify({ reason }) });
+      return res.data;
+    },
+    async disputes(id: string) {
+      const res = await request(`/events/${id}/disputes`);
+      return res.data as any[];
+    },
+    async settlement(id: string) {
+      const res = await request(`/events/${id}/settlement`);
+      return res.data.parties as any[];
+    },
+    async settle(id: string, body: { kind: string; partyId: string; settled: boolean; note?: string | null }) {
+      const res = await request(`/events/${id}/settlement`, { method: "PUT", body: JSON.stringify(body) });
+      return res.data.parties as any[];
+    },
+    /** Postpone (new date), cancel with a reason, and the history of changes (claude/updates/withdrawals-postponement.md). */
+    async postpone(id: string, body: { date: string; reason: string; note?: string | null }) {
+      const res = await request(`/events/${id}/postpone`, { method: "POST", body: JSON.stringify(body) });
+      return res.data;
+    },
+    async cancel(id: string, body: { reason: string; note?: string | null }) {
+      const res = await request(`/events/${id}/cancel`, { method: "POST", body: JSON.stringify(body) });
+      return res.data;
+    },
+    async changes(id: string) {
+      const res = await request(`/events/${id}/changes`);
+      return res.data as any[];
+    },
     async agreements(id: string) {
       const res = await request(`/events/${id}/agreements`);
       return res.data;
@@ -457,6 +500,43 @@ export const api = {
 
   // --- MATCHES ---
   matches: {
+    /** Disputes (phase 7, claude/updates/match-signoff-settlement.md). */
+    async raiseDispute(matchId: string, body: { raisedBy: string; reason: string }) {
+      const res = await request(`/matches/${matchId}/disputes`, { method: "POST", body: JSON.stringify(body) });
+      return res.data;
+    },
+    async resolveDispute(id: string, body: { outcome: string; note?: string | null }) {
+      const res = await request(`/disputes/${id}/resolve`, { method: "PUT", body: JSON.stringify(body) });
+      return res.data;
+    },
+    async openDisputes() {
+      const res = await request("/matches/disputes?status=open");
+      return res.data as any[];
+    },
+    /** Withdraw a fighter (the bout stays, "Replacement needed"), replace them, or cancel the bout (claude/updates/withdrawals-postponement.md). */
+    async withdraw(matchId: string, body: { side: "a" | "b"; reason: string; note?: string | null; markFighter?: boolean }) {
+      const res = await request(`/matches/${matchId}/withdraw`, { method: "POST", body: JSON.stringify(body) });
+      return res.data;
+    },
+    /** Tournament draw on a fight card: qualifiers now, later rounds wait for the winners (claude/updates/empty-corners-draws.md). */
+    async draw(cardId: string, body: Record<string, unknown>) {
+      const res = await request(`/matches/batches/${cardId}/draw`, { method: "POST", body: JSON.stringify(body) });
+      return res.data as { draw_id: string; bouts: any[]; warnings?: any[] };
+    },
+    /** Replace a withdrawn fighter, or fill an empty corner ("to be announced"). */
+    async replace(matchId: string, body: { side: "a" | "b"; fighterId: string }) {
+      const res = await request(`/matches/${matchId}/replace`, { method: "POST", body: JSON.stringify(body) });
+      return res.data;
+    },
+    async cancelBout(matchId: string, body: { reason: string; note?: string | null }) {
+      const res = await request(`/matches/${matchId}/cancel`, { method: "POST", body: JSON.stringify(body) });
+      return res.data;
+    },
+    /** Dry run of the KKF matching rules for a pairing; saves nothing (claude/updates/rule-messages.md). */
+    async check(body: Record<string, unknown>) {
+      const res = await request("/matches/check", { method: "POST", body: JSON.stringify(body) });
+      return res.data as { allowed: boolean; blocked: any[]; warnings: any[] };
+    },
     async list(subEventId?: string) {
       let query = "";
       if (subEventId) {
@@ -505,7 +585,7 @@ export const api = {
       return res.data;
     },
     /** Weigh-in (kg per corner; null clears). Saved on the bout, not on the fighter's profile. */
-    async weighIn(matchId: string, weights: { a?: number | null; b?: number | null }) {
+    async weighIn(matchId: string, weights: { a?: number | null; b?: number | null; correctionReason?: string }) {
       const res = await request(`/matches/${matchId}/weigh-in`, { method: "POST", body: JSON.stringify(weights) });
       return res.data;
     },

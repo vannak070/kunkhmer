@@ -336,7 +336,7 @@ function Stat({ icon, value, label }: { icon: React.ReactNode; value: number; la
 
 /** The next fight night, or with `past` the latest one (shown when nothing is scheduled). */
 function NextFightNight({ data, event, past = false }: { data: FanData; event: any; past?: boolean }) {
-  const { t, tn, formatDate } = useI18n();
+  const { t, tn, formatDate, formatTime } = useI18n();
   const placeName = usePlaceName();
   const bouts = data.bouts.filter((b) => b.eventId === event.id).sort((a, b) => time(a.date) - time(b.date) || a.sortOrder - b.sortOrder);
   const main = mainEventBout(bouts);
@@ -360,7 +360,7 @@ function NextFightNight({ data, event, past = false }: { data: FanData; event: a
             </div>
             <div className="min-w-0">
               <h2 id="next-night" lang={textLang(event.name)} className="kk-heading text-2xl md:text-3xl text-gray-900 break-words">{event.name}</h2>
-              <p className="text-sm text-gray-600 mt-1">{formatDate(event.date, "long")}</p>
+              <p className="text-sm text-gray-600 mt-1">{[formatDate(event.date, "long"), formatTime(event.start_time)].filter(Boolean).join(" · ")}</p>
             </div>
           </div>
           <ul className="space-y-2 text-sm text-gray-700">
@@ -525,7 +525,7 @@ function PastEvents({ events, data, years, year, onYear }: { events: any[]; data
 }
 
 function EventTile({ e, data }: { e: any; data: FanData }) {
-  const { t, tn, formatDate } = useI18n();
+  const { t, tn, formatDate, formatTime } = useI18n();
   const placeName = usePlaceName();
   const bouts = data.bouts.filter((b) => b.eventId === e.id).length;
   const station = broadcasterForEvent(data, e);
@@ -545,7 +545,7 @@ function EventTile({ e, data }: { e: any; data: FanData }) {
         )}
         <div className="p-4 flex flex-col gap-1.5 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-xs font-semibold text-gray-500">{formatDate(e.date, "weekday")}</p>
+            <p className="text-xs font-semibold text-gray-500">{[formatDate(e.date, "weekday"), formatTime(e.start_time)].filter(Boolean).join(" · ")}</p>
             {isRealImage(e.image) && <CountdownChip date={e.date} />}
           </div>
           <p lang={textLang(e.name)} className="font-bold text-gray-900 leading-snug group-hover:text-[var(--kk-blue)] break-words">{e.name}</p>

@@ -163,7 +163,7 @@ const APPROVAL_KKF_TASKS: { text: Text; to?: string }[] = [
 ];
 
 const OFFICER_KKF_TASKS: { text: Text; to?: string }[] = [
-  { text: { en: "Create events, fight cards and bouts, then publish the event.", km: "បង្កើតព្រឹត្តិការណ៍ កម្មវិធីប្រកួត និងគូប្រកួត រួចផ្សព្វផ្សាយព្រឹត្តិការណ៍។" }, to: "/home/program?tab=events" },
+  { text: { en: "Create events, fight cards and bouts, then publish the event.", km: "បង្កើតព្រឹត្តិការណ៍ កម្មវិធីប្រកួត និងគូប្រកួត រួចផ្សព្វផ្សាយព្រឹត្តិការណ៍។" }, to: "/home/matches" },
   { text: { en: "Register fighters (they're active at once) and keep their profiles up to date.", km: "ចុះឈ្មោះអ្នកប្រដាល់ (សកម្មភ្លាមៗ) ហើយធ្វើបច្ចុប្បន្នភាពប្រវត្តិរូបរបស់ពួកគេ។" }, to: "/home/fighters/kunkhmer" },
   APPROVAL_KKF_TASKS[2], // Assign referees and judges
   APPROVAL_KKF_TASKS[4], // Record results; clubs, partners, news, videos
@@ -172,7 +172,7 @@ const OFFICER_KKF_TASKS: { text: Text; to?: string }[] = [
 const KKF_TASKS = APPROVALS_ENABLED ? APPROVAL_KKF_TASKS : OFFICER_KKF_TASKS;
 
 const READ_ONLY_TASKS: { text: Text; to?: string }[] = [
-  { text: { en: "Your account is read-only for now: you can view events, fight cards and fighters. KKF staff make the changes.", km: "គណនីរបស់អ្នកអាចមើលបានតែប៉ុណ្ណោះនៅពេលនេះ៖ អ្នកអាចមើលព្រឹត្តិការណ៍ កម្មវិធីប្រកួត និងអ្នកប្រដាល់។ បុគ្គលិក KKF ជាអ្នកធ្វើការផ្លាស់ប្តូរ។" }, to: "/home/program?tab=events" },
+  { text: { en: "Your account is read-only for now: you can view events, fight cards and fighters. KKF staff make the changes.", km: "គណនីរបស់អ្នកអាចមើលបានតែប៉ុណ្ណោះនៅពេលនេះ៖ អ្នកអាចមើលព្រឹត្តិការណ៍ កម្មវិធីប្រកួត និងអ្នកប្រដាល់។ បុគ្គលិក KKF ជាអ្នកធ្វើការផ្លាស់ប្តូរ។" }, to: "/home/matches" },
   { text: { en: "Ask KKF to add or change anything.", km: "សូមស្នើ KKF ដើម្បីបន្ថែម ឬផ្លាស់ប្តូរអ្វីមួយ។" } },
 ];
 
@@ -187,7 +187,7 @@ const ROLE_TASKS: Record<RoleKey, { text: Text; to?: string }[]> = {
     { text: { en: "View the settings lists (only the Super Admin changes them).", km: "មើលបញ្ជីការកំណត់ (មានតែ Super Admin ទេដែលអាចកែប្រែ)។" }, to: "/home/settings" },
   ],
   Organizer: !APPROVALS_ENABLED ? READ_ONLY_TASKS : [
-    { text: { en: "Create your events and submit them to KKF; publish them once approved.", km: "បង្កើតព្រឹត្តិការណ៍របស់អ្នក ហើយដាក់ជូន KKF រួចផ្សព្វផ្សាយក្រោយពេលអនុម័ត។" }, to: "/home/program?tab=events" },
+    { text: { en: "Create your events and submit them to KKF; publish them once approved.", km: "បង្កើតព្រឹត្តិការណ៍របស់អ្នក ហើយដាក់ជូន KKF រួចផ្សព្វផ្សាយក្រោយពេលអនុម័ត។" }, to: "/home/matches" },
     { text: { en: "Add fight cards and bouts to your own events.", km: "បន្ថែមកម្មវិធីប្រកួត និងគូប្រកួតទៅព្រឹត្តិការណ៍របស់អ្នក។" } },
     { text: { en: "Follow club answers; change the fighter when a club declines.", km: "តាមដានចម្លើយក្លឹប ហើយប្តូរអ្នកប្រដាល់នៅពេលក្លឹបបដិសេធ។" }, to: "/home/match-proposals" },
     { text: { en: "You can't register fighters, assign officials or record results — KKF does.", km: "អ្នកមិនអាចចុះឈ្មោះអ្នកប្រដាល់ ចាត់តាំងមន្ត្រី ឬកត់ត្រាលទ្ធផលបានទេ — KKF ជាអ្នកធ្វើ។" } },

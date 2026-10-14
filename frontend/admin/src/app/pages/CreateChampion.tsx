@@ -100,13 +100,13 @@ export function CreateChampion() {
         <p className="text-slate-700">{t("td.loadFailed")}</p>
         <div className="flex justify-center gap-3">
           <button type="button" onClick={load} className="h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90">{t("common.tryAgain")}</button>
-          <Link to="/home/program?tab=champions" className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700 inline-flex items-center">{t("td.back")}</Link>
+          <Link to="/home/titles" className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700 inline-flex items-center">{t("td.back")}</Link>
         </div>
       </div>
     );
   if (!loaded) return <div className="p-10 flex justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" aria-label={t("common.loading")} /></div>;
 
-  const back = editing ? `/home/champion/${id}` : "/home/program?tab=champions";
+  const back = editing ? `/home/champion/${id}` : "/home/titles";
   const label = (text: string, required = false) => <span className="text-sm font-semibold text-slate-800">{text}{required && " *"}</span>;
 
   return (

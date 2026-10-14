@@ -15,6 +15,8 @@ export const fieldCls =
 export interface FightNightForm {
   name: string;
   date: string;
+  /** "HH:MM" (24 h) or "". */
+  startTime: string;
   location: string;
   broadcastStationId: string;
   mainSponsorId: string;
@@ -27,6 +29,7 @@ export interface FightNightForm {
 export const fightNightForm = (event?: any): FightNightForm => ({
   name: event?.name ?? "",
   date: String(event?.date ?? "").slice(0, 10),
+  startTime: event?.start_time ?? "",
   location: event?.location ?? "",
   broadcastStationId: event?.broadcast_station_id ?? "",
   mainSponsorId: event?.main_sponsor_id ?? "",
@@ -46,6 +49,7 @@ const sponsorList = (f: FightNightForm) => [...new Set([f.mainSponsorId, ...f.ot
 export const fightNightPayload = (f: FightNightForm, station = true) => ({
   name: f.name.trim(),
   date: f.date,
+  startTime: f.startTime || null,
   location: f.location.trim(),
   ...(station ? { broadcastStationId: f.broadcastStationId || null } : {}),
   mainSponsorId: f.mainSponsorId || null,
@@ -60,12 +64,14 @@ export const newFightNightPayload = (f: FightNightForm, station = true) => ({
   status: "Draft",
 });
 
-export function FightNightFields({ form, setForm, autoFocus = false, lockStation = false }: {
+export function FightNightFields({ form, setForm, autoFocus = false, lockStation = false, short = false }: {
   form: FightNightForm;
   setForm: (f: FightNightForm) => void;
   autoFocus?: boolean;
   /** Organizer: the broadcaster is shown but can't be changed. */
   lockStation?: boolean;
+  /** New match: only name, date, venue and TV; sponsors, about and poster sit under "More details". */
+  short?: boolean;
 }) {
   const { t } = useT();
   const [stations, setStations] = useState<any[]>([]);
@@ -86,31 +92,10 @@ export function FightNightFields({ form, setForm, autoFocus = false, lockStation
     reader.readAsDataURL(f);
   };
 
-  return (
-    <div className="space-y-5">
-      <label className="block">
-        <span className="text-sm font-semibold text-slate-800">{t("night.name")} *</span>
-        <input autoFocus={autoFocus} className={`${fieldCls} mt-1`} value={form.name} placeholder={t("form.namePlaceholder")} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-      </label>
-      <div className="grid sm:grid-cols-2 gap-5">
-        <label className="block">
-          <span className="text-sm font-semibold text-slate-800">{t("night.date")} *</span>
-          <input type="date" className={`${fieldCls} mt-1`} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-        </label>
-        <label className="block">
-          <span className="text-sm font-semibold text-slate-800">{t("night.venue")} *</span>
-          <input list="fight-night-venues" className={`${fieldCls} mt-1`} value={form.location} placeholder={t("form.venuePlaceholder")} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-          <datalist id="fight-night-venues">{venues.map((v) => <option key={v.id} value={v.name} label={v.name_khmer || undefined} />)}</datalist>
-        </label>
-      </div>
-      <div className="grid sm:grid-cols-2 gap-5">
-        <label className="block">
-          <span className="text-sm font-semibold text-slate-800">{t("night.broadcaster")}</span>
-          <select disabled={lockStation} className={`${fieldCls} mt-1 disabled:bg-slate-50 disabled:text-slate-600`} value={form.broadcastStationId} onChange={(e) => setForm({ ...form, broadcastStationId: e.target.value })}>
-            <option value="">{t("common.notSet")}</option>
-            {stations.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </label>
+  // Sponsors, about text and poster: always in the edit dialog, under "More details" on the new-match form.
+  const extra = (
+    <>
+      {short && (
         <label className="block">
           <span className="text-sm font-semibold text-slate-800">{t("night.sponsor")}</span>
           <select className={`${fieldCls} mt-1`} value={form.mainSponsorId} onChange={(e) => setForm({ ...form, mainSponsorId: e.target.value, otherSponsorIds: form.otherSponsorIds.filter((id) => id !== e.target.value) })}>
@@ -118,7 +103,7 @@ export function FightNightFields({ form, setForm, autoFocus = false, lockStation
             {sponsors.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </label>
-      </div>
+      )}
       {sponsors.some((s) => s.id !== form.mainSponsorId) && (
         <fieldset>
           <legend className="text-sm font-semibold text-slate-800">{t("form.otherSponsors")}</legend>
@@ -153,6 +138,56 @@ export function FightNightFields({ form, setForm, autoFocus = false, lockStation
           <input ref={file} type="file" accept="image/*" className="hidden" onChange={(e) => pickImage(e.target.files?.[0])} />
         </div>
       </div>
+    </>
+  );
+
+  return (
+    <div className="space-y-5">
+      <label className="block">
+        <span className="text-sm font-semibold text-slate-800">{t("night.name")} *</span>
+        <input autoFocus={autoFocus} className={`${fieldCls} mt-1`} value={form.name} placeholder={t("form.namePlaceholder")} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+      </label>
+      <div className="grid sm:grid-cols-2 gap-5">
+        <label className="block">
+          <span className="text-sm font-semibold text-slate-800">{t("night.date")} *</span>
+          <input type="date" className={`${fieldCls} mt-1`} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+        </label>
+        <label className="block">
+          <span className="text-sm font-semibold text-slate-800">{t("night.startTime")}</span>
+          <input type="time" className={`${fieldCls} mt-1`} value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
+        </label>
+        <label className="block sm:col-span-2">
+          <span className="text-sm font-semibold text-slate-800">{t("night.venue")} *</span>
+          <input list="fight-night-venues" className={`${fieldCls} mt-1`} value={form.location} placeholder={t("form.venuePlaceholder")} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+          <datalist id="fight-night-venues">{venues.map((v) => <option key={v.id} value={v.name} label={v.name_khmer || undefined} />)}</datalist>
+        </label>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-5">
+        <label className="block">
+          <span className="text-sm font-semibold text-slate-800">{t("night.broadcaster")}</span>
+          <select disabled={lockStation} className={`${fieldCls} mt-1 disabled:bg-slate-50 disabled:text-slate-600`} value={form.broadcastStationId} onChange={(e) => setForm({ ...form, broadcastStationId: e.target.value })}>
+            <option value="">{t("common.notSet")}</option>
+            {stations.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </label>
+        {!short && (
+        <label className="block">
+          <span className="text-sm font-semibold text-slate-800">{t("night.sponsor")}</span>
+          <select className={`${fieldCls} mt-1`} value={form.mainSponsorId} onChange={(e) => setForm({ ...form, mainSponsorId: e.target.value, otherSponsorIds: form.otherSponsorIds.filter((id) => id !== e.target.value) })}>
+            <option value="">{t("common.notSet")}</option>
+            {sponsors.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </label>
+        )}
+      </div>
+      {short ? (
+        <details className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <summary className="cursor-pointer text-base font-semibold text-slate-800 select-none">{t("form.moreDetails")}</summary>
+          <div className="mt-4 space-y-5">{extra}</div>
+        </details>
+      ) : (
+        extra
+      )}
     </div>
   );
 }

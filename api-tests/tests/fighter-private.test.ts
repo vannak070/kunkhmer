@@ -104,6 +104,23 @@ describe("private fighter details", () => {
     expect((await put(`/fighters/${f.id}/private`, { medicalStatus: "Injured" }, a.club.token)).status).toBe(403);
   });
 
+  it("keeps medical status and suspension out of every response except KKF staff's", async () => {
+    const f = await newFighter();
+    // the fighter in a bout, so they show up nested in the bout list
+    const batch = (await post("/matches/batches", { eventId: (await post("/events", { name: `Hide ${Date.now()}`, date: "2026-10-01", location: "Phnom Penh", status: "Published" }, a.admin.token)).body.data.id, name: "Week 1", weekNumber: 1, date: "2026-10-08", location: "Arena" }, a.admin.token)).body.data;
+    const other = await newFighter();
+    const bout = await post("/matches", { subEventId: batch.id, fighterAId: f.id, fighterBId: other.id, rounds: 3, roundTime: 180, knockdownLimit: 3, agreedWeight: 60, gloveSize: "10oz", gloveBrand: "Twins" }, a.admin.token);
+    expect(bout.status, JSON.stringify(bout.body)).toBe(200);
+    await put(`/fighters/${f.id}/private`, { medicalStatus: "Injured", suspensionEndDate: "2099-01-01" }, a.officer.token);
+    const rows = async (token?: string) => JSON.stringify((await get("/matches", token)).body);
+    for (const token of [undefined, a.club.token, a.organizer.token]) {
+      const body = await rows(token);
+      expect(body).not.toMatch(/medical_status|suspension_end_date/);
+    }
+    // staff still see them where fighters are nested (a bout with this fighter)
+    expect(await rows(a.officer.token)).toMatch(/"medical_status":"Injured"/);
+  });
+
   it("is for KKF staff only", async () => {
     const f = await newFighter();
     for (const path of [`/fighters/${f.id}/private`, "/fighters/private-summary", `/fighters/${f.id}/private/documents/id`]) {

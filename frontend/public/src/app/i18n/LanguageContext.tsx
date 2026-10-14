@@ -34,6 +34,8 @@ interface I18n {
   /** Translate a pluralised key (`<base>_one` / `<base>_other`) and fill {n}. */
   tn: (base: string, n: number, vars?: Vars) => string;
   formatDate: (date?: string | Date | null, style?: "short" | "long" | "weekday") => string;
+  /** A start time "19:00" ("១៩:០០" in Khmer); empty when there is none. */
+  formatTime: (time?: string | null) => string;
   formatNumber: (n: number) => string;
   /** "60 kg (132 lb)" in English, "60 គីឡូ" in Khmer. */
   formatWeight: (kg?: number | string | null) => string;
@@ -106,6 +108,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         // visitor in the Americas doesn't see the previous day.
         return d.toLocaleDateString(locale, { ...opts, timeZone: "UTC" });
       },
+      formatTime: (time) => (time ? (lang === "km" ? toKhmerDigits(time) : time) : ""),
       formatNumber: (n) => numberFmt.format(n),
       formatWeight: (kg) => {
         const n = typeof kg === "string" ? parseFloat(kg) : kg ?? NaN;

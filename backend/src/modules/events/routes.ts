@@ -25,7 +25,7 @@ import type { FastifyInstance } from "fastify";
 import { prisma } from "../../db.ts";
 import type { Prisma, User } from "../../generated/prisma/client.ts";
 import { Role, STAFF, hasRole, requireAuth, requireRole } from "../../lib/auth.ts";
-import { micro, now, toDate } from "../../lib/dates.ts";
+import { dateOnly, micro, now, toDate } from "../../lib/dates.ts";
 import { HttpError, deleted, forbidden, idParam, notFound, ok } from "../../lib/http.ts";
 import { type Input, inputOf, parseBool } from "../../lib/input.ts";
 import { userArray } from "../auth/routes.ts";
@@ -84,6 +84,11 @@ export function eventArray(e: EventRow) {
     name: e.name,
     date: micro(e.date),
     end_date: micro(e.end_date),
+    start_time: e.start_time,
+    // The date it had before it was postponed (null = never postponed): fans see "Postponed to {date}".
+    // KKF signed the match off: the results are official and locked (claude/updates/match-signoff-settlement.md).
+    signed_off_at: micro(e.signed_off_at),
+    postponed_from: e.original_date && e.original_date.getTime() !== e.date.getTime() ? micro(e.original_date) : null,
     location: e.location,
     status: e.status,
     organizer_id: e.organizer_id,
@@ -102,6 +107,15 @@ export function eventArray(e: EventRow) {
     tournament_weight_class: e.tournament_weight_class,
     expected_participants: e.expected_participants,
   };
+}
+
+/** "HH:MM" (24 h) or null; "" clears. */
+function startTime(input: Input): string | null {
+  const raw = input.get<string>("startTime");
+  if (raw === null || raw === undefined) return null;
+  const m = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(String(raw).trim());
+  if (!m) throw new HttpError(422, "The startTime must be a time like 15:00");
+  return `${m[1].padStart(2, "0")}:${m[2]}`;
 }
 
 /** Full event response: row, nested relations and the camelCase extras. */
@@ -134,6 +148,35 @@ function formatEvent(e: EventWithRelations) {
  * The create response leaves out the KKF approval fields (they are never
  * set on create); the frontends rely on this shape.
  */
+const DAY = 86_400_000;
+
+/** A new Draft copy of a match on `date` (no bouts, no poster), with its sponsors. Returns the new id. */
+async function copyEvent(source: Prisma.EventGetPayload<{ include: { sponsorLinks: true } }>, date: Date) {
+  const id = randomUUID();
+  const at = now();
+  await prisma.$transaction([
+    prisma.event.create({
+      data: {
+        id,
+        name: source.name,
+        date,
+        start_time: source.start_time,
+        location: source.location,
+        status: "Draft",
+        organizer_id: source.organizer_id,
+        broadcast_station_id: source.broadcast_station_id,
+        main_sponsor_id: source.main_sponsor_id,
+        description: source.description,
+        event_type: source.event_type,
+        created_at: at,
+        updated_at: at,
+      },
+    }),
+    prisma.eventSponsor.createMany({ data: source.sponsorLinks.map((l) => ({ event_id: id, sponsor_id: l.sponsor_id })) }),
+  ]);
+  return id;
+}
+
 function formatCreatedEvent(e: EventWithRelations) {
   const { kkf_approval_date: _date, kkf_approved_by: _by, kkf_comment: _comment, ...rest } = formatEvent(e);
   return rest;
@@ -188,6 +231,7 @@ export default async function eventRoutes(app: FastifyInstance) {
             name: input.required("name"),
             date: toDate(input.required("date"))!,
             end_date: toDate(input.get("endDate")),
+            start_time: startTime(input),
             location: input.required("location"),
             // Organizers' events wait for KKF approval; staff may set any status.
             status: hasRole(user, STAFF) ? input.get("status", "Draft") : "Draft",
@@ -220,6 +264,8 @@ export default async function eventRoutes(app: FastifyInstance) {
       if (!staff && !canSeeEvent(user, existing)) throw forbidden();
 
       const input = inputOf(request.body);
+      // A signed-off match keeps its date and status (Super Admin can reopen it first).
+      if (existing.signed_off_at && (input.has("status") || input.has("date"))) throw new HttpError(422, "This match is signed off — only a Super Admin can reopen it");
       if (!staff) {
         // After publishing only KKF changes a fight night (the Organizer may still cancel / publish in approvals mode).
         const changesMore = Object.keys((request.body ?? {}) as object).some((k) => k !== "status");
@@ -261,6 +307,7 @@ export default async function eventRoutes(app: FastifyInstance) {
       });
       if (input.has("date")) data.date = toDate(input.get("date"))!;
       if (input.has("endDate")) data.end_date = toDate(input.get("endDate"));
+      if (input.present("startTime")) data.start_time = startTime(input);
       if (input.has("isTournament")) data.is_tournament = bool(input, "isTournament");
       if (input.has("expectedParticipants")) data.expected_participants = Number(input.get("expectedParticipants"));
       // Broadcaster is optional: "" / null removes it (pick() skips empty values). The organizer must then still agree.
@@ -278,6 +325,55 @@ export default async function eventRoutes(app: FastifyInstance) {
       ]);
 
       return ok(reply, formatEvent(await loadEvent(id)));
+    });
+
+    /**
+     * Copy a match to another date (claude/updates/show-templates-copy-week.md): same name, broadcaster, sponsors, venue,
+     * start time and description; a new Draft without bouts or poster. KKF staff any match; an Organizer only its own.
+     */
+    protectedRoutes.post("/events/:id/copy", async (request, reply) => {
+      const user = requireRole(request, EDITORS);
+      const id = idParam(request.params, "Event");
+      const source = await prisma.event.findUnique({ where: { id }, include: { sponsorLinks: true } });
+      if (!source) throw notFound("Event");
+      if (!hasRole(user, STAFF) && source.organizer_id !== user.id) throw forbidden();
+      const date = toDate(inputOf(request.body).required("date"));
+      if (!date) throw new HttpError(422, "The date must be a date like 2026-10-18");
+      const copy = await copyEvent(source, date);
+      return ok(reply, formatCreatedEvent(await loadEvent(copy)), 201);
+    });
+
+    /**
+     * Copy last week: every match of the week starting `from` (7 days, cancelled ones left out) is copied 7 days later as
+     * a Draft. A match that already exists on the new date (same name and broadcaster) is skipped, so pressing twice is
+     * harmless. An Organizer copies only its own matches. `{ from }` → `{ created: [...], skipped: [...] }`.
+     */
+    protectedRoutes.post("/events/copy-week", async (request, reply) => {
+      const user = requireRole(request, EDITORS);
+      const from = toDate(inputOf(request.body).required("from"));
+      if (!from) throw new HttpError(422, "The from must be a date like 2026-10-12");
+      const to = new Date(from.getTime() + 7 * DAY);
+      const sources = await prisma.event.findMany({
+        where: { date: { gte: from, lt: to }, status: { not: "Cancelled" }, ...(hasRole(user, STAFF) ? {} : { organizer_id: user.id }) },
+        include: { sponsorLinks: true },
+        orderBy: [{ date: "asc" }, { start_time: "asc" }],
+      });
+      const created: string[] = [];
+      const skipped: { name: string; date: string | null; reason: string }[] = [];
+      for (const source of sources) {
+        const date = new Date(source.date.getTime() + 7 * DAY);
+        const exists = await prisma.event.findFirst({
+          where: { name: source.name, broadcast_station_id: source.broadcast_station_id, date, status: { not: "Cancelled" } },
+          select: { id: true },
+        });
+        if (exists) {
+          skipped.push({ name: source.name, date: dateOnly(date), reason: "exists" });
+          continue;
+        }
+        created.push(await copyEvent(source, date));
+      }
+      const rows = await prisma.event.findMany({ where: { id: { in: created } }, orderBy: [{ date: "asc" }, { start_time: "asc" }] });
+      return ok(reply, { created: rows.map(eventArray), skipped }, 201);
     });
 
     protectedRoutes.post("/events/:id/submit", async (request, reply) => {

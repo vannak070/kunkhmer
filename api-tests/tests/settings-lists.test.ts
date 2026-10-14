@@ -14,6 +14,7 @@ const LISTS = {
   "bout-rules": () => ({ name: `Rule ${uniq()}`, nameKhmer: "ច្បាប់", rounds: 3, roundTime: 3, knockdownLimit: 2, gloveSize: "10oz" }),
   "glove-brands": () => ({ brand: `Brand ${uniq()}`, model: "Pro" }),
   associations: () => ({ name: `Association ${uniq()}`, nameKhmer: `សមាគម ${uniq()}` }),
+  shows: () => ({ name: `SHOW ${uniq()} KUN KHMER`, location: "Hang Meas HDTV studio", startTime: "15:00", weekday: 0, description: "Weekly show" }),
 } as const;
 type List = keyof typeof LISTS;
 
@@ -25,7 +26,7 @@ describe.each(Object.keys(LISTS) as List[])("settings list: %s", (list) => {
     expect(res.status).toBe(200);
     expect(res.body.data.every((r: any) => r.active)).toBe(true);
     // Associations start empty: the Super Admin adds KKF's own list.
-    if (list === "associations") return expect(Array.isArray(res.body.data)).toBe(true);
+    if (list === "associations" || list === "shows") return expect(Array.isArray(res.body.data)).toBe(true);
     expect(res.body.data.length).toBeGreaterThan(0);
     expect(shape(res.body.data[0])).toMatchSnapshot();
   });
@@ -92,6 +93,20 @@ describe("settings list rules", () => {
     const x = (await post("/settings/associations", LISTS.associations(), a.admin.token)).body.data;
     expect(x.name_khmer).toMatch(/^សមាគម /);
     expect((await put(`/settings/associations/${x.id}`, { nameKhmer: "" }, a.admin.token)).body.data.name_khmer).toBeNull();
+  });
+
+  it("keeps a show's broadcaster, sponsor, time and weekday, and validates them", async () => {
+    const station = (await post("/settings/broadcast-stations", { name: `Station ${uniq()}` }, a.admin.token)).body.data.id;
+    const sponsor = (await post("/settings/sponsors", { name: `Sponsor ${uniq()}` }, a.admin.token)).body.data.id;
+    const show = await post("/settings/shows", { ...LISTS.shows(), broadcastStationId: station, mainSponsorId: sponsor }, a.admin.token);
+    expect(show.status).toBe(201);
+    expect(show.body.data).toMatchObject({ broadcast_station_id: station, main_sponsor_id: sponsor, start_time: "15:00", weekday: 0 });
+    const bad = async (body: Record<string, unknown>) => (await post("/settings/shows", { ...LISTS.shows(), ...body }, a.admin.token)).status;
+    expect(await bad({ startTime: "25:00" })).toBe(422);
+    expect(await bad({ weekday: 7 })).toBe(422);
+    expect(await bad({ broadcastStationId: "nope" })).toBe(422);
+    expect(await bad({ broadcastStationId: "00000000-0000-4000-8000-000000000000" })).toBe(422);
+    expect((await put(`/settings/shows/${show.body.data.id}`, { mainSponsorId: "" }, a.admin.token)).body.data.main_sponsor_id).toBeNull();
   });
 
   it("checks bout rule numbers and venue coordinates", async () => {

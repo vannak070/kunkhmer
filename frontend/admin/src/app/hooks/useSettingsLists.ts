@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../utils/api";
 import { useLang } from "../i18n/program";
 
-export type SettingsListName = "weight-classes" | "venues" | "bout-rules" | "glove-brands" | "associations";
+export type SettingsListName = "weight-classes" | "venues" | "bout-rules" | "glove-brands" | "associations" | "shows";
 
 interface Base { id: string; sort_order: number; active: boolean }
 export interface WeightClass extends Base { name: string; name_khmer: string | null; min_kg: number | null; max_kg: number | null }
@@ -15,6 +15,11 @@ export interface Venue extends Base { name: string; name_khmer: string | null; r
 export interface BoutRule extends Base { name: string; name_khmer: string | null; rounds: number; round_time: number; knockdown_limit: number; glove_size: string | null }
 export interface GloveBrand extends Base { brand: string; model: string | null }
 export interface Association extends Base { name: string; name_khmer: string | null }
+/** A weekly show used as a template for a new match (claude/updates/show-templates-copy-week.md). */
+export interface ShowTemplate extends Base {
+  name: string; broadcast_station_id: string | null; main_sponsor_id: string | null; location: string | null;
+  start_time: string | null; weekday: number | null; description: string | null;
+}
 
 const cache = new Map<SettingsListName, Promise<any[]>>();
 const listeners = new Map<SettingsListName, Set<(rows: any[]) => void>>();

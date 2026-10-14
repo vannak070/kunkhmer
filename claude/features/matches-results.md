@@ -72,3 +72,16 @@ dashboard lists "Bouts without officials" (next 14 days) and "Weigh-ins to do".
 
 ## Open questions / gaps
 - None open.
+
+## Bout label and rule set (2026-10-13, `features/weekly-program.md`)
+`matches.bout_label` (friendly · international · youth · qualifier · final · prize, null = not set) and `matches.rule_set`
+(kun_khmer default · mas_fight), migration `20261013200000_bout_label_rule_set`; API `boutLabel` ("" clears) and `ruleSet`,
+422 for other values; returned as `bout_label` / `rule_set`. Add bout has "Bout type" (set to International automatically
+when a foreign fighter is picked) and "Fought under"; the agreed weight is now any number 20–200 kg with the usual weights
+(28–77 kg incl. 63.5) suggested. The match page and the program sheet show the label; MAS Fight and women's bouts are
+marked on the sheet.
+
+## Empty corners and draws (2026-10-14)
+A corner may be empty ("to be announced") or wait for another bout's winner (`slot_a_from` / `slot_b_from`); a draw of 4 or 8
+fighters (`POST /matches/batches/:id/draw`) creates the qualifiers and the later rounds. Results need both corners; a result
+moves the winner on. Details: `updates/empty-corners-draws.md`.

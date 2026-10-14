@@ -27,11 +27,11 @@ them, so the two matching rules for them were switched off.
 API: two additive fields on the staff-only private record (snapshot gains 4 lines, no other shape changes);
 new 422 cases on bout creation for injured / suspended / not-cleared fighters. Database: data-only migration.
 
-## Open (owner decision)
-- `GET /fighters` and nested fighter rows are **public** and already return `medical_status` and
-  `suspension_end_date` (snake_case rows). Now that staff can set them, a fighter's medical status and
-  suspension date become visible to anyone. Decide: leave (sports suspensions are often public), hide for
-  non-staff, or hide only `medical_status`. Not changed — it alters public response shapes.
+## Decided
+- Nested fighter rows used to return `medical_status` and `suspension_end_date` publicly. Owner chose to hide
+  both from everyone but KKF staff — `updates/hide-fighter-medical-from-public.md`.
+
+## Open
 - "Retired" fighters are not blocked by the matching rules (only Injured / Suspended are).
 
 ## Acceptance criteria

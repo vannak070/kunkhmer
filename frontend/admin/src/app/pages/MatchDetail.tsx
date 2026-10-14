@@ -1,630 +1,272 @@
-import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router";
-import { 
-  ArrowLeft, Calendar, MapPin, Activity, FileText, 
-  Trophy, Users, Shield, Edit2, Save, X, Video, Clock, AlertCircle
-} from "lucide-react";
-import { api } from "../utils/api";
-import { DEFAULT_FIGHTER_AVATAR } from "../components/program/shared";
-import { isRealPhoto } from "../components/fighters/fighterUtils";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
-import { useOfficials } from "../hooks/useOfficials";
+/**
+ * One bout (/home/match/:id), reached from a fight night's bout list: who fights (red / blue corner with photo, club,
+ * record), the facts (title, rounds, weight), the fight night, the result, and the referee and judges.
+ * KKF staff record or change the result here (Red / Blue / Draw / No contest, how it ended, the round); changing a title
+ * fight's winner asks first because the belt moves. Others see the result read-only. English + Khmer.
+ * The old "highlight video" field is gone: the server never stored it. See claude/updates/admin-step3-simple-pages.md.
+ */
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router";
 import { toast } from "sonner";
-import { clsx } from "clsx";
+import { ArrowLeft, CalendarDays, CheckCircle2, MapPin, Shield, Trophy, Users } from "lucide-react";
+import { api } from "../utils/api";
+import { useOfficials } from "../hooks/useOfficials";
+import { formatDay, useT } from "../i18n/program";
+import { ConfirmDialog, FighterAvatar, LangSwitch, boutNumbers, cornerName, dayOf, hasBothCorners, hasResult, resultText, todayUtc } from "../components/program/shared";
+import { CancelBoutDialog, ReplacementPanel, WithdrawDialog, canChangeMatch } from "../components/program/MatchChanges";
+import { DisputeDialog, ReasonPrompt } from "../components/program/AfterMatch";
+import { fieldCls } from "../components/program/FightNightFields";
+import { METHODS, type ResultDraft, type Winner, draftOf, emptyDraft, needsTitleConfirm, resultBody, withMethod, withWinner } from "../components/program/resultForm";
 
 export function MatchDetail() {
-  const { byId } = useOfficials();
   const { id } = useParams();
-  const navigate = useNavigate();
-  const [match, setMatch] = useState<any>(null);
-  const [batch, setBatch] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { t, lang } = useT();
+  const { byId } = useOfficials();
+  const me = api.auth.getCurrentUser();
+  const isStaff = me?.role === "Super Admin" || me?.role === "KKF Officer";
 
-  // Result editing state
-  const [isEditingResult, setIsEditingResult] = useState(false);
-  // Changing the winner of a completed title fight moves the belt, so staff confirm it first.
-  const [confirmTitleChange, setConfirmTitleChange] = useState(false);
-  const [result, setResult] = useState({
-    winner: "",
-    method: "",
-    round: "",
-    highlightVideo: "",
-  });
+  const [match, setMatch] = useState<any | null | undefined>(undefined);
+  const [card, setCard] = useState<any | null>(null);
+  // The other bouts of the fight card, for "winner of bout N".
+  const [siblings, setSiblings] = useState<any[]>([]);
+  const [failed, setFailed] = useState(false);
+  const [draft, setDraft] = useState<ResultDraft>({ ...emptyDraft });
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [confirmTitle, setConfirmTitle] = useState(false);
+  const [dialog, setDialog] = useState<null | "withdraw" | "cancel" | "dispute">(null);
+  // A signed-off match is locked: only a Super Admin corrects a result, with a reason (claude/updates/match-signoff-settlement.md).
+  const [signedOff, setSignedOff] = useState(false);
+  const [askReason, setAskReason] = useState(false);
+  const [correction, setCorrection] = useState<string | null>(null);
+  const isSuper = me?.role === "Super Admin";
 
-  useEffect(() => {
-    const loadData = async () => {
-      if (!id) return;
-      try {
-        const data = await api.matches.get(id);
-        if (data) {
-          const mappedMatch = {
-            ...data,
-            matchNumber: `MATCH-${data.id.slice(-6).toUpperCase()}`,
-            matchType: data.isTitleMatch ? "🏆 Title Fight" : "Standard Fight",
-            rounds: data.rounds,
-            agreedWeight: data.agreed_weight,
-            fighterA: {
-              id: data.fighter_a_id,
-              name: data.fighter_a_name || "TBD (Fighter A)",
-              grade: data.fighter_a_grade || "C",
-              weight: data.agreed_weight,
-              record: data.fighter_a_record || "0-0-0",
-              clubName: data.club_a_name || "Independent",
-              image: isRealPhoto(data.fighter_a_image) ? data.fighter_a_image : DEFAULT_FIGHTER_AVATAR
-            },
-            fighterB: {
-              id: data.fighter_b_id,
-              name: data.fighter_b_name || "TBD (Fighter B)",
-              grade: data.fighter_b_grade || "C",
-              weight: data.agreed_weight,
-              record: data.fighter_b_record || "0-0-0",
-              clubName: data.club_b_name || "Independent",
-              image: isRealPhoto(data.fighter_b_image) ? data.fighter_b_image : DEFAULT_FIGHTER_AVATAR
-            },
-            refereeName: data.referee_name || null,
-            judgeNames: data.judge_names || [],
-            status: data.status,
-            result: data.winner_id || data.winner_method ? {
-              winner: data.winner_id === data.fighter_a_id 
-                ? data.fighter_a_name 
-                : data.winner_id === data.fighter_b_id 
-                ? data.fighter_b_name 
-                : data.winner_method === "Draw" || data.winner_method === "No Contest"
-                ? data.winner_method
-                : "",
-              winnerId: data.winner_id,
-              method: data.winner_method,
-              round: data.winner_round,
-            } : null,
-            highlightVideo: data.highlight_video || ""
-          };
-          setMatch(mappedMatch);
-          
-          setResult({
-            winner: mappedMatch.result?.winnerId || (mappedMatch.result?.winner === "Draw" || mappedMatch.result?.winner === "No Contest" ? mappedMatch.result?.winner : ""),
-            method: mappedMatch.result?.method || "",
-            round: mappedMatch.result?.round ? String(mappedMatch.result?.round) : "",
-            highlightVideo: mappedMatch.highlightVideo || "",
-          });
-
-          if (data.sub_event_id) {
-            const batchData = await api.batches.get(data.sub_event_id);
-            setBatch(batchData);
-          }
-        }
-      } catch (err: any) {
-        console.error(err);
-        toast.error("Failed to load match details from database");
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, [id]);
-
-  // Real officials (KKF staff and organizers can list them); only known details are shown.
-  const official = (id: string | null | undefined, fallbackName: string) => {
-    const o = byId(id);
-    return {
-      id: id ?? "",
-      name: o?.fullName ?? fallbackName,
-      grade: o?.grade ?? "Grade not set",
-      experience: o?.yearsExperience != null ? `${o.yearsExperience} years` : "",
-    };
-  };
-  const assignedReferee = match?.referee_id ? official(match.referee_id, match.referee_name || match.refereeName || "Assigned referee") : null;
-  const assignedJudges = Array.isArray(match?.judge_ids)
-    ? match.judge_ids.map((jid: string, idx: number) => official(jid, `Judge ${idx + 1}`))
-    : [];
-
-  const getMatchTypeBadge = () => {
-    if (match?.isTitleMatch) return match.championshipTitleName ? `Title Fight · ${match.championshipTitleName}` : "Title Fight";
-    return "Standard Fight";
-  };
-
-  const handleSaveResult = async (confirmed = false) => {
-    if (!id || !match) return;
-
+  const load = async () => {
+    setFailed(false);
     try {
-      let winnerId: string | null = null;
-      let winnerMethod = result.method;
-      
-      if (result.winner === match.fighterA.id) {
-        winnerId = match.fighterA.id;
-      } else if (result.winner === match.fighterB.id) {
-        winnerId = match.fighterB.id;
-      } else if (result.winner === "Draw" || result.winner === "No Contest") {
-        winnerId = null;
-        winnerMethod = result.winner;
-      }
+      const m = await api.matches.get(id!);
+      setMatch(m ?? null);
+      if (m) setDraft(draftOf(m));
+      if (m?.sub_event_id) api.batches.get(m.sub_event_id).then(setCard).catch(() => setCard(null));
+      if (m?.sub_event_id) api.matches.list(m.sub_event_id).then((l: any[]) => setSiblings(l || [])).catch(() => setSiblings([]));
+      if (m?.event_id) api.events.get(m.event_id).then((e: any) => setSignedOff(Boolean(e.signed_off_at))).catch(() => {});
+    } catch {
+      setFailed(true);
+    }
+  };
+  useEffect(() => { load(); }, [id]);
 
-      if (!confirmed && match.isTitleMatch && match.result && (match.winner_id ?? null) !== winnerId) {
-        setConfirmTitleChange(true);
-        return;
-      }
-      setConfirmTitleChange(false);
+  const spinner = <div className="p-10 flex justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" aria-label={t("common.loading")} /></div>;
+  if (failed)
+    return (
+      <div className="max-w-3xl mx-auto p-8 text-center space-y-4">
+        <p className="text-slate-700">{t("bo.loadFailed")}</p>
+        <button type="button" onClick={load} className="h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90">{t("common.tryAgain")}</button>
+      </div>
+    );
+  if (match === undefined) return spinner;
+  if (match === null)
+    return (
+      <div className="max-w-3xl mx-auto p-8 text-center space-y-4">
+        <p className="text-slate-700">{t("bo.notFound")}</p>
+        <Link to="/home/matches" className="inline-flex items-center h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90">{t("bo.toNights")}</Link>
+      </div>
+    );
 
-      await api.matches.saveResult(id, {
-        winnerId,
-        method: winnerMethod || "Decision",
-        round: result.round ? parseInt(result.round) : 0,
-        duration: "0:00",
-      });
+  const m = match;
+  const isTitle = Boolean(m.is_title_match ?? m.isTitleMatch);
+  const titleName = m.championshipTitleName ?? m.championship_title_name ?? null;
+  const done = hasResult(m);
+  const winnerSide: Winner = done ? draftOf(m).winner : "";
+  const corner = draft.winner === "a" || draft.winner === "b";
+  const backTo = m.event_id ? `/home/events/${m.event_id}` : "/home/matches";
+  const beforeNight = card?.date ? dayOf(card.date) > todayUtc() : false;
+  const cancelled = m.status === "Cancelled";
+  const needsReplacement = Boolean(m.replacement_side) && !cancelled;
+  const canChange = canChangeMatch(card?.date) && !done && !cancelled;
+  const numbers = boutNumbers(siblings);
+  const both = hasBothCorners(m);
+  const emptySide: "a" | "b" | null = !m.fighter_a_id ? "a" : !m.fighter_b_id ? "b" : null;
 
-      if (result.highlightVideo !== match.highlightVideo) {
-        await api.matches.update(id, { highlightVideo: result.highlightVideo });
-      }
-
-      toast.success("✅ Match result updated successfully!");
-      setIsEditingResult(false);
-      
-      // Reload match details
-      window.location.reload();
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Failed to save match result");
+  const save = async (confirmed = false) => {
+    const r = resultBody(m, draft);
+    if ("error" in r) return toast.error(t(r.error));
+    // A title fight's winner changing moves the belt: ask first.
+    if (!confirmed && needsTitleConfirm(m, r.winnerId)) {
+      setConfirmTitle(true);
+      return;
+    }
+    setConfirmTitle(false);
+    setSaving(true);
+    try {
+      const updated = await api.matches.saveResult(m.id, { ...r.body, ...(correction ? { correctionReason: correction } : {}) });
+      setCorrection(null);
+      const next = { ...m, ...updated };
+      setMatch(next);
+      setDraft(draftOf(next));
+      setEditing(false);
+      toast.success(t("res.saved", { text: resultText(next, t) ?? "" }));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("common.error"));
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleCancelEdit = () => {
-    setResult({
-      winner: match?.result?.winnerId || (match?.result?.winner === "Draw" || match?.result?.winner === "No Contest" ? match?.result?.winner : ""),
-      method: match?.result?.method || "",
-      round: match?.result?.round ? String(match?.result?.round) : "",
-      highlightVideo: match?.highlightVideo || "",
-    });
-    setIsEditingResult(false);
+  const fighter = (side: "a" | "b") => {
+    const name = cornerName(m, side, t, numbers);
+    const fid = m[`fighter_${side}_id`];
+    const won = winnerSide === side;
+    // An empty corner has no club or record to show.
+    const facts = fid ? [m[`club_${side}_name`] || t("bo.independent"), m[`fighter_${side}_record`] ? t("bo.recordLine", { r: m[`fighter_${side}_record`] }) : null].filter(Boolean) : [];
+    return (
+      <div className={`rounded-2xl border-2 bg-white p-5 text-center space-y-2 ${won ? "border-emerald-400" : "border-slate-200"}`}>
+        <p className={`text-sm font-semibold ${side === "a" ? "text-red-700" : "text-blue-700"}`}>{t(side === "a" ? "common.red" : "common.blue")}</p>
+        <div className="flex justify-center">{fid ? <FighterAvatar name={name} image={m[`fighter_${side}_image`]} tone={side === "a" ? "bg-red-50 text-red-700" : "bg-blue-50 text-blue-700"} /> : <span className="w-9 h-9 rounded-full border-2 border-dashed border-slate-300" aria-hidden />}</div>
+        {fid ? <Link to={`/home/fighters/${fid}`} className="block text-lg font-bold text-slate-900 break-words hover:text-primary">{name}</Link> : <p className="text-lg font-bold text-slate-900">{name}</p>}
+        <p className="text-sm text-slate-600 break-words">{facts.join(" · ")}</p>
+        {won && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 text-sm font-semibold"><Trophy className="w-4 h-4" aria-hidden /> {t("bo.winner")}</span>}
+      </div>
+    );
   };
 
-  if (loading) {
-    return (
-      <div className="text-center py-16">
-        <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-sm text-muted-foreground font-semibold">Loading match details from database...</p>
-      </div>
-    );
-  }
+  const official = (oid: string | null | undefined, fallback: string) => byId(oid)?.fullName ?? fallback;
+  const referee = m.referee_id ? official(m.referee_id, m.referee_name || t("bo.referee")) : null;
+  const judges: string[] = Array.isArray(m.judge_ids) ? m.judge_ids.map((jid: string, i: number) => official(jid, `${t("bo.judge")} ${i + 1}`)) : [];
 
-  if (!match) {
-    return (
-      <div className="min-h-screen bg-[#F4F5F8] p-8 flex items-center justify-center">
-        <div className="bg-white rounded-2xl p-12 text-center shadow-lg">
-          <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-black text-[#1A1A24] mb-2">Match Not Found</h2>
-          <p className="text-[#707070] mb-6">The match you're looking for doesn't exist.</p>
-          <Link
-            to="/home/matches"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#0A3D91] text-white rounded-xl font-bold hover:bg-[#051C42] transition-all"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Matches
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  const choice = (value: Winner, label: string, tone: string) => (
+    <button
+      type="button"
+      aria-pressed={draft.winner === value}
+      onClick={() => setDraft((d) => withWinner(d, value))}
+      className={`h-12 px-4 rounded-xl border-2 text-sm font-semibold transition ${draft.winner === value ? tone : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"}`}
+    >
+      {label}
+    </button>
+  );
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8 animate-fadeIn">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Link 
-            to="/home/matches" 
-            className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 font-semibold uppercase tracking-wider text-xs transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Matches
-          </Link>
-        </div>
-        
-        <div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tighter uppercase font-sans">
-            Match Details
-          </h1>
-          <p className="text-xs text-slate-500 font-normal mt-1">
-            ID: {match.id}
-          </p>
-        </div>
-
-        {/* Info Cards Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {/* Event Card */}
-          <div className="bg-white rounded-2xl p-4 border border-[#E0E0E0] shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
-                <FileText className="w-4 h-4 text-[#0A3D91]" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Event</div>
-                <div className="font-semibold text-slate-900 text-sm md:text-base leading-tight">{batch?.event_name || "Weekly Fight Card"}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Date Card */}
-          <div className="bg-white rounded-2xl p-4 border border-[#E0E0E0] shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 bg-red-50 rounded-lg flex items-center justify-center shrink-0">
-                <Calendar className="w-4 h-4 text-[#C8102E]" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Date</div>
-                <div className="font-semibold text-slate-900 text-sm md:text-base leading-tight">{batch?.date ? String(batch.date).split("T")[0] : "N/A"}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Location Card */}
-          <div className="bg-white rounded-2xl p-4 border border-[#E0E0E0] shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 bg-amber-50 rounded-lg flex items-center justify-center shrink-0">
-                <MapPin className="w-4 h-4 text-[#F2C94C]" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Location</div>
-                <div className="font-semibold text-slate-900 text-sm md:text-base leading-tight">{batch?.location || "Olympic Stadium Arena"}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Status Card */}
-          <div className="bg-white rounded-2xl p-4 border border-[#E0E0E0] shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
-                <Activity className="w-4 h-4 text-[#0A3D91]" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Status</div>
-                <div className="font-semibold text-[#0A3D91] text-sm md:text-base uppercase leading-tight">{match?.status || "Draft"}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Fighter VS Section */}
-        <div className="bg-white rounded-3xl border border-[#E0E0E0] shadow-sm overflow-hidden">
-          {/* Color Bar at Top */}
-          <div className="h-2 flex">
-            <div className="flex-1 bg-gradient-to-r from-[#C8102E] to-[#A00D24]" />
-            <div className="flex-1 bg-gradient-to-l from-[#0A3D91] to-[#051C42]" />
-          </div>
-
-          <div className="p-8 md:p-12">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-8 max-w-5xl mx-auto">
-              {/* Red Corner Fighter */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="relative mb-6">
-                  <img 
-                    src={match.fighterA.image} 
-                    alt={match.fighterA.name}
-                    className="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-white shadow-xl"
-                  />
-                  <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#C8102E] to-[#A00D24] text-white text-[10px] font-bold uppercase tracking-wider px-3.5 py-1 rounded-full shadow-md whitespace-nowrap">
-                    Red Corner
-                  </div>
-                </div>
-                <h2 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight mb-2 text-center">
-                  {match.fighterA.name}
-                </h2>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="badge-premium bg-red-50 text-red-700 border-red-200/50 text-[9px] uppercase tracking-wider py-1 font-semibold">
-                    Grade {match.fighterA.grade || "B"}
-                  </span>
-                  <span className="badge-premium bg-slate-50 text-slate-700 border-slate-200 text-[9px] uppercase tracking-wider py-1 font-semibold">{match.fighterA.weight || 57} kg</span>
-                </div>
-                <div className="text-xs text-slate-500 font-semibold">{match.fighterA.record}</div>
-                <div className="text-[10px] text-slate-400 mt-1 font-semibold uppercase tracking-wider">{match.fighterA.clubName || "Independent"}</div>
-              </div>
-
-              {/* VS Center */}
-              <div className="flex flex-col items-center px-8">
-                {/* Match Type Badge */}
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="badge-premium bg-blue-50 text-[#0A3D91] border-blue-200/50 text-[10px] font-semibold py-1 px-3 uppercase tracking-wider">
-                    {getMatchTypeBadge()}
-                  </span>
-                </div>
-
-                <div className="text-4xl md:text-5xl font-extrabold italic text-slate-900 mb-4 tracking-tighter">
-                  VS
-                </div>
-
-                {/* Weight & Rounds */}
-                <div className="flex flex-col items-center gap-2">
-                  <div className="badge-premium bg-slate-50 text-slate-700 border-slate-200 text-[10px] font-semibold py-1 px-3 uppercase tracking-wider">
-                    {match.fighterA.weight || 57}kg
-                  </div>
-                  <div className="badge-premium bg-primary text-white border-transparent text-[10px] font-semibold py-1.5 px-4 uppercase tracking-wider shadow-sm">
-                    {match.rounds} Rounds
-                  </div>
-                </div>
-              </div>
-
-              {/* Blue Corner Fighter */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="relative mb-6">
-                  <img 
-                    src={match.fighterB.image} 
-                    alt={match.fighterB.name}
-                    className="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-white shadow-xl"
-                  />
-                  <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 bg-gradient-to-l from-[#0A3D91] to-[#051C42] text-white text-[10px] font-bold uppercase tracking-wider px-3.5 py-1 rounded-full shadow-md whitespace-nowrap">
-                    Blue Corner
-                  </div>
-                </div>
-                <h2 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight mb-2 text-center">
-                  {match.fighterB.name}
-                </h2>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="badge-premium bg-blue-50 text-primary border-blue-200/50 text-[9px] uppercase tracking-wider py-1 font-semibold">
-                    Grade {match.fighterB.grade || "B"}
-                  </span>
-                  <span className="badge-premium bg-slate-50 text-slate-700 border-slate-200 text-[9px] uppercase tracking-wider py-1 font-semibold">{match.fighterB.weight || 57} kg</span>
-                </div>
-                <div className="text-xs text-slate-500 font-semibold">{match.fighterB.record}</div>
-                <div className="text-[10px] text-slate-400 mt-1 font-semibold uppercase tracking-wider">{match.fighterB.clubName || "Independent"}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Officials Section - NEW */}
-        <div className="bg-white rounded-2xl border border-[#E0E0E0] shadow-sm overflow-hidden">
-          <div className="bg-gradient-to-r from-purple-50 to-blue-50 px-6 py-4 border-b border-[#E0E0E0]">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center shrink-0">
-                <Users className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <h2 className="text-base font-extrabold text-slate-800 tracking-tight uppercase">Match Officials</h2>
-                <p className="text-xs text-slate-500 font-normal">Assigned judges and referee for this match</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Judges */}
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-7 h-7 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <Users className="w-3.5 h-3.5 text-purple-700" />
-                  </div>
-                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Judges</h3>
-                  <span className="badge-premium bg-purple-50 text-purple-700 border-purple-200/50 text-[9px] py-0.5 px-2 font-semibold">
-                    {assignedJudges.length}
-                  </span>
-                </div>
-                <div className="space-y-3">
-                  {assignedJudges.length > 0 ? (
-                    assignedJudges.map((judge, idx) => (
-                      <div 
-                        key={judge.id}
-                        className="flex items-center gap-3 p-4 bg-purple-50/40 rounded-xl border border-purple-200/50"
-                      >
-                        <div className="w-9 h-9 bg-purple-600 rounded-full flex items-center justify-center text-white font-extrabold text-sm shrink-0">
-                          {idx + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-bold text-slate-900 text-sm truncate">{judge.name}</div>
-                          <div className="flex items-center gap-2 text-xs mt-1">
-                            <span className="text-purple-700 font-semibold">{judge.grade}</span>
-                            <span className="text-slate-300">•</span>
-                            <span className="text-slate-500 font-normal">{judge.experience}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-4 bg-purple-50/20 rounded-xl border border-purple-200/30 text-center text-slate-400 text-sm font-semibold">
-                      No Judges Assigned
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Referee */}
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Shield className="w-3.5 h-3.5 text-blue-700" />
-                  </div>
-                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Referee</h3>
-                </div>
-                <div className="p-6 bg-blue-50/45 rounded-xl border border-blue-200/50">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center shrink-0">
-                      <Shield className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-slate-900 text-base mb-1 truncate">
-                        {assignedReferee ? assignedReferee.name : "No Referee Assigned"}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="text-blue-700 font-semibold">{assignedReferee ? assignedReferee.grade : "N/A"}</span>
-                        <span className="text-slate-300">•</span>
-                        <span className="text-slate-500 font-normal">{assignedReferee ? assignedReferee.experience : "N/A"}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Match Result Section */}
-        <div className="bg-white rounded-2xl border border-[#E0E0E0] shadow-sm overflow-hidden">
-          <div className="bg-[#0A3D91] px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Trophy className="w-5 h-5 text-[#F2C94C]" />
-              <h2 className="text-base font-extrabold text-white uppercase tracking-tight">Match Result</h2>
-            </div>
-            {!isEditingResult && (
-              <button
-                onClick={() => setIsEditingResult(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow hover:-translate-y-[1px]"
-              >
-                <Edit2 className="w-4 h-4" />
-                Update Result
-              </button>
-            )}
-          </div>
-
-          <div className="p-6">
-            {isEditingResult ? (
-              <>
-                {/* Edit Mode */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
-                      Winner
-                    </label>
-                    <select
-                      value={result.winner}
-                      onChange={(e) => setResult({ ...result, winner: e.target.value })}
-                      className="input-premium font-semibold text-slate-700"
-                    >
-                      <option value="">Select Winner</option>
-                      <option value={match.fighterA.id}>{match.fighterA.name} (Red Corner)</option>
-                      <option value={match.fighterB.id}>{match.fighterB.name} (Blue Corner)</option>
-                      <option value="Draw">Draw</option>
-                      <option value="No Contest">No Contest</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
-                      Method
-                    </label>
-                    <select
-                      value={result.method}
-                      onChange={(e) => setResult({ ...result, method: e.target.value })}
-                      className="input-premium font-semibold text-slate-700"
-                      disabled={!result.winner || result.winner === "Draw" || result.winner === "No Contest"}
-                    >
-                      <option value="">Select Method</option>
-                      <option value="KO">Knockout (KO)</option>
-                      <option value="TKO">Technical Knockout (TKO)</option>
-                      <option value="Decision">Decision</option>
-                      <option value="Submission">Submission</option>
-                      <option value="Disqualification">Disqualification</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
-                      Round (if applicable)
-                    </label>
-                    <select
-                      value={result.round}
-                      onChange={(e) => setResult({ ...result, round: e.target.value })}
-                      className="input-premium font-semibold text-slate-700"
-                      disabled={result.method === "Decision"}
-                    >
-                      <option value="">Not Applicable</option>
-                      {Array.from({ length: match.rounds }, (_, i) => (
-                        <option key={i + 1} value={i + 1}>Round {i + 1}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
-                      <Video className="w-3.5 h-3.5 text-secondary" />
-                      Highlight Video URL
-                    </label>
-                    <input
-                      type="url"
-                      value={result.highlightVideo}
-                      onChange={(e) => setResult({ ...result, highlightVideo: e.target.value })}
-                      placeholder="https://youtube.com/watch?v=..."
-                      className="input-premium font-semibold text-slate-700"
-                    />
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex items-center gap-3 pt-6 border-t border-[#E0E0E0] mt-6">
-                  <button
-                    onClick={() => handleSaveResult()}
-                    disabled={!result.winner}
-                    className={clsx(
-                      "inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold uppercase tracking-wider text-xs transition-all shadow-sm",
-                      result.winner
-                        ? "bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white active:scale-[0.98]"
-                        : "bg-slate-100 text-slate-400 border border-slate-200/60 cursor-not-allowed"
-                    )}
-                  >
-                    <Save className="w-4 h-4" />
-                    Save Result
-                  </button>
-                  <button
-                    onClick={handleCancelEdit}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold uppercase tracking-wider text-xs transition-all border border-slate-200 hover:-translate-y-[1px]"
-                  >
-                    <X className="w-4 h-4" />
-                    Cancel
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Display Mode */}
-                {match.result && match.result.winner ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-4 p-6 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl">
-                      <div className="p-3 bg-green-500 rounded-full">
-                        <Trophy className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-widest mb-0.5">Winner</p>
-                        <p className="text-xl font-extrabold text-emerald-700 tracking-tight">{match.result.winner}</p>
-                      </div>
-                      {match.result.method && (
-                        <div className="text-right">
-                          <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-widest mb-0.5">Method</p>
-                          <p className="text-base font-extrabold text-emerald-900 tracking-tight">
-                            {match.result.method}
-                            {match.result.round && match.result.method !== "Decision" && ` (R${match.result.round})`}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-12 text-center">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#F4F5F8] flex items-center justify-center">
-                      <Clock className="w-8 h-8 text-[#B0B0B0]" />
-                    </div>
-                    <h3 className="text-lg font-extrabold text-slate-800 tracking-tight uppercase mb-1">No Result Yet</h3>
-                    <p className="text-slate-500 font-normal text-sm">
-                      Click "Update Result" to add the match outcome.
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
+    <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <Link to={backTo} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-primary">
+          <ArrowLeft className="w-4 h-4" aria-hidden /> {card?.event_name ?? t("bout.back")}
+        </Link>
+        <LangSwitch />
       </div>
 
-      <Dialog open={confirmTitleChange} onOpenChange={setConfirmTitleChange}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>Change the winner of a title fight?</DialogTitle>
-            <DialogDescription>
-              This is a title fight. Changing the winner will change who holds {match.championshipTitleName || "the title"}, and
-              any later title fights for this belt are applied again with their saved results.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-2">
-            <button type="button" onClick={() => setConfirmTitleChange(false)} className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button type="button" onClick={() => handleSaveResult(true)} className="h-11 px-5 rounded-xl bg-primary hover:bg-[#083073] text-white text-sm font-semibold">Change winner</button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <header className="space-y-2">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 break-words">{cornerName(m, "a", t, numbers)} {t("common.vs")} {cornerName(m, "b", t, numbers)}</h1>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          {isTitle && <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1 font-semibold"><Trophy className="w-4 h-4" aria-hidden /> {titleName ? `${t("common.titleFight")} · ${titleName}` : t("common.titleFight")}</span>}
+          {m.agreed_weight > 0 && <span className="rounded-full bg-slate-100 text-slate-700 px-3 py-1 font-semibold">{t("common.kg", { n: m.agreed_weight })}</span>}
+          {m.rounds > 0 && <span className="rounded-full bg-slate-100 text-slate-700 px-3 py-1 font-semibold">{t("common.rounds", { n: m.rounds })}</span>}
+        </div>
+        {card && (
+          <p className="text-sm text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span className="inline-flex items-center gap-1"><CalendarDays className="w-4 h-4 shrink-0" aria-hidden /> {card.name} · {formatDay(card.date, lang)}</span>
+            {card.location && <span className="inline-flex items-center gap-1"><MapPin className="w-4 h-4 shrink-0" aria-hidden /> {card.location}</span>}
+          </p>
+        )}
+      </header>
+
+      <div className="grid sm:grid-cols-2 gap-4">{fighter("a")}{fighter("b")}</div>
+
+      {isStaff && !cancelled && (
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="button" onClick={() => setDialog("dispute")} className="h-11 px-4 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-800 hover:border-primary hover:text-primary">{t("so.b.record")}</button>
+          {signedOff && <span className="text-sm font-semibold text-emerald-800">{t("so.lockedNote")}</span>}
+        </div>
+      )}
+      {cancelled && <p role="status" className="rounded-2xl border border-slate-300 bg-slate-100 p-4 font-semibold text-slate-700">{t("ch.cancelledBanner")}</p>}
+      {needsReplacement && canChange && <ReplacementPanel match={m} onDone={(updated) => { const next = { ...m, ...updated }; setMatch(next); setDraft(draftOf(next)); }} onCancelBout={() => setDialog("cancel")} />}
+      {needsReplacement && !canChange && <p role="status" className="rounded-2xl border border-red-200 bg-red-50 p-4 font-semibold text-red-900">{t("ch.needTitle")}</p>}
+      {emptySide && canChange && !needsReplacement && <ReplacementPanel match={m} side={emptySide} numbers={numbers} onDone={(updated) => { const next = { ...m, ...updated }; setMatch(next); setDraft(draftOf(next)); }} />}
+      {!both && !cancelled && <p role="status" className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">{t("corner.waiting")}</p>}
+      {canChange && !needsReplacement && both && (
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setDialog("withdraw")} className="h-11 px-4 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-800 hover:border-red-300 hover:text-red-700">{t("ch.menu.withdraw")}</button>
+          <button type="button" onClick={() => setDialog("cancel")} className="h-11 px-4 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-800 hover:border-red-300 hover:text-red-700">{t("ch.menu.cancelBout")}</button>
+        </div>
+      )}
+      {dialog === "dispute" && <DisputeDialog bouts={[m]} matchId={m.id} onClose={() => setDialog(null)} onDone={() => setDialog(null)} />}
+      {askReason && <ReasonPrompt title={t("so.correctTitle")} text={t("so.correctText")} confirm={t("so.correctBtn")} label={t("so.reason")} onClose={() => setAskReason(false)} run={(reason) => { setCorrection(reason); setDraft(draftOf(m)); setEditing(true); setAskReason(false); }} />}
+      {dialog === "withdraw" && <WithdrawDialog match={m} onClose={() => setDialog(null)} onDone={(updated) => { setMatch({ ...m, ...updated }); setDialog(null); }} />}
+      {dialog === "cancel" && <CancelBoutDialog match={m} onClose={() => setDialog(null)} onDone={(updated) => { setMatch({ ...m, ...updated }); setDialog(null); }} />}
+
+      {!cancelled && !needsReplacement && both && <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 space-y-4">
+        <h2 className="text-lg font-bold text-slate-900">{t("bo.result")}</h2>
+        {done && !editing ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-emerald-50 px-4 py-3">
+            <p className="font-semibold text-emerald-800 flex items-center gap-2"><CheckCircle2 className="w-5 h-5 shrink-0" aria-hidden /> {resultText(m, t)}</p>
+            {isStaff && (!signedOff || isSuper) && <button type="button" onClick={() => { if (signedOff) { setAskReason(true); return; } setDraft(draftOf(m)); setEditing(true); }} className="h-10 px-4 rounded-lg border border-emerald-300 bg-white text-sm font-semibold text-emerald-800 hover:bg-emerald-100">{t("common.change")}</button>}
+          </div>
+        ) : isStaff ? (
+          <div className="space-y-4">
+            {beforeNight && <p className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900">{t("res.beforeNight", { date: formatDay(card.date, lang) })}</p>}
+            <div>
+              <p className="text-sm font-medium text-slate-700 mb-2">{t("res.winner")}</p>
+              <div className="flex flex-wrap gap-2">
+                {choice("a", `${t("common.red")}: ${m.fighter_a_name}`, "border-red-500 bg-red-50 text-red-800")}
+                {choice("b", `${t("common.blue")}: ${m.fighter_b_name}`, "border-blue-500 bg-blue-50 text-blue-800")}
+                {choice("draw", t("card.draw"), "border-slate-500 bg-slate-100 text-slate-900")}
+                {choice("nc", t("card.noContest"), "border-slate-500 bg-slate-100 text-slate-900")}
+              </div>
+            </div>
+            {corner && (
+              <div className="grid sm:grid-cols-[minmax(0,1fr)_180px] gap-4">
+                <label className="block">
+                  <span className="text-sm font-medium text-slate-700">{t("res.method")}</span>
+                  <select value={draft.method} onChange={(e) => setDraft((d) => withMethod(d, m, e.target.value))} className={`${fieldCls} mt-1`}>
+                    <option value="">—</option>
+                    {METHODS.map((k) => <option key={k} value={k}>{t(`res.method.${k}`)}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium text-slate-700">{t("res.round")}</span>
+                  <select value={draft.round} onChange={(e) => setDraft((d) => ({ ...d, round: e.target.value }))} className={`${fieldCls} mt-1`}>
+                    <option value="">—</option>
+                    {Array.from({ length: m.rounds || 5 }, (_, r) => <option key={r + 1} value={r + 1}>{t("common.round", { n: r + 1 })}</option>)}
+                  </select>
+                </label>
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              {done && <button type="button" onClick={() => { setEditing(false); setDraft(draftOf(m)); }} className="h-11 px-4 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">{t("common.cancel")}</button>}
+              <button type="button" disabled={!draft.winner || saving} onClick={() => save()} className="h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40">{saving ? t("common.saving") : t("res.save")}</button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-slate-600">{t("bo.noResult")}</p>
+        )}
+      </section>}
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 space-y-4">
+        <h2 className="text-lg font-bold text-slate-900">{t("bo.officials")}</h2>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="flex items-start gap-3">
+            <span className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0" aria-hidden><Shield className="w-5 h-5" /></span>
+            <div className="min-w-0"><p className="text-sm font-semibold text-slate-600">{t("bo.referee")}</p><p className="text-base text-slate-900 break-words">{referee ?? t("bo.noReferee")}</p></div>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center shrink-0" aria-hidden><Users className="w-5 h-5" /></span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-600">{t("bo.judges")}</p>
+              {judges.length ? <ul className="text-base text-slate-900">{judges.map((j, i) => <li key={i} className="break-words">{j}</li>)}</ul> : <p className="text-base text-slate-900">{t("bo.noJudges")}</p>}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <ConfirmDialog
+        open={confirmTitle}
+        title={t("res.titleConfirmTitle")}
+        text={t("res.titleConfirmText")}
+        confirmLabel={t("res.titleConfirm")}
+        danger
+        busy={saving}
+        onClose={() => setConfirmTitle(false)}
+        onConfirm={() => save(true)}
+      />
     </div>
   );
 }

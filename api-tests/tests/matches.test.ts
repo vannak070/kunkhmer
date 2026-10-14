@@ -194,7 +194,9 @@ describe("matches", () => {
     expect(res.body.data.map((m: any) => m.id)).toEqual([second.id, first.id]);
     // Visitors don't get the weigh-in (admin only); otherwise the same shape as the staff response.
     const { weigh_in_a_kg, weigh_in_b_kg, weigh_in_at, weigh_in_by, ...publicShape } = shape(first) as Record<string, unknown>;
-    expect(shape(findById(res, first.id))).toEqual(publicShape);
+    // (and without the fighters' medical status / suspension date, which only staff see)
+    const dropStaffOnly = (v: unknown) => JSON.parse(JSON.stringify(v, (k, x) => (k === "medical_status" || k === "suspension_end_date" ? undefined : x)));
+    expect(shape(findById(res, first.id))).toEqual(dropStaffOnly(publicShape));
   });
 
   it("shows a match", async () => {
@@ -691,12 +693,15 @@ describe("KKF matching rules (updates/matching-rules.md)", () => {
     await setRule("same_gender", { enabled: true });
   });
 
-  it("applies the minimum age and its limit", async () => {
+  it("lets youth fighters through by default, and applies the minimum age when KKF switches it on", async () => {
+    // Youth fighters are normal fighters (owner, 2026-10-13): the rule ships off.
+    expect((await post("/matches", await pair({ fighterBId: await newFighterWith({ dateOfBirth: "2014-01-01" }) }), a.officer.token)).status).toBe(200);
+    await setRule("min_age", { enabled: true });
     const young = await newFighterWith({ dateOfBirth: "2012-01-01" });
     expect((await post("/matches", await pair({ fighterBId: young }), a.officer.token)).status).toBe(422);
     await setRule("min_age", { value: 10 });
     expect((await post("/matches", await pair({ fighterBId: young }), a.officer.token)).status).toBe(200);
-    await setRule("min_age", { value: 16 });
+    await setRule("min_age", { value: 16, enabled: false });
   });
 
   it("warns without blocking: weight gap and same club come back as warnings", async () => {
@@ -721,11 +726,11 @@ describe("KKF matching rules (updates/matching-rules.md)", () => {
     expect(soon.body.error).toMatch(/days apart/);
   });
 
-  it("ships with every rule on, including medical and suspension (staff can set them on the fighter page)", async () => {
+  it("ships with every rule on except the minimum age, including medical and suspension (staff can set them on the fighter page)", async () => {
     const rules = (await get("/matches/rules", a.officer.token)).body.data as any[];
     expect(rules.find((r) => r.key === "medical")).toMatchObject({ enabled: true, action: "block" });
     expect(rules.find((r) => r.key === "suspension")).toMatchObject({ enabled: true, action: "block" });
-    expect(rules.find((r) => r.key === "min_age")).toMatchObject({ enabled: true, action: "block", value: 16, unit: "years" });
+    expect(rules.find((r) => r.key === "min_age")).toMatchObject({ enabled: false, action: "block", value: 16, unit: "years" });
   });
 
   it("blocks a fighter who is not medically cleared or is suspended on the fight date", async () => {
@@ -763,5 +768,42 @@ describe("KKF matching rules (updates/matching-rules.md)", () => {
     expect((await get(`/matches?subEventId=${body.subEventId}`, a.admin.token)).body.data.length).toBe(before);
     expect((await post("/matches/check", {}, a.officer.token)).status).toBe(422);
     expect((await post("/matches/check", body, a.club.token)).status).toBe(403);
+  });
+
+  it("gives every hit its fighter and plain values, so the admin can write its own sentence (updates/rule-messages.md)", async () => {
+    const hurt = await newFighterWith({});
+    await put(`/fighters/${hurt}/private`, { medicalStatus: "Injured" }, a.officer.token);
+    const female = await newFighterWith({ gender: "Female" });
+    const medical = await post("/matches/check", await pair({ fighterBId: hurt }), a.officer.token);
+    expect(medical.body.data.blocked).toEqual([
+      expect.objectContaining({ key: "medical", fighter_id: hurt, params: { name: expect.any(String), reason: "not_cleared", status: "Injured" } }),
+    ]);
+    const gender = await pair({ fighterBId: female });
+    const sameGender = (await post("/matches/check", gender, a.officer.token)).body.data.blocked[0];
+    expect(sameGender).toMatchObject({ key: "same_gender", fighter_id: null, params: { a_id: gender.fighterAId, b_id: female } });
+
+    const far = await post("/matches/check", await pair({ agreedWeight: 70 }), a.officer.token);
+    const gap = far.body.data.warnings.find((w: any) => w.key === "weight_gap");
+    expect(gap.params).toMatchObject({ kg: 60, gap: 10, agreed: 70, limit: 2 });
+    expect(typeof gap.fighter_id).toBe("string");
+    expect(shapeOf(far)).toMatchSnapshot();
+  });
+});
+
+describe("bout label and rule set (claude/features/weekly-program.md)", () => {
+  it("defaults to Kun Khmer rules with no label, saves both, validates and clears the label", async () => {
+    const plain = await newMatch({}, { accept: false });
+    expect(plain).toMatchObject({ bout_label: null, rule_set: "kun_khmer" });
+
+    const m = await newMatch({ boutLabel: "international", ruleSet: "mas_fight" }, { accept: false });
+    expect(m).toMatchObject({ bout_label: "international", rule_set: "mas_fight" });
+    expect((await get(`/matches/${m.id}`, a.admin.token)).body.data).toMatchObject({ bout_label: "international", rule_set: "mas_fight" });
+
+    const changed = await put(`/matches/${m.id}`, { boutLabel: "final" }, a.admin.token);
+    expect(changed.body.data).toMatchObject({ bout_label: "final", rule_set: "mas_fight" });
+    for (const bad of [{ boutLabel: "exhibition" }, { ruleSet: "boxing" }]) {
+      expect((await put(`/matches/${m.id}`, bad, a.admin.token)).status).toBe(422);
+    }
+    expect((await put(`/matches/${m.id}`, { boutLabel: "" }, a.admin.token)).body.data.bout_label).toBeNull();
   });
 });

@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Scale, Trophy } from "lucide-react";
 import { api } from "../utils/api";
 import { formatDay, useT } from "../i18n/program";
-import { FighterAvatar, LangSwitch, byCardOrder, hasResult, overBy } from "../components/program/shared";
+import { FighterAvatar, LangSwitch, boutNumbers, byCardOrder, cornerName, hasBothCorners, hasResult, overBy } from "../components/program/shared";
 
 type Draft = { a: string; b: string };
 
@@ -31,7 +31,7 @@ export function FightCardWeighIn() {
       const [ev, list] = await Promise.all([api.events.get(c.event_id), api.matches.list(cardId)]);
       setCard(c);
       setEvent(ev);
-      const sorted = (list as any[]).sort(byCardOrder);
+      const sorted = (list as any[]).filter((m) => m.status !== "Cancelled").sort(byCardOrder);
       setBouts(sorted);
       setDrafts(Object.fromEntries(sorted.map((m) => [m.id, { a: m.weigh_in_a_kg == null ? "" : String(m.weigh_in_a_kg), b: m.weigh_in_b_kg == null ? "" : String(m.weigh_in_b_kg) }])));
     } catch {
@@ -96,6 +96,16 @@ export function FightCardWeighIn() {
 
       <ol className="space-y-4">
         {bouts.map((m, i) => {
+          // An empty corner can't be weighed yet (claude/updates/empty-corners-draws.md).
+          if (!hasBothCorners(m)) {
+            const numbers = boutNumbers(bouts);
+            return (
+              <li key={m.id} className="rounded-2xl border border-dashed border-slate-300 bg-white p-5 space-y-1">
+                <p className="font-semibold text-slate-700"><span className="text-slate-400 font-bold mr-2">{i + 1}</span>{cornerName(m, "a", t, numbers)} <span className="text-slate-400 font-normal">{t("common.vs")}</span> {cornerName(m, "b", t, numbers)}</p>
+                <p className="text-sm text-slate-500">{t("corner.waiting")}</p>
+              </li>
+            );
+          }
           const d = drafts[m.id] ?? { a: "", b: "" };
           const done = hasResult(m);
           const changed = d.a !== (m.weigh_in_a_kg == null ? "" : String(m.weigh_in_a_kg)) || d.b !== (m.weigh_in_b_kg == null ? "" : String(m.weigh_in_b_kg));

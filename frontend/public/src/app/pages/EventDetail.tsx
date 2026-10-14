@@ -49,7 +49,7 @@ function groupByCard(bouts: Bout[]): CardGroup[] {
 
 export function EventDetail() {
   const { id: key } = useParams();
-  const { t, tn, formatDate } = useI18n();
+  const { t, tn, formatDate, formatTime } = useI18n();
   const placeName = usePlaceName();
   const data = useFanData();
   const [params, setParams] = useSearchParams();
@@ -164,9 +164,15 @@ export function EventDetail() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="kk-label text-[var(--kk-red)] mr-1">{t("event.fightNight")}</span>
                       <PublicStatusBadge status={event.status} />
+                      {event.postponed_from && event.status !== "Cancelled" && (
+                        <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">{t("event.postponed", { date: formatDate(event.postponed_from, "long") })}</span>
+                      )}
                       {upcoming && <CountdownChip date={event.date} />}
                       {completed.length > 0 && (
                         <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">{t("event.resultsIn")}</span>
+                      )}
+                      {event.signed_off_at && (
+                        <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-emerald-800 border border-emerald-300">{t("event.official")}</span>
                       )}
                       {!upcoming && completed.length === 0 && bouts.length > 0 && (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-gray-200 text-gray-700"><Clock className="w-3.5 h-3.5" aria-hidden />{t("fights.pendingTitle")}</span>
@@ -180,7 +186,7 @@ export function EventDetail() {
                       <FactRow icon={<Calendar className="w-4 h-4" />} label={t("matches.date")}>
                         {event.end_date && event.end_date !== event.date
                           ? `${formatDate(event.date, "long")} – ${formatDate(event.end_date, "long")}`
-                          : formatDate(event.date, "long")}
+                          : [formatDate(event.date, "long"), formatTime(event.start_time)].filter(Boolean).join(" · ")}
                       </FactRow>
                       <FactRow icon={<MapPin className="w-4 h-4" />} label={t("matches.venue")} tone="red">
                         <span lang={textLang(placeName(event.location))}>{event.location ? placeName(event.location) : t("matches.venueTba")}</span>

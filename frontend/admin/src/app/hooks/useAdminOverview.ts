@@ -12,7 +12,7 @@ import type { TextKey } from "../i18n/program";
 export type TodoKind =
   | "fighter" | "fighterSentBack" | "eventApproval" | "eventSentBack" | "readyToPublish"
   | "result" | "draftEvent" | "emptyEvent" | "unconfirmed" | "vacantTitle"
-  | "boutToAnswer" | "boutDeclined" | "boutWaiting" | "noOfficials" | "agreementWaiting";
+  | "boutToAnswer" | "boutDeclined" | "boutWaiting" | "noOfficials" | "agreementWaiting" | "replacement" | "dispute" | "signoff";
 
 export interface TodoItem {
   kind: TodoKind;
@@ -23,6 +23,10 @@ export interface TodoItem {
   /** Sort key: most urgent first (lower = sooner). */
   rank: number;
   fighterId?: string;
+  /** The fight night this belongs to (bout, draft, empty or agreement to-dos), so the Program can group by it. */
+  eventId?: string;
+  eventName?: string;
+  eventDate?: string | null;
   /**
    * The facts behind `detail`, so the page can write it in English or Khmer (components/program/todoText.ts).
    * Missing on kinds that only exist with approvals on; those keep the English `detail`.
@@ -70,8 +74,8 @@ async function build(): Promise<Overview> {
   const isClub = role === "Club/Gym";
   // Referees and judges have no dashboard, so don't load it for them.
   const noDashboard = role === "Referee" || role === "Judge";
-  const [fighters, events, matches, champions, clubs, waitingAgreements] = noDashboard
-    ? [[], [], [], [], [], []]
+  const [fighters, events, matches, champions, clubs, waitingAgreements, openDisputes] = noDashboard
+    ? [[], [], [], [], [], [], []]
     : await Promise.all([
         api.fighters.list().catch(() => []),
         api.events.list().catch(() => []),
@@ -80,6 +84,8 @@ async function build(): Promise<Overview> {
         api.clubs.list().catch(() => []),
         // What Organizers recorded for KKF to confirm (claude/updates/offline-agreements-log.md).
         isStaff ? api.events.agreementsWaiting().catch(() => []) : Promise.resolve([]),
+        // Open disputes block sign-off (claude/updates/match-signoff-settlement.md).
+        isStaff ? api.matches.openDisputes().catch(() => []) : Promise.resolve([]),
       ]);
   const today = todayUtc();
   const todos: TodoItem[] = [];
@@ -138,15 +144,20 @@ async function build(): Promise<Overview> {
       todos.push({ kind: "boutWaiting", id: `bw-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · waiting for ${waiting}`, href: "/home/match-proposals", rank: 3 });
       continue;
     }
+    // A fighter withdrew: the bout waits for a replacement (claude/updates/withdrawals-postponement.md).
+    if (m.replacement_side && !hasResult) {
+      todos.push({ kind: "replacement", id: `rp-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · replacement needed`, info: bout("todo.note.replacement"), eventId: ev.id, eventName: ev.name, eventDate: ev.date ?? null, href: `/home/match/${m.id}`, rank: 1 });
+      continue;
+    }
     if (!hasResult && d < today && isStaff) {
-      todos.push({ kind: "result", id: `r-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · no result recorded`, info: bout("todo.note.noResult"), href: `/home/fight-cards/${m.sub_event_id}/results`, rank: 1 });
+      todos.push({ kind: "result", id: `r-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · no result recorded`, info: bout("todo.note.noResult"), eventId: ev.id, eventName: ev.name, eventDate: ev.date ?? null, href: `/home/fight-cards/${m.sub_event_id}/results`, rank: 1 });
     } else if (!hasResult && isStaff && d >= today && d - today <= 14 * DAY && (!m.referee_id || (m.judge_ids?.length ?? 0) < 3)) {
       // Officer flow: KKF assigns a referee and three judges before fight night (Assign officials page rule).
-      todos.push({ kind: "noOfficials", id: `o-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · ${m.referee_id ? "judges missing" : "no referee yet"}`, info: bout(m.referee_id ? "todo.note.judgesMissing" : "todo.note.noReferee"), href: `/home/matches/${m.sub_event_id}/assign-officials`, rank: 2 });
+      todos.push({ kind: "noOfficials", id: `o-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · ${m.referee_id ? "judges missing" : "no referee yet"}`, info: bout(m.referee_id ? "todo.note.judgesMissing" : "todo.note.noReferee"), eventId: ev.id, eventName: ev.name, eventDate: ev.date ?? null, href: `/home/matches/${m.sub_event_id}/assign-officials`, rank: 2 });
     } else if (!hasResult && d >= today && d - today <= 14 * DAY && !(m.fighter_a_confirmed && m.fighter_b_confirmed)) {
       const missingNames = [!m.fighter_a_confirmed && m.fighter_a_name, !m.fighter_b_confirmed && m.fighter_b_name].filter(Boolean) as string[];
       const missing = missingNames.join(" and ");
-      todos.push({ kind: "unconfirmed", id: `u-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · ${missing || "fighters"} not weighed in yet`, info: bout("todo.note.notWeighed", missingNames), href: `/home/fight-cards/${m.sub_event_id}/weigh-in`, rank: 3 });
+      todos.push({ kind: "unconfirmed", id: `u-${m.id}`, title: vs, detail: `${ev.name} · ${fmtDate(m.date)} · ${missing || "fighters"} not weighed in yet`, info: bout("todo.note.notWeighed", missingNames), eventId: ev.id, eventName: ev.name, eventDate: ev.date ?? null, href: `/home/fight-cards/${m.sub_event_id}/weigh-in`, rank: 3 });
     }
   }
 
@@ -169,17 +180,35 @@ async function build(): Promise<Overview> {
     if (isClub) continue;
     // Without approvals, an event that was submitted / approved earlier is just not published yet.
     if (e.status === "Draft" || (!APPROVALS_ENABLED && (e.status === "Pending KKF Approval" || e.status === "Approved"))) {
-      todos.push({ kind: "draftEvent", id: `d-${e.id}`, title: e.name, detail: `${fmtDate(e.date)} · still a draft, not visible to fans`, info: { date: e.date ?? null, note: "todo.note.draftEvent" }, href: `/home/events/${e.id}`, rank: d >= today ? 2 : 5 });
+      todos.push({ kind: "draftEvent", id: `d-${e.id}`, title: e.name, detail: `${fmtDate(e.date)} · still a draft, not visible to fans`, info: { date: e.date ?? null, note: "todo.note.draftEvent" }, eventId: e.id, eventName: e.name, eventDate: e.date ?? null, href: `/home/events/${e.id}`, rank: d >= today ? 2 : 5 });
     } else if (!CLOSED_EVENT.has(e.status) && d >= today && !boutsByEvent.get(e.id)) {
-      todos.push({ kind: "emptyEvent", id: `e-${e.id}`, title: e.name, detail: `${fmtDate(e.date)} · no fight card yet`, info: { date: e.date ?? null, note: "todo.note.noCard" }, href: `/home/events/${e.id}`, rank: 3 });
+      todos.push({ kind: "emptyEvent", id: `e-${e.id}`, title: e.name, detail: `${fmtDate(e.date)} · no fight card yet`, info: { date: e.date ?? null, note: "todo.note.noCard" }, eventId: e.id, eventName: e.name, eventDate: e.date ?? null, href: `/home/events/${e.id}`, rank: 3 });
+    }
+  }
+
+  // After the match: open disputes, and matches whose results are all in and can be signed off.
+  if (isStaff) {
+    const disputedEvents = new Set((openDisputes as any[]).map((d) => d.event_id));
+    for (const d of openDisputes as any[]) {
+      const ev = eventById.get(d.event_id);
+      if (!ev) continue;
+      todos.push({ kind: "dispute", id: `ds-${d.id}`, title: d.bout ?? ev.name, detail: `${ev.name} · open dispute`, info: { lead: [ev.name], note: "todo.note.dispute" }, eventId: ev.id, eventName: ev.name, eventDate: ev.date ?? null, href: `/home/events/${ev.id}#disputes`, rank: 1 });
+    }
+    for (const e of events as any[]) {
+      if (e.status === "Cancelled" || e.signed_off_at || time(e.date) > today || disputedEvents.has(e.id)) continue;
+      const live = (matches as any[]).filter((m) => m.event_id === e.id && m.status !== "Cancelled");
+      if (live.length && live.every((m) => (m.winner_id || m.winner_method || m.result) && !m.replacement_side)) {
+        todos.push({ kind: "signoff", id: `so-${e.id}`, title: e.name, detail: `${fmtDate(e.date)} · ready to sign off`, info: { date: e.date ?? null, note: "todo.note.signoff" }, eventId: e.id, eventName: e.name, eventDate: e.date ?? null, href: `/home/events/${e.id}`, rank: 2 });
+      }
     }
   }
 
   for (const r of waitingAgreements as any[]) {
     todos.push({
       kind: "agreementWaiting", id: `ag-${r.id}`, title: r.event_name,
-      detail: `${r.item === "details" ? "fight night details" : r.item === "titles" ? "titles" : "sponsors"} recorded by ${r.recorded_by_name ?? "the organizer"} · confirm or send back`,
+      detail: `${r.item === "details" ? "match details" : r.item === "titles" ? "titles" : "sponsors"} recorded by ${r.recorded_by_name ?? "the organizer"} · confirm or send back`,
       info: { lead: [r.recorded_by_name], date: r.event_date ?? null, note: r.item === "details" ? "todo.note.agreementDetails" : r.item === "titles" ? "todo.note.agreementTitles" : "todo.note.agreementSponsors" },
+      eventId: r.event_id, eventName: r.event_name, eventDate: r.event_date ?? null,
       href: `/home/events/${r.event_id}#agreements`, rank: 1,
     });
   }
@@ -194,7 +223,7 @@ async function build(): Promise<Overview> {
   const counts = {
     fighter: 0, fighterSentBack: 0, eventApproval: 0, eventSentBack: 0, readyToPublish: 0,
     result: 0, draftEvent: 0, emptyEvent: 0, unconfirmed: 0, vacantTitle: 0,
-    boutToAnswer: 0, boutDeclined: 0, boutWaiting: 0, noOfficials: 0, agreementWaiting: 0,
+    boutToAnswer: 0, boutDeclined: 0, boutWaiting: 0, noOfficials: 0, agreementWaiting: 0, replacement: 0, dispute: 0, signoff: 0,
   } as Record<TodoKind, number>;
   for (const t of todos) counts[t.kind]++;
 

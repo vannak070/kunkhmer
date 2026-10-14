@@ -31,11 +31,12 @@ import { UNVERIFIED } from "../fighters/routes.ts";
 import { UNAPPROVED, eventScope } from "../events/routes.ts";
 import { titleListWarning } from "../events/agreements.ts";
 import { formatMatch, formatSubEvent, matchArray, matchRelations, subEventArray, subEventRelations, withoutWeighIn } from "./format.ts";
-import { enforceRules } from "./rules.ts";
+import { enforceRules, movingOn } from "./rules.ts";
 import { recalculateRecord, recordMatchResult } from "./results.ts";
 import { PUBLIC_BOUT, RESPONSES, openSide, proposalStatus, sidesFor } from "./proposals.ts";
 import { notifyFollowers } from "../fans/notify.ts";
 import { assertOfficials, officialsOf } from "../officials/routes.ts";
+import { assertNotSignedOff, signedOffLock } from "../events/signoff.ts";
 
 const ORGANIZERS = [...STAFF, Role.Organizer];
 
@@ -52,6 +53,26 @@ async function loadMatch(id: string) {
 }
 
 const int = (value: unknown) => (value === null ? null : Number(value));
+
+/** Bout labels printed on the program sheet, and the rule sets a bout can be fought under (claude/features/weekly-program.md). */
+export const BOUT_LABELS = ["friendly", "international", "youth", "qualifier", "final", "prize"] as const;
+export const RULE_SETS = ["kun_khmer", "mas_fight"] as const;
+
+/** `boutLabel` (one of BOUT_LABELS, "" clears) and `ruleSet` (one of RULE_SETS); only the keys that were sent. */
+function labelAndRules(input: Input): { bout_label?: string | null; rule_set?: string } {
+  const out: { bout_label?: string | null; rule_set?: string } = {};
+  if (input.present("boutLabel")) {
+    const label = input.get<string>("boutLabel");
+    if (label !== null && !(BOUT_LABELS as readonly string[]).includes(label)) throw new HttpError(422, `The boutLabel must be one of: ${BOUT_LABELS.join(", ")}`);
+    out.bout_label = label;
+  }
+  if (input.has("ruleSet")) {
+    const rules = String(input.get("ruleSet"));
+    if (!(RULE_SETS as readonly string[]).includes(rules)) throw new HttpError(422, `The ruleSet must be one of: ${RULE_SETS.join(", ")}`);
+    out.rule_set = rules;
+  }
+  return out;
+}
 
 /** Match columns settable on update; booleans and dates are converted. */
 function matchUpdate(input: Input): Prisma.MatchUncheckedUpdateInput {
@@ -76,6 +97,7 @@ function matchUpdate(input: Input): Prisma.MatchUncheckedUpdateInput {
     if (input.has(key)) data[column] = parseBool(input.get(key));
   }
   if (input.has("gloveConfirmedDate")) data.glove_confirmed_date = toDate(input.get("gloveConfirmedDate"));
+  Object.assign(data, labelAndRules(input));
   return data;
 }
 
@@ -103,6 +125,34 @@ async function checkOfficials(user: User, next: { refereeId: string | null; judg
   if (!changed) return;
   if (!hasRole(user, STAFF)) throw new HttpError(403, "Forbidden: Only KKF assigns referees and judges");
   await assertOfficials(next.refereeId, next.judgeIds);
+}
+
+/** A cancelled bout, or one waiting for a replacement (phase 6), takes no weigh-in or result. */
+async function requireLiveBout(id: string) {
+  const bout = await prisma.match.findUnique({ where: { id }, select: { status: true, replacement_side: true, event_id: true } });
+  if (!bout) throw notFound("Match");
+  if (bout.status === "Cancelled") throw new HttpError(422, "This bout is cancelled");
+  if (bout.replacement_side) throw new HttpError(422, "This bout needs a replacement fighter first");
+  return bout;
+}
+
+/**
+ * `slotAFrom` / `slotBFrom`: the bout whose winner will fill an empty corner. It must be another bout of the same match and
+ * the corner must be empty. Returns the ids to store (null when not given).
+ */
+async function slotSources(input: Input, eventId: string, fighters: { a: string | null; b: string | null }) {
+  const out: { a: string | null; b: string | null } = { a: null, b: null };
+  for (const side of ["a", "b"] as const) {
+    const key = side === "a" ? "slotAFrom" : "slotBFrom";
+    const from = input.get<string>(key);
+    if (!from) continue;
+    if (fighters[side]) throw new HttpError(422, `The ${key} is only for an empty corner`);
+    const source = isUuid(from) ? await prisma.match.findUnique({ where: { id: from }, select: { event_id: true } }) : null;
+    if (!source || source.event_id !== eventId) throw new HttpError(422, `The ${key} must be another bout of this match`);
+    out[side] = from;
+  }
+  if (out.a && out.a === out.b) throw new HttpError(422, "The two corners can't wait for the same bout");
+  return out;
 }
 
 /** Only KKF-verified fighters can be matched. */
@@ -241,20 +291,23 @@ export default async function matchRoutes(app: FastifyInstance) {
       }
       if (!eventId) throw new HttpError(422, "The eventId field is required");
       await requireOwnEvent(user, eventId);
+      await assertNotSignedOff(eventId);
       await checkOfficials(user, { refereeId: input.get("refereeId"), judgeIds: judgeList(input.get("judgeIds")) });
 
-      const fighterAId = input.required<string>("fighterAId");
-      const fighterBId = input.required<string>("fighterBId");
-      if (fighterAId === fighterBId) throw new HttpError(422, "A bout needs two different fighters");
-      await requireVerified([fighterAId, fighterBId]);
-      const warnings = await enforceRules({ subEventId, fighterAId, fighterBId, agreedWeight: Number(input.required("agreedWeight")) });
+      // A corner may be left empty ("to be announced") or wait for the winner of another bout (claude/updates/empty-corners-draws.md).
+      const fighterAId = input.get<string>("fighterAId");
+      const fighterBId = input.get<string>("fighterBId");
+      if (fighterAId && fighterAId === fighterBId) throw new HttpError(422, "A bout needs two different fighters");
+      const slots = await slotSources(input, eventId, { a: fighterAId, b: fighterBId });
+      await requireVerified([fighterAId, fighterBId].filter((x): x is string => Boolean(x)));
+      const warnings = fighterAId || fighterBId ? await enforceRules({ subEventId, fighterAId, fighterBId, agreedWeight: Number(input.required("agreedWeight")) }) : [];
       // Title bout for a belt that isn't on the fight night's confirmed title list: warn (claude/updates/fight-night-titles.md).
       const titleHit = await titleListWarning(eventId, input.get<string>("championshipId"));
       if (titleHit) warnings.push(titleHit);
 
       // A new bout goes to both clubs; a side without a club is accepted already.
-      const clubs = await prisma.fighter.findMany({ where: { id: { in: [fighterAId, fighterBId].filter(isUuid) } }, select: { id: true, club_id: true } });
-      const clubOf = (id: string) => ({ club_id: clubs.find((f) => f.id === id)?.club_id ?? null });
+      const clubs = await prisma.fighter.findMany({ where: { id: { in: [fighterAId, fighterBId].filter((x): x is string => isUuid(x)) } }, select: { id: true, club_id: true } });
+      const clubOf = (id: string | null) => ({ club_id: clubs.find((f) => f.id === id)?.club_id ?? null });
       const at = now();
       const by = { userId: user.id, at };
       const sides = { ...openSide("a", clubOf(fighterAId), by), ...openSide("b", clubOf(fighterBId), by) } as Prisma.MatchUncheckedCreateInput;
@@ -265,6 +318,8 @@ export default async function matchRoutes(app: FastifyInstance) {
           sub_event_id: subEventId,
           fighter_a_id: fighterAId,
           fighter_b_id: fighterBId,
+          slot_a_from: slots.a,
+          slot_b_from: slots.b,
           rounds: int(input.required("rounds"))!,
           round_time: int(input.required("roundTime"))!,
           knockdown_limit: int(input.required("knockdownLimit"))!,
@@ -284,6 +339,7 @@ export default async function matchRoutes(app: FastifyInstance) {
           is_title_match: input.has("isTitleMatch") ? parseBool(input.get("isTitleMatch")) : false,
           championship_id: input.get("championshipId"),
           sort_order: int(input.get("sortOrder", 0))!,
+          ...labelAndRules(input),
           created_at: at,
           updated_at: at,
         },
@@ -293,11 +349,111 @@ export default async function matchRoutes(app: FastifyInstance) {
       return ok(reply, warnings.length ? { ...created, warnings } : created);
     });
 
+    /**
+     * Tournament draw (claude/updates/empty-corners-draws.md): `{ fighterIds: [4 or 8, in draw order], agreedWeight, rounds,
+     * roundTime, knockdownLimit, gloveSize, gloveBrand, ruleSet?, finalLabel? ("final" | "prize") }` on a fight card.
+     * Pairs 1v2, 3v4… as qualifiers, then each next round's corners wait for the winners ("winner of bout N"), up to the
+     * final. First-round pairs go through the KKF matching rules like any bout (a Block rule refuses the whole draw).
+     */
+    protectedRoutes.post("/matches/batches/:id/draw", async (request, reply) => {
+      const user = requireRole(request, ORGANIZERS);
+      const subEventId = idParam(request.params, "Sub-event (batch)");
+      const card = await prisma.subEvent.findUnique({ where: { id: subEventId }, select: { id: true, event_id: true } });
+      if (!card) throw notFound("Sub-event (batch)");
+      await requireOwnEvent(user, card.event_id);
+      await assertNotSignedOff(card.event_id);
+      const input = inputOf(request.body);
+
+      const raw = input.get<unknown>("fighterIds");
+      const fighterIds = Array.isArray(raw) ? raw.map(String) : [];
+      if (fighterIds.length !== 4 && fighterIds.length !== 8) throw new HttpError(422, "A draw needs 4 or 8 fighters");
+      if (new Set(fighterIds).size !== fighterIds.length) throw new HttpError(422, "A fighter is in the draw twice");
+      if (!fighterIds.every(isUuid)) throw new HttpError(422, "The selected fighter does not exist");
+      const found = await prisma.fighter.findMany({ where: { id: { in: fighterIds }, deleted_at: null }, select: { id: true, club_id: true } });
+      if (found.length !== fighterIds.length) throw new HttpError(422, "The selected fighter does not exist");
+      await requireVerified(fighterIds);
+      const finalLabel = input.get<string>("finalLabel", "final");
+      if (finalLabel !== "final" && finalLabel !== "prize") throw new HttpError(422, 'The finalLabel must be "final" or "prize"');
+      const rules = labelAndRules(inputOf({ ruleSet: input.get("ruleSet", "kun_khmer") }));
+      const agreedWeight = Number(input.required("agreedWeight"));
+
+      const warnings: Awaited<ReturnType<typeof enforceRules>> = [];
+      for (let i = 0; i < fighterIds.length; i += 2) {
+        warnings.push(...(await enforceRules({ subEventId, fighterAId: fighterIds[i], fighterBId: fighterIds[i + 1], agreedWeight })));
+      }
+
+      const drawId = randomUUID();
+      const at = now();
+      const by = { userId: user.id, at };
+      const clubOf = (id: string | null) => ({ club_id: found.find((f) => f.id === id)?.club_id ?? null });
+      const last = await prisma.match.aggregate({ where: { sub_event_id: subEventId }, _max: { sort_order: true } });
+      let order = (last._max.sort_order ?? 0) + 1;
+      const base = {
+        event_id: card.event_id,
+        sub_event_id: subEventId,
+        rounds: int(input.required("rounds"))!,
+        round_time: int(input.required("roundTime"))!,
+        knockdown_limit: int(input.required("knockdownLimit"))!,
+        agreed_weight: agreedWeight,
+        glove_size: input.required<string>("gloveSize"),
+        glove_brand: input.required<string>("gloveBrand"),
+        status: "Draft",
+        draw_id: drawId,
+        ...rules,
+      };
+      const ids: string[] = [];
+      await prisma.$transaction(async (tx) => {
+        // First round: the fighters in draw order.
+        let round: string[] = [];
+        for (let i = 0; i < fighterIds.length; i += 2) {
+          const sides = { ...openSide("a", clubOf(fighterIds[i]), by), ...openSide("b", clubOf(fighterIds[i + 1]), by) } as Prisma.MatchUncheckedCreateInput;
+          const id = randomUUID();
+          await tx.match.create({
+            data: {
+              ...base, id, fighter_a_id: fighterIds[i], fighter_b_id: fighterIds[i + 1], bout_label: "qualifier", sort_order: order++,
+              proposal_status: proposalStatus(sides.club_a_response as string, sides.club_b_response as string),
+              club_a_response: sides.club_a_response, club_b_response: sides.club_b_response,
+              club_a_responded_at: sides.club_a_responded_at, club_b_responded_at: sides.club_b_responded_at,
+              club_a_responded_by: sides.club_a_responded_by, club_b_responded_by: sides.club_b_responded_by,
+              created_at: at, updated_at: at,
+            },
+          });
+          round.push(id);
+        }
+        ids.push(...round);
+        // Next rounds: both corners wait for the winners of the round before.
+        while (round.length > 1) {
+          const next: string[] = [];
+          for (let i = 0; i < round.length; i += 2) {
+            const id = randomUUID();
+            const sides = { ...openSide("a", clubOf(null), by), ...openSide("b", clubOf(null), by) } as Prisma.MatchUncheckedCreateInput;
+            await tx.match.create({
+              data: {
+                ...base, id, fighter_a_id: null, fighter_b_id: null, slot_a_from: round[i], slot_b_from: round[i + 1],
+                bout_label: round.length === 2 ? finalLabel : "qualifier", sort_order: order++,
+                proposal_status: proposalStatus(sides.club_a_response as string, sides.club_b_response as string),
+                club_a_response: sides.club_a_response, club_b_response: sides.club_b_response,
+                club_a_responded_at: sides.club_a_responded_at, club_b_responded_at: sides.club_b_responded_at,
+                club_a_responded_by: sides.club_a_responded_by, club_b_responded_by: sides.club_b_responded_by,
+                created_at: at, updated_at: at,
+              },
+            });
+            next.push(id);
+          }
+          ids.push(...next);
+          round = next;
+        }
+      });
+      const bouts = await prisma.match.findMany({ where: { id: { in: ids } }, include: matchRelations, orderBy: { sort_order: "asc" } });
+      return ok(reply, { draw_id: drawId, bouts: bouts.map(formatMatch), ...(warnings.length ? { warnings } : {}) }, 201);
+    });
+
     protectedRoutes.put("/matches/:id", async (request, reply) => {
       const user = requireRole(request, ORGANIZERS);
       const id = idParam(request.params, "Match");
       const match = await prisma.match.findUnique({ where: { id } });
       if (!match) throw notFound("Match");
+      await assertNotSignedOff(match.event_id);
 
       const input = inputOf(request.body);
       await requireOwnEvent(user, match.event_id);
@@ -323,7 +479,7 @@ export default async function matchRoutes(app: FastifyInstance) {
       });
       const nextA = (data.fighter_a_id as string | undefined) ?? match.fighter_a_id;
       const nextB = (data.fighter_b_id as string | undefined) ?? match.fighter_b_id;
-      if (nextA === nextB) throw new HttpError(422, "A bout needs two different fighters");
+      if (nextA && nextA === nextB) throw new HttpError(422, "A bout needs two different fighters");
       let warnings: Awaited<ReturnType<typeof enforceRules>> = [];
       if (swapped.length) {
         await requireVerified(swapped.map((s) => data[`fighter_${s}_id`] as string));
@@ -333,6 +489,7 @@ export default async function matchRoutes(app: FastifyInstance) {
           fighterBId: nextB,
           agreedWeight: Number(data.agreed_weight ?? match.agreed_weight),
           matchId: id,
+          skipScheduleFor: await movingOn(match, swapped.map((s) => ({ side: s, fighterId: data[`fighter_${s}_id`] as string }))),
         });
         for (const s of swapped) {
           const fighter = await prisma.fighter.findUnique({ where: { id: data[`fighter_${s}_id`] as string }, select: { club_id: true } });
@@ -419,8 +576,12 @@ export default async function matchRoutes(app: FastifyInstance) {
       const id = idParam(request.params, "Match");
       const match = await prisma.match.findUnique({ where: { id } });
       if (!match) throw notFound("Match");
+      await assertNotSignedOff(match.event_id);
       // A deleted bout no longer counts towards the fighters' records.
       await prisma.$transaction(async (tx) => {
+        // Corners waiting for this bout's winner wait for nobody now.
+        await tx.match.updateMany({ where: { slot_a_from: id }, data: { slot_a_from: null } });
+        await tx.match.updateMany({ where: { slot_b_from: id }, data: { slot_b_from: null } });
         await tx.match.delete({ where: { id } });
         await recalculateRecord(tx, match.fighter_a_id);
         await recalculateRecord(tx, match.fighter_b_id);
@@ -429,15 +590,19 @@ export default async function matchRoutes(app: FastifyInstance) {
     });
 
     protectedRoutes.post("/matches/:id/result", async (request, reply) => {
-      requireRole(request, STAFF);
+      const user = requireRole(request, STAFF);
       const id = idParam(request.params, "Match");
+      const bout = await requireLiveBout(id);
       const input = inputOf(request.body);
+      // Signed-off match: only a Super Admin, with a reason, and it is logged.
+      const correction = await signedOffLock(bout.event_id, user, input.get<string>("correctionReason"));
       await recordMatchResult(id, {
         winnerId: input.get("winnerId"),
         method: input.required("method"),
         round: int(input.required("round"))!,
         duration: input.get("duration"),
       });
+      if (correction) await prisma.matchChange.create({ data: { id: randomUUID(), event_id: bout.event_id, match_id: id, kind: "correct_result", note: correction, created_by: user.id, created_at: now() } });
       await notifyFollowers(id, "bout_result", request.log);
       return ok(reply, await loadMatch(id));
     });
@@ -451,8 +616,13 @@ export default async function matchRoutes(app: FastifyInstance) {
       const id = idParam(request.params, "Match");
       const match = await prisma.match.findUnique({ where: { id } });
       if (!match) throw notFound("Match");
+      await requireLiveBout(id);
       const input = inputOf(request.body);
+      const correction = await signedOffLock(match.event_id, user, input.get<string>("correctionReason"));
       if (!input.present("a") && !input.present("b")) throw new HttpError(422, "Send the weight for a (red corner) or b (blue corner)");
+      for (const side of ["a", "b"] as const) {
+        if (input.present(side) && input.get(side) !== null && !match[`fighter_${side}_id`]) throw new HttpError(422, `The ${side === "a" ? "red" : "blue"} corner has no fighter yet`);
+      }
 
       const kg = (side: "a" | "b") => {
         const raw = input.get(side);
@@ -470,6 +640,7 @@ export default async function matchRoutes(app: FastifyInstance) {
         data[`fighter_${side}_confirmed`] = w !== null;
       }
       await prisma.match.update({ where: { id }, data });
+      if (correction) await prisma.matchChange.create({ data: { id: randomUUID(), event_id: match.event_id, match_id: id, kind: "correct_weigh_in", note: correction, created_by: user.id, created_at: now() } });
       return ok(reply, await loadMatch(id));
     });
   });

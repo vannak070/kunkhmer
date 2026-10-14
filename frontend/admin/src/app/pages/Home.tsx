@@ -18,6 +18,7 @@ import { todoDetail, todoTitle } from "../components/program/todoText";
 import { APPROVALS_ENABLED } from "../config/features";
 import { formatDay, khmerDigits, useT, type Lang, type TextKey } from "../i18n/program";
 import { InstallCard } from "../components/pwa/InstallCard";
+import { NeedsAttention, PROGRAM_TODOS } from "../components/program/NeedsAttention";
 
 type T = (key: TextKey, vars?: Record<string, string | number>) => string;
 
@@ -33,6 +34,9 @@ interface Group {
 }
 
 const GROUPS: Group[] = [
+  { kind: "dispute", title: "Open disputes", hint: "A result is disputed. Resolve it before the match can be signed off.", icon: Gavel, tone: "text-red-700 bg-red-50", action: "Resolve", text: { title: "todo.dispute.title", hint: "todo.dispute.hint", action: "todo.dispute.action" } },
+  { kind: "signoff", title: "Ready to sign off", hint: "Every result is in. Sign off to make the results official.", icon: ShieldCheck, tone: "text-emerald-700 bg-emerald-50", action: "Sign off", text: { title: "todo.signoff.title", hint: "todo.signoff.hint", action: "todo.signoff.action" } },
+  { kind: "replacement", title: "Bouts needing a replacement", hint: "A fighter withdrew. Choose a replacement or cancel the bout.", icon: MessageSquareWarning, tone: "text-red-700 bg-red-50", action: "Choose replacement", text: { title: "todo.replacement.title", hint: "todo.replacement.hint", action: "todo.replacement.action" } },
   { kind: "agreementWaiting", title: "Agreements waiting for KKF", hint: "An organizer recorded what was agreed offline. Confirm it, or send it back with a reason.", icon: Handshake, tone: "text-violet-700 bg-violet-50", action: "Review", text: { title: "todo.agreement.title", hint: "todo.agreement.hint", action: "todo.agreement.action" } },
   { kind: "eventApproval", title: "Events to approve", hint: "Organizers submitted these events. Approve them, or send them back with a comment.", icon: CalendarCheck, tone: "text-violet-700 bg-violet-50", action: "Review" },
   { kind: "eventSentBack", title: "Events sent back", hint: "KKF asked for changes. Fix them and submit again.", icon: MessageSquareWarning, tone: "text-amber-700 bg-amber-50", action: "Open event" },
@@ -41,13 +45,13 @@ const GROUPS: Group[] = [
   { kind: "boutDeclined", title: "Bouts declined by a club", hint: "A club said no. Change the fighter, or remove the bout.", icon: MessageSquareWarning, tone: "text-red-700 bg-red-50", action: "Fix bout" },
   { kind: "fighterSentBack", title: "Fighters sent back", hint: "KKF asked for changes to these profiles. Edit and save to send them again.", icon: MessageSquareWarning, tone: "text-red-700 bg-red-50", action: "Fix profile" },
   { kind: "result", title: "Results to record", hint: "Bouts that already happened but have no result. Fans and fighter records wait for these.", icon: Gavel, tone: "text-red-600 bg-red-50", action: "Record result", text: { title: "todo.result.title", hint: "todo.result.hint", action: "todo.result.action" } },
-  { kind: "noOfficials", title: "Bouts without officials", hint: "Fight night is within 14 days. Assign a referee and three judges.", icon: ShieldCheck, tone: "text-sky-700 bg-sky-50", action: "Assign officials", text: { title: "todo.noOfficials.title", hint: "todo.noOfficials.hint", action: "card.officials" } },
+  { kind: "noOfficials", title: "Bouts without officials", hint: "The match is within 14 days. Assign a referee and three judges.", icon: ShieldCheck, tone: "text-sky-700 bg-sky-50", action: "Assign officials", text: { title: "todo.noOfficials.title", hint: "todo.noOfficials.hint", action: "card.officials" } },
   APPROVALS_ENABLED
     ? { kind: "fighter", title: "Fighters to verify", hint: "Registered fighters waiting for KKF approval before they can be matched.", icon: UserCheck, tone: "text-amber-700 bg-amber-50", action: "Review" }
     : { kind: "fighter", title: "Draft fighters", hint: "Not visible to fans and can't be matched yet. Activate them when the profile is complete.", icon: UserCheck, tone: "text-amber-700 bg-amber-50", action: "Open", text: { title: "todo.fighter.title", hint: "todo.fighter.hint", action: "common.open" } },
   { kind: "draftEvent", title: "Draft events", hint: "Events fans can't see yet. Finish the details and publish them.", icon: FilePenLine, tone: "text-violet-700 bg-violet-50", action: "Open event", text: { title: "todo.draftEvent.title", hint: "todo.draftEvent.hint", action: "todo.openEvent" } },
   { kind: "emptyEvent", title: "Events without a fight card", hint: "Upcoming events with no bouts scheduled.", icon: Layers, tone: "text-blue-700 bg-blue-50", action: "Add fight card", text: { title: "todo.emptyEvent.title", hint: "todo.emptyEvent.hint", action: "night.addCard" } },
-  { kind: "boutWaiting", title: "Bouts waiting for clubs", hint: "Fight night is within 14 days and a club hasn't answered. Fans can't see these bouts yet.", icon: Clock, tone: "text-amber-700 bg-amber-50", action: "Open" },
+  { kind: "boutWaiting", title: "Bouts waiting for clubs", hint: "The match is within 14 days and a club hasn't answered. Fans can't see these bouts yet.", icon: Clock, tone: "text-amber-700 bg-amber-50", action: "Open" },
   { kind: "unconfirmed", title: "Weigh-ins to do", hint: "Bouts in the next 14 days where a fighter hasn't been weighed in yet.", icon: ClipboardList, tone: "text-sky-700 bg-sky-50", action: "Open fight card", text: { title: "todo.unconfirmed.title", hint: "todo.unconfirmed.hint", action: "todo.unconfirmed.action" } },
   { kind: "vacantTitle", title: "Vacant titles", hint: "Championship titles with no holder.", icon: Trophy, tone: "text-amber-700 bg-amber-50", action: "Schedule title bout", text: { title: "todo.vacantTitle.title", hint: "todo.vacantTitle.hint", action: "todo.vacantTitle.action" } },
 ];
@@ -148,7 +152,7 @@ export function Home() {
   const quick = [
     { label: isClub ? t("dash.q.registerFighter") : t("dash.q.addFighter"), href: "/home/fighters/kunkhmer/new", icon: UserPlus, show: permissions.hasPermission("fighters.create") },
     { label: t("dash.q.event"), href: "/home/events/new", icon: CalendarPlus, show: permissions.hasAnyPermission(["events.create", "events.record"]) },
-    { label: t("dash.q.card"), href: "/home/program?tab=events", icon: Layers, show: permissions.hasPermission("events.create") },
+    { label: t("dash.q.card"), href: "/home/matches", icon: Layers, show: permissions.hasPermission("events.create") },
     { label: t("dash.q.news"), href: "/home/media/news", icon: Newspaper, show: canApprove },
     { label: t("dash.q.staff"), href: "/home/user-management", icon: Users, show: permissions.hasPermission("users.view") },
   ].filter((q) => q.show);
@@ -215,7 +219,7 @@ export function Home() {
       {data && (
         <>
           <section aria-label={t("dash.numbers")} className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Link to={next ? `/home/events/${next.id}` : "/home/program?tab=events"} className="col-span-2 lg:col-span-1 rounded-2xl border border-slate-200 bg-white p-5 hover:border-primary transition">
+            <Link to={next ? `/home/events/${next.id}` : "/home/matches"} className="col-span-2 lg:col-span-1 rounded-2xl border border-slate-200 bg-white p-5 hover:border-primary transition">
               <CalendarDays className="w-5 h-5 text-primary" aria-hidden />
               <p className="mt-3 text-3xl font-bold text-slate-900">{next ? countdown(next.date, t) : t("dash.noneYet")}</p>
               <p className="text-sm text-slate-600 truncate">{next ? t("dash.nextNight", { name: next.name }) : t("dash.noNight")}</p>
@@ -224,7 +228,7 @@ export function Home() {
             {[
               { label: t("dash.activeFighters"), value: data.stats.activeFighters, href: "/home/fighters", icon: ShieldCheck },
               { label: t("dash.clubs"), value: data.stats.clubs, href: "/home/clubs", icon: Users },
-              { label: t("dash.results"), value: data.stats.recordedResults, href: "/home/program?tab=events", icon: Gavel },
+              { label: t("dash.results"), value: data.stats.recordedResults, href: "/home/matches", icon: Gavel },
             ].map((s) => (
               <Link key={s.href + s.label} to={s.href} className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 hover:border-primary transition">
                 <s.icon className="w-5 h-5 text-primary" aria-hidden />
@@ -235,14 +239,16 @@ export function Home() {
             </div>
           </section>
 
-          {todos.length > 1 && <MoreJobs items={todos.slice(1)} canApprove={canApprove} onDone={doRefresh} />}
+          {/* The match jobs grouped by match (same card as Matches › Needs attention); fighters, events sent back and the rest below. */}
+          {todos.some((x) => PROGRAM_TODOS.includes(x.kind)) && <NeedsAttention todos={todos} />}
+          {todos.slice(1).some((x) => !PROGRAM_TODOS.includes(x.kind)) && <MoreJobs items={todos.slice(1).filter((x) => !PROGRAM_TODOS.includes(x.kind))} canApprove={canApprove} onDone={doRefresh} />}
 
           <div className="grid lg:grid-cols-2 gap-4 items-start">
             {/* Upcoming */}
             <section className="min-w-0 rounded-2xl border border-slate-200 bg-white">
               <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-5 py-4 border-b border-slate-100">
                 <h2 className="font-bold text-slate-900">{t("dash.upcoming")}</h2>
-                <Link to="/home/program?tab=events" className="text-sm font-medium text-primary hover:underline">{t("dash.allEvents")}</Link>
+                <Link to="/home/matches" className="text-sm font-medium text-primary hover:underline">{t("dash.allEvents")}</Link>
               </header>
               {data.upcoming.length === 0 ? (
                 <div className="p-6 text-center text-sm text-slate-600">
@@ -277,7 +283,7 @@ export function Home() {
             <section className="min-w-0 rounded-2xl border border-slate-200 bg-white">
               <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-5 py-4 border-b border-slate-100">
                 <h2 className="font-bold text-slate-900">{t("dash.recent")}</h2>
-                <Link to="/home/program?tab=events" className="text-sm font-medium text-primary hover:underline">{t("dash.allNights")}</Link>
+                <Link to="/home/matches" className="text-sm font-medium text-primary hover:underline">{t("dash.allNights")}</Link>
               </header>
               {data.recent.length === 0 ? (
                 <p className="p-6 text-center text-sm text-slate-600">{t("dash.noResults")}</p>

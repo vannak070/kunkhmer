@@ -86,6 +86,29 @@ exports[`settings list: glove-brands > lets the Super Admin add, edit, deactivat
 }
 `;
 
+exports[`settings list: shows > lets the Super Admin add, edit, deactivate and delete an entry 1`] = `
+{
+  "body": {
+    "data": {
+      "active": "boolean",
+      "broadcast_station_id": "null",
+      "created_at": "datetime(.000000Z)",
+      "description": "string",
+      "id": "uuid",
+      "location": "string",
+      "main_sponsor_id": "null",
+      "name": "string",
+      "sort_order": "number",
+      "start_time": "string",
+      "updated_at": "datetime(.000000Z)",
+      "weekday": "number",
+    },
+    "success": "boolean",
+  },
+  "status": 201,
+}
+`;
+
 exports[`settings list: venues > comes with the starting entries, readable by anyone 1`] = `
 {
   "active": "boolean",

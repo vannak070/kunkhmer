@@ -1,5 +1,5 @@
 /**
- * Settings lists (admin Phase 5)  →  /api/settings/{weight-classes,venues,bout-rules,glove-brands,associations}
+ * Settings lists (admin Phase 5)  →  /api/settings/{weight-classes,venues,bout-rules,glove-brands,associations,shows}
  *
  *   GET    /settings/<list>        public: active entries in order; ?all=1 with a KKF staff token adds inactive ones
  *   POST   /settings/<list>        Super Admin → 201
@@ -157,7 +157,38 @@ export const LISTS: ListConfig[] = [
     },
     toRow: (r) => ({ id: r.id, name: r.name, name_khmer: r.name_khmer, ...common(r) }),
   },
+  {
+    // Weekly shows used as templates for a new match (claude/updates/show-templates-copy-week.md).
+    path: "shows",
+    label: "Show",
+    delegate: () => prisma.showTemplate,
+    required: ["name"],
+    notNull: ["name"],
+    fields: (input) => {
+      const data: Fields = {};
+      text(input, data, "name", "name", 255);
+      text(input, data, "broadcastStationId", "broadcast_station_id", 36);
+      text(input, data, "mainSponsorId", "main_sponsor_id", 36);
+      text(input, data, "location", "location", 255);
+      text(input, data, "startTime", "start_time", 5);
+      number(input, data, "weekday", "weekday", 0, 6, true);
+      text(input, data, "description", "description", 2000);
+      return data;
+    },
+    check: (row) => {
+      for (const key of ["broadcast_station_id", "main_sponsor_id"]) {
+        if (row[key] != null && !UUID.test(String(row[key]))) throw new HttpError(422, `The ${key === "broadcast_station_id" ? "broadcaster" : "sponsor"} does not exist`);
+      }
+      if (row.start_time != null && !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(row.start_time))) throw new HttpError(422, "The startTime must be a time like 15:00");
+    },
+    toRow: (r) => ({
+      id: r.id, name: r.name, broadcast_station_id: r.broadcast_station_id, main_sponsor_id: r.main_sponsor_id,
+      location: r.location, start_time: r.start_time, weekday: r.weekday, description: r.description, ...common(r),
+    }),
+  },
 ];
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const ORDER = [{ sort_order: "asc" }, { created_at: { sort: "asc", nulls: "first" } }] as const;
 
