@@ -37,6 +37,7 @@ import { PUBLIC_BOUT, RESPONSES, openSide, proposalStatus, sidesFor } from "./pr
 import { notifyFollowers } from "../fans/notify.ts";
 import { assertOfficials, officialsOf } from "../officials/routes.ts";
 import { assertNotSignedOff, signedOffLock } from "../events/signoff.ts";
+import { dateWindow } from "../../lib/window.ts";
 
 const ORGANIZERS = [...STAFF, Role.Organizer];
 
@@ -172,9 +173,11 @@ export default async function matchRoutes(app: FastifyInstance) {
     // ?eventId= limits the list to one fight night (the admin fight-night page).
     const { eventId } = request.query as { eventId?: string };
     if (eventId && !isUuid(eventId)) return ok(reply, []);
+    const window = dateWindow(request.query);
     const subEvents = await prisma.subEvent.findMany({
       where: {
         ...(eventId ? { event_id: eventId } : {}),
+        ...(window ? { date: window } : {}),
         // Public: published events only; an Organizer: its broadcaster's events only; other staff: all.
         ...(request.user && request.user.role !== Role.Organizer ? {} : { event: eventScope(request.user) }),
       },
@@ -194,12 +197,20 @@ export default async function matchRoutes(app: FastifyInstance) {
 
   // ─── Matches ─────────────────────────────────────────────
   app.get("/matches", async (request, reply) => {
-    const { subEventId, eventId } = request.query as { subEventId?: string; eventId?: string };
-    if ((subEventId && !isUuid(subEventId)) || (eventId && !isUuid(eventId))) return ok(reply, []);
+    const { subEventId, eventId, fighterId, clubId, championshipId } = request.query as { subEventId?: string; eventId?: string; fighterId?: string; clubId?: string; championshipId?: string };
+    if ((subEventId && !isUuid(subEventId)) || (eventId && !isUuid(eventId)) || (fighterId && !isUuid(fighterId)) || (clubId && !isUuid(clubId)) || (championshipId && !isUuid(championshipId))) return ok(reply, []);
+    // ?from= / ?to= on the match date, ?fighterId=, ?clubId= and ?championshipId= for the detail pages (claude/updates/admin-performance.md).
+    const window = dateWindow(request.query);
+    const and: Prisma.MatchWhereInput[] = [];
+    if (fighterId) and.push({ OR: [{ fighter_a_id: fighterId }, { fighter_b_id: fighterId }] });
+    if (clubId) and.push({ OR: [{ fighterA: { club_id: clubId } }, { fighterB: { club_id: clubId } }] });
     const matches = await prisma.match.findMany({
       where: {
         ...(subEventId ? { sub_event_id: subEventId } : {}),
         ...(eventId ? { event_id: eventId } : {}),
+        ...(championshipId ? { championship_id: championshipId } : {}),
+        ...(window ? { subEvent: { date: window } } : {}),
+        ...(and.length ? { AND: and } : {}),
         ...(!request.user
           ? { event: { status: { notIn: UNAPPROVED } }, ...PUBLIC_BOUT }
           : request.user.role === Role.Organizer ? { event: eventScope(request.user) } : {}),

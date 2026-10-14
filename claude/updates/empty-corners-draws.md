@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-10-14, uncommitted, not live) |
+| **Status** | Done (2026-10-14, committed and pushed (dev 11253144), not live) |
 | **Feature** | claude/features/weekly-program.md (step 4 part 2), claude/features/matches-results.md |
 | **Requested by** | vannak070 ("start empty corners and tournament draws") — the official program sheets have finals with blank corners, bouts with an opponent to be announced and a draw list ("សមាសភាពចាប់ឆ្នោត") |
 

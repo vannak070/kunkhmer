@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Steps 1 + part of 2 built 2026-10-13 (committed 6ef8e62, not deployed) — `updates/admin-pwa-performance.md`; step 3 (simple pages) in progress 2026-10-13 — Clubs, Titles and the Match page done (`updates/admin-step3-simple-pages.md`); Help, ShareFightCard chrome and Not found left; real-phone check, login-on-several-devices and step 4 still open |
+| **Status** | Steps 1 + part of 2 built 2026-10-13 (committed 6ef8e62, not deployed) — `updates/admin-pwa-performance.md`; step 3 (simple pages) in progress 2026-10-13 — Clubs, Titles and the Match page done (`updates/admin-step3-simple-pages.md`); Help done 2026-10-14 (`updates/help-page-matches.md`); ShareFightCard chrome and Not found done 2026-10-14 (`updates/step3-last-pages.md`) — step 3 finished except MatchProposals (dormant); real-phone check, login-on-several-devices and step 4 still open |
 | **Jira** | n/a |
 | **Figma** | n/a |
 | **Owner** | vannak070 |

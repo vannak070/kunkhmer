@@ -37,7 +37,7 @@ export function ChampionDetail() {
       const title = await api.champions.get(id!);
       const [holder, bouts] = await Promise.all([
         titleHeld(title) ? api.fighters.get(title.current_holder_id).catch(() => null) : Promise.resolve(null),
-        api.matches.list().catch(() => []),
+        api.matches.list(undefined, { championshipId: id! }).catch(() => []),
       ]);
       setData({ title, holder, bouts });
     } catch (e) {

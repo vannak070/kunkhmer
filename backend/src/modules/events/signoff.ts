@@ -70,6 +70,12 @@ const disputeRow = (d: { id: string; match_id: string; event_id: string; raised_
 });
 const disputeInclude = { creator: { select: { full_name: true } }, resolver: { select: { full_name: true } }, match: { select: { fighterA: { select: { name: true } }, fighterB: { select: { name: true } } } } } as const;
 
+/** Disputes across matches, newest first; `status` = "open" for the to-do lists and the overview. */
+export async function disputeRows(status?: string) {
+  const rows = await prisma.boutDispute.findMany({ where: status ? { status } : {}, include: disputeInclude, orderBy: { created_at: "desc" } });
+  return rows.map(disputeRow);
+}
+
 export default async function signoffRoutes(app: FastifyInstance) {
   app.register(async (routes) => {
     routes.addHook("preHandler", requireAuth);
@@ -116,8 +122,7 @@ export default async function signoffRoutes(app: FastifyInstance) {
     routes.get("/matches/disputes", async (request, reply) => {
       requireRole(request, STAFF);
       const { status } = request.query as { status?: string };
-      const rows = await prisma.boutDispute.findMany({ where: status ? { status } : {}, include: disputeInclude, orderBy: { created_at: "desc" } });
-      return ok(reply, rows.map(disputeRow));
+      return ok(reply, await disputeRows(status));
     });
 
     routes.post("/matches/:id/disputes", async (request, reply) => {

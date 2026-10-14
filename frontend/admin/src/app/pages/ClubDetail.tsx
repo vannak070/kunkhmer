@@ -29,7 +29,7 @@ export function ClubDetail() {
     Promise.all([
       api.clubs.get(id!),
       api.fighters.list(undefined, id!),
-      api.matches.list().catch(() => []),
+      api.matches.list(undefined, { clubId: id! }).catch(() => []),
       api.settingsLists.list("weight-classes").catch(() => []),
       api.champions.list().catch(() => []),
       api.events.list().catch(() => []),

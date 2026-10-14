@@ -56,10 +56,14 @@ as numbers; `sortOrder` and `active` on PUT.
   club pages), Khmer name when set. (The Rankings page that also used it was
   removed on 2026-09-28.)
 - Admin `pages/Help.tsx` (`/home/help`, menu for every role and in the profile
-  menu; `/home/process-flow` redirects): your role's tasks with links, the
-  event-to-result steps, fighter verification, common questions; English /
-  ខ្មែរ switch remembered per browser. Khmer text in the admin uses Kantumruy Pro
-  (since 2026-09-30, `updates/admin-khmer-font.md`).
+  menu; `/home/process-flow` redirects): your role's tasks with links, a short
+  "Words" box (Match, Bout, Fight card, Title, Sign-off), a ten-step "A match from
+  start to finish" (create → agree → bouts → officials → publish → match day → if the
+  plan changes → results → after the match → week and program sheet), fighters,
+  common questions; uses the admin's English / ខ្មែរ button (rewritten 2026-10-14,
+  `updates/help-page-matches.md`; the approvals-mode texts were dropped while approvals
+  are off). Khmer text in the admin uses Kantumruy Pro (since 2026-09-30,
+  `updates/admin-khmer-font.md`).
 
 ## Tests
 `api-tests/tests/settings-lists.test.ts`.

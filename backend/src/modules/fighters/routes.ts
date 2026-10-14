@@ -23,6 +23,7 @@ import { Role, STAFF, currentUser, hasRole, requireAuth, requireRole } from "../
 import { dateOnly, iso, micro, now, toDate } from "../../lib/dates.ts";
 import { HttpError, deleted, idParam, isUuid, notFound, ok } from "../../lib/http.ts";
 import { inputOf } from "../../lib/input.ts";
+import { editDistance, khmer, latin, latinWords } from "../../lib/names.ts";
 import { config } from "../../config.ts";
 import { formatRecord, recordedResults, requireRecord } from "../../lib/record.ts";
 
@@ -151,6 +152,17 @@ const UPDATABLE = {
   professionalStatus: "professional_status",
 };
 
+/** Choices for the Fighters list's club and status filters (over every fighter, not just the page). */
+async function facets() {
+  const [byClub, byStatus, noClub] = await Promise.all([
+    prisma.fighter.groupBy({ by: ["club_id"], where: { ...NOT_DELETED, club_id: { not: null } } }),
+    prisma.fighter.groupBy({ by: ["status"], where: NOT_DELETED }),
+    prisma.fighter.count({ where: { ...NOT_DELETED, club_id: null } }),
+  ]);
+  const clubs = await prisma.club.findMany({ where: { id: { in: byClub.map((c) => c.club_id as string) } }, select: { id: true, name: true }, orderBy: { name: "asc" } });
+  return { clubs, noClub: noClub > 0, statuses: [...new Set(byStatus.map((r) => (UNVERIFIED.includes(r.status) ? "Draft" : r.status)))] };
+}
+
 export default async function fighterRoutes(app: FastifyInstance) {
   app.get("/fighters", async (request, reply) => {
     const query = request.query as { status?: string; clubId?: string };
@@ -176,6 +188,94 @@ export default async function fighterRoutes(app: FastifyInstance) {
 
   app.register(async (protectedRoutes) => {
     protectedRoutes.addHook("preHandler", requireAuth);
+
+    /**
+     * One page of the admin Fighters list (claude/updates/admin-fighters-paging.md). Filters work as on the screen:
+     * `q` (name, Khmer name, alias or club, any case), `origin` (local | foreign), `clubId` (or "none"), `status` (a display
+     * status: "Draft" = not yet public), `classId` (a weight class: its range, minus the earlier classes, like the screen),
+     * `sort` (name | weight), `limit` (default 30, most 100) and `offset`. Answers `{ items, total, clubs, noClub, statuses }`:
+     * the page, how many match, and the choices for the club and status filters (from all fighters, whatever the filters).
+     */
+    protectedRoutes.get("/fighters/page", async (request, reply) => {
+      const query = request.query as { q?: string; origin?: string; clubId?: string; status?: string; classId?: string; sort?: string; limit?: string; offset?: string };
+      const limit = Math.min(Math.max(Number.parseInt(query.limit ?? "", 10) || 30, 1), 100);
+      const offset = Math.max(Number.parseInt(query.offset ?? "", 10) || 0, 0);
+      const empty = { items: [], total: 0 };
+      const and: Prisma.FighterWhereInput[] = [];
+
+      const q = query.q?.trim();
+      if (q) {
+        const has = (field: "name" | "name_khmer" | "alias") => ({ [field]: { contains: q, mode: "insensitive" as const } });
+        and.push({ OR: [has("name"), has("name_khmer"), has("alias"), { club: { name: { contains: q, mode: "insensitive" } } }] });
+      }
+      const FOREIGN_NOT = ["", "Cambodian"];
+      if (query.origin === "foreign") and.push({ nationality: { notIn: FOREIGN_NOT } });
+      if (query.origin === "local") and.push({ nationality: { in: FOREIGN_NOT } });
+      if (query.clubId === "none") and.push({ club_id: null });
+      else if (query.clubId) {
+        if (!isUuid(query.clubId)) return ok(reply, { ...empty, ...(await facets()) });
+        and.push({ club_id: query.clubId });
+      }
+      if (query.status) and.push(query.status === "Draft" ? { status: { in: UNVERIFIED } } : { status: query.status });
+      if (query.classId) {
+        if (!isUuid(query.classId)) return ok(reply, { ...empty, ...(await facets()) });
+        const classes = await prisma.weightClass.findMany({ where: { active: true }, orderBy: [{ sort_order: "asc" }, { created_at: { sort: "asc", nulls: "first" } }] });
+        const at = classes.findIndex((c) => c.id === query.classId);
+        if (at < 0) return ok(reply, { ...empty, ...(await facets()) });
+        const within = (c: (typeof classes)[number]): Prisma.FighterWhereInput => ({
+          current_weight: { ...(c.min_kg === null ? {} : { gte: c.min_kg }), ...(c.max_kg === null ? {} : { lte: c.max_kg }) },
+        });
+        and.push(within(classes[at]), ...classes.slice(0, at).map((c) => ({ NOT: within(c) })));
+      }
+
+      const where: Prisma.FighterWhereInput = { ...NOT_DELETED, ...(and.length ? { AND: and } : {}) };
+      const orderBy: Prisma.FighterOrderByWithRelationInput[] =
+        query.sort === "weight" ? [{ current_weight: "asc" }, { name: "asc" }, { id: "asc" }] : [{ name: "asc" }, { id: "asc" }];
+      const [rows, total, shown] = await Promise.all([
+        prisma.fighter.findMany({ where, include: withClub, orderBy, skip: offset, take: limit }),
+        prisma.fighter.count({ where }),
+        facets(),
+      ]);
+      return ok(reply, { items: rows.map(formatFighter), total, ...shown });
+    });
+
+    /**
+     * Possible same fighter (claude/updates/duplicate-fighter-warning.md): `{ name, nameKhmer?, dateOfBirth?, excludeId? }` →
+     * up to 5 registered fighters that look like the same person, each with its reasons: same_name, same_name_khmer,
+     * similar_name (Latin, ≤ 2 letters apart or the same words in another order), similar_name_khmer (≤ 1 apart),
+     * same_birth (only together with a similar name). Nothing is saved; staff and clubs decide.
+     */
+    protectedRoutes.post("/fighters/similar", async (request, reply) => {
+      requireRole(request, [...STAFF, Role.Club]);
+      const input = inputOf(request.body);
+      const name = String(input.get("name") ?? "");
+      const nameKhmer = String(input.get("nameKhmer") ?? "");
+      const birth = dateOnly(toDate(input.get("dateOfBirth")));
+      const excludeId = input.get<string>("excludeId");
+      const [l, w, k] = [latin(name), latinWords(name), khmer(nameKhmer)];
+      if (l.length < 3 && k.length < 2) return ok(reply, []);
+
+      const rows = await prisma.fighter.findMany({ where: { ...NOT_DELETED, ...(excludeId && isUuid(excludeId) ? { id: { not: excludeId } } : {}) }, include: { club: true } });
+      const found: { f: (typeof rows)[number]; reasons: string[]; score: number }[] = [];
+      for (const f of rows) {
+        const reasons: string[] = [];
+        const fl = latin(f.name);
+        if (l.length >= 3 && fl === l) reasons.push("same_name");
+        else if (l.length >= 5 && (latinWords(f.name) === w || editDistance(fl, l) <= 2)) reasons.push("similar_name");
+        const fk = khmer(f.name_khmer);
+        if (k.length >= 2 && fk === k) reasons.push("same_name_khmer");
+        else if (k.length >= 4 && fk.length >= 4 && editDistance(fk, k) <= 1) reasons.push("similar_name_khmer");
+        if (!reasons.length) continue;
+        if (birth && dateOnly(f.date_of_birth) === birth) reasons.push("same_birth");
+        const score = reasons.reduce((n, r) => n + (r.startsWith("same_name") ? 3 : r === "same_birth" ? 2 : 1), 0);
+        found.push({ f, reasons, score });
+      }
+      found.sort((a, b) => b.score - a.score || a.f.name.localeCompare(b.f.name));
+      return ok(reply, found.slice(0, 5).map(({ f, reasons }) => ({
+        id: f.id, name: f.name, nameKhmer: f.name_khmer, nationality: f.nationality, dateOfBirth: dateOnly(f.date_of_birth),
+        currentWeight: f.current_weight === null ? null : Number(f.current_weight), clubName: f.club?.name ?? null, image: f.image, status: f.status, reasons,
+      })));
+    });
 
     protectedRoutes.post("/fighters", async (request, reply) => {
       // Clubs and KKF staff register fighters (not organizers or officials).

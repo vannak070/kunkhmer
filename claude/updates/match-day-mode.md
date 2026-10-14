@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done 2026-10-13 (uncommitted, not live) |
+| **Status** | Done 2026-10-13 (committed and pushed (dev 11253144), not live) |
 | **Jira** | n/a |
 | **Feature** | program-workflow.md, claude/updates/program-officer-friendly.md (weigh-in, results) |
 | **Requested by** | Owner ("go ahead with match-day mode", item 19 of the Matches proposal list) |

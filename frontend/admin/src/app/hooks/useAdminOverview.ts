@@ -4,7 +4,7 @@
  * Loaded once and shared; call refresh() after an action (e.g. approving a fighter).
  */
 import { useCallback, useEffect, useState } from "react";
-import { api } from "../utils/api";
+import { api, recentFrom } from "../utils/api";
 import { proposalOf, waitingOnMe } from "../components/BoutAnswer";
 import { APPROVALS_ENABLED } from "../config/features";
 import type { TextKey } from "../i18n/program";
@@ -74,19 +74,10 @@ async function build(): Promise<Overview> {
   const isClub = role === "Club/Gym";
   // Referees and judges have no dashboard, so don't load it for them.
   const noDashboard = role === "Referee" || role === "Judge";
-  const [fighters, events, matches, champions, clubs, waitingAgreements, openDisputes] = noDashboard
-    ? [[], [], [], [], [], [], []]
-    : await Promise.all([
-        api.fighters.list().catch(() => []),
-        api.events.list().catch(() => []),
-        api.matches.list().catch(() => []),
-        api.champions.list().catch(() => []),
-        api.clubs.list().catch(() => []),
-        // What Organizers recorded for KKF to confirm (claude/updates/offline-agreements-log.md).
-        isStaff ? api.events.agreementsWaiting().catch(() => []) : Promise.resolve([]),
-        // Open disputes block sign-off (claude/updates/match-signoff-settlement.md).
-        isStaff ? api.matches.openDisputes().catch(() => []) : Promise.resolve([]),
-      ]);
+  // One call: the server sends only what the overview reads (claude/updates/admin-overview-endpoint.md).
+  const empty = { fighters: [], events: [], matches: [], champions: [], agreements_waiting: [], open_disputes: [], active_fighters: 0, clubs: 0 };
+  const data = noDashboard ? empty : await api.overview.get({ from: recentFrom() }).catch(() => empty);
+  const { fighters, events, matches, champions, agreements_waiting: waitingAgreements, open_disputes: openDisputes } = data;
   const today = todayUtc();
   const todos: TodoItem[] = [];
 
@@ -252,8 +243,8 @@ async function build(): Promise<Overview> {
     todos,
     counts,
     stats: {
-      activeFighters: (fighters as any[]).filter((f) => f.status === "Active").length,
-      clubs: (clubs as any[]).length,
+      activeFighters: data.active_fighters,
+      clubs: data.clubs,
       upcomingEvents: (events as any[]).filter((e) => time(e.date) >= today && !CLOSED_EVENT.has(e.status) && e.status !== "Draft").length,
       recordedResults: (matches as any[]).filter((m) => m.winner_id || m.winner_method).length,
     },

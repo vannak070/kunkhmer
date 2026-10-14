@@ -159,6 +159,28 @@ const titleRow = (c: { id: string; title_name: string; weight_class: Prisma.Deci
   current_holder_name: c.current_holder_name,
 });
 
+/** Rows waiting for KKF, all fight nights (the staff to-do list and the overview). */
+export async function waitingAgreements() {
+  const rows = await prisma.eventAgreement.findMany({
+    where: { status: "waiting" },
+    include: { ...withPeople, event: { include: forSnapshot } },
+    orderBy: [{ seq: "asc" }],
+  });
+  // Only the newest row of each item counts (an older waiting one was replaced by a newer record).
+  const newest = await prisma.eventAgreement.groupBy({
+    by: ["event_id", "item"],
+    where: { event_id: { in: [...new Set(rows.map((r) => r.event_id))] } },
+    _max: { seq: true },
+  });
+  const isNewest = (r: { event_id: string; item: string; seq: number }) =>
+    newest.some((n) => n.event_id === r.event_id && n.item === r.item && n._max.seq === r.seq);
+  return rows.filter(isNewest).map((r) => ({
+    ...agreementArray(r, snapshotOf(r.item as Item, r.event)),
+    event_name: r.event.name,
+    event_date: micro(r.event.date),
+  }));
+}
+
 export default async function agreementRoutes(app: FastifyInstance) {
   app.register(async (routes) => {
     routes.addHook("preHandler", requireAuth);
@@ -299,27 +321,7 @@ export default async function agreementRoutes(app: FastifyInstance) {
 
     routes.get("/agreements/waiting", async (request, reply) => {
       requireRole(request, STAFF);
-      const rows = await prisma.eventAgreement.findMany({
-        where: { status: "waiting" },
-        include: { ...withPeople, event: { include: forSnapshot } },
-        orderBy: [{ seq: "asc" }],
-      });
-      // Only the newest row of each item counts (an older waiting one was replaced by a newer record).
-      const newest = await prisma.eventAgreement.groupBy({
-        by: ["event_id", "item"],
-        where: { event_id: { in: [...new Set(rows.map((r) => r.event_id))] } },
-        _max: { seq: true },
-      });
-      const isNewest = (r: { event_id: string; item: string; seq: number }) =>
-        newest.some((n) => n.event_id === r.event_id && n.item === r.item && n._max.seq === r.seq);
-      return ok(
-        reply,
-        rows.filter(isNewest).map((r) => ({
-          ...agreementArray(r, snapshotOf(r.item as Item, r.event)),
-          event_name: r.event.name,
-          event_date: micro(r.event.date),
-        })),
-      );
+      return ok(reply, await waitingAgreements());
     });
   });
 }

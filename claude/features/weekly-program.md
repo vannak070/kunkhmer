@@ -64,3 +64,7 @@ Then the demo week (the 19 sheets) is loaded on the dev database at the end of t
 ### 2026-10-14 — fast bout entry
 - "Add several bouts" page: `updates/fast-bout-entry.md`. No backend change.
 - **Next**: duplicate-fighter warning when adding a fighter, then the demo week (19 sheets) on the dev DB; weekly reports later.
+
+### 2026-10-14 — duplicate fighter warning
+- `updates/duplicate-fighter-warning.md` (`POST /fighters/similar`, Add / Edit fighter box + save question). Suite 354/354.
+- **Next**: the demo week (19 sheets) on the dev DB; weekly reports later.

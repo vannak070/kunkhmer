@@ -288,3 +288,28 @@ exports[`fighters permissions > referee cannot verify or delete fighters 1`] = `
   "status": 403,
 }
 `;
+
+exports[`possible same fighter (claude/updates/duplicate-fighter-warning.md) > finds the same or a similar name (Latin or Khmer), adds the date of birth, and leaves out the fighter being edited 1`] = `
+{
+  "body": {
+    "data": [
+      {
+        "clubName": "null",
+        "currentWeight": "number",
+        "dateOfBirth": "date",
+        "id": "uuid",
+        "image": "null",
+        "name": "string",
+        "nameKhmer": "string",
+        "nationality": "string",
+        "reasons": [
+          "string",
+        ],
+        "status": "string",
+      },
+    ],
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;

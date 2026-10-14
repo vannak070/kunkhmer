@@ -6,6 +6,7 @@
  * The public tools are available too; their fan-site `url` fields are removed so answers only
  * link inside the admin. See claude/updates/hub-phase-d2-staff-assistant.md.
  */
+import { editDistance, khmer, latin } from "../../lib/names.ts";
 import type Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "../../db.ts";
 import type { Prisma } from "../../generated/prisma/client.ts";
@@ -219,24 +220,6 @@ async function fighterGaps() {
     out[key] = { count, fighters: rows.map(fighterItem) };
   }
   return out;
-}
-
-const latin = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g, "");
-const khmer = (s: string | null) => (s ?? "").replace(/[\s​‌‍]/g, "");
-
-function editDistance(a: string, b: string): number {
-  if (Math.abs(a.length - b.length) > 2) return 3;
-  const row = Array.from({ length: b.length + 1 }, (_, i) => i);
-  for (let i = 1; i <= a.length; i++) {
-    let prev = row[0];
-    row[0] = i;
-    for (let j = 1; j <= b.length; j++) {
-      const tmp = row[j];
-      row[j] = Math.min(row[j] + 1, row[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
-      prev = tmp;
-    }
-  }
-  return row[b.length];
 }
 
 async function duplicates() {

@@ -30,6 +30,7 @@ import { HttpError, deleted, forbidden, idParam, notFound, ok } from "../../lib/
 import { type Input, inputOf, parseBool } from "../../lib/input.ts";
 import { userArray } from "../auth/routes.ts";
 import { sponsorArray, stationArray } from "../settings/routes.ts";
+import { dateWindow } from "../../lib/window.ts";
 import { LOCKED_FOR_ORGANIZER, publishBlocker } from "./agreements.ts";
 
 const EDITORS = [...STAFF, Role.Organizer];
@@ -201,8 +202,10 @@ async function loadEvent(id: string) {
 
 export default async function eventRoutes(app: FastifyInstance) {
   app.get("/events", async (request, reply) => {
+    // Optional ?from= / ?to= (match date) so the admin can ask for the weeks it shows (claude/updates/admin-performance.md).
+    const window = dateWindow(request.query);
     const events = await prisma.event.findMany({
-      where: eventScope(request.user),
+      where: { ...eventScope(request.user), ...(window ? { date: window } : {}) },
       include: eventRelations,
       orderBy: [{ date: "desc" }, { created_at: { sort: "desc", nulls: "last" } }],
     });

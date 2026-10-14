@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done 2026-10-13 (uncommitted, not live) |
+| **Status** | Done 2026-10-13 (committed and pushed (dev 11253144), not live) |
 | **Jira** | n/a |
 | **Feature** | program-workflow.md (matching rules), matches-results.md |
 | **Requested by** | Owner ("go ahead with plain rule messages", step 2 of `updates/program-guided-fight-night.md`) |

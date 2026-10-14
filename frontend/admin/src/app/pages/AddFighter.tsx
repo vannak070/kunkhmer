@@ -13,7 +13,8 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from "reac
 import { toast } from "sonner";
 import { ArrowLeft, ImagePlus, UserPlus } from "lucide-react";
 import { api } from "../utils/api";
-import { useT } from "../i18n/program";
+import { type TextKey, useT } from "../i18n/program";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { LangSwitch } from "../components/program/shared";
 import { fieldCls } from "../components/program/FightNightFields";
 import { FIGHTER_STATUSES, FIGHTING_STYLES, NATIONALITIES, ageOf, isRealPhoto, isUnverified, nationalityLabel, recordParts } from "../components/fighters/fighterUtils";
@@ -50,6 +51,20 @@ export function AddFighter() {
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [priv, setPriv] = useState<PrivateForm>(emptyPrivate);
+  // Possible same fighter, looked up while typing the names / date of birth.
+  const [similar, setSimilar] = useState<any[]>([]);
+  const [askSame, setAskSame] = useState(false);
+  useEffect(() => {
+    const name = form.name.trim();
+    if (name.length < 3 && form.nameKhmer.trim().length < 2) { setSimilar([]); return; }
+    let live = true;
+    const timer = setTimeout(() => {
+      api.fighters.similar({ name, nameKhmer: form.nameKhmer.trim(), dateOfBirth: form.dateOfBirth || null, excludeId: editing ? id : null })
+        .then((r) => live && setSimilar(r))
+        .catch(() => live && setSimilar([]));
+    }, 500);
+    return () => { live = false; clearTimeout(timer); };
+  }, [form.name, form.nameKhmer, form.dateOfBirth]);
   const file = useRef<HTMLInputElement>(null);
   const me = api.auth.getCurrentUser();
   const isStaff = me?.role === "Super Admin" || me?.role === "KKF Officer";
@@ -115,8 +130,11 @@ export function AddFighter() {
     return Object.keys(e).length === 0;
   };
 
-  const save = async () => {
+  const save = async (confirmedDifferent = false) => {
     if (!validate()) { toast.error(t("ff.fix")); return; }
+    // A new fighter that looks like someone already registered: ask first (claude/updates/duplicate-fighter-warning.md).
+    if (!editing && !confirmedDifferent && similar.length > 0) { setAskSame(true); return; }
+    setAskSame(false);
     setBusy(true);
     const body: Record<string, unknown> = {
       name: form.name.trim(),
@@ -198,6 +216,21 @@ export function AddFighter() {
           <label className="block">{label(t("ff.nameKhmer"), !foreign)}<input lang="km" className={`${fieldCls} mt-1`} value={form.nameKhmer} onChange={(e) => set({ nameKhmer: e.target.value })} placeholder="សុខ ដារ៉ា" />{err("nameKhmer")}{foreign && !errors.nameKhmer && <span className="block text-xs text-slate-500 mt-1">{t("ff.khmerOptional")}</span>}</label>
         </div>
 
+        {similar.length > 0 && (
+          <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm space-y-1.5">
+            <p className="font-semibold text-amber-900">{t("dup.title", { n: similar.length })}</p>
+            <ul className="space-y-1">
+              {similar.map((f) => (
+                <li key={f.id} className="flex flex-wrap items-center gap-x-2 text-amber-950">
+                  <Link to={`/home/fighters/${f.id}`} target="_blank" className="font-semibold underline">{lang === "km" && f.nameKhmer ? f.nameKhmer : f.name}</Link>
+                  <span className="text-amber-800">{[f.nameKhmer && lang !== "km" ? f.nameKhmer : null, f.clubName ?? (f.nationality !== "Cambodian" ? f.nationality : null), f.currentWeight ? t("common.kg", { n: f.currentWeight }) : null, f.dateOfBirth ? t("dup.born", { date: f.dateOfBirth }) : null].filter(Boolean).join(" · ")}</span>
+                  <span className="text-xs text-amber-700">({f.reasons.map((r: string) => t(`dup.r.${r}` as TextKey)).join(", ")})</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="grid sm:grid-cols-3 gap-5">
           <label className="block">{label(t("ff.nationality"), true)}
             <select className={`${fieldCls} mt-1`} value={form.nationality} onChange={(e) => set({ nationality: e.target.value })}>
@@ -278,7 +311,29 @@ export function AddFighter() {
 
       <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
         <Link to={back} className="h-12 px-6 rounded-xl border border-slate-300 bg-white text-base font-semibold text-slate-700 hover:bg-slate-50 inline-flex items-center justify-center">{t("common.cancel")}</Link>
-        <button type="button" disabled={busy} onClick={save} className="h-12 px-6 rounded-xl bg-primary text-white text-base font-semibold hover:opacity-90 disabled:opacity-60">
+        {askSame && (
+          <Dialog open onOpenChange={(o) => !o && setAskSame(false)}>
+            <DialogContent className="sm:max-w-md rounded-2xl">
+              <DialogHeader>
+                <DialogTitle>{t("dup.askTitle")}</DialogTitle>
+                <DialogDescription>{t("dup.askText")}</DialogDescription>
+              </DialogHeader>
+              <ul className="space-y-2">
+                {similar.map((f) => (
+                  <li key={f.id} className="rounded-xl border border-slate-200 p-3 text-sm">
+                    <Link to={`/home/fighters/${f.id}`} target="_blank" className="font-semibold text-primary underline">{lang === "km" && f.nameKhmer ? f.nameKhmer : f.name}</Link>
+                    <p className="text-slate-600">{[f.clubName ?? f.nationality, f.currentWeight ? t("common.kg", { n: f.currentWeight }) : null, f.dateOfBirth ? t("dup.born", { date: f.dateOfBirth }) : null].filter(Boolean).join(" · ")}</p>
+                  </li>
+                ))}
+              </ul>
+              <DialogFooter className="gap-2">
+                <button type="button" onClick={() => setAskSame(false)} className="h-11 px-5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700">{t("dup.cancel")}</button>
+                <button type="button" onClick={() => save(true)} className="h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold">{t("dup.saveAnyway")}</button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+        <button type="button" disabled={busy} onClick={() => save()} className="h-12 px-6 rounded-xl bg-primary text-white text-base font-semibold hover:opacity-90 disabled:opacity-60">
           {busy ? t("common.saving") : editing ? t("common.save") : t("f.register")}
         </button>
       </div>
