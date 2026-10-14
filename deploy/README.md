@@ -58,12 +58,15 @@ the HTTPS certificates are issued.
 ## 4. Updating to a new version
 
 ```bash
-cd kunkhmer
-git pull
-cd deploy
-docker compose -f docker-compose.prod.yml exec backup sh /backup.sh now    # backup first
-docker compose -f docker-compose.prod.yml up -d --build
+cd kunkhmer/deploy
+sh preflight.sh                  # read-only check: running version, memory, disk, backups, data
+sh update.sh <commit>            # backup, fetch that exact version, build backend then web, start, wait for the API
 ```
+
+The server runs one exact version (a detached checkout), so `git pull` does not work there; `update.sh` does
+`git fetch origin dev && git checkout --detach <commit>`. The manual steps are: backup (`exec backup sh /backup.sh now`),
+that checkout, `COMPOSE_PARALLEL_LIMIT=1 docker compose -f docker-compose.prod.yml build backend` and `… build web`,
+then `up -d`. A release guide (for example `RELEASE-2026-10-14.md`) lists what each version changes.
 
 Database changes (migrations) are applied automatically when the backend starts.
 
