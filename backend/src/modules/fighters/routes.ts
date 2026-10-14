@@ -23,6 +23,7 @@ import { Role, STAFF, currentUser, hasRole, requireAuth, requireRole } from "../
 import { dateOnly, iso, micro, now, toDate } from "../../lib/dates.ts";
 import { HttpError, deleted, idParam, isUuid, notFound, ok } from "../../lib/http.ts";
 import { inputOf } from "../../lib/input.ts";
+import { editDistance, khmer, latin, latinWords } from "../../lib/names.ts";
 import { config } from "../../config.ts";
 import { formatRecord, recordedResults, requireRecord } from "../../lib/record.ts";
 
@@ -176,6 +177,44 @@ export default async function fighterRoutes(app: FastifyInstance) {
 
   app.register(async (protectedRoutes) => {
     protectedRoutes.addHook("preHandler", requireAuth);
+
+    /**
+     * Possible same fighter (claude/updates/duplicate-fighter-warning.md): `{ name, nameKhmer?, dateOfBirth?, excludeId? }` →
+     * up to 5 registered fighters that look like the same person, each with its reasons: same_name, same_name_khmer,
+     * similar_name (Latin, ≤ 2 letters apart or the same words in another order), similar_name_khmer (≤ 1 apart),
+     * same_birth (only together with a similar name). Nothing is saved; staff and clubs decide.
+     */
+    protectedRoutes.post("/fighters/similar", async (request, reply) => {
+      requireRole(request, [...STAFF, Role.Club]);
+      const input = inputOf(request.body);
+      const name = String(input.get("name") ?? "");
+      const nameKhmer = String(input.get("nameKhmer") ?? "");
+      const birth = dateOnly(toDate(input.get("dateOfBirth")));
+      const excludeId = input.get<string>("excludeId");
+      const [l, w, k] = [latin(name), latinWords(name), khmer(nameKhmer)];
+      if (l.length < 3 && k.length < 2) return ok(reply, []);
+
+      const rows = await prisma.fighter.findMany({ where: { ...NOT_DELETED, ...(excludeId && isUuid(excludeId) ? { id: { not: excludeId } } : {}) }, include: { club: true } });
+      const found: { f: (typeof rows)[number]; reasons: string[]; score: number }[] = [];
+      for (const f of rows) {
+        const reasons: string[] = [];
+        const fl = latin(f.name);
+        if (l.length >= 3 && fl === l) reasons.push("same_name");
+        else if (l.length >= 5 && (latinWords(f.name) === w || editDistance(fl, l) <= 2)) reasons.push("similar_name");
+        const fk = khmer(f.name_khmer);
+        if (k.length >= 2 && fk === k) reasons.push("same_name_khmer");
+        else if (k.length >= 4 && fk.length >= 4 && editDistance(fk, k) <= 1) reasons.push("similar_name_khmer");
+        if (!reasons.length) continue;
+        if (birth && dateOnly(f.date_of_birth) === birth) reasons.push("same_birth");
+        const score = reasons.reduce((n, r) => n + (r.startsWith("same_name") ? 3 : r === "same_birth" ? 2 : 1), 0);
+        found.push({ f, reasons, score });
+      }
+      found.sort((a, b) => b.score - a.score || a.f.name.localeCompare(b.f.name));
+      return ok(reply, found.slice(0, 5).map(({ f, reasons }) => ({
+        id: f.id, name: f.name, nameKhmer: f.name_khmer, nationality: f.nationality, dateOfBirth: dateOnly(f.date_of_birth),
+        currentWeight: f.current_weight === null ? null : Number(f.current_weight), clubName: f.club?.name ?? null, image: f.image, status: f.status, reasons,
+      })));
+    });
 
     protectedRoutes.post("/fighters", async (request, reply) => {
       // Clubs and KKF staff register fighters (not organizers or officials).

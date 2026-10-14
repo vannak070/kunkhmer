@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Step 1 done 2026-10-13 (uncommitted); plain rule messages, overview grouping, day-of mode, phases 6–7 next |
+| **Status** | Done 2026-10-13, committed and pushed (dev 11253144), not live; the follow-ups (rule messages, Needs attention, match day, phases 6–7) are in their own docs |
 | **Jira** | n/a |
 | **Feature** | program-workflow.md, events.md, admin-pwa.md |
 | **Requested by** | Owner ("user friendly for Program function … as per my feedback flow"; "go ahead with your recommendation but exclude licence") |

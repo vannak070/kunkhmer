@@ -248,6 +248,11 @@ export const api = {
 
   // --- FIGHTERS ---
   fighters: {
+    /** Registered fighters that look like the same person (claude/updates/duplicate-fighter-warning.md). */
+    async similar(body: { name: string; nameKhmer?: string; dateOfBirth?: string | null; excludeId?: string | null }) {
+      const res = await request("/fighters/similar", { method: "POST", body: JSON.stringify(body) });
+      return res.data as any[];
+    },
     async list(status?: string, clubId?: string) {
       let query = "";
       const params = new URLSearchParams();

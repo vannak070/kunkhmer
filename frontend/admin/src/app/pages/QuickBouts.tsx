@@ -41,19 +41,25 @@ const emptyRow = (from?: Row): Row => ({
 });
 
 /** A small search box that picks one fighter (Khmer or English name, club). */
-function Picker({ value, fighters, exclude, tone, placeholder, onChange }: {
+function Picker({ value, fighters, exclude, tone, placeholder, onChange, nearKg }: {
   value: any | null; fighters: any[]; exclude: Set<string>; tone: "red" | "blue"; placeholder: string; onChange: (f: any | null) => void;
+  /** Agreed weight: an empty search lists fighters within ±2 kg; a search lists everyone, closest weight first. */
+  nearKg?: number | null;
 }) {
   const { t, lang } = useT();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const name = (f: any) => (lang === "km" && f.nameKhmer ? f.nameKhmer : f.name);
+  const gap = (f: any) => { const kg = weightOf(f); return kg === null || !nearKg ? Infinity : Math.abs(kg - nearKg); };
   const list = useMemo(() => {
     const s = q.trim().toLowerCase();
-    if (!s) return [];
-    return fighters.filter((f) => !exclude.has(f.id)).filter((f) => [f.name, f.nameKhmer, f.alias, f.clubName].some((x) => x?.toLowerCase().includes(s))).slice(0, 8);
-  }, [q, fighters, exclude]);
+    if (!s && !nearKg) return [];
+    const found = fighters
+      .filter((f) => !exclude.has(f.id))
+      .filter((f) => (s ? [f.name, f.nameKhmer, f.alias, f.clubName].some((x) => x?.toLowerCase().includes(s)) : gap(f) <= 2));
+    return (nearKg ? found.sort((a, b) => gap(a) - gap(b)) : found).slice(0, s ? 8 : 15);
+  }, [q, fighters, exclude, nearKg]);
   useEffect(() => {
     const close = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) setOpen(false); };
     document.addEventListener("mousedown", close);
@@ -244,7 +250,7 @@ export function QuickBouts() {
               {/* Corners: number, red, blue */}
               <div className="grid gap-3 grid-cols-[1.75rem_minmax(0,1fr)] sm:grid-cols-[1.75rem_minmax(0,1fr)_minmax(0,1fr)] items-start">
                 <span className="text-sm font-bold text-slate-400 pt-3">{n(existing.length + i + 1)}</span>
-                <Picker value={r.red} fighters={fighters} exclude={new Set([...taken, ...(r.blue ? [r.blue.id] : [])])} tone="red" placeholder={t("qb.red")} onChange={(f) => update(r.key, { red: f, ...(f && !r.weightSet && weightOf(f) ? { weight: weightOf(f)! } : {}), ...(f && !r.label && f.nationality && f.nationality !== "Cambodian" ? { label: "international" } : {}) })} />
+                <Picker value={r.red} fighters={fighters} exclude={new Set([...taken, ...(r.blue ? [r.blue.id] : [])])} tone="red" nearKg={r.weightSet ? r.weight : null} placeholder={t("qb.red")} onChange={(f) => update(r.key, { red: f, ...(f && !r.weightSet && weightOf(f) ? { weight: weightOf(f)! } : {}), ...(f && !r.label && f.nationality && f.nationality !== "Cambodian" ? { label: "international" } : {}) })} />
                 <div className="col-start-2 sm:col-start-auto">
                 {r.blueLater ? (
                   <div className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-blue-300 h-11 px-3 text-sm text-slate-600">
@@ -253,7 +259,7 @@ export function QuickBouts() {
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    <Picker value={r.blue} fighters={fighters} exclude={new Set([...taken, ...(r.red ? [r.red.id] : [])])} tone="blue" placeholder={t("qb.blue")} onChange={(f) => update(r.key, { blue: f, ...(f && !r.label && f.nationality && f.nationality !== "Cambodian" ? { label: "international" } : {}) })} />
+                    <Picker value={r.blue} fighters={fighters} exclude={new Set([...taken, ...(r.red ? [r.red.id] : [])])} tone="blue" nearKg={r.weight || null} placeholder={t("qb.blue")} onChange={(f) => update(r.key, { blue: f, ...(f && !r.label && f.nationality && f.nationality !== "Cambodian" ? { label: "international" } : {}) })} />
                     {!r.blue && <button type="button" onClick={() => update(r.key, { blueLater: true, blue: null })} className="text-xs font-semibold text-slate-500 hover:text-primary">{t("qb.blueLater")}</button>}
                   </div>
                 )}

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | In progress (Clubs, Titles, Match page done; Help, ShareFightCard chrome, Not found left) |
+| **Status** | In progress, pushed (Clubs, Titles, Match page done; Help, ShareFightCard chrome, Not found left) |
 | **Jira** | n/a |
 | **Feature** | claude/features/admin-pwa.md (step 3), clubs.md, champions.md |
 | **Requested by** | Owner ("go ahead with step 3") |
@@ -36,4 +36,4 @@ Out of scope / still to do: Help, ShareFightCard chrome (the poster keeps Moul +
 - [ ] Help, ShareFightCard, Not found.
 
 ## Log
-- 2026-10-13: clubs, titles, redirects, deleted old pages and title texts are in the owner's commit 399e58f8. Match page + `bo.*` texts and this doc are uncommitted. API suite 319/319 (after merging the medical-privacy commit 2ed5b773).
+- 2026-10-13: clubs, titles, redirects, deleted old pages and title texts are in the owner's commit 399e58f8. the Match page, `bo.*` texts and this doc followed in the later pushed commits (dev 11253144). API suite 319/319 (after merging the medical-privacy commit 2ed5b773).

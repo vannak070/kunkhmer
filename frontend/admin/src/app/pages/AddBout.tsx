@@ -28,6 +28,8 @@ const BOUT_WEIGHTS = [...new Set([28, 31, 35, 38, 41, 44, 45, 48, ...WEIGHT_CLAS
 const nearestWeight = (kg: number | null) => (kg ? WEIGHT_CLASSES.reduce((best, w) => (Math.abs(w - kg) < Math.abs(best - kg) ? w : best), WEIGHT_CLASSES[0]) : WEIGHT_CLASSES[3]);
 /** More than this away from the agreed weight → a warning. */
 const WEIGHT_WARN_KG = 3;
+/** "Similar weight" in the fighter lists: within this many kg of the agreed weight. */
+const NEAR_KG = 2;
 
 export function AddBout() {
   const { batchId } = useParams();
@@ -239,12 +241,12 @@ export function AddBout() {
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-7 space-y-6 shadow-sm">
         <div className="grid md:grid-cols-2 gap-5">
-          <FighterPicker corner="red" label={t("common.red")} fighters={fighters} value={red} other={blue} onChange={pickRed} lang={lang} />
+          <FighterPicker corner="red" label={t("common.red")} fighters={fighters} value={red} other={blue} onChange={pickRed} lang={lang} nearKg={weightTouched ? weight : null} />
           <div className="space-y-2">
             {blueLater ? (
               <div className="rounded-xl border border-dashed border-blue-300 bg-blue-50/30 p-4 text-sm font-semibold text-slate-700">{t("common.blue")}: {t("corner.tba")}</div>
             ) : (
-              <FighterPicker corner="blue" label={t("common.blue")} fighters={fighters} value={blue} other={red} onChange={setBlue} lang={lang} />
+              <FighterPicker corner="blue" label={t("common.blue")} fighters={fighters} value={blue} other={red} onChange={setBlue} lang={lang} nearKg={weightTouched || red ? weight : null} />
             )}
             <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
               <input type="checkbox" className="w-4 h-4" checked={blueLater} onChange={(e) => { setBlueLater(e.target.checked); if (e.target.checked) setBlue(null); }} />
@@ -347,7 +349,7 @@ export function AddBout() {
   );
 }
 
-export function FighterPicker({ corner, label, fighters, value, other, onChange, lang }: {
+export function FighterPicker({ corner, label, fighters, value, other, onChange, lang, nearKg }: {
   corner: "red" | "blue";
   label: string;
   fighters: any[];
@@ -355,21 +357,31 @@ export function FighterPicker({ corner, label, fighters, value, other, onChange,
   other: any | null;
   onChange: (f: any | null) => void;
   lang: string;
+  /** The agreed weight: the list shows fighters within ±2 kg first (all weights on request or when searching). */
+  nearKg?: number | null;
 }) {
   const { t } = useT();
   const [q, setQ] = useState("");
+  const [allWeights, setAllWeights] = useState(false);
   const tone = corner === "red" ? "border-red-200 bg-red-50/40" : "border-blue-200 bg-blue-50/40";
   const dot = corner === "red" ? "bg-red-600" : "bg-blue-600";
   const name = (f: any) => (lang === "km" && f.nameKhmer ? f.nameKhmer : f.name);
   const facts = (f: any) => [weightOf(f) ? t("common.kg", { n: weightOf(f) }) : null, f.clubName, f.record ? `${f.record} W-L-D` : null].filter(Boolean).join(" · ");
 
+  const near = nearKg && nearKg > 0 ? nearKg : null;
+  const gap = (f: any) => { const kg = weightOf(f); return kg === null || !near ? Infinity : Math.abs(kg - near); };
   const matches = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return fighters
+    let list = fighters
       .filter((f) => f.id !== other?.id)
-      .filter((f) => !s || [f.name, f.nameKhmer, f.alias, f.clubName].some((x) => x?.toLowerCase().includes(s)))
-      .slice(0, 8);
-  }, [fighters, q, other]);
+      .filter((f) => !s || [f.name, f.nameKhmer, f.alias, f.clubName].some((x) => x?.toLowerCase().includes(s)));
+    // Similar weight: within ±2 kg of the agreed weight, closest first (a search or "all weights" shows everyone, closest first).
+    if (near) {
+      if (!s && !allWeights) list = list.filter((f) => gap(f) <= NEAR_KG);
+      list = [...list].sort((a, b) => gap(a) - gap(b));
+    }
+    return list.slice(0, near && !s ? 30 : 8);
+  }, [fighters, q, other, near, allWeights]);
 
   return (
     <div className={`rounded-xl border p-4 space-y-3 ${tone}`}>
@@ -390,6 +402,12 @@ export function FighterPicker({ corner, label, fighters, value, other, onChange,
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("bout.searchFighter")} className={`${fieldCls} pl-9`} />
           </label>
+          {near && !q.trim() && (
+            <p className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+              <span>{allWeights ? t("bout.allWeights") : t("bout.nearWeights", { kg: near, n: NEAR_KG })}</span>
+              <button type="button" onClick={() => setAllWeights((a) => !a)} className="font-semibold text-primary hover:underline">{allWeights ? t("bout.onlyNear", { n: NEAR_KG }) : t("bout.showAllWeights")}</button>
+            </p>
+          )}
           <ul className="max-h-72 overflow-y-auto rounded-xl bg-white border border-slate-200 divide-y divide-slate-100">
             {matches.length === 0 && <li className="p-3 text-sm text-slate-500">{t("bout.noFighter")}</li>}
             {matches.map((f) => (

@@ -255,3 +255,30 @@ describe("foreign (guest) fighters (claude/features/weekly-program.md)", () => {
     expect((await post("/fighters", { name: `Khmer ${uniq()}`, nameKhmer: "ខ្មែរ", gender: "Male", currentWeight: 60, dateOfBirth: "2000-01-01" }, a.admin.token)).status).toBe(422);
   });
 });
+
+describe("possible same fighter (claude/updates/duplicate-fighter-warning.md)", () => {
+  it("finds the same or a similar name (Latin or Khmer), adds the date of birth, and leaves out the fighter being edited", async () => {
+    const u = uniq();
+    const base = { name: `Sovann Dara ${u}`, nameKhmer: `សុវណ្ណ ដារា ${u}`, dateOfBirth: "2001-02-03", gender: "Male", currentWeight: 57, height: 168 };
+    const existing = (await post("/fighters", base, a.admin.token)).body.data;
+    const similar = async (body: Record<string, unknown>) => (await post("/fighters/similar", body, a.officer.token)).body.data as any[];
+    const hit = async (body: Record<string, unknown>) => (await similar(body)).find((x) => x.id === existing.id);
+
+    expect(await hit({ name: base.name })).toMatchObject({ name: base.name, reasons: ["same_name"] });
+    expect((await hit({ name: `Sovan Dara ${u}` }))?.reasons).toEqual(["similar_name"]);
+    expect((await hit({ name: `Dara Sovann ${u}` }))?.reasons).toEqual(["similar_name"]);
+    expect((await hit({ name: "Someone Else Entirely", nameKhmer: base.nameKhmer }))?.reasons).toEqual(["same_name_khmer"]);
+    expect((await hit({ name: base.name, dateOfBirth: "2001-02-03" }))?.reasons).toEqual(["same_name", "same_birth"]);
+    expect(await hit({ name: base.name, excludeId: existing.id })).toBeUndefined();
+    expect(await hit({ name: `Totally Different ${uniq()}` })).toBeUndefined();
+    expect(await similar({ name: "Al" })).toEqual([]);
+    const res = await post("/fighters/similar", { name: base.name }, a.officer.token);
+    expect(shapeOf(res)).toMatchSnapshot();
+  });
+
+  it("is for KKF staff and clubs", async () => {
+    expect((await post("/fighters/similar", { name: "Sovann Dara" }, a.club.token)).status).toBe(200);
+    expect((await post("/fighters/similar", { name: "Sovann Dara" }, a.referee.token)).status).toBe(403);
+    expect((await post("/fighters/similar", { name: "Sovann Dara" })).status).toBe(401);
+  });
+});

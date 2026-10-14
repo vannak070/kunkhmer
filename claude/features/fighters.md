@@ -42,6 +42,9 @@ Nested inside other responses as snake_case `fighterArray()`.
   `AddFighter.tsx` (new/edit), `FighterDetail.tsx`.
 - Public: `/fighters/:id` → `SuperAppFighterDetail.tsx` (uses slugs/names).
 
+## Possible same fighter
+`POST /fighters/similar` and the amber box / save question on Add / Edit fighter: `updates/duplicate-fighter-warning.md`.
+
 ## Foreign (guest) fighters
 Since 2026-10-13 a non-Cambodian fighter needs only a name, nationality, gender and weight: date of birth and height are
 optional (columns nullable, migration `20261013210000_guest_fighters`; API returns `dateOfBirth` / `height` null), the
