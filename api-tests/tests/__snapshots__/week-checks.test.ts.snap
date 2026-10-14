@@ -1,0 +1,148 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`weekly checks > finds clashes, double bookings, weight problems, empty corners and unfinished matches 1`] = `
+{
+  "body": {
+    "data": {
+      "checks": [
+        {
+          "event_id": "uuid",
+          "fighter_id": "uuid",
+          "kind": "string",
+          "level": "string",
+          "match_id": "uuid",
+          "params": {
+            "agreed": "number",
+            "date": "date",
+            "event": "string",
+            "kg": "number",
+            "name": "string",
+            "time": "string",
+          },
+        },
+        {
+          "event_id": "uuid",
+          "fighter_id": "uuid",
+          "kind": "string",
+          "level": "string",
+          "match_id": "null",
+          "params": {
+            "dates": [
+              "date",
+            ],
+            "event_ids": [
+              "uuid",
+            ],
+            "events": [
+              "string",
+            ],
+            "name": "string",
+          },
+        },
+        {
+          "event_id": "uuid",
+          "fighter_id": "null",
+          "kind": "string",
+          "level": "string",
+          "match_id": "null",
+          "params": {
+            "broadcaster": "string",
+            "date": "date",
+            "event_ids": [
+              "uuid",
+            ],
+            "events": [
+              "string",
+            ],
+            "times": [
+              "string",
+            ],
+          },
+        },
+        {
+          "event_id": "uuid",
+          "fighter_id": "null",
+          "kind": "string",
+          "level": "string",
+          "match_id": "null",
+          "params": {
+            "bouts": "number",
+            "date": "date",
+            "event": "string",
+            "time": "string",
+          },
+        },
+        {
+          "event_id": "uuid",
+          "fighter_id": "null",
+          "kind": "string",
+          "level": "string",
+          "match_id": "uuid",
+          "params": {
+            "bout": "string",
+            "date": "date",
+            "event": "string",
+            "time": "string",
+          },
+        },
+        {
+          "event_id": "uuid",
+          "fighter_id": "uuid",
+          "kind": "string",
+          "level": "string",
+          "match_id": "uuid",
+          "params": {
+            "agreed": "number",
+            "date": "date",
+            "event": "string",
+            "gap": "number",
+            "kg": "number",
+            "limit": "number",
+            "name": "string",
+            "time": "string",
+          },
+        },
+        {
+          "event_id": "uuid",
+          "fighter_id": "null",
+          "kind": "string",
+          "level": "string",
+          "match_id": "null",
+          "params": {
+            "date": "date",
+            "event": "string",
+            "time": "null",
+          },
+        },
+        {
+          "event_id": "uuid",
+          "fighter_id": "null",
+          "kind": "string",
+          "level": "string",
+          "match_id": "null",
+          "params": {
+            "date": "date",
+            "event_ids": [
+              "uuid",
+            ],
+            "events": [
+              "string",
+            ],
+            "times": [
+              "string",
+            ],
+            "venue": "string",
+          },
+        },
+      ],
+      "from": "date",
+      "matches": "number",
+      "problems": "number",
+      "to": "date",
+      "warnings": "number",
+    },
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;
