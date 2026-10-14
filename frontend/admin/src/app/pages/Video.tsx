@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { Plus, Search, Video as VideoIcon, Calendar, Eye, Edit2, Trash2, FileText, CheckCircle, Clock, XCircle, Upload, X, Play, User, Building2, ArrowLeft, Save, ChevronDown, Swords, Heading, Bold, Italic, List, Quote, Link2 } from "lucide-react";
 import { usePermissions } from "../hooks/usePermissions";
 import { api } from "../utils/api";
+import { FighterSearchSelect } from "../components/fighters/FighterSearchSelect";
 import { type TextKey, khmerDigits, useT } from "../i18n/program";
 
 interface VideoItem {
@@ -63,7 +64,8 @@ export function Video() {
   const [loading, setLoading] = useState(true);
 
   // Relations state lists
-  const [fightersList, setFightersList] = useState<any[]>([]);
+  // Fighters the page knows by id (from the videos' own links and the matches); the fighter link is found by search.
+  const [fighterIndex, setFighterIndex] = useState<Map<string, any>>(new Map());
   const [clubsList, setClubsList] = useState<any[]>([]);
   const [matchesList, setMatchesList] = useState<any[]>([]);
 
@@ -91,9 +93,8 @@ export function Video() {
   const loadRelationsAndVideos = async () => {
     setLoading(true);
     try {
-      const [vData, fData, cData, mData] = await Promise.all([
+      const [vData, cData, mData] = await Promise.all([
         api.videos.list(),
-        api.fighters.list(),
         api.clubs.list(),
         api.matches.list()
       ]);
@@ -118,7 +119,13 @@ export function Video() {
       setVideos(mappedVideos);
 
       // Mapped relations
-      setFightersList(fData || []);
+      const known = new Map<string, any>();
+      for (const v of vData || []) if (v.fighter?.id) known.set(v.fighter.id, { id: v.fighter.id, name: v.fighter.name, nameKhmer: v.fighter.name_khmer, image: v.fighter.image });
+      for (const m of mData || []) {
+        if (m.fighter_a_id && m.fighter_a_name && !known.has(m.fighter_a_id)) known.set(m.fighter_a_id, { id: m.fighter_a_id, name: m.fighter_a_name, image: m.fighter_a_image });
+        if (m.fighter_b_id && m.fighter_b_name && !known.has(m.fighter_b_id)) known.set(m.fighter_b_id, { id: m.fighter_b_id, name: m.fighter_b_name, image: m.fighter_b_image });
+      }
+      setFighterIndex(known);
       setClubsList(cData || []);
       setMatchesList(mData || []);
     } catch (err) {
@@ -341,7 +348,7 @@ export function Video() {
 
   const getFighterById = (id?: string) => {
     if (!id) return null;
-    return fightersList.find(f => f.id === id);
+    return fighterIndex.get(id);
   };
 
   const getClubById = (id?: string) => {
@@ -587,18 +594,15 @@ export function Video() {
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                     {t("vid.f.fighter")}
                   </label>
-                  <select
-                    value={formData.fighterId}
-                    onChange={(e) => setFormData({ ...formData, fighterId: e.target.value })}
-                    className="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all cursor-pointer"
-                  >
-                    <option value="">{t("vid.noFighter")}</option>
-                    {fightersList.map(fighter => (
-                      <option key={fighter.id} value={fighter.id}>
-                        {fighter.name}
-                      </option>
-                    ))}
-                  </select>
+                  <FighterSearchSelect
+                    selected={formData.fighterId ? getFighterById(formData.fighterId) ?? { id: formData.fighterId, name: "…" } : null}
+                    inputClassName="w-full bg-white border border-border/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 shadow-sm transition-all"
+                    placeholder={t("vid.noFighter")}
+                    onChange={(f) => {
+                      if (f) setFighterIndex((prev) => new Map(prev).set(f.id, { id: f.id, name: f.name, nameKhmer: f.nameKhmer, clubName: f.clubName, image: f.image }));
+                      setFormData({ ...formData, fighterId: f?.id ?? "" });
+                    }}
+                  />
                   <p className="text-[10px] text-muted-foreground mt-1">{t("vid.fighterHint")}</p>
                 </div>
 

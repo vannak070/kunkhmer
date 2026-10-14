@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done locally (2026-10-14); not deployed |
+| **Status** | Done 2026-10-14 (live since 2026-10-14, 936db4ea) |
 | **Jira** | n/a |
 | **Feature** | admin dashboard + header bell (`hooks/useAdminOverview.ts`); follows `updates/admin-performance.md` |
 | **Requested by** | Owner ("go ahead with the server-side overview call") |

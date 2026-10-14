@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-10-14, uncommitted, not live) |
+| **Status** | Done (2026-10-14, live since 936db4ea) |
 | **Feature** | claude/features/fighters.md |
 | **Requested by** | vannak070 ("start duplicate fighter warning") — ~220 fighter slots a week, many new names typed in Khmer and English |
 

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-10-14, committed and pushed (dev 11253144), not live) |
+| **Status** | Done (2026-10-14, live since 2026-10-14, 936db4ea) |
 | **Feature** | claude/features/weekly-program.md, claude/features/matches-results.md |
 | **Requested by** | vannak070 ("start fast bout entry") — staff type 15–20 shows / ~100 bouts a week straight into the system (no Excel import, no offline template) |
 

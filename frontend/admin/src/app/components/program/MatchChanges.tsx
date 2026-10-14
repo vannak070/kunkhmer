@@ -210,14 +210,9 @@ export function ReplacementPanel({ match, onDone, onCancelBout, side: sideProp, 
   const from = match[`slot_${side}_from`];
   const fromNo = from ? numbers?.get(from) : undefined;
   const other = side === "a" ? "b" : "a";
-  const [fighters, setFighters] = useState<any[]>([]);
   const [pick, setPick] = useState<any | null>(null);
   const [check, setCheck] = useState<{ allowed: boolean; blocked: RuleHit[]; warnings: RuleHit[] } | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    api.fighters.list().then((f: any[]) => setFighters((f || []).filter((x) => x.status === "Active" && x.id !== match[`fighter_${other}_id`] && x.id !== match[`fighter_${side}_id`]))).catch(() => {});
-  }, [match.id]);
 
   useEffect(() => {
     setCheck(undefined);
@@ -260,7 +255,7 @@ export function ReplacementPanel({ match, onDone, onCancelBout, side: sideProp, 
           <p className="text-sm text-red-900 mt-1">{t("ch.needText", { name: match[`fighter_${side}_name`], corner: t(side === "a" ? "common.red" : "common.blue") })}</p>
         </div>
       )}
-      <FighterPicker corner={side === "a" ? "red" : "blue"} label={t(side === "a" ? "common.red" : "common.blue")} fighters={fighters} value={pick} other={null} onChange={setPick} lang={lang} nearKg={Number(match.agreed_weight) || null} />
+      <FighterPicker corner={side === "a" ? "red" : "blue"} label={t(side === "a" ? "common.red" : "common.blue")} value={pick} exclude={[match[`fighter_${other}_id`], match[`fighter_${side}_id`]]} onChange={setPick} lang={lang} nearKg={Number(match.agreed_weight) || null} />
       {pick && check === undefined && <p role="status" className="text-sm text-slate-600">{t("ch.checking")}</p>}
       {blocked.length > 0 && (
         <ul role="alert" className="rounded-xl border border-red-300 bg-white p-3 space-y-1 text-sm text-red-900">

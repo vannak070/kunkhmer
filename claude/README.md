@@ -20,7 +20,7 @@ claude/features/fighter-medical-status.md".
 | File | Feature | Status |
 |---|---|---|
 | `features/about-federation.md` | About the Federation page (website-review step 3) | Done |
-| `features/admin-pwa.md` | Admin as an installable app (PWA) for low-tech operators | Partly built (committed, not deployed) |
+| `features/admin-pwa.md` | Admin as an installable app (PWA) for low-tech operators | Built and live since 2026-10-14 (936db4ea); real-phone check open |
 | `features/ai-assistant.md` | Kun Khmer AI assistant (plan) | Live (needs API key) |
 | `features/auth-users.md` | Auth and user management | Done |
 | `features/champions.md` | Championship titles | Done |

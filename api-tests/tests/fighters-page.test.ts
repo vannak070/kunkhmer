@@ -81,6 +81,26 @@ describe("fighters page", () => {
     }
   });
 
+  it("serves the bout pickers: weight range, closest weight first, excluded ids, no filter choices", async () => {
+    // Fighters in the tag: 50 (Draft), 54, 57 (Injured), 60, 63.5, 67 — a picker asks for the Active ones: 54, 60, 63.5, 67.
+    const near = await page(`q=${tag}&status=Active&nearKg=60&limit=3&facets=0`);
+    expect(near.items.map((f: any) => f.currentWeight)).toEqual([60, 63.5, 54]); // 0, 3.5 and 6 kg away; 67 (7 kg) is next
+    expect(near.total).toBe(4);
+    expect(near.clubs).toEqual([]);
+    expect(near.statuses).toEqual([]);
+
+    const range = await page(`q=${tag}&status=Active&minKg=58&maxKg=64&nearKg=63&facets=0`);
+    expect(range.items.map((f: any) => f.currentWeight)).toEqual([63.5, 60]);
+    expect(range.total).toBe(2);
+
+    const skipped = await page(`q=${tag}&status=Active&minKg=58&maxKg=64&excludeIds=${made[3].id},not-an-id&facets=0`);
+    expect(skipped.items.map((f: any) => f.name)).toEqual([`${tag} Charlie`]);
+
+    // offset works on the closest-first list
+    const second = await page(`q=${tag}&status=Active&nearKg=60&limit=3&offset=3&facets=0`);
+    expect(second.items.map((f: any) => f.currentWeight)).toEqual([67]);
+  });
+
   it("tells the club and status choices from every fighter, not just the page", async () => {
     const p = await page(`q=${tag}&limit=1`);
     expect(p.clubs.map((c: any) => c.id)).toContain(clubId);

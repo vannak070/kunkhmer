@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done 2026-10-14 (uncommitted, not live) |
+| **Status** | Done 2026-10-14 (live since 936db4ea) |
 | **Jira** | n/a |
 | **Feature** | settings.md (Help), admin-pwa.md (step 3: Help) |
 | **Requested by** | Owner ("go ahead with the Help page") |

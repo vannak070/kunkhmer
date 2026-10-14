@@ -193,11 +193,12 @@ export default async function fighterRoutes(app: FastifyInstance) {
      * One page of the admin Fighters list (claude/updates/admin-fighters-paging.md). Filters work as on the screen:
      * `q` (name, Khmer name, alias or club, any case), `origin` (local | foreign), `clubId` (or "none"), `status` (a display
      * status: "Draft" = not yet public), `classId` (a weight class: its range, minus the earlier classes, like the screen),
-     * `sort` (name | weight), `limit` (default 30, most 100) and `offset`. Answers `{ items, total, clubs, noClub, statuses }`:
+     * `sort` (name | weight), `limit` (default 30, most 100) and `offset`. For the bout pickers (claude/updates/admin-bout-picker.md): `minKg` / `maxKg`
+     * (current weight, both included), `excludeIds` (comma-separated ids to leave out) and `nearKg` (closest to this weight first, then A–Z; wins over `sort`), and `facets=0` to skip the filter choices (they come back empty). Answers `{ items, total, clubs, noClub, statuses }`:
      * the page, how many match, and the choices for the club and status filters (from all fighters, whatever the filters).
      */
     protectedRoutes.get("/fighters/page", async (request, reply) => {
-      const query = request.query as { q?: string; origin?: string; clubId?: string; status?: string; classId?: string; sort?: string; limit?: string; offset?: string };
+      const query = request.query as { q?: string; origin?: string; clubId?: string; status?: string; classId?: string; sort?: string; limit?: string; offset?: string; minKg?: string; maxKg?: string; nearKg?: string; excludeIds?: string; facets?: string };
       const limit = Math.min(Math.max(Number.parseInt(query.limit ?? "", 10) || 30, 1), 100);
       const offset = Math.max(Number.parseInt(query.offset ?? "", 10) || 0, 0);
       const empty = { items: [], total: 0 };
@@ -228,13 +229,29 @@ export default async function fighterRoutes(app: FastifyInstance) {
         and.push(within(classes[at]), ...classes.slice(0, at).map((c) => ({ NOT: within(c) })));
       }
 
+      const choices = () => (query.facets === "0" ? Promise.resolve({ clubs: [], noClub: false, statuses: [] as string[] }) : facets());
+      const kg = (v?: string) => (v !== undefined && v !== "" && Number.isFinite(Number(v)) ? Number(v) : null);
+      const [minKg, maxKg, nearKg] = [kg(query.minKg), kg(query.maxKg), kg(query.nearKg)];
+      if (minKg !== null || maxKg !== null) and.push({ current_weight: { ...(minKg === null ? {} : { gte: minKg }), ...(maxKg === null ? {} : { lte: maxKg }) } });
+      const exclude = (query.excludeIds ?? "").split(",").filter((id) => isUuid(id));
+      if (exclude.length) and.push({ id: { notIn: exclude } });
+
       const where: Prisma.FighterWhereInput = { ...NOT_DELETED, ...(and.length ? { AND: and } : {}) };
+      if (nearKg !== null) {
+        // Closest weight first (then A–Z): the database can't order by distance, so sort the matches' ids and weights here.
+        const all = await prisma.fighter.findMany({ where, select: { id: true, name: true, current_weight: true } });
+        all.sort((a, b) => Math.abs(Number(a.current_weight) - nearKg) - Math.abs(Number(b.current_weight) - nearKg) || a.name.localeCompare(b.name));
+        const ids = all.slice(offset, offset + limit).map((f) => f.id);
+        const rows = await prisma.fighter.findMany({ where: { id: { in: ids } }, include: withClub });
+        const byId = new Map(rows.map((f) => [f.id, f]));
+        return ok(reply, { items: ids.map((id) => formatFighter(byId.get(id)!)), total: all.length, ...(await choices()) });
+      }
       const orderBy: Prisma.FighterOrderByWithRelationInput[] =
         query.sort === "weight" ? [{ current_weight: "asc" }, { name: "asc" }, { id: "asc" }] : [{ name: "asc" }, { id: "asc" }];
       const [rows, total, shown] = await Promise.all([
         prisma.fighter.findMany({ where, include: withClub, orderBy, skip: offset, take: limit }),
         prisma.fighter.count({ where }),
-        facets(),
+        choices(),
       ]);
       return ok(reply, { items: rows.map(formatFighter), total, ...shown });
     });

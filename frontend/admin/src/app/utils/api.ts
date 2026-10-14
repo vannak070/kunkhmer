@@ -316,7 +316,7 @@ export const api = {
       return res.data as any[];
     },
     /** One page of the admin Fighters list, filtered by the server (claude/updates/admin-fighters-paging.md). */
-    async page(params: { q?: string; origin?: string; clubId?: string; status?: string; classId?: string; sort?: string; limit?: number; offset?: number }) {
+    async page(params: { q?: string; origin?: string; clubId?: string; status?: string; classId?: string; sort?: string; limit?: number; offset?: number; minKg?: number; maxKg?: number; nearKg?: number; excludeIds?: string; facets?: number }) {
       const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== "" && v != null).map(([k, v]) => [k, String(v)])).toString();
       const res = await request(`/fighters/page${query ? `?${query}` : ""}`);
       return res.data as { items: any[]; total: number; clubs: { id: string; name: string }[]; noClub: boolean; statuses: string[] };

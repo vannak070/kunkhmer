@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done 2026-10-13 (committed and pushed (dev 11253144), not live) |
+| **Status** | Done 2026-10-13 (live since 2026-10-14, 936db4ea) |
 | **Jira** | n/a |
 | **Feature** | program-workflow.md, claude/updates/program-overview-next-job.md |
 | **Requested by** | Owner ("go ahead with Needs attention grouped by fight night") |

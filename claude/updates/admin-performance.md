@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done locally (2026-10-14); not deployed |
+| **Status** | Done 2026-10-14 (live since 2026-10-14, 936db4ea) |
 | **Jira** | n/a |
 | **Feature** | admin-pwa.md, claude/updates/admin-pwa-performance.md (earlier loading work) |
 | **Requested by** | Owner ("review the entire system, especially the admin portal — it is very slow") |

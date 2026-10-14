@@ -15,6 +15,7 @@ import { LangSwitch } from "../components/program/shared";
 import { fieldCls } from "../components/program/FightNightFields";
 import { ORGANIZATIONS, TITLE_TYPES, typeLabel } from "../components/titles/titleUtils";
 import { isRealPhoto } from "../components/fighters/fighterUtils";
+import { FighterSearchSelect } from "../components/fighters/FighterSearchSelect";
 
 interface Form { titleName: string; championType: string; weightClass: string; organization: string; holderId: string; beltImageUrl: string; notes: string }
 const empty: Form = { titleName: "", championType: "KKF National", weightClass: "60", organization: "KKF", holderId: "", beltImageUrl: "", notes: "" };
@@ -25,7 +26,8 @@ export function CreateChampion() {
   const { t } = useT();
   const editing = Boolean(id);
   const [form, setForm] = useState<Form>(empty);
-  const [fighters, setFighters] = useState<any[]>([]);
+  // The chosen champion (an object, found by search or loaded for an existing title).
+  const [holder, setHolder] = useState<any | null>(null);
   const [loaded, setLoaded] = useState(!editing);
   const [loadFailed, setLoadFailed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -43,11 +45,12 @@ export function CreateChampion() {
     }).catch(() => setLoadFailed(true));
   };
   useEffect(() => { if (editing) load(); }, [id]);
+  // The current champion shows even if he or she is not active any more; new ones are found among Active fighters.
   useEffect(() => {
-    api.fighters.list().then((f: any[]) => setFighters((f || []).sort((a, b) => a.name.localeCompare(b.name)))).catch(() => {});
-  }, []);
-  // Active fighters, plus the current champion even if he or she is not active any more.
-  const candidates = fighters.filter((x) => (x.status ?? "Active") === "Active" || x.id === form.holderId);
+    if (!form.holderId) { setHolder(null); return; }
+    if (holder?.id === form.holderId) return;
+    api.fighters.get(form.holderId).then(setHolder).catch(() => setHolder(null));
+  }, [form.holderId]);
 
   const set = (patch: Partial<Form>) => setForm((f) => ({ ...f, ...patch }));
   const weights = [...new Set([...WEIGHT_CLASSES, Number(form.weightClass) || 0])].filter((w) => w > 0).sort((a, b) => a - b);
@@ -62,7 +65,6 @@ export function CreateChampion() {
   const save = async () => {
     if (!validate()) { toast.error(t("ff.fix")); return; }
     setBusy(true);
-    const holder = fighters.find((f) => f.id === form.holderId);
     const body: Record<string, unknown> = {
       titleName: form.titleName.trim(),
       championType: form.championType,
@@ -149,10 +151,8 @@ export function CreateChampion() {
         </div>
 
         <label className="block">{label(t("tf.champion"))}
-          <select className={`${fieldCls} mt-1`} value={form.holderId} onChange={(e) => set({ holderId: e.target.value })}>
-            <option value="">{t("tf.noChampion")}</option>
-            {candidates.map((f) => <option key={f.id} value={f.id}>{f.name}{f.clubName ? ` — ${f.clubName}` : ""}</option>)}
-          </select>
+          <FighterSearchSelect activeOnly selected={form.holderId ? holder : null} inputClassName={fieldCls} placeholder={t("tf.noChampion")}
+            onChange={(f) => { setHolder(f); set({ holderId: f?.id ?? "" }); }} />
           <span className="block text-xs text-slate-500 mt-1">{t("tf.championHint")}</span>
         </label>
 
