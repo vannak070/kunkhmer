@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-10-14, committed bb5a146c; not live) |
+| **Status** | Done (2026-10-14, committed bb5a146c; live since a1c0fb9b, 2026-10-14) |
 | **Jira** | n/a |
 | **Feature** | claude/features/fighters.md, claude/features/fighter-personal-records.md |
 | **Requested by** | Owner ("How to protect duplicate fighter" → "start 1 and 2") |

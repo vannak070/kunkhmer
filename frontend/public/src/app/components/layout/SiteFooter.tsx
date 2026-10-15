@@ -49,7 +49,8 @@ export function SiteFooter({ onSectionChange, flush = false }: SiteFooterProps) 
     <footer className={`bg-[#eef3fb] border-t border-[#d5e0f3] text-gray-700 ${flush ? "" : "mt-20"}`}>
       <div className="max-w-7xl mx-auto px-4 md:px-6 pt-12 md:pt-16 pb-10 grid grid-cols-1 md:grid-cols-12 gap-10 lg:gap-14">
         {/* Brand */}
-        <div className="md:col-span-5">
+        {/* Brand, intro and social links: tablet and up only (owner, 2026-10-15 — not needed on a phone). */}
+        <div className="hidden md:block md:col-span-5">
           <div className="flex items-center gap-3">
             <img src={kkfLogo} alt="" className="w-12 h-12 rounded-full bg-white shadow-sm" />
             <div>

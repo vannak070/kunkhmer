@@ -307,15 +307,16 @@ function PartnerStrip({ partners, centered = false }: { partners: Partner[]; cen
         const body = (
           <>
             <PartnerLogo p={p} size="lg" />
-            <span className="min-w-0 text-center sm:text-left">
+            {/* Phone: logo only (the name stays for screen readers); from sm the name shows beside the logo. */}
+            <span className="sr-only sm:not-sr-only min-w-0 sm:text-left">
               <span lang={textLang(p.name)} className="block font-semibold text-[var(--kk-navy)] leading-tight line-clamp-2 break-words">{p.name}</span>
               {(p.broadcaster || p.international) && <span className="mt-0.5 block text-xs text-gray-500">{t(p.broadcaster ? "home.officialBroadcaster" : "partners.internationalBadge")}</span>}
             </span>
           </>
         );
-        const cls = "h-full flex flex-col sm:flex-row items-center gap-3 sm:gap-4 rounded-2xl bg-white border border-gray-200 shadow-sm px-4 py-4 sm:pr-6 sm:min-w-[220px]";
+        const cls = "h-full flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 rounded-2xl bg-white border border-gray-200 shadow-sm p-3 sm:px-4 sm:py-4 sm:pr-6 sm:min-w-[220px]";
         return (
-          <li key={p.id} className="shrink-0 snap-start w-40 sm:w-auto">
+          <li key={p.id} title={p.name} className="shrink-0 snap-start sm:w-auto">
             {p.url ? (
               <a
                 href={p.url}
@@ -367,37 +368,42 @@ function NewsCard({ a }: { a: HomeArticle }) {
   );
 }
 
-function NewsGrid({ articles }: { articles: HomeArticle[] }) {
+/**
+ * Lead story + list. `wide` = news has the whole row (no fight nights / results beside it): the lead and the list
+ * then sit side by side on a large screen, so the lead photo isn't a full-width banner taller than the screen.
+ */
+function NewsGrid({ articles, wide = false }: { articles: HomeArticle[]; wide?: boolean }) {
   // Too few stories for a lead + list: show equal cards so nothing is stretched.
   if (articles.length < 3) {
     return (
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div className={`grid grid-cols-1 gap-6 sm:grid-cols-2 ${wide ? "lg:grid-cols-3" : ""}`}>
         {articles.map((a) => <NewsCard key={a.id} a={a} />)}
       </div>
     );
   }
   const [lead, ...rest] = articles;
   return (
-    <div className="grid grid-cols-1 gap-4">
-      <Link to={articlePath(lead)} className="kk-focus group block bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
-        <div className="aspect-[16/9] overflow-hidden bg-gray-200">
+    <div className={`grid grid-cols-1 gap-4 ${wide ? "lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-6" : ""}`}>
+      <Link to={articlePath(lead)} className={`kk-focus group block bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow ${wide ? "lg:flex lg:flex-col" : ""}`}>
+        <div className={`aspect-[16/9] overflow-hidden bg-gray-200 ${wide ? "lg:aspect-auto lg:flex-1 lg:min-h-72" : ""}`}>
           <Picture src={lead.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 kk-motion" />
         </div>
         <div className="p-5 md:p-6">
           <NewsMeta a={lead} className="mb-2" />
-          <h3 lang={textLang(lead.title)} className="kk-heading text-2xl md:text-3xl text-gray-900 group-hover:text-[var(--kk-blue)]">{lead.title}</h3>
+          <h3 lang={textLang(lead.title)} className="kk-heading text-2xl md:text-3xl text-gray-900 line-clamp-3 group-hover:text-[var(--kk-blue)]">{lead.title}</h3>
           {lead.excerpt && <p lang={textLang(lead.excerpt)} className="mt-2 text-gray-600 line-clamp-2">{lead.excerpt}</p>}
         </div>
       </Link>
       {rest.length > 0 && (
-        <ul className="grid grid-cols-1 gap-4 content-start">
+        <ul className={`grid grid-cols-1 gap-4 content-start ${wide ? "lg:gap-6" : ""}`}>
           {rest.map((a) => (
             <li key={a.id}>
-              <Link to={articlePath(a)} className="kk-focus group flex gap-4 items-center bg-white rounded-2xl border border-gray-200 p-3 hover:shadow-md transition-shadow">
-                <Picture src={a.image} className="w-28 h-20 md:w-32 md:h-24 rounded-xl object-cover bg-gray-200 shrink-0" />
-                <div className="min-w-0">
-                  <NewsMeta a={a} />
-                  <h3 lang={textLang(a.title)} className="font-semibold text-gray-900 line-clamp-2 group-hover:text-[var(--kk-blue)]">{a.title}</h3>
+              {/* Beside a wide lead: picture on top, so both columns end level. */}
+              <Link to={articlePath(a)} className={`kk-focus group flex gap-4 items-start bg-white rounded-2xl border border-gray-200 p-3 hover:shadow-md transition-shadow ${wide ? "lg:flex-col lg:gap-0 lg:p-0 lg:overflow-hidden" : ""}`}>
+                <Picture src={a.image} className={`w-28 h-20 md:w-36 md:h-24 rounded-xl object-cover bg-gray-200 shrink-0 ${wide ? "lg:w-full lg:h-auto lg:aspect-[5/2] lg:rounded-none" : ""}`} />
+                <div className={`min-w-0 py-0.5 ${wide ? "lg:p-4" : ""}`}>
+                  <NewsMeta a={a} className="mb-1" />
+                  <h3 lang={textLang(a.title)} className="font-semibold leading-snug text-gray-900 line-clamp-3 group-hover:text-[var(--kk-blue)]">{a.title}</h3>
                 </div>
               </Link>
             </li>
@@ -671,7 +677,7 @@ export default function HomePage(props: HomePageProps) {
             {news.length > 0 && (
               <div className="min-w-0">
                 <SectionHead title={t("home.newsTitle")} action={{ label: t("home.viewAllNews"), onClick: () => onNavigate("news-events") }} />
-                <NewsGrid articles={news} />
+                <NewsGrid articles={news} wide={!(eventList.length || results.length)} />
               </div>
             )}
             {(eventList.length > 0 || results.length > 0) && (

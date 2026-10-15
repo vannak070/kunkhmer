@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done (2026-10-14, committed bb5a146c; not live) |
+| **Status** | Done (2026-10-14, committed bb5a146c; live since a1c0fb9b, 2026-10-14) |
 | **Feature** | claude/features/public-site.md (Home › Become a partner) |
 | **Requested by** | vannak070 (screenshot of the partner box: "please display sponsor only") |
 
