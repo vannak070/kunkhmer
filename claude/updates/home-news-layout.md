@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done 2026-10-15 (uncommitted, not live) |
+| **Status** | Done 2026-10-15 — committed 15b2b160, live since 2026-10-15 |
 | **Jira** | n/a |
 | **Feature** | claude/features/public-site.md (Home) |
 | **Requested by** | Owner: "The News feature is very bad display under home page" (production) |
@@ -30,6 +30,9 @@ In scope: the home news block only. Out of scope: `/news-events`, article page, 
 - [x] 1024 px in Khmer, 375 px phone: no overflow, titles clamp.
 
 ## Log
+- 2026-10-15 (after the 15b2b160 deploy, uncommitted): owner (phone screenshot) "mobile view should center" → the hero
+  kicker, title, tagline and KUNKHMER HUB box are centred below `lg` when the upcoming-match card is shown (`HomePage.tsx`
+  Hero, `HubAskBox.tsx`: always `mx-auto`, `lg:mx-0` beside the card). Typecheck + build OK; not yet checked in a browser.
 - 2026-10-15: owner (phone screenshot): "footer => remove this section in phone" → the footer's brand block (logo, intro,
   Follow us / Facebook) is hidden below `md` (`SiteFooter.tsx`); phones start at Explore. Note: social links live only
   there, so phones have no Facebook link now.

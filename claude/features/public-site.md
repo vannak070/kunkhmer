@@ -85,6 +85,8 @@ and Khmer (`claude/tests/test-admin-ui.md` pattern), and run `vite build` in the
 `kunkhmer_frontend_public` container.
 
 ## Go-live checklist (hosting)
+**Installable app (PWA, 2026-10-15):** manifest + KKF icons, light service worker (pages network first, never stores `/api/` data) — `updates/public-site-pwa.md`.
+
 The production bundle and step-by-step guide are in `deploy/` (`deploy/README.md`, `updates/go-live-setup.md`):
 one server, Caddy with automatic HTTPS, fan site + admin subdomain, daily backups. Before the site is public
 (see also `updates/step5a-seo-speed-login.md`):

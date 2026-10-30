@@ -228,13 +228,13 @@ function Hero({ feature, partners }: { feature: React.ReactNode; partners: Partn
 
       <div className="relative max-w-7xl mx-auto px-4 md:px-6 pt-10 md:pt-16 pb-10 md:pb-14">
         <div className={`grid grid-cols-1 gap-10 lg:gap-16 items-center ${feature ? "lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)]" : ""}`}>
-          <div className={feature ? "" : "max-w-3xl mx-auto text-center"}>
+          <div className={feature ? "text-center lg:text-left" : "max-w-3xl mx-auto text-center"}>
             <p className="inline-flex items-center gap-2 rounded-full bg-white border border-[#d5e0f3] shadow-sm pl-1 pr-4 py-1 mb-6">
               <img src={kkfLogo} alt="" className="w-7 h-7 rounded-full" />
               <span className="text-xs sm:text-sm font-semibold text-[var(--kk-blue)]">{t("home.heroKicker")}</span>
             </p>
             <h1 className="kk-display text-5xl sm:text-6xl md:text-7xl text-[var(--kk-navy)]">{t("home.heroTitle")}</h1>
-            <p className={`mt-5 text-lg text-gray-600 max-w-xl leading-relaxed ${feature ? "" : "mx-auto"}`}>{t("home.tagline")}</p>
+            <p className={`mt-5 text-lg text-gray-600 max-w-xl leading-relaxed mx-auto ${feature ? "lg:mx-0" : ""}`}>{t("home.tagline")}</p>
             <HubAskBox centered={!feature} />
           </div>
           {feature}

@@ -1,5 +1,7 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import path from 'path'
+import fs from 'node:fs'
+import crypto from 'node:crypto'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
@@ -12,6 +14,27 @@ function figmaAssetResolver() {
         const filename = id.replace('figma:asset/', '')
         return path.resolve(__dirname, 'src/assets', filename)
       }
+    },
+  }
+}
+
+/**
+ * Installable fan site (claude/updates/public-site-pwa.md): writes dist/sw.js from pwa/sw.template.js with the
+ * page's main files (only what index.html loads — kept small for fans on mobile data) and a version taken from
+ * them, so every deploy is a new version.
+ */
+function sitePwa(): Plugin {
+  return {
+    name: 'kk-site-pwa',
+    apply: 'build',
+    writeBundle(options, bundle) {
+      const dir = options.dir as string
+      const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8')
+      const entry = [...html.matchAll(/(?:src|href)="[^"]*?(assets\/[^"]+)"/g)].map((m) => m[1])
+      const shell = ['index.html', 'manifest.webmanifest', 'favicon.png', 'icons/icon-192.png', ...new Set(entry)]
+      const version = crypto.createHash('sha1').update(shell.join('|') + html + Object.keys(bundle).join('|')).digest('hex').slice(0, 10)
+      const template = fs.readFileSync(path.resolve(__dirname, 'pwa/sw.template.js'), 'utf8')
+      fs.writeFileSync(path.join(dir, 'sw.js'), template.replace('__VERSION__', version).replace('__SHELL__', JSON.stringify(shell)))
     },
   }
 }
@@ -68,6 +91,7 @@ export default defineConfig({
     // Tailwind is not being actively used – do not remove them
     react(),
     tailwindcss(),
+    sitePwa(),
   ],
   // Static assets in /public are served at / and copied to dist/ root
   publicDir: 'public',
