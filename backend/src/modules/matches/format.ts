@@ -81,9 +81,11 @@ export function matchArray(m: Match) {
     championship_id: m.championship_id,
     sort_order: m.sort_order,
     bout_label: m.bout_label,
+    bout_label_text: m.bout_label_text,
     slot_a_from: m.slot_a_from,
     slot_b_from: m.slot_b_from,
     draw_id: m.draw_id,
+    draw_name: m.draw_name,
     rule_set: m.rule_set,
     replacement_side: m.replacement_side,
   };

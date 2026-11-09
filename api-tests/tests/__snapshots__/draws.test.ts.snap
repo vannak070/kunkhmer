@@ -6,6 +6,7 @@ exports[`empty corners > creates a bout with an empty corner, keeps it off the f
     "data": {
       "agreed_weight": "number",
       "bout_label": "null",
+      "bout_label_text": "null",
       "championship": "null",
       "championshipId": "null",
       "championshipTitleName": "null",
@@ -27,6 +28,7 @@ exports[`empty corners > creates a bout with an empty corner, keeps it off the f
       "created_at": "datetime(.000000Z)",
       "date": "date",
       "draw_id": "null",
+      "draw_name": "null",
       "event_id": "uuid",
       "fighter_a": {
         "alias": "null",

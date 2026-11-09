@@ -3,6 +3,10 @@
  *
  *   plain token  = "<row id>|<40 random chars><crc32 of them, 8 hex>"
  *   stored token = sha256(everything after the "|")
+ *
+ * Several devices (claude/updates/multi-device-sign-in.md): each sign-in is its own session named after the device
+ * ("Chrome on Android"); at most MAX_SESSIONS per account (a new one removes the session unused the longest); a
+ * session unused for IDLE_DAYS ends. A deactivated account's sessions stop working.
  */
 import { createHash, randomInt, timingSafeEqual } from "node:crypto";
 import { crc32 } from "node:zlib";
@@ -42,7 +46,26 @@ declare module "fastify" {
   }
 }
 
-export async function issueToken(userId: string): Promise<string> {
+export const MAX_SESSIONS = 5;
+export const IDLE_DAYS = 30;
+const lastActive = (t: { last_used_at: Date | null; created_at: Date | null }) => (t.last_used_at ?? t.created_at ?? new Date(0)).getTime();
+/** Most recently active first; times are whole seconds, so on a tie the newer session (higher id) counts as more recent. */
+const byRecent = (a: { id: bigint; last_used_at: Date | null; created_at: Date | null }, b: typeof a) =>
+  lastActive(b) - lastActive(a) || (b.id > a.id ? 1 : b.id < a.id ? -1 : 0);
+
+/** "Chrome on Android", "Safari on iPhone"… from the browser's User-Agent (best effort, for the device list). */
+export function deviceLabel(userAgent: string | undefined | null): string {
+  const ua = String(userAgent ?? "");
+  if (!ua) return "Unknown device";
+  const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android"
+    : /Windows/.test(ua) ? "Windows" : /Mac OS X|Macintosh/.test(ua) ? "Mac" : /Linux/.test(ua) ? "Linux" : null;
+  const browser = /Edg\//.test(ua) ? "Edge" : /OPR\/|Opera/.test(ua) ? "Opera" : /SamsungBrowser/.test(ua) ? "Samsung Internet"
+    : /Firefox|FxiOS/.test(ua) ? "Firefox" : /Chrome|CriOS/.test(ua) ? "Chrome" : /Safari/.test(ua) ? "Safari" : null;
+  if (!browser && !os) return "Other device";
+  return [browser ?? "Browser", os].filter(Boolean).join(" on ");
+}
+
+export async function issueToken(userId: string, device = "AuthToken"): Promise<string> {
   let entropy = "";
   for (let i = 0; i < 40; i++) entropy += ALPHANUMERIC[randomInt(ALPHANUMERIC.length)];
   const secret = entropy + crc32(entropy).toString(16).padStart(8, "0");
@@ -51,14 +74,27 @@ export async function issueToken(userId: string): Promise<string> {
     data: {
       tokenable_type: TOKENABLE_TYPE,
       tokenable_id: userId,
-      name: "AuthToken",
+      name: device.slice(0, 120),
       token: sha256(secret),
       abilities: '["*"]',
       created_at: at,
       updated_at: at,
     },
   });
+  // Keep the newest MAX_SESSIONS sessions; drop the ones unused the longest.
+  const all = await prisma.personalAccessToken.findMany({
+    where: { tokenable_type: TOKENABLE_TYPE, tokenable_id: userId },
+    select: { id: true, last_used_at: true, created_at: true },
+  });
+  const extra = all.filter((t) => t.id !== row.id).sort(byRecent).slice(MAX_SESSIONS - 1);
+  if (extra.length) await prisma.personalAccessToken.deleteMany({ where: { id: { in: extra.map((t) => t.id) } } });
   return `${row.id}|${secret}`;
+}
+
+/** The user's sessions (devices), most recently used first. */
+export async function listSessions(userId: string) {
+  const rows = await prisma.personalAccessToken.findMany({ where: { tokenable_type: TOKENABLE_TYPE, tokenable_id: userId } });
+  return rows.sort(byRecent);
 }
 
 export const revokeAllTokens = (userId: string) =>
@@ -95,9 +131,14 @@ export async function resolveUser(request: FastifyRequest) {
   const token = await findToken(header.slice(7).trim());
   if (!token || token.tokenable_type !== TOKENABLE_TYPE) return;
   if (token.expires_at && token.expires_at < new Date()) return;
+  // Unused for IDLE_DAYS: the session has ended.
+  if (Date.now() - lastActive(token) > IDLE_DAYS * 86_400_000) {
+    await revokeToken(token.id);
+    return;
+  }
 
   const user = await prisma.user.findUnique({ where: { id: token.tokenable_id } });
-  if (!user) return;
+  if (!user || user.status !== "Active") return;
   request.staleToken = false;
 
   request.user = user;

@@ -224,9 +224,13 @@ describe("matches", () => {
     expect(updated.body.data).toMatchObject({ club_a_response: "accepted", proposal_status: "accepted" });
   });
 
-  it("deletes a match (Super Admin only)", async () => {
+  it("deletes a match (Super Admin; a KKF Officer only before publishing and without a result)", async () => {
     const m = await newMatch();
-    expect((await del(`/matches/${m.id}`, a.officer.token)).status).toBe(403);
+    expect((await del(`/matches/${m.id}`, a.organizer.token)).status).toBe(403);
+    // Published (or with a result): the officer is told to cancel the bout instead (claude/updates/match-page-simpler.md).
+    const officer = await del(`/matches/${m.id}`, a.officer.token);
+    expect(officer.status).toBe(422);
+    expect(officer.body.error).toMatch(/published|result/);
     const res = await del(`/matches/${m.id}`, a.admin.token);
     expect(shapeOf(res)).toMatchSnapshot();
     expect((await get(`/matches/${m.id}`)).status).toBe(404);

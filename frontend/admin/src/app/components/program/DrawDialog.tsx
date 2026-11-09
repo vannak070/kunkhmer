@@ -27,6 +27,7 @@ export function DrawDialog({ card, onClose, onDone }: { card: any; onClose: () =
   const [weight, setWeight] = useState(60);
   const [ruleSet, setRuleSet] = useState("kun_khmer");
   const [finalLabel, setFinalLabel] = useState<"final" | "prize">("final");
+  const [drawName, setDrawName] = useState("");
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -69,6 +70,7 @@ export function DrawDialog({ card, onClose, onDone }: { card: any; onClose: () =
         gloveBrand: glove || "—",
         ruleSet,
         finalLabel,
+        name: drawName.trim() || null,
       });
       toast.success(t("draw.created", { n: num(res.bouts.length) }));
       onDone();
@@ -136,6 +138,9 @@ export function DrawDialog({ card, onClose, onDone }: { card: any; onClose: () =
         )}
 
         <div className="grid sm:grid-cols-2 gap-4">
+          <label className="block sm:col-span-2"><span className="text-sm font-semibold text-slate-800">{t("draw.name")}</span>
+            <input value={drawName} maxLength={120} onChange={(e) => setDrawName(e.target.value)} placeholder={t("draw.nameHint")} className={`${fieldCls} mt-1`} />
+          </label>
           <label className="block"><span className="text-sm font-semibold text-slate-800">{t("bout.weight")}</span>
             <input type="number" inputMode="decimal" step="0.5" min={20} max={200} className={`${fieldCls} mt-1`} value={weight || ""} onChange={(e) => setWeight(Number(e.target.value))} />
           </label>

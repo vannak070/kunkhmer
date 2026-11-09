@@ -50,6 +50,7 @@ export function AddBout() {
   const [ruleId, setRuleId] = useState("");
   // What the program sheet prints for the bout, and the rule set (claude/features/weekly-program.md).
   const [boutLabel, setBoutLabel] = useState("");
+  const [boutLabelText, setBoutLabelText] = useState("");
   // Blue corner "to be announced": the bout is saved with an empty corner, filled later (claude/updates/empty-corners-draws.md).
   const [blueLater, setBlueLater] = useState(false);
   const [ruleSet, setRuleSet] = useState("kun_khmer");
@@ -135,6 +136,7 @@ export function AddBout() {
     if (!red || (!blue && !blueLater)) { toast.error(t("bout.pickBoth")); return; }
     if (!blueLater && red.id === blue.id) { toast.error(t("bout.sameFighter")); return; }
     if (isTitle && !titleId) { toast.error(t("bout.pickTitle")); return; }
+    if (boutLabel === "other" && !boutLabelText.trim()) { toast.error(t("bout.labelTextNeeded")); return; }
     setBusy(true);
     try {
       const created = await api.matches.create({
@@ -152,6 +154,7 @@ export function AddBout() {
         isTitleMatch: isTitle,
         championshipId: isTitle ? titleId : null,
         boutLabel: boutLabel || null,
+        boutLabelText: boutLabel === "other" ? boutLabelText.trim() : null,
         ruleSet,
       });
       toast.success(t("bout.added", { red: red.name, blue: blueLater ? t("corner.tba") : blue.name }));
@@ -282,6 +285,12 @@ export function AddBout() {
               <option value="">{t("common.notSet")}</option>
               {BOUT_LABELS.map((k) => <option key={k} value={k}>{t(`boutLabel.${k}` as TextKey)}</option>)}
             </select>
+            {boutLabel === "other" && (
+              <span className="block mt-2">
+                <span className="sr-only">{t("bout.labelText")}</span>
+                <input value={boutLabelText} maxLength={120} onChange={(e) => setBoutLabelText(e.target.value)} placeholder={t("bout.labelTextHint")} aria-label={t("bout.labelText")} className={fieldCls} />
+              </span>
+            )}
           </label>
           <label className="block">
             <span className="text-sm font-semibold text-slate-800">{t("bout.ruleSet")}</span>

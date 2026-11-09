@@ -1,7 +1,7 @@
 /**
  * New match (/home/events/new): one short form — name, date, venue and TV station; sponsors, about text and poster sit
- * under "More details (optional)". Saved as a draft, then the match page opens at its next step (the "Main card" is
- * created by the first "Add bouts"). Replaces the old 2-step "Create New Event" form (categories, tournament options).
+ * under "More details (optional)". Saved as a draft; KKF staff then land on Add several bouts for its "Main card"
+ * (claude/updates/match-page-simpler.md, I), an Organizer on the match page. Replaces the old 2-step "Create New Event" form (categories, tournament options).
  * See claude/updates/program-simple-forms.md and claude/updates/matches-menu.md. An Organizer creates its own
  * broadcaster's match — claude/updates/offline-agreements-log.md.
  */
@@ -11,6 +11,7 @@ import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { ArrowLeft, CalendarPlus } from "lucide-react";
 import { api } from "../utils/api";
+import { usePermissions } from "../hooks/usePermissions";
 import { type TextKey, useT } from "../i18n/program";
 import { LangSwitch } from "../components/program/shared";
 import { FightNightFields, fightNightForm, fightNightReady, newFightNightPayload } from "../components/program/FightNightFields";
@@ -20,6 +21,7 @@ export function NewFightNight() {
   const navigate = useNavigate();
   const me = api.auth.getCurrentUser();
   const isOrganizer = me?.role === "Organizer";
+  const permissions = usePermissions();
   const [form, setForm] = useState(() => ({ ...fightNightForm(), broadcastStationId: isOrganizer ? me?.broadcastStationId ?? "" : "" }));
   const [busy, setBusy] = useState(false);
   // Weekly shows (System Settings › Shows): picking one fills the form (claude/updates/show-templates-copy-week.md).
@@ -58,6 +60,16 @@ export function NewFightNight() {
     try {
       const created = await api.events.create(newFightNightPayload(form, !isOrganizer));
       toast.success(t("form.created"));
+      // KKF staff go straight on to the bouts: the "Main card" is made here and Add several bouts opens
+      // (claude/updates/match-page-simpler.md, I). If that fails, the match page opens as before.
+      if (permissions.hasPermission("events.edit")) {
+        try {
+          const card = await api.batches.create({ eventId: created.id, name: "Main card", weekNumber: 1, date: String(created.date ?? form.date).slice(0, 10), location: created.location || form.location || "—" });
+          if (card?.id) return navigate(`/home/matches/${card.id}/quick-bouts`);
+        } catch {
+          /* fall through to the match page */
+        }
+      }
       navigate(`/home/events/${created.id}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("common.error"));

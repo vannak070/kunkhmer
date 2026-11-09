@@ -20,3 +20,15 @@ Add bout = one form per bout (pick both fighters, weight, rules, gloves, save, b
 ### 2026-10-14
 - Checked on a temporary admin on the test API: two rows filled by typing names + Enter, International set automatically for a foreign opponent, live rule warnings (weight gap), auto weight 63.5 from the red fighter, "Save 2 bouts" → both added and back on the match page. Admin builds; no backend change (suite unchanged, 352/352).
 - Not checked: a blocked row and a server-refused row in the browser, phone width, Khmer screen.
+
+## Update 2026-11-09 (owner: "the gloves will be based on single match … improve this page")
+- **Gloves per bout:** the page-wide "Gloves for these bouts" box is gone; every row has its own **Gloves** list (Settings › Glove brands),
+  starting at the first brand; a new row copies the gloves (and weight / rounds / rule set) of the row above. Saved as that bout's
+  `gloveBrand` (glove size still comes from the rounds preset).
+- **Field labels:** small headings over every field — Red corner, Blue corner, Weight (kg), Rounds, Bout type, Fought under, Gloves — and
+  the chosen rounds preset in words under the row ("5 rounds × 3 min · gloves 8oz"). Bout type now starts at "Not set".
+- Not picked (offer only if asked): bouts already on the card listed at the top, Enter-through keyboard flow, paste rows from the Word /
+  Telegram sheet.
+- Code: `pages/QuickBouts.tsx` (+ `qb.f.weight` EN + KM). Checked on the test API: rows show the labels and their own gloves; row 1 set to
+  Fairtex BGV1 while row 2 kept Twins; saving row 1 stored `glove_brand = Fairtex BGV1`; Khmer phone layout readable, no sideways scroll.
+  Uncommitted, not live.

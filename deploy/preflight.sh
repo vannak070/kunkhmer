@@ -15,6 +15,8 @@ echo "== Settings file"
 [ -f .env ] && echo ".env present" || echo "MISSING: deploy/.env"
 echo "== Latest backups (also copy them off the server)"
 ls -lh backups 2>/dev/null | tail -4
+echo "== Off-site copy (claude/updates/offsite-backups.md)"
+if [ -f backups/.offsite-status ]; then cat backups/.offsite-status; else echo "not set up (no backups/.offsite-status) — see README section 5"; fi
 echo "== Data now (what the update must keep)"
 $DC exec -T postgres psql -U kunkhmer -d kunkhmer_db -tAc "select 'users '||(select count(*) from users)||', clubs '||(select count(*) from clubs)||', fighters '||(select count(*) from fighters where deleted_at is null)||', events '||(select count(*) from events)||', bouts '||(select count(*) from matches)||', migrations '||(select count(*) from _prisma_migrations where finished_at is not null)"
 echo "== API answers"

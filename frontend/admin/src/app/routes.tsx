@@ -69,6 +69,8 @@ export const router = createBrowserRouter(
     element: <RedirectToHomeEvents />,
   },
   // The printable program sheet of one match, outside the admin frame so it prints clean (claude/features/weekly-program.md).
+  // The whole week's sheets in one document (claude/updates/sheet-like-paper-week-print.md). Before :id/sheet.
+  { path: "/events/week-sheet", ...page(() => import("./pages/WeekSheet"), "WeekSheet") },
   { path: "/events/:id/sheet", ...page(() => import("./pages/ProgramSheet"), "ProgramSheet") },
   {
     path: "/events/:eventId/sub-events/:subEventId",

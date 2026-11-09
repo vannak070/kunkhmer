@@ -6,6 +6,9 @@
  *   GET    /users/me       auth     → current user
  *   PUT    /users/me       auth     → edit own fullName / email
  *   PUT    /users/me/password  auth → change own password (currentPassword + newPassword)
+ *   GET    /users/me/sessions  auth → own signed-in devices (claude/updates/multi-device-sign-in.md)
+ *   DELETE /users/me/sessions/:id  auth → sign out one of own devices
+ *   POST   /users/me/sessions/sign-out-others  auth → sign out every other device
  *   GET    /users          Super Admin
  *   POST   /users          Super Admin
  *   GET    /users/:id      Super Admin, or the user themself
@@ -22,7 +25,9 @@ import type { User } from "../../generated/prisma/client.ts";
 import {
   Role,
   currentUser,
+  deviceLabel,
   issueToken,
+  listSessions,
   requireAuth,
   requireRole,
   revokeAllTokens,
@@ -115,9 +120,8 @@ export default async function authRoutes(app: FastifyInstance) {
     const at = now();
     const updated = await prisma.user.update({ where: { id: user.id }, data: { last_login: at, updated_at: at } });
 
-    // Single-session policy: logging in revokes every earlier token.
-    await revokeAllTokens(user.id);
-    const token = await issueToken(user.id);
+    // Several devices may stay signed in (claude/updates/multi-device-sign-in.md); the oldest beyond 5 are dropped.
+    const token = await issueToken(user.id, deviceLabel(request.headers["user-agent"]));
 
     return ok(reply, { token, user: formatUser(updated) });
   });
@@ -131,6 +135,36 @@ export default async function authRoutes(app: FastifyInstance) {
     });
 
     protectedRoutes.get("/users/me", async (request, reply) => ok(reply, formatUser(currentUser(request))));
+
+    // Own signed-in devices (claude/updates/multi-device-sign-in.md).
+    protectedRoutes.get("/users/me/sessions", async (request, reply) => {
+      const me = currentUser(request);
+      const rows = await listSessions(me.id);
+      return ok(reply, rows.map((t) => ({
+        id: String(t.id),
+        device: t.name === "AuthToken" ? "Unknown device" : t.name,
+        lastUsedAt: iso(t.last_used_at ?? t.created_at),
+        signedInAt: iso(t.created_at),
+        current: request.tokenId === t.id,
+      })));
+    });
+
+    protectedRoutes.delete("/users/me/sessions/:id", async (request, reply) => {
+      const me = currentUser(request);
+      const raw = String((request.params as { id: string }).id);
+      if (!/^\d{1,18}$/.test(raw)) throw notFound("Session");
+      const done = await prisma.personalAccessToken.deleteMany({ where: { id: BigInt(raw), tokenable_type: "user", tokenable_id: me.id } });
+      if (done.count === 0) throw notFound("Session");
+      return reply.send({ success: true, message: "Signed out on that device" });
+    });
+
+    protectedRoutes.post("/users/me/sessions/sign-out-others", async (request, reply) => {
+      const me = currentUser(request);
+      const done = await prisma.personalAccessToken.deleteMany({
+        where: { tokenable_type: "user", tokenable_id: me.id, ...(request.tokenId !== null ? { id: { not: request.tokenId } } : {}) },
+      });
+      return ok(reply, { signedOut: done.count });
+    });
 
     protectedRoutes.put("/users/me", async (request, reply) => {
       const me = currentUser(request);

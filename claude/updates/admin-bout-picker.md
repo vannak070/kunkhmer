@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done 2026-10-14 (committed and pushed, dev b4c74a37; not live) |
+| **Status** | Done 2026-10-14 (committed and pushed, dev b4c74a37; live since a1c0fb9b, 2026-10-14) |
 | **Jira** | n/a |
 | **Feature** | claude/features/matches-results.md; follows `updates/similar-weight-picker.md` and `updates/admin-fighters-paging.md` |
 | **Requested by** | Owner ("go ahead with the Add bout picker", then "go ahead with Quick bouts", then "go ahead with the Draw dialog", then "go ahead with the Video and Create title pickers") |

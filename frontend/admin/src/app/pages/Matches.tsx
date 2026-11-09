@@ -1,5 +1,6 @@
 /**
- * Matches (/home/matches) — the one place to run matches: "Your next job", then Upcoming / Past / Needs attention.
+ * Matches (/home/matches) — the one place to run matches: a slim "Your next job" strip, then Week (opens first) / Upcoming /
+ * Past / Needs attention (claude/updates/match-page-simpler.md, H).
  * A match = one day of fights (date, venue, TV); one fight inside it is a bout. Rows show the date, venue, bouts, status
  * and the next step; Needs attention groups every open job by match. English + Khmer.
  * Replaces the Program page (Overview / Fight nights / Champions tabs): see claude/updates/matches-menu.md.
@@ -18,7 +19,7 @@ import { NextMatchCard } from "../components/program/NextMatchCard";
 import { NeedsAttention, PROGRAM_TODOS } from "../components/program/NeedsAttention";
 
 type Tab = "upcoming" | "week" | "past" | "attention";
-const TABS: Tab[] = ["upcoming", "week", "past", "attention"];
+const TABS: Tab[] = ["week", "upcoming", "past", "attention"];
 
 export function Matches() {
   const { t, lang } = useT();
@@ -26,7 +27,7 @@ export function Matches() {
   const permissions = usePermissions();
   const [params, setParams] = useSearchParams();
   const asked = params.get("tab") as Tab | null;
-  const tab: Tab = asked && TABS.includes(asked) ? asked : "upcoming";
+  const tab: Tab = asked && TABS.includes(asked) ? asked : "week";
   const [events, setEvents] = useState<any[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [cards, setCards] = useState<any[]>([]);
@@ -63,7 +64,7 @@ export function Matches() {
   }, [events, tab, query]);
 
   const chip = (key: Tab, label: string, count?: number) => (
-    <button key={key} type="button" aria-pressed={tab === key} onClick={() => setParams(key === "upcoming" ? {} : { tab: key }, { replace: true })} className={`h-10 px-4 rounded-xl text-sm font-semibold border inline-flex items-center gap-2 ${tab === key ? "bg-primary text-white border-primary" : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"}`}>
+    <button key={key} type="button" aria-pressed={tab === key} onClick={() => setParams(key === "week" ? {} : { tab: key }, { replace: true })} className={`h-10 px-4 rounded-xl text-sm font-semibold border inline-flex items-center gap-2 ${tab === key ? "bg-primary text-white border-primary" : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"}`}>
       {label}
       {count ? <span className={`px-2 py-0.5 text-[11px] rounded-full font-bold ${tab === key ? "bg-white text-primary" : "bg-amber-100 text-amber-800"}`}>{count}</span> : null}
     </button>
@@ -98,10 +99,10 @@ export function Matches() {
         <div className="rounded-2xl border border-slate-200 bg-white p-10 flex justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" aria-label={t("common.loading")} /></div>
       ) : (
         <>
-          {tab === "upcoming" && <NextMatchCard events={events} cards={cards} bouts={bouts} onChanged={() => { load(); refresh(); }} />}
+          <NextMatchCard slim events={events} cards={cards} bouts={bouts} onChanged={() => { load(); refresh(); }} />
 
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex flex-wrap gap-2">{[chip("upcoming", t("list.upcoming")), chip("week", t("wk.tab")), chip("past", t("list.past")), chip("attention", t("mt.attention"), attentionCount)]}</div>
+            <div className="flex flex-wrap gap-2">{[chip("week", t("wk.tab")), chip("upcoming", t("list.upcoming")), chip("past", t("list.past")), chip("attention", t("mt.attention"), attentionCount)]}</div>
             {tab !== "attention" && tab !== "week" && (
               <div className="relative flex-1 min-w-[14rem]">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />

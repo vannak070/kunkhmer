@@ -7,6 +7,9 @@
 | **Feature** | program-workflow.md, events.md, admin-pwa.md |
 | **Requested by** | Owner ("user friendly for Program function … as per my feedback flow"; "go ahead with your recommendation but exclude licence") |
 
+
+> 2026-11-09: for KKF staff the steps list now starts folded into one slim bar ("4 of 8 done · Next: …", All steps opens it) and the after-match steps only appear from match day — `updates/match-page-simpler.md`.
+
 ## Current behavior (walked through on the test API, desktop + phone)
 - Two checklists on the fight night page: a 7-step "Next steps" grid and, far below, "Agreements with the broadcaster" (licence, details, sponsors, titles). The agreed flow puts those agreements *before* the bouts and they gate publishing, but the stepper doesn't know them.
 - "Fight night", "Fight card(s)" and "Program" are three names for one thing; "Add / Delete fight card" show although most nights have one card.

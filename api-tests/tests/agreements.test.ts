@@ -27,6 +27,13 @@ async function newOrganizer(stationId: string): Promise<Actor> {
 const newNight = async () =>
   (await post("/events", { name: `Night ${uniq()}`, date: "2026-12-12", location: "Phnom Penh", status: "Draft", broadcastStationId: station }, a.officer.token)).body.data.id as string;
 
+/** A draft fight night the Organizer creates: nothing is confirmed yet (staff-made ones confirm themselves, claude/updates/match-page-simpler.md). */
+const orgNight = async () => {
+  const res = await post("/events", { name: `Night ${uniq()}`, date: "2026-12-12", location: "Phnom Penh", status: "Draft", broadcastStationId: station }, org.token);
+  if (!res.body.success) throw new Error(JSON.stringify(res.body));
+  return res.body.data.id as string;
+};
+
 const agreements = async (id: string, token = a.officer.token) => (await get(`/events/${id}/agreements`, token)).body.data;
 
 const newFighter = async () =>
@@ -54,7 +61,7 @@ beforeAll(async () => {
 
 describe("recording and confirming", () => {
   it("Organizer records the details, KKF confirms", async () => {
-    const id = await newNight();
+    const id = await orgNight();
     const empty = await agreements(id, org.token);
     expect(empty).toMatchObject({ licence: { number: null, date: null, hasDocument: false }, items: { details: { state: "none" }, sponsors: { state: "none" } }, log: [] });
 
@@ -124,24 +131,29 @@ describe("recording and confirming", () => {
 });
 
 describe("publish gate", () => {
-  it("publishes only with confirmed, unchanged details", async () => {
-    const id = await newNight();
+  it("KKF staff publishing confirms the details itself while approvals are off", async () => {
+    const id = await orgNight();
     await addBout(id);
-    const blocked = await put(`/events/${id}`, { status: "Published" }, a.officer.token);
-    expect(blocked.body).toEqual({ success: false, error: "KKF must confirm the fight night details before publishing" });
-
-    await put(`/events/${id}/licence`, { number: "KKF-1", date: "2026-11-30" }, a.officer.token);
-    await post(`/events/${id}/agreements`, { item: "details" }, a.officer.token);
-    // A change after confirmation needs a new confirmation.
-    await put(`/events/${id}`, { location: "Siem Reap" }, a.officer.token);
-    expect((await agreements(id)).items.details.state).toBe("changed");
-    expect((await put(`/events/${id}`, { status: "Published" }, a.officer.token)).status).toBe(422);
-
-    await post(`/events/${id}/agreements`, { item: "details", note: "Venue moved" }, a.officer.token);
+    expect((await agreements(id)).items.details.state).toBe("none");
     const published = await put(`/events/${id}`, { status: "Published" }, a.officer.token);
     expect(published.status).toBe(200);
     expect(published.body.data.status).toBe("Published");
-    expect((await agreements(id)).log).toHaveLength(2);
+    expect((await agreements(id)).items.details).toMatchObject({ state: "confirmed", agreement: { note: "Entered by KKF staff", confirmed_by: a.officer.id } });
+  });
+
+  it("a staff change after confirmation is confirmed again", async () => {
+    const id = await newNight();
+    expect((await agreements(id)).items.details.state).toBe("confirmed");
+    await put(`/events/${id}`, { location: "Siem Reap" }, a.officer.token);
+    const after = await agreements(id);
+    expect(after.items.details.state).toBe("confirmed");
+    expect(after.log.filter((r: { item: string }) => r.item === "details")).toHaveLength(2);
+  });
+
+  it("an Organizer's change waits for KKF again", async () => {
+    const id = await newNight();
+    expect((await put(`/events/${id}`, { location: "Kampot" }, org.token)).status).toBe(200);
+    expect((await agreements(id)).items.details.state).toBe("changed");
   });
 });
 
@@ -230,17 +242,13 @@ describe("titles on a fight night (phase 5)", () => {
     expect((await agreements(id)).items.titles.state).toBe("changed");
   });
 
-  it("publishing waits for confirmed titles only when the fight night has titles", async () => {
+  it("titles the Organizer chose are confirmed when KKF staff publish (approvals off)", async () => {
     const id = await newNight();
     await addBout(id);
-    await put(`/events/${id}/licence`, { number: "KKF-T", date: "2026-11-30" }, a.officer.token);
-    await post(`/events/${id}/agreements`, { item: "details" }, a.officer.token);
-    await put(`/events/${id}/titles`, { titleIds: [await newTitle()] }, a.officer.token);
-    const blocked = await put(`/events/${id}`, { status: "Published" }, a.officer.token);
-    expect(blocked.body).toEqual({ success: false, error: "KKF must confirm the titles on this fight night before publishing" });
-
-    await post(`/events/${id}/agreements`, { item: "titles" }, a.officer.token); // KKF records and confirms
+    await put(`/events/${id}/titles`, { titleIds: [await newTitle()] }, org.token);
+    expect((await agreements(id)).items.titles.state).toBe("none");
     expect((await put(`/events/${id}`, { status: "Published" }, a.officer.token)).status).toBe(200);
+    expect((await agreements(id)).items.titles.state).toBe("confirmed");
     expect((await put(`/events/${id}/titles`, { titleIds: [] }, org.token)).status).toBe(422); // published: ask KKF
   });
 
@@ -253,7 +261,7 @@ describe("titles on a fight night (phase 5)", () => {
     const off = await addBout(id, { isTitleMatch: true, championshipId: other });
     expect(titleWarnings(off.res)).toEqual(["This title is not on the fight night's title list"]);
 
-    await put(`/events/${id}/titles`, { titleIds: [listed] }, a.officer.token);
+    await put(`/events/${id}/titles`, { titleIds: [listed] }, org.token); // the Organizer's choice waits for KKF
     const unconfirmed = await addBout(id, { isTitleMatch: true, championshipId: listed });
     expect(titleWarnings(unconfirmed.res)).toEqual(["KKF has not confirmed the titles on this fight night yet"]);
 

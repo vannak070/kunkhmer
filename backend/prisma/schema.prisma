@@ -515,10 +515,17 @@ model Match {
   created_at           DateTime? @db.Timestamp(0)
   updated_at           DateTime? @db.Timestamp(0)
   is_title_match       Boolean   @default(false)
-  /// What kind of bout the program sheet prints: friendly | international | youth | qualifier | final | prize (null = not set).
+  /// What kind of bout the program sheet prints: friendly | international | youth | qualifier | final | prize |
+  /// title_fight | title_defense | points_belt | cash_prize | candidate | other (null = not set).
   bout_label           String?   @db.VarChar(20)
-  /// Rule set the bout is fought under: kun_khmer | mas_fight. claude/features/weekly-program.md
+  /// The sheet's own words for the bout when bout_label is "other" (e.g. "ការពារខ្សែក្រវាត់មាស").
+  /// claude/updates/sheet-like-paper-week-print.md
+  bout_label_text      String?   @db.VarChar(120)
+  /// Rule set the bout is fought under: kun_khmer | mas_fight | kick_boxing | fingerless (Kun Khmer, ហ្គង់ចេញម្រាម). claude/features/weekly-program.md
   rule_set             String    @default("kun_khmer") @db.VarChar(20)
+  /// Name of the tournament draw the bout belongs to (same on every bout of the draw), printed on the sheet as
+  /// "បេក្ខភាពគូម៉ារ៉ាតុង{name} …". claude/updates/sheet-like-paper-week-print.md
+  draw_name            String?   @db.VarChar(120)
   championship_id      String?   @db.Uuid
   sort_order           Int       @default(0)
   /// Program workflow phase 6 (claude/updates/withdrawals-postponement.md): the corner ("a" / "b") whose fighter

@@ -84,6 +84,33 @@ services:
       postgres:
         condition: service_healthy
 
+  # Off-site, encrypted copies of deploy/backups/ (claude/updates/offsite-backups.md). Starts only with
+  # COMPOSE_PROFILES=offsite in deploy/.env; storage keys and the backup password come from deploy/.env.
+  offsite:
+    image: rclone/rclone:1.68.2
+    profiles: ["offsite"]
+    restart: unless-stopped
+    environment:
+      OFFSITE_KEEP_DAYS: ${OFFSITE_KEEP_DAYS:-30}
+      # The storage bucket (S3-compatible: Cloudflare R2, Backblaze B2, DigitalOcean Spaces…)
+      RCLONE_CONFIG_STORE_TYPE: s3
+      RCLONE_CONFIG_STORE_PROVIDER: ${OFFSITE_PROVIDER:-Cloudflare}
+      RCLONE_CONFIG_STORE_ACCESS_KEY_ID: ${OFFSITE_ACCESS_KEY_ID:-}
+      RCLONE_CONFIG_STORE_SECRET_ACCESS_KEY: ${OFFSITE_SECRET_ACCESS_KEY:-}
+      RCLONE_CONFIG_STORE_ENDPOINT: ${OFFSITE_ENDPOINT:-}
+      RCLONE_CONFIG_STORE_REGION: ${OFFSITE_REGION:-auto}
+      RCLONE_CONFIG_STORE_NO_CHECK_BUCKET: "true"
+      # Encryption on top of it: only someone with the backup password can open the copies.
+      RCLONE_CONFIG_VAULT_TYPE: crypt
+      RCLONE_CONFIG_VAULT_REMOTE: store:${OFFSITE_BUCKET:-kkf-backups}/kunkhmer
+      RCLONE_CONFIG_VAULT_PASSWORD: ${OFFSITE_PASSWORD_OBSCURED:-}
+      RCLONE_CONFIG_VAULT_FILENAME_ENCRYPTION: "off"
+      RCLONE_CONFIG_VAULT_DIRECTORY_NAME_ENCRYPTION: "false"
+    volumes:
+      - ./backups:/backups
+      - ./offsite.sh:/offsite.sh:ro
+    entrypoint: ["/bin/sh", "/offsite.sh"]
+
 volumes:
   db_data:
   uploads:

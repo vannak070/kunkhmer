@@ -1,0 +1,19 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`signed-in devices > lists each device by name, marks this one, and keeps them all signed in > sessions 1`] = `
+{
+  "body": {
+    "data": [
+      {
+        "current": "boolean",
+        "device": "string",
+        "id": "string",
+        "lastUsedAt": "datetime(+00:00)",
+        "signedInAt": "datetime(+00:00)",
+      },
+    ],
+    "success": "boolean",
+  },
+  "status": 200,
+}
+`;

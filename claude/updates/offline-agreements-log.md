@@ -7,6 +7,9 @@
 | **Feature** | claude/features/program-workflow.md (phase 4), claude/features/events.md |
 | **Requested by** | vannak070 (2026-10-13: "go ahead with phase 4") |
 
+
+> 2026-11-09: while approvals are off, what KKF staff enter (create / edit / copy a match, choose titles, publish) is confirmed by itself ("Entered by KKF staff"); an Organizer's records still wait for KKF — `updates/match-page-simpler.md`.
+
 ## Current behavior
 KKF staff record everything about a fight night; nothing says who agreed what with the broadcaster, or when.
 Organizers are read-only in the admin (phase 3 ties each Organizer to its broadcaster). A fight night can be

@@ -43,6 +43,7 @@ exports[`weigh-in on the bout > saves each corner's weight on the bout without t
     "data": {
       "agreed_weight": "number",
       "bout_label": "null",
+      "bout_label_text": "null",
       "championship": "null",
       "championshipId": "null",
       "championshipTitleName": "null",
@@ -64,6 +65,7 @@ exports[`weigh-in on the bout > saves each corner's weight on the bout without t
       "created_at": "datetime(.000000Z)",
       "date": "date",
       "draw_id": "null",
+      "draw_name": "null",
       "event_id": "uuid",
       "fighter_a": {
         "alias": "null",

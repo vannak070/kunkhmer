@@ -32,6 +32,9 @@
 		header @assets Cache-Control "public, max-age=31536000, immutable"
 		@pages not path /assets/*
 		header @pages Cache-Control "no-cache"
+		# Installable app (claude/updates/public-site-pwa.md): sw.js is a "page" above (always checked), the manifest needs its type.
+		@manifest path /manifest.webmanifest
+		header @manifest Content-Type "application/manifest+json"
 		# Single-page app: unknown paths (e.g. /fighters/pich-sambath) load index.html.
 		try_files {path} /index.html
 		file_server
