@@ -172,8 +172,15 @@ export function nextStepText(t: (k: any, v?: any) => string, e: any, cards: any[
 
 
 /** Bout labels (what the program sheet prints) and rule sets, as the API accepts them (claude/features/weekly-program.md). */
-export const BOUT_LABELS = ["friendly", "international", "youth", "qualifier", "final", "prize"] as const;
-export const RULE_SETS = ["kun_khmer", "mas_fight"] as const;
+export const BOUT_LABELS = [
+  "friendly", "international", "youth", "qualifier", "final", "prize",
+  // KKF's paper (claude/updates/sheet-like-paper-week-print.md)
+  "title_fight", "title_defense", "points_belt", "cash_prize", "candidate", "other",
+] as const;
+export const RULE_SETS = ["kun_khmer", "fingerless", "kick_boxing", "mas_fight"] as const;
+/** The bout type as shown in the admin: the label's name, or the typed words for "other". */
+export const boutLabelName = (b: { bout_label?: string | null; bout_label_text?: string | null }, t: (k: any) => string) =>
+  b.bout_label === "other" ? b.bout_label_text || t("boutLabel.other") : b.bout_label ? t(`boutLabel.${b.bout_label}`) : "";
 
 /** Bout numbers in program order (sort order, then creation): id → 1, 2, 3… for "winner of bout N". */
 export function boutNumbers(bouts: any[]): Map<string, number> {

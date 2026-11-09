@@ -2,16 +2,18 @@
  * Match day (/home/events/:id/match-day, KKF staff): the whole match one bout at a time, built for a phone at the ring.
  * Step 1 weigh-in (both fighters, big kg fields, Pass / Over live), step 2 result (big buttons: who won, how, which
  * round). Saving moves on: weigh-in → result → the next bout without a result. A strip of numbered buttons jumps
- * anywhere. Uses the same endpoints and rules as the Weigh-in and Results pages (a title winner change asks first).
+ * anywhere (on a computer: a list of every bout with both names and its state on the left). Weigh-in: each kg box shows
+ * the limit and the fighter's registered weight; Enter goes red → blue → Save (owner's picks, 2026-11-09).
+ * Uses the same endpoints and rules as the Weigh-in and Results pages (a title winner change asks first).
  * English + Khmer. See claude/updates/match-day-mode.md.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, CheckCircle2, Scale, Trophy, TriangleAlert } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Circle, RefreshCw, Scale, Trophy, TriangleAlert } from "lucide-react";
 import { api } from "../utils/api";
 import { type TextKey, useT } from "../i18n/program";
-import { ConfirmDialog, FighterAvatar, LangSwitch, boutNumbers, cornerName, hasBothCorners, hasResult, overBy, resultText, weighState } from "../components/program/shared";
+import { ConfirmDialog, FighterAvatar, LangSwitch, WEIGH_TOLERANCE_KG, boutNumbers, cornerName, hasBothCorners, hasResult, overBy, resultText, weighState } from "../components/program/shared";
 import { CancelBoutDialog, ReplacementPanel, WithdrawDialog } from "../components/program/MatchChanges";
 import { METHODS, type ResultDraft, draftOf, emptyDraft, needsTitleConfirm, resultBody, withMethod, withWinner } from "../components/program/resultForm";
 
@@ -71,6 +73,17 @@ export function MatchDay() {
     waiting: { tone: "bg-white text-slate-700 border-slate-300", label: "md.s.waiting" },
     replacement: { tone: "bg-red-50 text-red-800 border-red-400", label: "md.s.replacement" },
   };
+
+  // A small icon per state, so the number buttons and the bout list say more than a colour.
+  const ICON: Record<ReturnType<typeof stateOf>, React.ReactNode> = {
+    done: <CheckCircle2 className="w-4 h-4" aria-hidden />,
+    over: <TriangleAlert className="w-4 h-4" aria-hidden />,
+    weighed: <Scale className="w-4 h-4" aria-hidden />,
+    waiting: <Circle className="w-4 h-4" aria-hidden />,
+    replacement: <RefreshCw className="w-4 h-4" aria-hidden />,
+  };
+  const ICON_TONE: Record<ReturnType<typeof stateOf>, string> = { done: "text-emerald-600", over: "text-red-600", weighed: "text-primary", waiting: "text-slate-300", replacement: "text-red-600" };
+  const blueRef = useRef<HTMLInputElement>(null);
 
   const patch = (updated: any) => setBouts((list) => list.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)));
   const nextOpen = (from: number) => {
@@ -149,7 +162,7 @@ export function MatchDay() {
   const overNames = [m.fighter_a_name && overBy(parseKg(w.a) ?? 0, Number(m.agreed_weight)) > 0 ? m.fighter_a_name : null, m.fighter_b_name && overBy(parseKg(w.b) ?? 0, Number(m.agreed_weight)) > 0 ? m.fighter_b_name : null].filter(Boolean) as string[];
 
   return (
-    <div className="max-w-3xl mx-auto p-4 md:p-8 space-y-5">
+    <div className="max-w-3xl lg:max-w-6xl mx-auto p-4 md:p-8 space-y-5">
       <div className="flex items-center justify-between gap-3">{back}<LangSwitch /></div>
 
       <header className="space-y-3">
@@ -161,17 +174,44 @@ export function MatchDay() {
           <div className="h-full bg-emerald-500 transition-all" style={{ width: `${(doneCount / bouts.length) * 100}%` }} />
         </div>
         <p className="text-sm text-slate-600">{t("res.progress", { done: doneCount, total: bouts.length })}</p>
-        <ol className="flex gap-2 overflow-x-auto pb-1" aria-label={t("md.strip")}>
+        <ol className="lg:hidden flex gap-2 overflow-x-auto pb-1" aria-label={t("md.strip")}>
           {bouts.map((b, i) => {
-            const s = STRIP[stateOf(b)];
+            const st = stateOf(b);
+            const s = STRIP[st];
             return (
               <li key={b.id}>
-                <button type="button" onClick={() => setIdx(i)} aria-current={i === idx} aria-label={`${t("md.boutN", { n: i + 1 })}: ${t(s.label)}`} className={`w-12 h-12 rounded-xl border-2 text-base font-bold ${s.tone} ${i === idx ? "ring-2 ring-offset-2 ring-primary" : ""}`}>{i + 1}</button>
+                <button type="button" onClick={() => setIdx(i)} aria-current={i === idx} aria-label={`${t("md.boutN", { n: i + 1 })}: ${t(s.label)}`} className={`min-w-12 h-12 px-2 rounded-xl border-2 text-base font-bold inline-flex items-center justify-center gap-1 ${s.tone} ${i === idx ? "ring-2 ring-offset-2 ring-primary" : ""}`}>
+                  {i + 1}{st !== "waiting" && ICON[st]}
+                </button>
               </li>
             );
           })}
         </ol>
       </header>
+
+      <div className="lg:grid lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-6 lg:items-start">
+      {/* Computer: every bout with both names and its state; the open one is highlighted. */}
+      <nav aria-label={t("md.strip")} className="hidden lg:block sticky top-4 rounded-2xl border border-slate-200 bg-white p-2 max-h-[calc(100dvh-6rem)] overflow-y-auto">
+        <ol className="space-y-1">
+          {bouts.map((b, i) => {
+            const st = stateOf(b);
+            const nums = boutNumbers(bouts);
+            return (
+              <li key={b.id}>
+                <button type="button" onClick={() => setIdx(i)} aria-current={i === idx} className={`w-full text-left rounded-xl px-2.5 py-2 flex items-start gap-2.5 ${i === idx ? "bg-[#eef3fb] ring-1 ring-primary/40" : "hover:bg-slate-50"}`}>
+                  <span className="w-6 text-sm font-bold text-slate-500 shrink-0 pt-0.5">{i + 1}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-red-700 truncate">{cornerName(b, "a", t, nums)}</span>
+                    <span className="block text-sm font-semibold text-blue-700 truncate">{cornerName(b, "b", t, nums)}</span>
+                    <span className={`mt-0.5 text-xs inline-flex items-center gap-1 ${ICON_TONE[st]}`}>{ICON[st]}<span className="text-slate-500">{t(STRIP[st].label)}</span></span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
+      <div className="space-y-5 min-w-0">
 
       {allDone && (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 flex items-start gap-3">
@@ -207,14 +247,19 @@ export function MatchDay() {
             <div className="grid sm:grid-cols-2 gap-4">
               {(["a", "b"] as const).map((side) => (
                 <WeighCorner
-                  key={side}
+                  key={`${m.id}-${side}`}
                   red={side === "a"}
                   name={m[`fighter_${side}_name`]}
                   club={m[`club_${side}_name`]}
                   image={m[`fighter_${side}_image`]}
+                  registered={Number(m[`fighter_${side}`]?.current_weight) || null}
                   value={w[side]}
                   agreed={Number(m.agreed_weight)}
                   disabled={hasResult(m)}
+                  inputRef={side === "b" ? blueRef : undefined}
+                  autoFocus={side === "a" && !hasResult(m) && w.a === ""}
+                  // Enter: red → blue → save.
+                  onEnter={() => (side === "a" ? blueRef.current?.focus() : saveWeigh(m))}
                   onChange={(v) => setWeights((x) => ({ ...x, [m.id]: { ...w, [side]: v } }))}
                 />
               ))}
@@ -280,6 +325,8 @@ export function MatchDay() {
         <button type="button" disabled={idx === 0} onClick={() => setIdx(idx - 1)} className="h-14 rounded-2xl border border-slate-300 bg-white text-base font-semibold text-slate-800 disabled:opacity-40 inline-flex items-center justify-center gap-2"><ArrowLeft className="w-5 h-5" aria-hidden /> {t("md.prev")}</button>
         <button type="button" disabled={idx === bouts.length - 1 && nextOpen(idx) < 0} onClick={() => setIdx(idx < bouts.length - 1 ? idx + 1 : nextOpen(idx))} className="h-14 rounded-2xl border border-slate-300 bg-white text-base font-semibold text-slate-800 disabled:opacity-40 inline-flex items-center justify-center gap-2">{t("md.next")} <ArrowRight className="w-5 h-5" aria-hidden /></button>
       </nav>
+      </div>
+      </div>
 
       {dialog === "withdraw" && <WithdrawDialog match={m} onClose={() => setDialog(null)} onDone={(updated) => { patch(updated); setDialog(null); }} />}
       {dialog === "cancel" && <CancelBoutDialog match={m} onClose={() => setDialog(null)} onDone={(updated) => { patch(updated); setDialog(null); load(); }} />}
@@ -298,8 +345,12 @@ export function MatchDay() {
   );
 }
 
-function WeighCorner({ red, name, club, image, value, agreed, disabled, onChange }: {
-  red: boolean; name?: string; club?: string | null; image?: string | null; value: string; agreed: number; disabled: boolean; onChange: (v: string) => void;
+function WeighCorner({ red, name, club, image, registered, value, agreed, disabled, inputRef, autoFocus, onEnter, onChange }: {
+  red: boolean; name?: string; club?: string | null; image?: string | null;
+  /** The fighter's weight on their profile (a hint, not the weigh-in). */
+  registered: number | null;
+  value: string; agreed: number; disabled: boolean;
+  inputRef?: React.Ref<HTMLInputElement>; autoFocus?: boolean; onEnter: () => void; onChange: (v: string) => void;
 }) {
   const { t } = useT();
   const kg = parseKg(value);
@@ -322,10 +373,17 @@ function WeighCorner({ red, name, club, image, value, agreed, disabled, onChange
       </div>
       <label htmlFor={id} className="sr-only">{name}</label>
       <div className="relative">
-        <input id={id} type="number" inputMode="decimal" step="0.1" min={20} max={200} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)} className="w-full h-16 rounded-2xl border-2 border-slate-300 pl-4 pr-14 text-3xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary disabled:bg-slate-50" />
+        <input id={id} ref={inputRef} autoFocus={autoFocus} type="number" inputMode="decimal" step="0.1" min={20} max={200} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onEnter(); } }} enterKeyHint={red ? "next" : "done"} className="w-full h-16 rounded-2xl border-2 border-slate-300 pl-4 pr-14 text-3xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary disabled:bg-slate-50" />
         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lg text-slate-400">kg</span>
       </div>
-      <div>{status}</div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {status}
+        <span className="text-xs text-slate-500 text-right">
+          {t("md.limit", { kg: t("common.kg", { n: agreed + WEIGH_TOLERANCE_KG }), agreed, tol: WEIGH_TOLERANCE_KG })}
+          {registered ? <><br />{t("md.registered", { kg: t("common.kg", { n: registered }) })}</> : null}
+        </span>
+      </div>
     </div>
   );
 }

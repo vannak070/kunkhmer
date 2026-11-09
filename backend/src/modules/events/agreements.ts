@@ -31,6 +31,7 @@ import { HttpError, idParam, isUuid, notFound, ok } from "../../lib/http.ts";
 import { inputOf } from "../../lib/input.ts";
 import type { RuleHit } from "../matches/rules.ts";
 import { canSeeEvent } from "./routes.ts";
+import { config } from "../../config.ts";
 
 export const ITEMS = ["details", "sponsors", "titles"] as const;
 export type Item = (typeof ITEMS)[number];
@@ -117,6 +118,29 @@ export async function publishBlocker(eventId: string): Promise<string | null> {
   if ((await stateOf(event, "details")) !== "confirmed") return "KKF must confirm the fight night details before publishing";
   if (event.titleLinks.length && (await stateOf(event, "titles")) !== "confirmed") return "KKF must confirm the titles on this fight night before publishing";
   return null;
+}
+
+/**
+ * KKF staff run the whole Program while approvals are off (claude/updates/match-page-simpler.md): what staff enter is
+ * confirmed by itself — details, sponsors and (when any) titles get a confirmed row for their current values, so
+ * there are no extra "Confirm" clicks and publishing isn't held up. Does nothing for others or with approvals on.
+ */
+export async function confirmAsStaff(eventId: string, user: User) {
+  if (config.approvals || !hasRole(user, STAFF)) return;
+  const event = await prisma.event.findUnique({ where: { id: eventId }, include: forSnapshot });
+  if (!event) return;
+  const at = now();
+  for (const item of ITEMS) {
+    if (item === "titles" && !event.titleLinks.length) continue;
+    if ((await stateOf(event, item)) === "confirmed") continue;
+    await prisma.eventAgreement.create({
+      data: {
+        id: randomUUID(), event_id: event.id, item, status: "confirmed", note: "Entered by KKF staff",
+        snapshot: snapshotOf(item, event) as Prisma.InputJsonValue,
+        recorded_by: user.id, recorded_at: at, confirmed_by: user.id, confirmed_at: at,
+      },
+    });
+  }
 }
 
 /**
@@ -289,7 +313,7 @@ export default async function agreementRoutes(app: FastifyInstance) {
     });
 
     routes.put("/events/:id/titles", async (request, reply) => {
-      const { event } = await eventFor(request, true);
+      const { user, event } = await eventFor(request, true);
       const raw = inputOf(request.body).get("titleIds");
       if (!Array.isArray(raw)) throw new HttpError(422, "titleIds must be a list");
       const ids = [...new Set(raw.map(String))];
@@ -300,6 +324,7 @@ export default async function agreementRoutes(app: FastifyInstance) {
         prisma.eventTitle.createMany({ data: ids.map((champion_id) => ({ event_id: event.id, champion_id })) }),
         prisma.event.update({ where: { id: event.id }, data: { updated_at: now() } }),
       ]);
+      await confirmAsStaff(event.id, user);
       return ok(reply, found.sort((a, b) => Number(a.weight_class) - Number(b.weight_class)).map(titleRow));
     });
 

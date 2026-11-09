@@ -35,7 +35,7 @@ describe("POST /users/login", () => {
     expect(res.body.data.user).toMatchObject({ id: a.organizer.id, username: a.organizer.username });
     expect(res.body.data.user).not.toHaveProperty("password_hash");
     expect(shapeOf(res)).toMatchSnapshot();
-    a.organizer.token = res.body.data.token; // older tokens are revoked on login
+    a.organizer.token = res.body.data.token;
   });
 
   it("accepts the seeded admin credentials", async () => {
@@ -68,10 +68,10 @@ describe("POST /users/login", () => {
     expect(res.status).toBe(401);
   });
 
-  it("revokes earlier tokens (single session)", async () => {
+  it("keeps earlier devices signed in (claude/updates/multi-device-sign-in.md)", async () => {
     const first = await login(a.referee.username, a.referee.password);
     const second = await login(a.referee.username, a.referee.password);
-    expect((await get("/users/me", first)).status).toBe(401);
+    expect((await get("/users/me", first)).status).toBe(200);
     expect((await get("/users/me", second)).status).toBe(200);
     a.referee.token = second;
   });
@@ -285,15 +285,16 @@ describe("ended sessions are flagged (X-Session-Expired)", () => {
     fetch(`${API_URL}${path}`, { headers: { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
 
   it("flags a revoked staff token on public and protected routes; not a valid, missing or fan token", async () => {
-    // Own actors: signing the officer in again below revokes their earlier token.
+    // Own actors: the officer signs out their other devices below, which ends this token.
     const own = await setupActors();
     const officer = own.officer.token;
     const valid = await raw("/events", officer);
     expect(valid.status).toBe(200);
     expect(valid.headers.get("x-session-expired")).toBeNull();
 
-    // Signing in again revokes the earlier token (single-session policy).
-    await login(own.officer.username, own.officer.password);
+    // "Sign out all other devices" from a second device ends the first session.
+    const second = await login(own.officer.username, own.officer.password);
+    await post("/users/me/sessions/sign-out-others", {}, second);
     const stalePublic = await raw("/events", officer);
     expect(stalePublic.status).toBe(200); // public answer unchanged…
     expect(stalePublic.headers.get("x-session-expired")).toBe("1"); // …but flagged

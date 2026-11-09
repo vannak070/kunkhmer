@@ -31,7 +31,7 @@ import { type Input, inputOf, parseBool } from "../../lib/input.ts";
 import { userArray } from "../auth/routes.ts";
 import { sponsorArray, stationArray } from "../settings/routes.ts";
 import { dateWindow } from "../../lib/window.ts";
-import { LOCKED_FOR_ORGANIZER, publishBlocker } from "./agreements.ts";
+import { LOCKED_FOR_ORGANIZER, confirmAsStaff, publishBlocker } from "./agreements.ts";
 
 const EDITORS = [...STAFF, Role.Organizer];
 
@@ -256,6 +256,7 @@ export default async function eventRoutes(app: FastifyInstance) {
         ...(input.present("sponsorIds") ? syncSponsors(id, input.get("sponsorIds")) : []),
       ]);
 
+      await confirmAsStaff(id, user);
       return ok(reply, formatCreatedEvent(await loadEvent(id)), 201);
     });
 
@@ -292,6 +293,8 @@ export default async function eventRoutes(app: FastifyInstance) {
         const bouts = await prisma.match.count({ where: { event_id: id } });
         if (bouts === 0) throw new HttpError(422, "Add at least one bout before publishing this fight night");
         // Offline agreements log: KKF confirms the details (licence included), and the titles if any, first.
+        // KKF staff's own entries count as confirmed (approvals off): confirmAsStaff records them.
+        await confirmAsStaff(id, user);
         const blocker = await publishBlocker(id);
         if (blocker) throw new HttpError(422, blocker);
       }
@@ -326,6 +329,7 @@ export default async function eventRoutes(app: FastifyInstance) {
         prisma.event.update({ where: { id }, data }),
         ...(input.has("sponsorIds") ? syncSponsors(id, input.get("sponsorIds")) : []),
       ]);
+      await confirmAsStaff(id, user);
 
       return ok(reply, formatEvent(await loadEvent(id)));
     });
@@ -343,6 +347,7 @@ export default async function eventRoutes(app: FastifyInstance) {
       const date = toDate(inputOf(request.body).required("date"));
       if (!date) throw new HttpError(422, "The date must be a date like 2026-10-18");
       const copy = await copyEvent(source, date);
+      await confirmAsStaff(copy, user);
       return ok(reply, formatCreatedEvent(await loadEvent(copy)), 201);
     });
 
@@ -373,7 +378,9 @@ export default async function eventRoutes(app: FastifyInstance) {
           skipped.push({ name: source.name, date: dateOnly(date), reason: "exists" });
           continue;
         }
-        created.push(await copyEvent(source, date));
+        const copy = await copyEvent(source, date);
+        await confirmAsStaff(copy, user);
+        created.push(copy);
       }
       const rows = await prisma.event.findMany({ where: { id: { in: created } }, orderBy: [{ date: "asc" }, { start_time: "asc" }] });
       return ok(reply, { created: rows.map(eventArray), skipped }, 201);

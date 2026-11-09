@@ -123,7 +123,8 @@ and phone width in both languages.
 ## Security
 
 - Passwords: bcrypt (`bcryptjs`, 12 rounds). Tokens: `"<id>|<secret>"` bearer
-  tokens, hashed in `personal_access_tokens`; logging in revokes earlier tokens.
+  tokens, hashed in `personal_access_tokens`; up to 5 devices per staff account (oldest unused dropped), a session
+  unused for 30 days ends, deactivated accounts are refused (`updates/multi-device-sign-in.md`).
 - Public-site fans are a separate account type with their own `kkf_` tokens
   (`lib/fanAuth.ts`); never mix them with staff auth — see `features/fan-accounts.md`.
 - Never commit `.env` files. Never log tokens or password hashes.
@@ -152,6 +153,8 @@ and phone width in both languages.
   them back on = `APPROVALS_ENABLED=true` (backend) + `config/features.ts` in the admin
   (`updates/officer-run-program.md`).
 - Staff login is rate-limited in memory (`lib/loginThrottle.ts`, failed attempts only; one API instance).
+- Off-site backups: optional `offsite` service (rclone, encrypted, `deploy/README.md` section 5,
+  `updates/offsite-backups.md`) — not running on the server until KKF creates the bucket and sets `deploy/.env`.
   (Fighter edits are now STAFF + own-club only.)
 - `utils/api.ts` and parts of `data/` are duplicated between the two
   frontends; no frontend tests.

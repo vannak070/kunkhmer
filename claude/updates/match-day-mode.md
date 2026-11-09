@@ -33,3 +33,15 @@ No API change, no migration. Uses `POST /matches/:id/weigh-in` and `POST /matche
 
 ## Log
 - 2026-10-13: built. New `pages/MatchDay.tsx`, `components/program/MatchDayBanner.tsx` (match page + "Your next job" card, shown on match day or while results are open; "Open match day" always in the More menu), `components/program/resultForm.ts` (the Match page now uses it too), route `events/:id/match-day` (guard `events.edit`), `md.*` texts (EN + KM). Browser-checked on the test API at 375 px: weigh-in → result → auto-advance to the next bout, progress bar and bout strip colours, over-weight warning, Khmer. The Weigh-in and Results list pages are unchanged (they still have their own copy of the result logic).
+
+## Update 2026-11-09 (owner: "please improve this page" → picked 2 of 8 ideas)
+- **Bout list with names:** on a computer (≥ 1024 px) a list of every bout sits on the left — number, red and blue names (or "winner of bout N"),
+  and its state with an icon (✓ result recorded, ⚖ weighed in, ⚠ over the limit, ↻ replacement needed, ○ not started); the open bout is
+  highlighted. On a phone the number buttons stay and show the same icon next to the number.
+- **Weight hints + keyboard flow:** each kg box shows the limit ("Limit 52 kg (51 + 1)") and the fighter's profile weight; the red box is
+  focused when a bout opens; Enter moves red → blue → Save weigh-in (then the Result step opens, as before).
+- Not picked (offer only if asked): clearer header with type / rules / referee, match info line, finished summary with Sign off, Withdraw in a
+  More menu, result in one screen, Undo.
+- Code: `pages/MatchDay.tsx` only (+ `md.limit`, `md.registered` EN + KM). Checked on the test API (KUBOTA show of last week's program):
+  1440 px list + hints; typing 51.6 ↵ 52.4 ↵ saved and opened Result, the list showed "over the weight limit"; Khmer phone: chip "1 ⚠", hints
+  «កម្រិត ៥២ គ.ក (៥១ + ១)», no sideways scroll. Uncommitted, not live.

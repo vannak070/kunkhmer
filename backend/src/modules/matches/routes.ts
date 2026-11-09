@@ -56,17 +56,30 @@ async function loadMatch(id: string) {
 const int = (value: unknown) => (value === null ? null : Number(value));
 
 /** Bout labels printed on the program sheet, and the rule sets a bout can be fought under (claude/features/weekly-program.md). */
-export const BOUT_LABELS = ["friendly", "international", "youth", "qualifier", "final", "prize"] as const;
-export const RULE_SETS = ["kun_khmer", "mas_fight"] as const;
+export const BOUT_LABELS = [
+  "friendly", "international", "youth", "qualifier", "final", "prize",
+  // Sheet like KKF's paper (claude/updates/sheet-like-paper-week-print.md)
+  "title_fight", "title_defense", "points_belt", "cash_prize", "candidate", "other",
+] as const;
+export const RULE_SETS = ["kun_khmer", "mas_fight", "kick_boxing", "fingerless"] as const;
 
-/** `boutLabel` (one of BOUT_LABELS, "" clears) and `ruleSet` (one of RULE_SETS); only the keys that were sent. */
-function labelAndRules(input: Input): { bout_label?: string | null; rule_set?: string } {
-  const out: { bout_label?: string | null; rule_set?: string } = {};
+/**
+ * `boutLabel` (one of BOUT_LABELS, "" clears), `boutLabelText` (the sheet's own words, needed for "other", at most
+ * 120 characters, "" clears) and `ruleSet` (one of RULE_SETS); only the keys that were sent.
+ */
+function labelAndRules(input: Input): { bout_label?: string | null; bout_label_text?: string | null; rule_set?: string } {
+  const out: { bout_label?: string | null; bout_label_text?: string | null; rule_set?: string } = {};
   if (input.present("boutLabel")) {
     const label = input.get<string>("boutLabel");
     if (label !== null && !(BOUT_LABELS as readonly string[]).includes(label)) throw new HttpError(422, `The boutLabel must be one of: ${BOUT_LABELS.join(", ")}`);
     out.bout_label = label;
   }
+  if (input.present("boutLabelText")) {
+    const text = input.get<string>("boutLabelText");
+    if (text !== null && String(text).length > 120) throw new HttpError(422, "The boutLabelText may not be longer than 120 characters");
+    out.bout_label_text = text === null ? null : String(text);
+  }
+  if (out.bout_label === "other" && !out.bout_label_text) throw new HttpError(422, 'Write the bout type when boutLabel is "other"');
   if (input.has("ruleSet")) {
     const rules = String(input.get("ruleSet"));
     if (!(RULE_SETS as readonly string[]).includes(rules)) throw new HttpError(422, `The ruleSet must be one of: ${RULE_SETS.join(", ")}`);
@@ -362,7 +375,7 @@ export default async function matchRoutes(app: FastifyInstance) {
 
     /**
      * Tournament draw (claude/updates/empty-corners-draws.md): `{ fighterIds: [4 or 8, in draw order], agreedWeight, rounds,
-     * roundTime, knockdownLimit, gloveSize, gloveBrand, ruleSet?, finalLabel? ("final" | "prize") }` on a fight card.
+     * roundTime, knockdownLimit, gloveSize, gloveBrand, ruleSet?, finalLabel? ("final" | "prize"), name? }` on a fight card.
      * Pairs 1v2, 3v4… as qualifiers, then each next round's corners wait for the winners ("winner of bout N"), up to the
      * final. First-round pairs go through the KKF matching rules like any bout (a Block rule refuses the whole draw).
      */
@@ -387,6 +400,8 @@ export default async function matchRoutes(app: FastifyInstance) {
       if (finalLabel !== "final" && finalLabel !== "prize") throw new HttpError(422, 'The finalLabel must be "final" or "prize"');
       const rules = labelAndRules(inputOf({ ruleSet: input.get("ruleSet", "kun_khmer") }));
       const agreedWeight = Number(input.required("agreedWeight"));
+      const drawName = input.get<string>("name");
+      if (drawName !== null && String(drawName).length > 120) throw new HttpError(422, "The draw name may not be longer than 120 characters");
 
       const warnings: Awaited<ReturnType<typeof enforceRules>> = [];
       for (let i = 0; i < fighterIds.length; i += 2) {
@@ -410,6 +425,7 @@ export default async function matchRoutes(app: FastifyInstance) {
         glove_brand: input.required<string>("gloveBrand"),
         status: "Draft",
         draw_id: drawId,
+        draw_name: drawName === null ? null : String(drawName),
         ...rules,
       };
       const ids: string[] = [];
@@ -582,12 +598,22 @@ export default async function matchRoutes(app: FastifyInstance) {
       return ok(reply, await loadMatch(id));
     });
 
+    /**
+     * Delete a bout. Super Admin: always. KKF Officer (claude/updates/match-page-simpler.md): only a bout added by
+     * mistake — the match isn't published yet and the bout has no result; otherwise "Cancel bout" keeps the record.
+     */
     protectedRoutes.delete("/matches/:id", async (request, reply) => {
-      requireRole(request, [Role.SuperAdmin]);
+      const user = requireRole(request, STAFF);
       const id = idParam(request.params, "Match");
       const match = await prisma.match.findUnique({ where: { id } });
       if (!match) throw notFound("Match");
       await assertNotSignedOff(match.event_id);
+      if (user.role !== Role.SuperAdmin) {
+        const event = match.event_id ? await prisma.event.findUnique({ where: { id: match.event_id }, select: { status: true } }) : null;
+        const hasResult = Boolean(match.winner_id) || (await prisma.boutResult.count({ where: { match_id: id } })) > 0;
+        if (hasResult) throw new HttpError(422, "This bout has a result — cancel it instead of deleting it");
+        if (event && ["Published", "Completed"].includes(event.status)) throw new HttpError(422, "This match is published — cancel the bout instead of deleting it");
+      }
       // A deleted bout no longer counts towards the fighters' records.
       await prisma.$transaction(async (tx) => {
         // Corners waiting for this bout's winner wait for nobody now.
@@ -598,6 +624,59 @@ export default async function matchRoutes(app: FastifyInstance) {
         await recalculateRecord(tx, match.fighter_b_id);
       });
       return deleted(reply, "Match deleted successfully", matchArray(match));
+    });
+
+    /**
+     * Swap red and blue (claude/updates/match-page-simpler.md): fighters, "winner of bout N" sources, weigh-ins and
+     * club answers change sides. Not after a result.
+     */
+    protectedRoutes.post("/matches/:id/swap-corners", async (request, reply) => {
+      const user = requireRole(request, ORGANIZERS);
+      const id = idParam(request.params, "Match");
+      const m = await prisma.match.findUnique({ where: { id } });
+      if (!m) throw notFound("Match");
+      await requireOwnEvent(user, m.event_id);
+      await assertNotSignedOff(m.event_id);
+      const hasResult = Boolean(m.winner_id) || (await prisma.boutResult.count({ where: { match_id: id } })) > 0;
+      if (hasResult) throw new HttpError(422, "This bout has a result — its corners can't be swapped");
+      const flip = { a: "b", b: "a" } as const;
+      await prisma.match.update({
+        where: { id },
+        data: {
+          fighter_a_id: m.fighter_b_id, fighter_b_id: m.fighter_a_id,
+          slot_a_from: m.slot_b_from, slot_b_from: m.slot_a_from,
+          fighter_a_confirmed: m.fighter_b_confirmed, fighter_b_confirmed: m.fighter_a_confirmed,
+          weigh_in_a_kg: m.weigh_in_b_kg, weigh_in_b_kg: m.weigh_in_a_kg,
+          club_a_response: m.club_b_response, club_b_response: m.club_a_response,
+          club_a_note: m.club_b_note, club_b_note: m.club_a_note,
+          club_a_responded_at: m.club_b_responded_at, club_b_responded_at: m.club_a_responded_at,
+          club_a_responded_by: m.club_b_responded_by, club_b_responded_by: m.club_a_responded_by,
+          replacement_side: m.replacement_side ? flip[m.replacement_side as "a" | "b"] ?? m.replacement_side : null,
+          updated_at: now(),
+        },
+      });
+      return ok(reply, await loadMatch(id));
+    });
+
+    /**
+     * Bout order on a fight card (claude/updates/match-page-simpler.md): `{ matchIds }` = every bout of the card, in
+     * the new order; sort_order becomes 1, 2, 3… (the program sheet prints this order).
+     */
+    protectedRoutes.put("/matches/batches/:id/order", async (request, reply) => {
+      const user = requireRole(request, ORGANIZERS);
+      const subEventId = idParam(request.params, "Sub-event (batch)");
+      const card = await prisma.subEvent.findUnique({ where: { id: subEventId }, select: { id: true, event_id: true } });
+      if (!card) throw notFound("Sub-event (batch)");
+      await requireOwnEvent(user, card.event_id);
+      await assertNotSignedOff(card.event_id);
+      const raw = inputOf(request.body).get<unknown>("matchIds");
+      const ids = Array.isArray(raw) ? raw.map(String) : [];
+      const onCard = await prisma.match.findMany({ where: { sub_event_id: subEventId }, select: { id: true } });
+      const same = ids.length === onCard.length && new Set(ids).size === ids.length && onCard.every((b) => ids.includes(b.id));
+      if (!same) throw new HttpError(422, "Send every bout of this fight card once, in the new order");
+      const at = now();
+      await prisma.$transaction(ids.map((id, i) => prisma.match.update({ where: { id }, data: { sort_order: i + 1, updated_at: at } })));
+      return ok(reply, { matchIds: ids });
     });
 
     protectedRoutes.post("/matches/:id/result", async (request, reply) => {

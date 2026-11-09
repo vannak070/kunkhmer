@@ -269,6 +269,7 @@ exports[`match proposals (club confirmation) > confirms a new bout at once and s
     "data": {
       "agreed_weight": "number",
       "bout_label": "null",
+      "bout_label_text": "null",
       "championship": "null",
       "championshipId": "null",
       "championshipTitleName": "null",
@@ -290,6 +291,7 @@ exports[`match proposals (club confirmation) > confirms a new bout at once and s
       "created_at": "datetime(.000000Z)",
       "date": "date",
       "draw_id": "null",
+      "draw_name": "null",
       "event_id": "uuid",
       "fighter_a": {
         "alias": "null",
@@ -470,6 +472,7 @@ exports[`match proposals (club confirmation) > lists proposals: a club sees bout
 {
   "agreed_weight": "number",
   "bout_label": "null",
+  "bout_label_text": "null",
   "championship": "null",
   "championshipId": "null",
   "championshipTitleName": "null",
@@ -491,6 +494,7 @@ exports[`match proposals (club confirmation) > lists proposals: a club sees bout
   "created_at": "datetime(.000000Z)",
   "date": "date",
   "draw_id": "null",
+  "draw_name": "null",
   "event_id": "uuid",
   "event_name": "string",
   "event_status": "string",
@@ -677,6 +681,7 @@ exports[`match results > records a win and recalculates both fighters' records 1
     "data": {
       "agreed_weight": "number",
       "bout_label": "null",
+      "bout_label_text": "null",
       "championship": "null",
       "championshipId": "null",
       "championshipTitleName": "null",
@@ -698,6 +703,7 @@ exports[`match results > records a win and recalculates both fighters' records 1
       "created_at": "datetime(.000000Z)",
       "date": "date",
       "draw_id": "null",
+      "draw_name": "null",
       "event_id": "uuid",
       "fighter_a": {
         "alias": "null",
@@ -885,6 +891,7 @@ exports[`matches > creates a match, deriving the event from the batch 1`] = `
 {
   "agreed_weight": "number",
   "bout_label": "null",
+  "bout_label_text": "null",
   "championship": "null",
   "championshipId": "null",
   "championshipTitleName": "null",
@@ -906,6 +913,7 @@ exports[`matches > creates a match, deriving the event from the batch 1`] = `
   "created_at": "datetime(.000000Z)",
   "date": "date",
   "draw_id": "null",
+  "draw_name": "null",
   "event_id": "uuid",
   "fighter_a": {
     "alias": "null",
@@ -1081,12 +1089,13 @@ exports[`matches > creates a match, deriving the event from the batch 1`] = `
 }
 `;
 
-exports[`matches > deletes a match (Super Admin only) 1`] = `
+exports[`matches > deletes a match (Super Admin; a KKF Officer only before publishing and without a result) 1`] = `
 {
   "body": {
     "data": {
       "agreed_weight": "number",
       "bout_label": "null",
+      "bout_label_text": "null",
       "championship_id": "null",
       "club_a_note": "null",
       "club_a_responded_at": "datetime(.000000Z)",
@@ -1098,6 +1107,7 @@ exports[`matches > deletes a match (Super Admin only) 1`] = `
       "club_b_response": "string",
       "created_at": "datetime(.000000Z)",
       "draw_id": "null",
+      "draw_name": "null",
       "event_id": "uuid",
       "fighter_a_confirmed": "boolean",
       "fighter_a_id": "uuid",
@@ -1162,6 +1172,7 @@ exports[`matches > shows a match 1`] = `
     "data": {
       "agreed_weight": "number",
       "bout_label": "null",
+      "bout_label_text": "null",
       "championship": "null",
       "championshipId": "null",
       "championshipTitleName": "null",
@@ -1183,6 +1194,7 @@ exports[`matches > shows a match 1`] = `
       "created_at": "datetime(.000000Z)",
       "date": "date",
       "draw_id": "null",
+      "draw_name": "null",
       "event_id": "uuid",
       "fighter_a": {
         "alias": "null",
@@ -1347,6 +1359,7 @@ exports[`matches > updates a match, accepting sortOrder or sort_order 1`] = `
     "data": {
       "agreed_weight": "number",
       "bout_label": "null",
+      "bout_label_text": "null",
       "championship": "null",
       "championshipId": "null",
       "championshipTitleName": "null",
@@ -1368,6 +1381,7 @@ exports[`matches > updates a match, accepting sortOrder or sort_order 1`] = `
       "created_at": "datetime(.000000Z)",
       "date": "date",
       "draw_id": "null",
+      "draw_name": "null",
       "event_id": "uuid",
       "fighter_a": {
         "alias": "null",

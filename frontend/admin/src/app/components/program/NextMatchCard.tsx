@@ -1,7 +1,8 @@
 /**
  * "Your next job" on the Matches page: the match that needs work — the last one whose results are still open, else
  * the nearest one coming up — with its progress and the one next step (NightNextCard). Built from the lists the page
- * already loaded. See claude/updates/matches-menu.md (was the Program overview's focus card).
+ * already loaded. See claude/updates/matches-menu.md (was the Program overview's focus card). `slim`: one strip above the
+ * Matches tabs — the match, "4 of 8 done · Next: …" and its button (claude/updates/match-page-simpler.md, H).
  */
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
@@ -11,7 +12,7 @@ import { usePermissions } from "../../hooks/usePermissions";
 import { formatDay, formatTime, useT } from "../../i18n/program";
 import { usePlaceName } from "../../hooks/useSettingsLists";
 import { type Agreements, LOCKED_FOR_ORGANIZER } from "./AgreementsPanel";
-import { NightNextCard } from "./NightFlow";
+import { NightNextCard, NightNextInline } from "./NightFlow";
 import { MatchDayBanner } from "./MatchDayBanner";
 import { StatusChip, dayOf, displayStatus, hasResult, todayUtc } from "./shared";
 
@@ -26,7 +27,7 @@ export function pickFocus(events: any[], bouts: any[]) {
   return { focus: openPast ?? upcoming ?? null, results: Boolean(openPast) };
 }
 
-export function NextMatchCard({ events, cards, bouts, onChanged }: { events: any[]; cards: any[]; bouts: any[]; onChanged: () => void }) {
+export function NextMatchCard({ events, cards, bouts, onChanged, slim = false }: { events: any[]; cards: any[]; bouts: any[]; onChanged: () => void; slim?: boolean }) {
   const { t, lang } = useT();
   const placeName = usePlaceName();
   const navigate = useNavigate();
@@ -51,6 +52,33 @@ export function NextMatchCard({ events, cards, bouts, onChanged }: { events: any
   if (!focus || !(isStaff || isOrganizer) || agreements?.id !== focus.id) return null;
   const mine = bouts.filter((b) => b.event_id === focus.id);
   const open = () => navigate(`/home/events/${focus.id}`);
+  const flow = {
+    event: focus,
+    cards: cards.filter((c) => c.event_id === focus.id),
+    bouts: mine,
+    agreements: agreements?.data ?? null,
+    mode: (isStaff ? "staff" : "organizer") as "staff" | "organizer",
+    canEdit,
+    canEditDetails: canEdit || (permissions.hasPermission("events.record") && !LOCKED_FOR_ORGANIZER.includes(focus.status)),
+    onEditDetails: open,
+    onChanged: () => { onChanged(); loadAgreements(); },
+  };
+
+  if (slim) {
+    return (
+      <section aria-labelledby="focus-match" className="rounded-2xl border border-slate-200 bg-white p-4 flex flex-col xl:flex-row xl:items-center gap-3 shadow-sm">
+        <div className="min-w-0 xl:w-72 xl:shrink-0">
+          <p className={`text-xs font-bold uppercase tracking-wide ${results ? "text-amber-700" : "text-primary"}`}>{results ? t("ov.focusResults") : t("ov.focusNext")}</p>
+          <Link id="focus-match" to={`/home/events/${focus.id}`} className="block font-bold text-slate-900 break-words hover:text-primary">{focus.name}</Link>
+          <p className="text-sm text-slate-600">{formatDay(focus.date, lang)}{focus.start_time ? ` · ${formatTime(focus.start_time, lang)}` : ""}</p>
+        </div>
+        <NightNextInline {...flow} />
+        <Link to={`/home/events/${focus.id}`} className="self-start xl:self-auto shrink-0 inline-flex items-center justify-center gap-1 h-10 px-4 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-800 hover:border-primary hover:text-primary">
+          {t("ov.open")} <ChevronRight className="w-4 h-4" aria-hidden />
+        </Link>
+      </section>
+    );
+  }
 
   return (
     <section aria-labelledby="focus-match" className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 space-y-5 shadow-sm">
@@ -69,17 +97,7 @@ export function NextMatchCard({ events, cards, bouts, onChanged }: { events: any
         </Link>
       </div>
       {isStaff && <MatchDayBanner event={focus} bouts={mine} />}
-      <NightNextCard
-        event={focus}
-        cards={cards.filter((c) => c.event_id === focus.id)}
-        bouts={mine}
-        agreements={agreements.data}
-        mode={isStaff ? "staff" : "organizer"}
-        canEdit={canEdit}
-        canEditDetails={canEdit || (permissions.hasPermission("events.record") && !LOCKED_FOR_ORGANIZER.includes(focus.status))}
-        onEditDetails={open}
-        onChanged={() => { onChanged(); loadAgreements(); }}
-      />
+      <NightNextCard {...flow} />
     </section>
   );
 }

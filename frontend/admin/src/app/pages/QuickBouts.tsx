@@ -26,7 +26,11 @@ interface Row {
   weight: number;
   ruleId: string;
   label: string;
+  /** The words for the sheet when label is "other". */
+  labelText?: string;
   ruleSet: string;
+  /** Gloves for this bout (brand and model); a new row copies the row above. */
+  glove: string;
   /** The weight was typed by hand (otherwise it follows the red corner's weight). */
   weightSet?: boolean;
   /** undefined = not checked yet, null = couldn't check */
@@ -37,7 +41,7 @@ interface Row {
 let nextKey = 1;
 const emptyRow = (from?: Row): Row => ({
   key: nextKey++, red: null, blue: null, blueLater: false,
-  weight: from?.weight ?? 60, ruleId: from?.ruleId ?? "", label: "", ruleSet: from?.ruleSet ?? "kun_khmer",
+  weight: from?.weight ?? 60, ruleId: from?.ruleId ?? "", label: "", ruleSet: from?.ruleSet ?? "kun_khmer", glove: from?.glove ?? "",
 });
 
 /** A small search box that picks one fighter (Khmer or English name, club). The server finds them (claude/updates/admin-bout-picker.md). */
@@ -125,7 +129,6 @@ export function QuickBouts() {
   const [existing, setExisting] = useState<any[]>([]);
   const [rules, setRules] = useState<any[]>([]);
   const [gloves, setGloves] = useState<any[]>([]);
-  const [glove, setGlove] = useState("");
   const [rows, setRows] = useState<Row[]>(() => [emptyRow(), emptyRow(), emptyRow()]);
   const [saving, setSaving] = useState(false);
 
@@ -142,8 +145,8 @@ export function QuickBouts() {
         setExisting(bs);
         setRules(rs);
         setGloves(gs);
-        if (gs[0]) setGlove(`${gs[0].brand}${gs[0].model ? ` ${gs[0].model}` : ""}`);
-        if (rs[0]) setRows((list) => list.map((r) => ({ ...r, ruleId: r.ruleId || rs[0].id })));
+        const firstGlove = gs[0] ? `${gs[0].brand}${gs[0].model ? ` ${gs[0].model}` : ""}` : "";
+        setRows((list) => list.map((r) => ({ ...r, ruleId: r.ruleId || rs[0]?.id || "", glove: r.glove || firstGlove })));
       } catch {
         setCard(null);
       }
@@ -184,6 +187,7 @@ export function QuickBouts() {
     if (!r.red) return t("qb.needRed");
     if (!r.blue && !r.blueLater) return t("qb.needBlue");
     if (!(r.weight >= 20 && r.weight <= 200)) return t("ff.weightRange");
+    if (r.label === "other" && !r.labelText?.trim()) return t("bout.labelTextNeeded");
     if (r.check?.blocked?.length) return r.check.blocked.map((h) => ruleSentence(t, lang, h, nameOf)).join(" ");
     return null;
   };
@@ -204,8 +208,8 @@ export function QuickBouts() {
         await api.matches.create({
           eventId: card.event_id, subEventId: card.id, fighterAId: r.red.id, fighterBId: r.blueLater ? null : r.blue.id,
           rounds: rule?.rounds ?? 5, roundTime: rule?.round_time ?? 3, knockdownLimit: rule?.knockdown_limit ?? 3,
-          agreedWeight: r.weight, gloveSize: rule?.glove_size ?? "8oz", gloveBrand: glove || "—",
-          sortOrder: order++, boutLabel: r.label || null, ruleSet: r.ruleSet,
+          agreedWeight: r.weight, gloveSize: rule?.glove_size ?? "8oz", gloveBrand: r.glove || "—",
+          sortOrder: order++, boutLabel: r.label || null, boutLabelText: r.label === "other" ? r.labelText?.trim() : null, ruleSet: r.ruleSet,
         });
         saved++;
       } catch (e) {
@@ -239,15 +243,7 @@ export function QuickBouts() {
         <p className="text-slate-600 mt-1">{t("qb.lead", { card: card.name, date: formatDay(card.date, lang) })}{existing.length ? ` ${t("qb.already", { n: n(existing.length) })}` : ""}</p>
       </header>
 
-      <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-slate-200 bg-white p-4">
-        <label className="block min-w-[14rem]"><span className="text-sm font-semibold text-slate-800">{t("qb.gloves")}</span>
-          <select value={glove} onChange={(e) => setGlove(e.target.value)} className={`${cell} mt-1`}>
-            {gloves.length === 0 && <option value="">—</option>}
-            {gloves.map((g) => { const label = `${g.brand}${g.model ? ` ${g.model}` : ""}`; return <option key={g.id} value={label}>{label}</option>; })}
-          </select>
-        </label>
-        <p className="text-sm text-slate-500 flex-1 min-w-[14rem]">{t("qb.hint")}</p>
-      </div>
+      <p className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">{t("qb.hint")}</p>
 
       <ol className="space-y-3">
         {rows.map((r, i) => {
@@ -260,9 +256,13 @@ export function QuickBouts() {
               <div className="grid gap-3 2xl:grid-cols-[minmax(0,3fr)_minmax(0,2.4fr)] 2xl:items-start">
               {/* Corners: number, red, blue */}
               <div className="grid gap-3 grid-cols-[1.75rem_minmax(0,1fr)] sm:grid-cols-[1.75rem_minmax(0,1fr)_minmax(0,1fr)] items-start">
-                <span className="text-sm font-bold text-slate-400 pt-3">{n(existing.length + i + 1)}</span>
+                <span className="text-sm font-bold text-slate-400 pt-8">{n(existing.length + i + 1)}</span>
+                <div className="space-y-1">
+                <span className="block text-xs font-semibold text-red-700">{t("common.red")}</span>
                 <Picker value={r.red} exclude={new Set([...taken, ...(r.blue ? [r.blue.id] : [])])} tone="red" nearKg={r.weightSet ? r.weight : null} placeholder={t("qb.red")} onChange={(f) => update(r.key, { red: f, ...(f && !r.weightSet && weightOf(f) ? { weight: weightOf(f)! } : {}), ...(f && !r.label && f.nationality && f.nationality !== "Cambodian" ? { label: "international" } : {}) })} />
-                <div className="col-start-2 sm:col-start-auto">
+                </div>
+                <div className="col-start-2 sm:col-start-auto space-y-1">
+                <span className="block text-xs font-semibold text-blue-700">{t("common.blue")}</span>
                 {r.blueLater ? (
                   <div className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-blue-300 h-11 px-3 text-sm text-slate-600">
                     {t("corner.tba")}
@@ -276,25 +276,47 @@ export function QuickBouts() {
                 )}
                 </div>
               </div>
-              {/* Weight, rules, type, rule set, remove */}
-              <div className="grid gap-3 grid-cols-2 sm:grid-cols-[6rem_minmax(0,1fr)_minmax(0,1fr)_8rem_2.5rem] items-center">
-                <label className="block"><span className="sr-only">{t("bout.weight")}</span>
-                  <input type="number" inputMode="decimal" step="0.5" min={20} max={200} list="qb-weights" value={r.weight || ""} onChange={(e) => update(r.key, { weight: Number(e.target.value), weightSet: true })} className={cell} aria-label={t("bout.weight")} />
+              {/* Weight, rounds, type, rule set, gloves, remove — each with its heading (owner, 2026-11-09). */}
+              <div className="grid gap-3 grid-cols-2 sm:grid-cols-[5.5rem_minmax(0,1fr)_minmax(0,1fr)_7.5rem_minmax(0,1fr)_2.5rem] items-end">
+                <label className="block space-y-1"><span className="block text-xs font-semibold text-slate-500">{t("qb.f.weight")}</span>
+                  <input type="number" inputMode="decimal" step="0.5" min={20} max={200} list="qb-weights" value={r.weight || ""} onChange={(e) => update(r.key, { weight: Number(e.target.value), weightSet: true })} className={cell} />
                 </label>
-                <select value={r.ruleId} onChange={(e) => update(r.key, { ruleId: e.target.value })} className={cell} aria-label={t("bout.rules")}>
-                  {rules.length === 0 && <option value="">{t("bout.rulesDefault")}</option>}
-                  {rules.map((x) => <option key={x.id} value={x.id}>{lang === "km" && x.name_khmer ? x.name_khmer : x.name}</option>)}
-                </select>
-                <select value={r.label} onChange={(e) => update(r.key, { label: e.target.value })} className={cell} aria-label={t("bout.label")}>
-                  <option value="">{t("bout.label")}…</option>
-                  {BOUT_LABELS.map((k) => <option key={k} value={k}>{t(`boutLabel.${k}` as TextKey)}</option>)}
-                </select>
-                <select value={r.ruleSet} onChange={(e) => update(r.key, { ruleSet: e.target.value })} className={cell} aria-label={t("bout.ruleSet")}>
-                  {RULE_SETS.map((k) => <option key={k} value={k}>{t(`ruleSet.${k}` as TextKey)}</option>)}
-                </select>
-                <button type="button" onClick={() => removeRow(r.key)} aria-label={t("common.remove")} className="w-10 h-10 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 inline-flex items-center justify-center justify-self-end"><Trash2 className="w-4 h-4" aria-hidden /></button>
+                <label className="block space-y-1"><span className="block text-xs font-semibold text-slate-500">{t("ba.rounds")}</span>
+                  <select value={r.ruleId} onChange={(e) => update(r.key, { ruleId: e.target.value })} className={cell}>
+                    {rules.length === 0 && <option value="">{t("bout.rulesDefault")}</option>}
+                    {rules.map((x) => <option key={x.id} value={x.id}>{lang === "km" && x.name_khmer ? x.name_khmer : x.name}</option>)}
+                  </select>
+                </label>
+                <label className="block space-y-1"><span className="block text-xs font-semibold text-slate-500">{t("bout.label")}</span>
+                  <select value={r.label} onChange={(e) => update(r.key, { label: e.target.value })} className={cell}>
+                    <option value="">{t("common.notSet")}</option>
+                    {BOUT_LABELS.map((k) => <option key={k} value={k}>{t(`boutLabel.${k}` as TextKey)}</option>)}
+                  </select>
+                </label>
+                <label className="block space-y-1"><span className="block text-xs font-semibold text-slate-500">{t("bout.ruleSet")}</span>
+                  <select value={r.ruleSet} onChange={(e) => update(r.key, { ruleSet: e.target.value })} className={cell}>
+                    {RULE_SETS.map((k) => <option key={k} value={k}>{t(`ruleSet.${k}` as TextKey)}</option>)}
+                  </select>
+                </label>
+                <label className="block space-y-1"><span className="block text-xs font-semibold text-slate-500">{t("bout.gloves")}</span>
+                  <select value={r.glove} onChange={(e) => update(r.key, { glove: e.target.value })} className={cell}>
+                    {gloves.length === 0 && <option value="">—</option>}
+                    {gloves.map((g) => { const label = `${g.brand}${g.model ? ` ${g.model}` : ""}`; return <option key={g.id} value={label}>{label}</option>; })}
+                  </select>
+                </label>
+                <button type="button" onClick={() => removeRow(r.key)} aria-label={t("common.remove")} className="w-10 h-11 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 inline-flex items-center justify-center justify-self-end"><Trash2 className="w-4 h-4" aria-hidden /></button>
+                {(() => {
+                  // The chosen rounds preset in words, e.g. "5 rounds × 3 min · gloves 10oz".
+                  const rule = rules.find((x) => x.id === r.ruleId);
+                  return rule ? <p className="col-span-2 sm:col-start-2 sm:col-span-4 -mt-1 text-xs text-slate-500">{t("bout.ruleLine", { rounds: rule.rounds, min: rule.round_time, glove: rule.glove_size })}</p> : null;
+                })()}
               </div>
               </div>
+              {r.label === "other" && (
+                <div className="mt-2 pl-8">
+                  <input value={r.labelText ?? ""} maxLength={120} onChange={(e) => update(r.key, { labelText: e.target.value })} placeholder={t("bout.labelTextHint")} aria-label={t("bout.labelText")} className={cell} />
+                </div>
+              )}
               {ready && (
                 <div className="mt-2 text-sm pl-8">
                   {problem ? (

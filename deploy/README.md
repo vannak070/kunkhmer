@@ -75,8 +75,52 @@ Database changes (migrations) are applied automatically when the backend starts.
 - Every day the `backup` service writes `db_<date>.dump` (database) and `uploads_<date>.tar.gz` (pictures)
   to `deploy/backups/` and keeps `BACKUP_KEEP_DAYS` days (default 14). The first one runs 10 minutes after start.
 - Make one by hand at any time: `docker compose -f docker-compose.prod.yml exec backup sh /backup.sh now`
-- **Copy `deploy/backups/` off the server regularly** (to your computer or cloud storage). A backup on the
-  same server is lost if the server is.
+- **Off-site copies** (below) send every backup, encrypted, to cloud storage. A backup on the same server is
+  lost if the server is.
+
+### Off-site copies (once, about 15 minutes)
+
+The `offsite` service copies each new backup to an S3-compatible bucket (Cloudflare R2 or Backblaze B2 — both
+free up to 10 GB), encrypted with a backup password, every 6 hours, and keeps 30 days there
+(`OFFSITE_KEEP_DAYS`). Files are named by date; their content can only be read with the password.
+
+1. **Choose a backup password** (long, e.g. four random words) and keep it somewhere safe outside the server
+   (a password manager, or on paper in the KKF office). **Without it the off-site copies can't be opened.**
+2. **Create the bucket and a key:**
+   - *Cloudflare R2:* dashboard › R2 › Create bucket `kkf-backups` › Manage R2 API tokens › Create token with
+     "Object Read & Write" for that bucket. Note the Access Key ID, Secret Access Key and the endpoint
+     `https://<account-id>.r2.cloudflarestorage.com`.
+   - *Backblaze B2:* Buckets › Create a bucket `kkf-backups` (private) › Application Keys › Add a key for that
+     bucket. Note the keyID, applicationKey and the bucket's S3 endpoint (e.g. `https://s3.us-west-004.backblazeb2.com`).
+3. **On the server**, turn the password into rclone's stored form (it is printed once; nothing is saved):
+   ```bash
+   docker run --rm rclone/rclone:1.68.2 obscure 'YOUR BACKUP PASSWORD'
+   ```
+4. **Add to `deploy/.env`** (type the values on the server — never send them by chat or email):
+   ```bash
+   COMPOSE_PROFILES=offsite
+   OFFSITE_PROVIDER=Cloudflare          # Backblaze B2: Other
+   OFFSITE_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+   OFFSITE_REGION=auto                  # Backblaze B2: the region in the endpoint, e.g. us-west-004
+   OFFSITE_BUCKET=kkf-backups
+   OFFSITE_ACCESS_KEY_ID=...
+   OFFSITE_SECRET_ACCESS_KEY=...
+   OFFSITE_PASSWORD_OBSCURED=...        # the output of step 3
+   ```
+5. **Start it and make the first copy:**
+   ```bash
+   docker compose -f docker-compose.prod.yml up -d offsite
+   docker compose -f docker-compose.prod.yml exec offsite sh /offsite.sh now    # → "off-site copy ok"
+   docker compose -f docker-compose.prod.yml exec offsite sh /offsite.sh list   # what the bucket holds
+   ```
+   `sh preflight.sh` shows the last off-site result (`backups/.offsite-status`).
+
+**Restore from an off-site copy** (e.g. on a new server, after setting up `.env` as above):
+```bash
+docker compose -f docker-compose.prod.yml exec offsite rclone copy vault:db_2026-11-09_0200.dump /backups/
+docker compose -f docker-compose.prod.yml exec offsite rclone copy vault:uploads_2026-11-09_0200.tar.gz /backups/
+sh restore.sh backups/db_2026-11-09_0200.dump backups/uploads_2026-11-09_0200.tar.gz
+```
 
 ### Restore
 

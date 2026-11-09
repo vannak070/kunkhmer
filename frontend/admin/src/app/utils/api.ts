@@ -16,7 +16,7 @@ function getHeaders(extraHeaders: Record<string, string> = {}): Record<string, s
 }
 
 /**
- * The sign-in has ended (signed in on another device, password changed, signed out): forget it and go to the
+ * The sign-in has ended (signed out from another device, unused for 30 days, password changed, signed out): forget it and go to the
  * login page with a message, instead of leaving screens to show "not found" or empty lists.
  * claude/updates/session-expired.md
  */
@@ -267,6 +267,18 @@ export const api = {
     },
     async changePassword(currentPassword: string, newPassword: string) {
       return request("/users/me/password", { method: "PUT", body: JSON.stringify({ currentPassword, newPassword }) });
+    },
+    /** Own signed-in devices (claude/updates/multi-device-sign-in.md). */
+    async sessions() {
+      const res = await request("/users/me/sessions");
+      return res.data as { id: string; device: string; lastUsedAt: string; signedInAt: string; current: boolean }[];
+    },
+    async signOutSession(id: string) {
+      return request(`/users/me/sessions/${id}`, { method: "DELETE" });
+    },
+    async signOutOthers() {
+      const res = await request("/users/me/sessions/sign-out-others", { method: "POST" });
+      return res.data as { signedOut: number };
     },
     getCurrentUser() {
       const userStr = localStorage.getItem("user");
@@ -678,6 +690,16 @@ export const api = {
     },
     async delete(id: string) {
       return request(`/matches/${id}`, { method: "DELETE" });
+    },
+    /** Swap red and blue (fighters, weigh-ins, club answers); not after a result (claude/updates/match-page-simpler.md). */
+    async swapCorners(id: string) {
+      const res = await request(`/matches/${id}/swap-corners`, { method: "POST" });
+      return res.data;
+    },
+    /** New bout order on a fight card: every bout of the card, in order (claude/updates/match-page-simpler.md). */
+    async reorder(cardId: string, matchIds: string[]) {
+      const res = await request(`/matches/batches/${cardId}/order`, { method: "PUT", body: JSON.stringify({ matchIds }) });
+      return res.data;
     },
     /** Bouts waiting for (or answered by) clubs; a club only gets bouts with its fighters. */
     async proposals(state?: "pending" | "accepted" | "declined") {

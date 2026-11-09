@@ -6,6 +6,7 @@
 | **Jira** | n/a |
 | **Figma** | n/a |
 | **Owner** | vannak070 |
+| **Sheet like the paper + week print** | `claude/updates/sheet-like-paper-week-print.md` (lunar date, more bout types, kick boxing, fingerless gloves, draw names, "Print the week") |
 | **Review** | `claude/updates/weekly-program-sheets-review.md` (what the 19 official sheets contain and the gaps) |
 
 ## Goal
@@ -38,7 +39,7 @@ Then the demo week (the 19 sheets) is loaded on the dev database at the end of t
 ## Log
 ### 2026-10-13 — steps 1–3
 - **Start time**: `events.start_time` "HH:MM" (migration `20261013180000_event_start_time`), API `startTime` (normalised, 422 for a bad value, "" clears; contract test in `events.test.ts`, suite 335/335). Admin: time field in New match / Edit details; shown on Matches rows, the next-match card and the match page. Fan site: home hero, event tiles and cards, event page (`formatTime`, Khmer digits). The two demo Saturday shows on the dev DB got 15:00.
-- **Week board**: Matches › **Week** tab (`components/program/WeekBoard.tsx`): ‹ This week ›, broadcaster filter, summary (matches · bouts · broadcasters), desktop grid broadcaster × day with a card per match (time, name, place in the chosen language, main sponsor, bouts, status), phone list by day. EN + KM.
+- **Week board**: Matches › **Week** tab (`components/program/WeekBoard.tsx`): ‹ This week ›, **weeks run Monday to Sunday** (owner, 2026-11-09, after briefly trying Friday–Thursday; KKF's own sheets run Fri–Wed, so a program week spans two board weeks; Copy last week, Print the week and the weekly checks follow the board's 7 days), broadcaster filter, summary (matches · bouts · broadcasters), desktop grid broadcaster × day with a **compact two-line card** per match (time · name; status dot + bouts; red / amber edge when the weekly checks found something; place and sponsor in the tooltip) and a one-line key for the dots; the grid scrolls in its own box so the **day headings and the broadcaster column stay in view** (whole week fits at 1440 px); phone list by day with the same cards. **Clicking a card opens the show's side panel** (`components/program/ShowPanel.tsx`: date, time, TV, sponsor, place, status, every bout red vs blue with weight / rounds / type / result, Previous / Next show, Open match · Add bouts · Program sheet). Owner's picks 2026-11-09. EN + KM.
 - **Program sheet**: `/events/:id/sheet` (`pages/ProgramSheet.tsx`, outside the admin frame), opened from the match page ("Program sheet"). Khmer layout like the official sheets: Kingdom/Nation-Religion-King heading, KKF logo + name, broadcaster and main-sponsor logos, title with the show name in red, venue · broadcaster, Khmer date + time ("១៥:០០ រសៀល"), table គូទី (number + rounds + label) · បង្គោលក្រហម · ទម្ងន់ · បង្គោលខៀវ (Khmer name, English name, club, association; foreign fighter in capitals + country), room for the date line, signature and stamp, "version N" (= 1 + recorded changes) and the print date. Print / Save as PDF from the browser, A4. Cancelled bouts are left out.
 - Checked on a temporary admin on the test API (week board desktop + phone, sheet with a foreign fighter and a club association). Print preview itself not opened in the test browser.
 

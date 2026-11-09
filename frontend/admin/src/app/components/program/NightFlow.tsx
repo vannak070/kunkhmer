@@ -5,11 +5,13 @@
  * one-line rows; the next step is highlighted and, on a phone, repeated in a sticky bar.
  * KKF staff see everything and can act; an Organizer sees "Your part" (the three agreements, which it sends to KKF)
  * and "KKF's part" (read-only progress). The fight card level is hidden: the first "Add bout" creates the "Main card".
+ * For KKF staff the list starts folded into one slim bar ("4 of 8 done · Next: …" with its button); "All steps"
+ * opens the full list. The after-match steps only appear once the match day has come (claude/updates/match-page-simpler.md).
  */
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
-import { CheckCircle2, ChevronRight, Circle, Clock, ListChecks, Lock, MinusCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Circle, Clock, ListChecks, Lock, MinusCircle } from "lucide-react";
 import { api } from "../../utils/api";
 import { type TextKey, formatDay, useT } from "../../i18n/program";
 import { type AgreementItem, type Agreements, LOCKED_FOR_ORGANIZER, useAgreementActions } from "./AgreementsPanel";
@@ -220,7 +222,8 @@ export function useNightFlow({ event, cards, bouts, agreements, mode, canEdit, c
       },
       open[0] ? [{ label: t("card.results"), run: () => navigate(`/home/fight-cards/${cardOf(open[0])?.id}/results`), primary: true }] : [],
     ),
-    ...(after && isStaff ? afterSteps(after) : []),
+    // After the match: only once match day has come (before that they were three greyed-out rows).
+    ...(after && isStaff && (nightPassed || after.signedOffAt) ? afterSteps(after) : []),
   ];
   // Organizer: publishing waits for KKF, say so plainly.
   if (!isStaff) {
@@ -239,7 +242,37 @@ export function useNightFlow({ event, cards, bouts, agreements, mode, canEdit, c
 
 export function NightFlow(props: FlowProps) {
   const { steps, next, countable, doneCount, isStaff, act, busy, t } = useNightFlow(props);
+  // KKF staff: folded into one slim bar until they open the full list.
+  const [expanded, setExpanded] = useState(false);
   if (props.event.status === "Cancelled") return null;
+  if (isStaff && !expanded) {
+    const first = next?.actions[0];
+    return (
+      <>
+        <section aria-label={t("steps.title")} className="rounded-2xl border border-slate-200 bg-white p-4 flex flex-col md:flex-row md:items-center gap-3">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <p className="text-sm font-semibold text-slate-900 flex flex-wrap items-center gap-x-2">
+              <ListChecks className="w-4 h-4 text-primary shrink-0" aria-hidden />
+              {next ? t("flow.slim", { done: doneCount, total: countable.length, title: next.title }) : t("flow.slimNone", { done: doneCount, total: countable.length })}
+            </p>
+            {next && <p className="text-sm text-slate-600 break-words">{next.detail}</p>}
+            <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden"><div className="h-full bg-emerald-500 transition-all" style={{ width: `${(doneCount / countable.length) * 100}%` }} /></div>
+          </div>
+          <div className="flex flex-wrap gap-2 md:justify-end">
+            {first && (
+              <button type="button" disabled={busy || act.busy} onClick={first.run} className="inline-flex items-center gap-1 h-11 px-4 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90 disabled:opacity-60">
+                {first.label} <ChevronRight className="w-4 h-4" aria-hidden />
+              </button>
+            )}
+            <button type="button" onClick={() => setExpanded(true)} aria-expanded={false} className="inline-flex items-center gap-1 h-11 px-4 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-700 hover:border-primary hover:text-primary">
+              {t("flow.showAll")} <ChevronDown className="w-4 h-4" aria-hidden />
+            </button>
+          </div>
+          {act.dialogs}
+        </section>
+      </>
+    );
+  }
   const row = (s: Step) => {
     const isNext = next?.key === s.key;
     const compact = s.status === "done" || s.status === "later" || s.status === "over" || s.status === "locked";
@@ -302,7 +335,14 @@ export function NightFlow(props: FlowProps) {
       <section aria-labelledby="flow-title" className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 id="flow-title" className="text-lg font-bold text-slate-900 flex items-center gap-2"><ListChecks className="w-5 h-5 text-primary" aria-hidden /> {t("steps.title")}</h2>
-          <span className="text-sm font-medium text-slate-500">{t("steps.done", { done: doneCount, total: countable.length })}</span>
+          <span className="flex items-center gap-3">
+            <span className="text-sm font-medium text-slate-500">{t("steps.done", { done: doneCount, total: countable.length })}</span>
+            {isStaff && (
+              <button type="button" onClick={() => setExpanded(false)} aria-expanded className="inline-flex items-center gap-1 h-9 px-3 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 hover:border-primary hover:text-primary">
+                {t("flow.hideAll")} <ChevronUp className="w-4 h-4" aria-hidden />
+              </button>
+            )}
+          </span>
         </div>
         <div className="h-2 rounded-full bg-slate-100 overflow-hidden"><div className="h-full bg-emerald-500 transition-all" style={{ width: `${(doneCount / countable.length) * 100}%` }} /></div>
         {isStaff ? (
@@ -332,6 +372,26 @@ export function NightFlow(props: FlowProps) {
         </div>
       )}
     </>
+  );
+}
+
+/** One line for the Matches page strip: "4 of 8 done · Next: …" and the next step's button (claude/updates/match-page-simpler.md, H). */
+export function NightNextInline(props: FlowProps) {
+  const { next, countable, doneCount, act, busy, t } = useNightFlow(props);
+  if (props.event.status === "Cancelled") return null;
+  const first = next?.actions[0];
+  return (
+    <div className="flex flex-wrap items-center gap-3 min-w-0 flex-1">
+      <p className="min-w-[12rem] flex-1 text-sm text-slate-700 break-words">
+        {next ? t("flow.slim", { done: doneCount, total: countable.length, title: next.title }) : t("flow.slimNone", { done: doneCount, total: countable.length })}
+      </p>
+      {first && (
+        <button type="button" disabled={busy || act.busy} onClick={first.run} className="shrink-0 inline-flex items-center gap-1 h-10 px-4 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90 disabled:opacity-60">
+          {first.label} <ChevronRight className="w-4 h-4" aria-hidden />
+        </button>
+      )}
+      {act.dialogs}
+    </div>
   );
 }
 

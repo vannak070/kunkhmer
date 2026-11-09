@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
-import { Eye, EyeOff, KeyRound, LogOut, Mail, ShieldCheck, UserRound } from "lucide-react";
+import { Eye, EyeOff, KeyRound, LogOut, Mail, MonitorSmartphone, ShieldCheck, UserRound } from "lucide-react";
 import { api } from "../utils/api";
 import { APPROVALS_ENABLED } from "../config/features";
 import { type Lang, type TextKey, formatDay, khmerDigits, roleNameKey, useT } from "../i18n/program";
@@ -204,7 +204,70 @@ export function Profile() {
             {savingPw ? t("prof.changing") : t("prof.changePassword")}
           </button>
         </form>
+
+        <Devices />
       </div>
     </div>
+  );
+}
+
+/**
+ * Signed-in devices (claude/updates/multi-device-sign-in.md): up to 5 at once; a device unused for 30 days is signed out
+ * by itself. Sign out one device, or all the others.
+ */
+function Devices() {
+  const { t, lang } = useT();
+  const [list, setList] = useState<Awaited<ReturnType<typeof api.auth.sessions>> | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [busy, setBusy] = useState("");
+  const load = () => api.auth.sessions().then(setList).catch(() => setFailed(true));
+  useEffect(() => { load(); }, []);
+  const when = (v: string) => {
+    const d = new Date(v);
+    const time = d.toLocaleTimeString(lang === "km" ? "km-KH" : "en-GB", { hour: "2-digit", minute: "2-digit" });
+    return `${formatDay(v, lang, false)} ${lang === "km" ? khmerDigits(time) : time}`;
+  };
+  const signOut = async (id: string) => {
+    setBusy(id);
+    try { await api.auth.signOutSession(id); toast.success(t("dev.signedOutOne")); await load(); } catch (e) { toast.error(e instanceof Error ? e.message : t("common.error")); }
+    setBusy("");
+  };
+  const signOutOthers = async () => {
+    setBusy("others");
+    try { const r = await api.auth.signOutOthers(); toast.success(t("dev.signedOutOthers", { n: lang === "km" ? khmerDigits(r.signedOut) : r.signedOut })); await load(); } catch (e) { toast.error(e instanceof Error ? e.message : t("common.error")); }
+    setBusy("");
+  };
+  const others = (list ?? []).filter((s) => !s.current);
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4 lg:col-span-2">
+      <div>
+        <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2"><MonitorSmartphone className="w-5 h-5 text-primary" aria-hidden /> {t("dev.title")}</h2>
+        <p className="mt-1 text-sm text-slate-600">{t("dev.text")}</p>
+      </div>
+      {failed ? (
+        <p className="text-sm text-amber-800">{t("dev.failed")}</p>
+      ) : list === null ? (
+        <p className="text-sm text-slate-500">{t("common.loading")}</p>
+      ) : (
+        <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+          {list.map((s) => (
+            <li key={s.id} className="flex flex-wrap items-center gap-3 p-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-slate-900">{s.device}{s.current && <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">{t("dev.this")}</span>}</p>
+                <p className="text-xs text-slate-600">{t("dev.lastUsed", { when: when(s.lastUsedAt) })}</p>
+              </div>
+              {!s.current && (
+                <button type="button" disabled={busy !== ""} onClick={() => signOut(s.id)} className="h-9 px-3 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 hover:border-red-300 hover:text-red-700 disabled:opacity-50">{t("dev.signOut")}</button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {others.length > 0 && (
+        <button type="button" disabled={busy !== ""} onClick={signOutOthers} className="inline-flex items-center gap-2 h-11 px-5 rounded-xl border border-red-200 bg-white text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">
+          <LogOut className="w-4 h-4" aria-hidden /> {t("dev.signOutOthers")}
+        </button>
+      )}
+    </section>
   );
 }

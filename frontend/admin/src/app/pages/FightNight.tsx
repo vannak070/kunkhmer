@@ -5,12 +5,14 @@
  * See claude/updates/program-officer-friendly.md and claude/updates/program-guided-fight-night.md (the fight card
  * level is hidden when there is one card; an Organizer gets a simpler "Your part / KKF's part" view).
  * Agreements (what was agreed with the broadcaster, KKF confirmation): claude/updates/offline-agreements-log.md.
+ * Simpler for staff (claude/updates/match-page-simpler.md): Next steps folded into one slim bar, the bouts right under it,
+ * and each bout's ⋯ menu (edit, move up / down, swap red and blue, delete).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import {
-  ArrowLeft, CalendarClock, CalendarDays, ChevronRight, ClipboardCheck, Gavel, ImagePlus, MapPin, MoreHorizontal, Pencil, Plus, Printer, Shuffle, Copy, ListPlus, Scale, Share2, ShieldCheck, Swords, Trash2, Trophy, Tv, Ban,
+  ArrowLeft, CalendarClock, CalendarDays, ChevronDown, ChevronRight, ClipboardCheck, Gavel, ImagePlus, MapPin, MoreHorizontal, Pencil, Plus, Printer, Shuffle, Copy, ListPlus, Scale, Share2, ShieldCheck, Swords, Trash2, Trophy, Tv, Ban,
 } from "lucide-react";
 import { api } from "../utils/api";
 import { usePermissions } from "../hooks/usePermissions";
@@ -26,9 +28,11 @@ import { CancelMatchDialog, ChangesHistory, PostponeDialog, canChangeMatch } fro
 import { FightNightFields, fightNightForm, fightNightPayload, fightNightReady } from "../components/program/FightNightFields";
 import { type Agreements, AgreementLog, LOCKED_FOR_ORGANIZER } from "../components/program/AgreementsPanel";
 import {
-  ConfirmDialog, FighterAvatar, LangSwitch, StatusChip, boutNumbers, byCardOrder, cornerName, dayOf, displayStatus, hasResult, officialsComplete, resultText, todayUtc, weighState,
+  ConfirmDialog, FighterAvatar, LangSwitch, StatusChip, boutLabelName, boutNumbers, byCardOrder, cornerName, dayOf, displayStatus, hasResult, officialsComplete, resultText, todayUtc, weighState,
 } from "../components/program/shared";
 import { DrawDialog } from "../components/program/DrawDialog";
+import { BoutRowActions } from "../components/program/BoutActions";
+import { BoutPanel } from "../components/program/BoutPanel";
 
 const field = "w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary";
 
@@ -36,6 +40,10 @@ export function FightNight() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  // The bout open in the side panel (G): kept in the address so a refresh or a shared link keeps it open.
+  const [params, setParams] = useSearchParams();
+  const openBoutId = params.get("bout");
+  const openBout = (boutId: string | null) => setParams(boutId ? { bout: boutId } : {}, { replace: true });
   const { t, lang } = useT();
   const placeName = usePlaceName();
   const permissions = usePermissions();
@@ -268,17 +276,8 @@ export function FightNight() {
         )
       )}
 
-      {isStaff && matchPassed && (
-        <>
-          <DisputesPanel disputes={disputes} onRecord={() => setAfterDialog("dispute")} onChanged={load} />
-          <SettlementPanel eventId={event.id} parties={parties} enabled={event.status !== "Cancelled"} onChanged={load} />
-        </>
-      )}
-
-      {agreements && <AgreementLog log={agreements.log} />}
-      {(isStaff || me?.role === "Organizer") && <ChangesHistory eventId={event.id} refreshKey={event.updated_at} />}
-
-      {/* Bouts: the fight card level only shows when there is more than one card. */}
+      {/* Bouts come first, right under the slim Next steps bar (claude/updates/match-page-simpler.md); the fight card level
+          only shows when there is more than one card. After them: disputes, settlement, agreements and the change history. */}
       {cards.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-slate-600">{t("night.noBoutsYet")}</p>
       ) : (
@@ -291,12 +290,37 @@ export function FightNight() {
             canEdit={canEdit}
             isStaff={isStaff}
             isSuper={isSuper}
+            // Edit / move / swap / delete a bout: KKF staff, until the match is signed off or cancelled.
+            boutActions={isStaff && canEdit && !event.signed_off_at && event.status !== "Cancelled"}
+            published={["Published", "Completed"].includes(event.status)}
+            onOpenBout={(boutId) => openBout(boutId)}
             onDelete={() => setConfirm({ card })}
             onChanged={load}
           />
         ))
       )}
 
+      {isStaff && matchPassed && (
+        <>
+          <DisputesPanel disputes={disputes} onRecord={() => setAfterDialog("dispute")} onChanged={load} />
+          <SettlementPanel eventId={event.id} parties={parties} enabled={event.status !== "Cancelled"} onChanged={load} />
+        </>
+      )}
+
+      {agreements && <AgreementLog log={agreements.log} />}
+      {(isStaff || me?.role === "Organizer") && <ChangesHistory eventId={event.id} refreshKey={event.updated_at} />}
+
+      {(() => {
+        const b = openBoutId ? bouts.find((x) => x.id === openBoutId) : null;
+        if (!b) return null;
+        const onCard = bouts.filter((x) => x.sub_event_id === b.sub_event_id);
+        const numbers = boutNumbers(onCard);
+        return (
+          <BoutPanel bout={b} number={numbers.get(b.id) ?? 1} cardBouts={onCard} numbers={numbers} isStaff={isStaff}
+            canEdit={isStaff && canEdit && !event.signed_off_at && event.status !== "Cancelled"}
+            onOpen={(id) => openBout(id)} onClose={() => openBout(null)} onChanged={load} />
+        );
+      })()}
       {copying && <CopyMatchDialog event={event} onClose={() => setCopying(false)} onDone={(id) => { setCopying(false); navigate(`/home/events/${id}`); }} />}
       {afterDialog === "signoff" && <SignOffDialog event={event} onClose={() => setAfterDialog(null)} onDone={() => { setAfterDialog(null); load(); }} />}
       {afterDialog === "reopen" && <ReopenDialog event={event} onClose={() => setAfterDialog(null)} onDone={() => { setAfterDialog(null); load(); }} />}
@@ -330,11 +354,21 @@ export function FightNight() {
   );
 }
 
-function FightCardSection({ card, bouts, single, canEdit, isStaff, isSuper, onDelete, onChanged }: {
-  card: any; bouts: any[]; single: boolean; canEdit: boolean; isStaff: boolean; isSuper: boolean; onDelete: () => void; onChanged: () => void;
+function FightCardSection({ card, bouts, single, canEdit, isStaff, isSuper, boutActions, published, onOpenBout, onDelete, onChanged }: {
+  card: any; bouts: any[]; single: boolean; canEdit: boolean; isStaff: boolean; isSuper: boolean; boutActions: boolean; published: boolean;
+  /** Opens the bout's side panel (G). */
+  onOpenBout: (id: string) => void;
+  onDelete: () => void; onChanged: () => void;
 }) {
   const { t, lang } = useT();
   const [drawing, setDrawing] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const addBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const close = (e: MouseEvent) => { if (addBox.current && !addBox.current.contains(e.target as Node)) setAddOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
   const numbers = boutNumbers(bouts);
   const placeName = usePlaceName();
   const navigate = useNavigate();
@@ -355,19 +389,26 @@ function FightCardSection({ card, bouts, single, canEdit, isStaff, isSuper, onDe
         </div>
         <div className="flex flex-wrap gap-2">
           {canEdit && (
-            <button type="button" onClick={() => navigate(`/home/matches/${card.id}/create-match`)} className={`${action} bg-primary text-white border-primary hover:opacity-90`}>
-              <Plus className="w-4 h-4" aria-hidden /> {t("card.addBout")}
-            </button>
-          )}
-          {canEdit && (
-            <button type="button" onClick={() => navigate(`/home/matches/${card.id}/quick-bouts`)} className={`${action} bg-white text-slate-700 border-slate-200 hover:border-primary hover:text-primary`}>
-              <ListPlus className="w-4 h-4" aria-hidden /> {t("qb.btn")}
-            </button>
-          )}
-          {canEdit && (
-            <button type="button" onClick={() => setDrawing(true)} className={`${action} bg-white text-slate-700 border-slate-200 hover:border-primary hover:text-primary`}>
-              <Shuffle className="w-4 h-4" aria-hidden /> {t("draw.btn")}
-            </button>
+            // One "Add bouts" button with the three ways to add (claude/updates/match-page-simpler.md, F).
+            <div ref={addBox} className="relative">
+              <button type="button" onClick={() => setAddOpen((o) => !o)} aria-expanded={addOpen} aria-haspopup="menu" className={`${action} bg-primary text-white border-primary hover:opacity-90`}>
+                <Plus className="w-4 h-4" aria-hidden /> {t("card.addMenu")} <ChevronDown className="w-4 h-4" aria-hidden />
+              </button>
+              {addOpen && (
+                <div role="menu" className="absolute left-0 mt-2 w-72 rounded-xl border border-slate-200 bg-white shadow-lg z-20 py-1">
+                  {[
+                    { icon: Plus, label: t("card.addBout"), hint: t("card.addOneHint"), run: () => navigate(`/home/matches/${card.id}/create-match`) },
+                    { icon: ListPlus, label: t("qb.btn"), hint: t("card.addManyHint"), run: () => navigate(`/home/matches/${card.id}/quick-bouts`) },
+                    { icon: Shuffle, label: t("draw.btn"), hint: t("card.addDrawHint"), run: () => setDrawing(true) },
+                  ].map(({ icon: Icon, label, hint, run }) => (
+                    <button key={label} type="button" role="menuitem" onClick={() => { setAddOpen(false); run(); }} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-start gap-3">
+                      <Icon className="w-4 h-4 mt-0.5 text-primary shrink-0" aria-hidden />
+                      <span className="min-w-0"><span className="block text-sm font-semibold text-slate-900">{label}</span><span className="block text-xs text-slate-500">{hint}</span></span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
           {isStaff && bouts.length > 0 && (
             <>
@@ -394,7 +435,7 @@ function FightCardSection({ card, bouts, single, canEdit, isStaff, isSuper, onDe
         <p className="p-6 text-sm text-slate-500">{t("card.noBouts")}</p>
       ) : (
         <>
-          <div className="hidden lg:grid grid-cols-[minmax(0,1fr)_120px_130px_minmax(0,200px)] gap-4 px-6 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-100">
+          <div className={`hidden xl:grid grid-cols-[minmax(0,1fr)_120px_130px_minmax(0,200px)] gap-4 px-6 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-100 ${boutActions ? "mr-16" : ""}`}>
             <span>{t("card.col.bout")}</span>
             <span>{t("card.col.officials")}</span>
             <span>{t("card.col.weighin")}</span>
@@ -402,8 +443,8 @@ function FightCardSection({ card, bouts, single, canEdit, isStaff, isSuper, onDe
           </div>
           <ol className="divide-y divide-slate-100">
             {bouts.map((b, i) => (
-              <li key={b.id}>
-                <Link to={`/home/match/${b.id}`} className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_120px_130px_minmax(0,200px)] gap-3 lg:gap-4 px-5 md:px-6 py-4 hover:bg-slate-50 items-center">
+              <li key={b.id} className="flex items-center gap-2 pr-3 md:pr-4 hover:bg-slate-50">
+                <button type="button" onClick={() => onOpenBout(b.id)} aria-label={t("bp.openLabel", { n: i + 1 })} className="flex-1 min-w-0 text-left grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_120px_130px_minmax(0,200px)] gap-3 xl:gap-4 px-5 md:px-6 py-4 items-center">
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="text-sm font-bold text-slate-400 w-5 shrink-0">{i + 1}</span>
                     <div className="min-w-0 flex-1 grid gap-1.5">
@@ -413,7 +454,7 @@ function FightCardSection({ card, bouts, single, canEdit, isStaff, isSuper, onDe
                     <div className="text-right text-xs text-slate-500 shrink-0 space-y-1">
                       <p className="font-semibold text-slate-700">{t("common.kg", { n: Number(b.agreed_weight) })}</p>
                       <p>{t("common.rounds", { n: b.rounds })}</p>
-                      {b.bout_label && <p className={`font-semibold ${b.bout_label === "international" ? "text-red-700" : "text-slate-700"}`}>{t(`boutLabel.${b.bout_label}` as TextKey)}</p>}
+                      {b.bout_label && <p className={`font-semibold ${b.bout_label === "international" ? "text-red-700" : "text-slate-700"}`}>{boutLabelName(b, t)}</p>}
                       {b.rule_set === "mas_fight" && <p className="font-semibold text-red-700">{t("ruleSet.mas_fight")}</p>}
                       {(b.is_title_match || b.isTitleMatch) && <p className="inline-flex items-center gap-1 text-amber-700 font-semibold"><Trophy className="w-3 h-3" aria-hidden />{t("common.titleFight")}</p>}
                       {b.status === "Cancelled" && <p><span className="rounded-full bg-slate-200 text-slate-700 px-2 py-0.5 font-semibold">{t("ch.chip.cancelled")}</span></p>}
@@ -423,7 +464,8 @@ function FightCardSection({ card, bouts, single, canEdit, isStaff, isSuper, onDe
                   <Pill ok={officialsComplete(b)} okText={t("card.officialsOk")} badText={t("card.officialsMissing")} icon={<ClipboardCheck className="w-3.5 h-3.5" aria-hidden />} hide={hasResult(b) && !officialsComplete(b)} />
                   <WeighPill m={b} />
                   <span className={`text-sm ${hasResult(b) ? "font-semibold text-slate-800" : "text-slate-400"}`}>{resultText(b, t) ?? t("card.noResult")}</span>
-                </Link>
+                </button>
+                {boutActions && <BoutRowActions bout={b} index={i} cardBouts={bouts} published={published} isSuper={isSuper} onChanged={onChanged} />}
               </li>
             ))}
           </ol>
