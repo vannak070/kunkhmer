@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done 2026-11-09 (uncommitted, not live) |
+| **Status** | Done 2026-11-09 (committed 6c577d7c; not live) |
 | **Jira** | n/a |
 | **Feature** | claude/features/weekly-program.md (step 3 sheet, step 2 Week board) |
 | **Requested by** | Owner, from the 25 sheets of 6–11 Nov 2026 (`កម្មវិធីប្រកួត (4).pdf`): "start 1 and 2", "use your recommendations" |

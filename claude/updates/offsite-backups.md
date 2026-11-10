@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done 2026-11-09 in the repo (uncommitted); **not running on the server** until KKF sets it up |
+| **Status** | Done 2026-11-09 in the repo (committed 6c577d7c); **not running on the server** until KKF sets it up |
 | **Jira** | n/a |
 | **Feature** | `deploy/` (README section 5), pilot readiness |
 | **Requested by** | Owner ("start 2 and 6", recommendations accepted: Cloudflare R2 / Backblaze B2, own password) |

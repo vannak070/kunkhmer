@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | All of A–J done 2026-11-09 (uncommitted, not live) |
+| **Status** | All of A–J done 2026-11-09 (committed 6c577d7c; not live). The later Week / Upcoming / Past layout alignment (last three Log entries) is uncommitted |
 | **Jira** | n/a |
 | **Feature** | claude/features/weekly-program.md, claude/updates/program-guided-fight-night.md, claude/updates/offline-agreements-log.md |
 | **Requested by** | Owner ("match/program admin is not user convenient" → approved A+B+C+D+E+J first, then F+H+I, G last) |
@@ -104,3 +104,17 @@ Out of scope: nothing left from the owner's list.
   0 of 3 judges", the blue button on Assign officials; Next → Bout 3 (Next disabled at the end), Previous → Bout 2; reload with
   `?bout=` kept it open; Esc closed it and cleared the address; Edit bout from the panel saved 60 → 57 kg and the panel updated;
   Khmer at phone width full screen, readable, no sideways scroll. No backend change (suite 422 / 422 from the step before stands).
+- 2026-11-09 (owner: "not consistent layout when I click Week, Upcoming and Past"): the tabs now sit alone on their
+  row on every tab; Upcoming / Past got the Week board's toolbar in the same place — search (left) + broadcaster
+  filter (right), then the summary line "N matches · N bouts · N broadcasters". `pages/Matches.tsx` only. Build OK,
+  checked on the test API at desktop width.
+- 2026-11-09 (owner, screenshots of the three tabs): the page still moved sideways between tabs — a short list (1 match)
+  has no scrollbar, a long one does, so the centred page shifted. `components/Layout.tsx` `<main>` now keeps the
+  scrollbar space always (`scrollbar-gutter: stable`), for every admin page. Measured on the test API: same left edge
+  and width with and without a scrollbar.
+- 2026-11-09 (owner: "make the same display UI as Week", picked "Week boards stacked"): Upcoming and Past now show
+  the Week board's broadcaster × day grid and compact cards, one grid per week with the week's dates above it
+  (Upcoming from this week on, Past latest week first), the same status key, and the same side panel on click
+  (Previous / Next run through every match in the list). Phone: the same list by day as the Week board. The weekly
+  checks edges stay on Week only (they are worked out per week). `WeekBoard.tsx` now exports `WeekGrid` and
+  `StatusKey`, shared by both. Build OK; checked on the test API at desktop and phone width.

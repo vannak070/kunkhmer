@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done 2026-10-15 (uncommitted, not live) |
+| **Status** | Done 2026-10-15 (committed a3de0099, pushed; not live) |
 | **Jira** | n/a |
 | **Feature** | claude/features/public-site.md |
 | **Requested by** | Owner: "is customer website apply with PWA yet?" → "Go ahead" (points 1 + 2: install + light service worker; no install button) |

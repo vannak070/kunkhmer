@@ -399,7 +399,7 @@ export function Layout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8">
+        <main className="flex-1 overflow-y-auto [scrollbar-gutter:stable] p-4 md:p-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8">
           {!permissions.currentUser ? (
             // Signed out (or the session expired): sign in first.
             <Navigate to="/login" replace />

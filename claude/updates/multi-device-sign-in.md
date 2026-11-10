@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Done 2026-11-09 (uncommitted, not live) |
+| **Status** | Done 2026-11-09 (committed 6c577d7c; not live) |
 | **Jira** | n/a |
 | **Feature** | Staff accounts / security (`claude/config.md` Security) |
 | **Requested by** | Owner ("start 2 and 6", recommendations accepted) |
